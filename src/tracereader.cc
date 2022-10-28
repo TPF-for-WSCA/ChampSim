@@ -10,6 +10,10 @@
 extern "C" {
 #include <xed/xed-interface.h>
 }
+
+static bool xedInitDone = false;
+#define GZ_BUFFER_SIZE 80
+
 tracereader::tracereader(uint8_t cpu, std::string _ts) : cpu(cpu), trace_string(_ts)
 {
   std::string last_dot = trace_string.substr(trace_string.find_last_of("."));
@@ -181,12 +185,12 @@ public:
       uint8_t buf[10];
       res = xed_encode_nop(&buf[0], _length);
       if (res != XED_ERROR_NONE) {
-        cerr << "XED NOP encode error: " << xed_error_enum_t2str(res);
+        std::cerr << "XED NOP encode error: " << xed_error_enum_t2str(res);
       }
       res = xed_decode(ins, buf, sizeof(buf));
     }
     if (res != XED_ERROR_NONE) {
-      cerr << "XED NOP encode error: " << xed_error_enum_t2str(res);
+      std::cerr << "XED NOP encode error: " << xed_error_enum_t2str(res);
     }
     return ptr;
   }
