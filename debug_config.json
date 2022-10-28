@@ -4,9 +4,10 @@
     "page_size": 4096,
     "heartbeat_frequency": 10000000,
     "num_cores": 1,
-    "CXXFLAGS": "-Wall -DDEBUG -g",
-    "LDLIBS": "/opt/pin:/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-09-19-lin-x86-64/lib",
-    "LDFLAGS": "/home/robrunne/Workspace/Simulators/xed/include/public",
+    "CXXFLAGS": "-Wall -DDEBUG -g -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-09-19-lin-x86-64/include",
+    "LDLIBS": "-lxed -lz",
+    "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/include/public -L/home/robrunne/Workspace/Simulators/xed/obj",
+    "CFLAGS": "-Wall -g -I /home/shixins/xed/kits/xed-install-base-2021-06-05-lin-x86-64/include",
 
     "ooo_cpu": [{
         "frequency": 4000,
