@@ -18,7 +18,7 @@
 #include "vmem.h"
 
 uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, all_warmup_complete = 0, all_simulation_complete = 0,
-        MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_cloudsuite = 0, knob_low_bandwidth = 0;
+        MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_cloudsuite = 0, knob_low_bandwidth = 0, is_pt = 0;
 
 uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
 
@@ -323,6 +323,7 @@ int main(int argc, char** argv)
                                          {"simulation_instructions", required_argument, 0, 'i'},
                                          {"hide_heartbeat", no_argument, 0, 'h'},
                                          {"cloudsuite", no_argument, 0, 'c'},
+                                         {"pintool", no_argument, 0, 'p'},
                                          {"traces", no_argument, &traces_encountered, 1},
                                          {0, 0, 0, 0}};
 
@@ -341,6 +342,9 @@ int main(int argc, char** argv)
     case 'c':
       knob_cloudsuite = 1;
       MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS_SPARC;
+      break;
+    case 'p':
+      is_pt = 1;
       break;
     case 0:
       break;
@@ -370,7 +374,7 @@ int main(int argc, char** argv)
   for (int i = optind; i < argc; i++) {
     std::cout << "CPU " << traces.size() << " runs " << argv[i] << std::endl;
 
-    traces.push_back(get_tracereader(argv[i], traces.size(), knob_cloudsuite));
+    traces.push_back(get_tracereader(argv[i], traces.size(), knob_cloudsuite, is_pt));
 
     if (traces.size() > NUM_CPUS) {
       printf("\n*** Too many traces for the configured number of cores ***\n\n");
