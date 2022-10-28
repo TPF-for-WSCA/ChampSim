@@ -8,6 +8,8 @@ Makefile
 bin/
 obj/
 
+.vscode/
+
 **/*.o
 **/*.d
 **/*.swp
