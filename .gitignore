@@ -16,6 +16,10 @@ Makefile
 bin/
 obj/
 
+.vscode/
+
+build/
+
 **/*.o
 **/*.d
 
