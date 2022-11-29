@@ -297,7 +297,7 @@ public:
         uint32_t numOperands = xed_decoded_inst_noperands(&arch_instr.inst_pt);
         auto opcode = (xed_iclass_enum_t)xed_decoded_inst_get_iclass(&arch_instr.inst_pt);
         uint32_t numInRegs = 0, numOutRegs = 0;
-        //        uint32_t numLoads = 0, numStores = 0;
+        uint32_t numLoads = 0, numStores = 0;
         for (uint32_t op = 0; op < numOperands; op++)
         {
             bool read = false, write = false;
@@ -350,8 +350,7 @@ public:
                 assert(reg);                                   // can't be invalid
                 reg = xed_get_largest_enclosing_register(reg); // eax -> rax, etc; o/w we'd miss a bunch of deps!
 
-                //                        assert(numInRegs < 2);
-                //                        assert(numOutRegs < 2);
+                assert(numInRegs + numOutRegs <= 2);
                 if (read)
                 {
                     arch_instr.source_registers[numInRegs++] = reg;
@@ -361,29 +360,39 @@ public:
                     arch_instr.destination_registers[numOutRegs++] = reg;
                 }
                 //                        TODO: does numInRegs + numOutRegs == num_reg_ops?
-                //                        num_reg_ops++;
+                num_reg_ops++;
             }
-            //            else if (xed_operand_name(o) == XED_OPERAND_MEM0) {
-            ////                        if (write) storeOps[numStores++] = 0;
-            ////                        if (read) loadOps[numLoads++] = 0;
-            //                if (write) numStores++;
-            //                if (read) numLoads++;
-            ////                        TODO: does numStores + numLoads == num_mem_ops?
-            ////                        num_mem_ops++;
-            //            }
-            //            else if (xed_operand_name(o) == XED_OPERAND_MEM1) {
-            ////                        if (write) storeOps[numStores++] = 1;
-            ////                        if (read) loadOps[numLoads++] = 1;
-            //                if (write) numStores++;
-            //                if (read) numLoads++;
-            ////                        TODO: does numStores + numLoads == num_mem_ops?
-            ////                        num_mem_ops++;
-            //            }
+            else if (xed_operand_name(o) == XED_OPERAND_MEM0)
+            {
+                // if (write)
+                //     storeOps[numStores++] = 0;
+                // if (read)
+                //     loadOps[numLoads++] = 0;
+                if (write)
+                    numStores++;
+                if (read)
+                    numLoads++;
+                ////                        TODO: does numStores + numLoads == num_mem_ops?
+                num_mem_ops++;
+            }
+            else if (xed_operand_name(o) == XED_OPERAND_MEM1)
+            {
+                // if (write)
+                //     storeOps[numStores++] = 1;
+                // if (read)
+                //     loadOps[numLoads++] = 1;
+                if (write)
+                    numStores++;
+                if (read)
+                    numLoads++;
+                ////                        TODO: does numStores + numLoads == num_mem_ops?
+                num_mem_ops++;
+            }
         }
-        //        arch_instr.num_reg_ops = (int)(numInRegs + numOutRegs);
-        //        arch_instr.num_mem_ops = (int)(numStores + numLoads);
-        //        if (num_mem_ops > 0)
-        //            arch_instr.is_memory = 1;
+        arch_instr.num_reg_ops = (int)(numInRegs + numOutRegs);
+        arch_instr.num_mem_ops = (int)(numStores + numLoads);
+        if (num_mem_ops > 0)
+            arch_instr.is_memory = 1;
 
         // TODO: Another way to determine memory access. Compare the results
         uint32_t loads = 0, stores = 0;
