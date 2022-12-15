@@ -1,0 +1,59 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "config.sh Debug Create",
+            "type": "shell",
+            "command": "${workspaceRoot}/config.sh",
+            "args": [
+                "${workspaceRoot}/debug_config.json"
+            ]
+        },
+        {
+            "label": "config.sh Debug Build",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "all"
+            ],
+            "dependsOn": "config.sh Debug Create"
+        },
+        {
+            "label": "configure build",
+            "type": "shell",
+            "command": "./config.sh",
+            "args": [
+                "champsim_config.json"
+            ],
+            "options": {
+                "env": {
+                    "XED_INCLUDE_DIRS": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+                    "XED_LIBRARY_DIR": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib"
+                }
+            }
+        },
+        {
+            "label": "make DebugBuild",
+            "type": "shell",
+            "command": "make",
+            "options": {
+                "env": {
+                    "XED_INCLUDE_DIRS": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+                    "XED_LIBRARY_DIR": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib"
+                }
+            }
+        },
+        {
+            "label": "remake",
+            "type": "shell",
+            "command": "make",
+            "dependsOn": "configure build",
+            "options": {
+                "env": {
+                    "XED_INCLUDE_DIRS": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+                    "XED_LIBRARY_DIR": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib"
+                }
+            }
+        },
+    ]
+}

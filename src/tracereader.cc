@@ -183,16 +183,92 @@ public:
     char buffer[GZ_BUFFER_SIZE];
     pt_instr trace_read_instr_pt;
     do {
+      // gzgets reads at max one line (\n)
       if (gzgets(trace_file, buffer, GZ_BUFFER_SIZE) == Z_NULL) {
         std::cout << "REACHED END OF TRACE: " << trace_string << std::endl;
         // reopen to continue until sim limits reached
         this->reopen_file();
+        gzgets(trace_file, buffer, GZ_BUFFER_SIZE);
       }
       trace_read_instr_pt = pt_instr(buffer);
     } while (trace_read_instr_pt.pc == 0);
 
-    ooo_model_instr arch_instr = translate_instr(trace_read_instr_pt);
+    xed_decoded_inst_t raw_pt_inst;
+    xed_decoded_inst_zero(&raw_pt_inst);
+    xed_decoded_inst_set_mode(&raw_pt_inst, XED_MACHINE_MODE_LONG_64, XED_ADDRESS_WIDTH_64b);
+    xed_error_enum_t xed_error = xed_decode(&raw_pt_inst, trace_read_instr_pt.inst_bytes.data(), trace_read_instr_pt.size);
+    if (xed_error != XED_ERROR_NONE) {
+      std::cerr << "DECODING OF PT INSTR FAILED" << std::endl;
+      assert(0);
+    }
+
+    uint32_t numOperands = xed_decoded_inst_noperands(&raw_pt_inst);
+    xed_iclass_enum_t opcode = xed_decoded_inst_get_iclass(&raw_pt_inst);
+    uint32_t inRegIdx = 0, outRegIdx = 0;
+    uint32_t inMemIdx = 0, outMemIdx = 0;
+    for (uint32_t opIdx = 0; opIdx < numOperands; opIdx++) {
+      bool readOp, writeOp;
+      switch (xed_decoded_inst_operand_action(&raw_pt_inst, opIdx)) {
+      case XED_OPERAND_ACTION_RW:
+      case XED_OPERAND_ACTION_RCW:
+      case XED_OPERAND_ACTION_CRW:
+        readOp = true;
+        writeOp = true;
+        break;
+      case XED_OPERAND_ACTION_R:
+      case XED_OPERAND_ACTION_CR:
+        readOp = true;
+        break;
+      case XED_OPERAND_ACTION_W:
+      case XED_OPERAND_ACTION_CW:
+        writeOp = true;
+        break;
+      default:
+        assert(0);
+      }
+
+      const xed_operand_t* operand = xed_inst_operand(raw_pt_inst._inst, opIdx);
+      xed_operand_enum_t opName = xed_operand_name(operand);
+      if (xed_operand_is_register(opName)) {
+        if (xed_decoded_inst_get_iclass(&raw_pt_inst) == XED_ICLASS_CALL_NEAR && outRegIdx > 0) {
+          std::cerr << " we got more than one out reg for a call: " << opName << std::endl;
+          continue; // How can a near call have two out registers?
+        }
+        auto reg = xed_decoded_inst_get_reg(&raw_pt_inst, opName);
+        reg = xed_get_largest_enclosing_register(reg);
+
+        if (readOp) {
+          trace_read_instr_pt.source_registers[inRegIdx++] = reg;
+        }
+        if (writeOp) {
+          trace_read_instr_pt.destination_registers[outRegIdx++] = reg;
+        }
+
+        assert(inRegIdx + outRegIdx <= 3);
+      } else if (opName == XED_OPERAND_MEM0 || opName == XED_OPERAND_MEM1) {
+
+        if (readOp) {
+          trace_read_instr_pt.source_memory[inMemIdx++] = 1;
+        }
+        if (writeOp) {
+        }
+      }
+    }
+
+    ooo_model_instr arch_instr(cpu, trace_read_instr_pt);
     // Check if we need to handle branching here already ( Branch information )
+    if (!initialized) {
+      last_instr = arch_instr;
+      initialized = true;
+    }
+
+    last_instr.branch_taken = last_instr.ip + last_instr.size != arch_instr.ip;
+    if (last_instr.is_branch && last_instr.branch_taken) {
+      last_instr.branch_target = arch_instr.ip;
+    }
+    auto retval = last_instr;
+    last_instr = arch_instr;
+    return retval;
   }
 };
 

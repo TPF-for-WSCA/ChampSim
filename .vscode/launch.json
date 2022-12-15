@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "C++ Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "targetArchitecture": "x64",
+            "program": "${workspaceRoot}/bin/champsim",
+            "args": [
+                "-warmup_instructions",
+                "500",
+                "-simulation_instructions",
+                "50000000",
+                "-ptrace",
+                "-traces",
+                "/home/robrunne/OneDrive/Research/datasets/traces/mediawiki/trace.gz"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib"
+                }
+            ],
+            "MIMode": "gdb",
+            "preLaunchTask": "make DebugBuild"
+        }
+    ]
+}
