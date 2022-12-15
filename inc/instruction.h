@@ -84,6 +84,20 @@ struct ooo_model_instr {
 
     std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
   }
+  ooo_model_instr(uint8_t cpu, pt_instr instr)
+  {
+    std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
+    std::copy(std::begin(instr.destination_memory), std::end(instr.destination_memory), std::begin(this->destination_memory));
+    std::copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::begin(this->source_registers));
+    std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
+
+    this->ip = instr.pc;
+    this->is_branch = instr.is_branch;
+    this->branch_taken = instr.branch_taken;
+
+    asid[0] = cpu;
+    asid[1] = cpu;
+  }
 };
 
 #endif

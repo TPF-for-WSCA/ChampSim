@@ -5,7 +5,15 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <zlib.h>
 
+extern "C" {
+#include <xed/xed-interface.h>
+}
+
+#define GZ_BUFFER_SIZE 80
+
+static bool xedInitialized = false;
 tracereader::tracereader(uint8_t cpu, std::string _ts) : cpu(cpu), trace_string(_ts)
 {
   std::string last_dot = trace_string.substr(trace_string.find_last_of("."));
@@ -130,10 +138,70 @@ public:
   }
 };
 
-tracereader* get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite)
+class pt_tracereader : public tracereader
+{
+  ooo_model_instr last_instr;
+  bool initialized = false;
+  gzFile trace_file;
+
+private:
+  void reopen_file()
+  {
+    if (trace_file != NULL) {
+      gzclose(trace_file);
+    }
+    trace_file = gzopen(trace_string.c_str(), "rb");
+    if (!trace_file) {
+      std::cerr << "\nCANNT OPEN TRACE FILE " << trace_string << std::endl;
+      assert(0);
+    }
+  }
+
+  ooo_model_instr translate_instr(pt_instr ptinstr)
+  {
+    ooo_model_instr inst;
+    int num_reg_ops = 0;
+    int num_mem_ops = 0;
+    inst.ip = ptinstr.pc;
+    // inst.size = ptinstr.size;
+  }
+
+public:
+  explicit pt_tracereader(uint8_t cpu, std::string file_name) : tracereader(cpu, file_name)
+  {
+    this->reopen_file();
+    if (!xedInitialized) {
+      xed_tables_init();
+      xedInitialized = true;
+    }
+  }
+
+  ~pt_tracereader() { gzclose(trace_file); }
+
+  ooo_model_instr get()
+  {
+    char buffer[GZ_BUFFER_SIZE];
+    pt_instr trace_read_instr_pt;
+    do {
+      if (gzgets(trace_file, buffer, GZ_BUFFER_SIZE) == Z_NULL) {
+        std::cout << "REACHED END OF TRACE: " << trace_string << std::endl;
+        // reopen to continue until sim limits reached
+        this->reopen_file();
+      }
+      trace_read_instr_pt = pt_instr(buffer);
+    } while (trace_read_instr_pt.pc == 0);
+
+    ooo_model_instr arch_instr = translate_instr(trace_read_instr_pt);
+    // Check if we need to handle branching here already ( Branch information )
+  }
+};
+
+tracereader* get_tracereader(std::string fname, uint8_t cpu, bool is_cloudsuite, bool is_pt)
 {
   if (is_cloudsuite) {
     return new cloudsuite_tracereader(cpu, fname);
+  } else if (is_pt) {
+    return new pt_tracereader(cpu, fname);
   } else {
     return new input_tracereader(cpu, fname);
   }
