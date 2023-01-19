@@ -207,7 +207,7 @@ public:
     uint32_t inRegIdx = 0, outRegIdx = 0;
     uint32_t inMemIdx = 0, outMemIdx = 0;
     for (uint32_t opIdx = 0; opIdx < numOperands; opIdx++) {
-      bool readOp, writeOp;
+      bool readOp = false, writeOp = false;
       switch (xed_decoded_inst_operand_action(&raw_pt_inst, opIdx)) {
       case XED_OPERAND_ACTION_RW:
       case XED_OPERAND_ACTION_RCW:
@@ -230,10 +230,6 @@ public:
       const xed_operand_t* operand = xed_inst_operand(raw_pt_inst._inst, opIdx);
       xed_operand_enum_t opName = xed_operand_name(operand);
       if (xed_operand_is_register(opName)) {
-        if (xed_decoded_inst_get_iclass(&raw_pt_inst) == XED_ICLASS_CALL_NEAR && outRegIdx > 0) {
-          std::cerr << " we got more than one out reg for a call: " << opName << std::endl;
-          continue; // How can a near call have two out registers?
-        }
         auto reg = xed_decoded_inst_get_reg(&raw_pt_inst, opName);
         reg = xed_get_largest_enclosing_register(reg);
 
@@ -244,13 +240,28 @@ public:
           trace_read_instr_pt.destination_registers[outRegIdx++] = reg;
         }
 
-        assert(inRegIdx + outRegIdx <= 3);
+        // We can at most have six registers:
+        // divide RDX:RAX / Rx (R), result in RAX/RDX (R/W) and RFLAGS(W)
+        if (inRegIdx + outRegIdx > 6) {
+          char buf[2048];
+          xed_decoded_inst_dump(&raw_pt_inst, buf, 2048);
+          std::cout << "Processing " << buf << std::endl;
+          assert(0);
+        }
       } else if (opName == XED_OPERAND_MEM0 || opName == XED_OPERAND_MEM1) {
-
+        // TODO: we don-t have memory in those traces / might need to trace on our own
+        // char buf[2048];
+        // xed_decoded_inst_dump(&raw_pt_inst, buf, 2048);
+        // printf("0x");
+        // for (int bi = 0; bi < trace_read_instr_pt.size; bi++)
+        //   printf("%02X", raw_pt_inst._byte_array._enc[bi]);
+        // printf("\n");
+        // std::cout << "Processing " << buf << std::endl;
         if (readOp) {
           trace_read_instr_pt.source_memory[inMemIdx++] = 1;
         }
         if (writeOp) {
+          trace_read_instr_pt.destination_memory[outMemIdx++] = 1;
         }
       }
     }

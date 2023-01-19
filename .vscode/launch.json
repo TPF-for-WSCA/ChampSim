@@ -11,7 +11,7 @@
                 "-warmup_instructions",
                 "500",
                 "-simulation_instructions",
-                "50000000",
+                "50000",
                 "-ptrace",
                 "-traces",
                 "/home/robrunne/OneDrive/Research/datasets/traces/mediawiki/trace.gz"

@@ -5,6 +5,7 @@
 
 // instruction format
 constexpr std::size_t NUM_INSTR_DESTINATIONS_SPARC = 4;
+constexpr std::size_t NUM_INSTR_DESTINATIONS_X86 = 3;
 constexpr std::size_t NUM_INSTR_DESTINATIONS = 2;
 constexpr std::size_t NUM_INSTR_SOURCES = 4;
 
@@ -49,11 +50,11 @@ struct pt_instr {
   unsigned char is_branch = 0;
   unsigned char branch_taken = 0;
 
-  unsigned char destination_registers[NUM_INSTR_DESTINATIONS] = {};
+  unsigned char destination_registers[NUM_INSTR_DESTINATIONS_X86] = {};
   unsigned char source_registers[NUM_INSTR_SOURCES] = {};
 
-  unsigned long long destination_memory[NUM_INSTR_DESTINATIONS] = {}; // output memory
-  unsigned long long source_memory[NUM_INSTR_SOURCES] = {};           // input memory
+  unsigned long long destination_memory[NUM_INSTR_DESTINATIONS_X86] = {}; // output memory
+  unsigned long long source_memory[NUM_INSTR_SOURCES] = {};               // input memory
 
   std::vector<uint8_t> inst_bytes;
 

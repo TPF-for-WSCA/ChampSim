@@ -1,7 +1,7 @@
 CC := gcc
 CXX := g++
-CFLAGS := -Wall -g -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include -std=gnu99
-CXXFLAGS := -Wall -g -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include -std=c++17
+CFLAGS := -O2 -Wall -g -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include -std=gnu99
+CXXFLAGS := -O2 -Wall -g -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include -std=c++17
 CPPFLAGS :=  -Iinc -MMD -MP
 LDFLAGS := -L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib
 LDLIBS := -lxed -lz -lboost_system -lboost_filesystem

@@ -174,7 +174,11 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
   });
 
   BLOCK& hit_block = block[set * NUM_WAY + way];
-
+  // 0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending)
+  if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
+    std::cout << " full v_addr % 64: " << (handle_pkt.v_address % 64) << std::dec << std::endl;
+    // std::cout << " size: " <<  << std::dec << std::endl;
+  }
   handle_pkt.data = hit_block.data;
 
   // update prefetcher on load instruction
