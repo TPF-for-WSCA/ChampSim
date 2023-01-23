@@ -17,6 +17,19 @@
 
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 
+/// @brief Set bits (lower, upper) to 1 in the mask. lower and upper are included. Zero indexed
+/// @param mask The mask that will be modified
+/// @param lower Inclusive lower bound for region
+/// @param upper Inclusive upper bound for region
+void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper);
+
+/// @brief Extract start and end offsets for each block and hole. It always
+///        starts and ends with a block, separated by a hole. (B H B H B), thus
+///        the total count of the vector is always odd.
+/// @param mask The bitmask indicating which bytes have been accessed.
+/// @return Vector of alternatin block and hole start and end offsets
+std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uint64_t& mask);
+
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
 public:
@@ -45,7 +58,9 @@ public:
   std::list<PACKET> MSHR; // MSHR
 
   uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {}, sim_hit[NUM_CPUS][NUM_TYPES] = {}, sim_miss[NUM_CPUS][NUM_TYPES] = {}, roi_access[NUM_CPUS][NUM_TYPES] = {},
-           roi_hit[NUM_CPUS][NUM_TYPES] = {}, roi_miss[NUM_CPUS][NUM_TYPES] = {};
+           roi_hit[NUM_CPUS][NUM_TYPES] = {}, roi_miss[NUM_CPUS][NUM_TYPES] = {}, holecount_hist[NUM_CPUS][BLOCK_SIZE] = {},
+           holesize_hist[NUM_CPUS][BLOCK_SIZE] = {}, cl_bytesaccessed_hist[NUM_CPUS][BLOCK_SIZE] = {}, blsize_hist[NUM_CPUS][BLOCK_SIZE] = {},
+           blsize_ignore_holes_hist[NUM_CPUS][BLOCK_SIZE] = {};
 
   uint64_t RQ_ACCESS = 0, RQ_MERGED = 0, RQ_FULL = 0, RQ_TO_CACHE = 0, PQ_ACCESS = 0, PQ_MERGED = 0, PQ_FULL = 0, PQ_TO_CACHE = 0, WQ_ACCESS = 0, WQ_MERGED = 0,
            WQ_FULL = 0, WQ_FORWARD = 0, WQ_TO_CACHE = 0;

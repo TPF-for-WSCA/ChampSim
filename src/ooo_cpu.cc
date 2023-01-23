@@ -93,7 +93,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     }
   }
 
-  for (int i = 0; i < NUM_INSTR_SOURCES; i++) {
+  for (size_t i = 0; i < NUM_INSTR_SOURCES; i++) {
     switch (arch_instr.source_registers[i]) {
     case 0:
       break;
@@ -243,7 +243,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   // fast warmup eliminates register dependencies between instructions
   // branch predictor, cache contents, and prefetchers are still warmed up
   if (!warmup_complete[cpu]) {
-    for (int i = 0; i < NUM_INSTR_SOURCES; i++) {
+    for (size_t i = 0; i < NUM_INSTR_SOURCES; i++) {
       arch_instr.source_registers[i] = 0;
     }
     for (uint32_t i = 0; i < MAX_INSTR_DESTINATIONS; i++) {
@@ -370,6 +370,7 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.v_address = begin->ip;
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
+  fetch_packet.size = begin->size;
   fetch_packet.type = LOAD;
   fetch_packet.asid[0] = 0;
   fetch_packet.asid[1] = 0;

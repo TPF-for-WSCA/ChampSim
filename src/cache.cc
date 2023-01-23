@@ -15,6 +15,61 @@
 extern VirtualMemory vmem;
 extern uint8_t warmup_complete[NUM_CPUS];
 
+void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper)
+{
+  if (upper > 63) {
+    upper = 63;
+  }
+
+  uint64_t bitmask = 1;
+  uint8_t i = 0;
+  for (; i < lower; i++) {
+    bitmask = bitmask << 1;
+  }
+
+  for (; i <= upper; i++) {
+    (*mask) |= bitmask;
+    bitmask = bitmask << 1;
+  }
+}
+
+std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uint64_t& mask)
+{
+  typedef std::pair<uint8_t, uint8_t> Block;
+  std::vector<Block> result;
+  uint8_t prev_bit = 0, current_bit = 0;
+  bool trailing = true; // assume line starts with not accessed bytes
+
+  Block current;
+  for (uint8_t byte = 0; byte < BLOCK_SIZE; byte++) {
+    current_bit = ((mask >> byte) & 0x1);
+
+    if (current_bit && trailing) {
+      trailing = false;
+      prev_bit = current_bit;
+      current.first = byte;
+    } else if (current_bit == 0 && trailing) {
+      continue;
+    }
+
+    if (current_bit == 0 && prev_bit == 1) {
+      current.second = byte - 1;
+      result.push_back(current);
+      prev_bit = current_bit;
+      current = Block();
+    } else if (current_bit == 1 && prev_bit == 0) {
+      current.first = byte;
+    }
+  }
+
+  if (prev_bit == 1 && current_bit == 1) {
+    // we have a block that ends at the 63 byte / we need t record that block
+    current.second = 63;
+    result.push_back(current);
+  }
+  return result;
+}
+
 void CACHE::handle_fill()
 {
   while (writes_available_this_cycle > 0) {
@@ -22,6 +77,7 @@ void CACHE::handle_fill()
     if (fill_mshr == std::end(MSHR) || fill_mshr->event_cycle > current_cycle)
       return;
 
+    // VCL Impl: Immediately insert into buffer, search for address if evicted buffer entry has been used
     // find victim
     uint32_t set = get_set(fill_mshr->address);
 
@@ -29,9 +85,11 @@ void CACHE::handle_fill()
     auto set_end = std::next(set_begin, NUM_WAY);
     auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
     uint32_t way = std::distance(set_begin, first_inv);
-    if (way == NUM_WAY)
+    if (way == NUM_WAY) {
       way = impl_replacement_find_victim(fill_mshr->cpu, fill_mshr->instr_id, set, &block.data()[set * NUM_WAY], fill_mshr->ip, fill_mshr->address,
                                          fill_mshr->type);
+      // TODO: RECORD STATISTICS IF ANY
+    }
 
     bool success = filllike_miss(set, way, *fill_mshr);
     if (!success)
@@ -89,7 +147,8 @@ void CACHE::handle_writeback()
         if (way == NUM_WAY)
           way = impl_replacement_find_victim(handle_pkt.cpu, handle_pkt.instr_id, set, &block.data()[set * NUM_WAY], handle_pkt.ip, handle_pkt.address,
                                              handle_pkt.type);
-
+        // theory TODO: If we are applying VCL/test things on lower level caches we
+        // should implement statistics writing here as well.
         success = filllike_miss(set, way, handle_pkt);
       }
 
@@ -174,10 +233,13 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
   });
 
   BLOCK& hit_block = block[set * NUM_WAY + way];
-  // 0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending)
-  if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
-    std::cout << " full v_addr % 64: " << (handle_pkt.v_address % 64) << std::dec << std::endl;
-    // std::cout << " size: " <<  << std::dec << std::endl;
+
+  if (handle_pkt.size != 0) {
+    // vaddr and ip should be the same for L1I, but lookup happens on address so we also operate on address
+    assert(handle_pkt.address % 64 == handle_pkt.v_address % 64);
+    uint8_t offset = (uint8_t)(handle_pkt.address % 64);
+    uint8_t end = offset + handle_pkt.size - 1;
+    set_accessed(&hit_block.bytes_accessed, offset, end);
   }
   handle_pkt.data = hit_block.data;
 
@@ -299,6 +361,34 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
   assert(handle_pkt.type != WRITEBACK || !bypass);
 
   BLOCK& fill_block = block[set * NUM_WAY + way];
+
+  // quick and dirty / mainly dirty: only apply if name ends in L1I
+  if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
+    auto hitblocks = get_blockboundaries_from_mask(fill_block.bytes_accessed);
+    if (hitblocks.size() == 0) {
+      // no access? what do we do?
+    }
+    holecount_hist[handle_pkt.cpu][hitblocks.size() / 2]++;
+    bool is_hole = false;
+    uint8_t total_accessed = 0, first_accessed = 0, last_accessed = 0;
+    for (size_t i = 0; i < hitblocks.size(); i++) {
+      auto block = hitblocks[i];
+      uint8_t size = block.second - block.first; // size is +1 as we have first and last index
+      if (is_hole) {
+        holesize_hist[handle_pkt.cpu][size]++;
+        continue;
+      }
+      if (i == 0) {
+        first_accessed = block.first;
+      }
+      last_accessed = block.second;
+      total_accessed += size;
+      blsize_hist[handle_pkt.cpu][size]++;
+      is_hole = !is_hole; // alternating block/hole
+    }
+    cl_bytesaccessed_hist[handle_pkt.cpu][total_accessed]++;
+    blsize_ignore_holes_hist[handle_pkt.cpu][last_accessed - first_accessed]++;
+  }
   bool evicting_dirty = !bypass && (lower_level != NULL) && fill_block.dirty;
   uint64_t evicting_address = 0;
 
@@ -329,6 +419,14 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
 
     if (handle_pkt.type == PREFETCH)
       pf_fill++;
+
+    fill_block.bytes_accessed = 0;
+    if (handle_pkt.size != 0) {
+      assert(handle_pkt.address % 64 == handle_pkt.v_address % 64);
+      uint8_t offset = (uint8_t)(handle_pkt.address % 64);
+      uint8_t end = offset + handle_pkt.size - 1;
+      set_accessed(&fill_block.bytes_accessed, offset, end);
+    }
 
     fill_block.valid = true;
     fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);

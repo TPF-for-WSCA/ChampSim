@@ -4,8 +4,8 @@
     "page_size": 4096,
     "heartbeat_frequency": 10000000,
     "num_cores": 1,
-    "CFLAGS": "-O2 -Wall -g -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-    "CXXFLAGS": "-O2 -Wall -g -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+    "CFLAGS": "-Wall -g -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+    "CXXFLAGS": "-Wall -g -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
     "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
     "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib",
     "ooo_cpu": [{
@@ -50,7 +50,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": true,
         "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "no_instr"
+        "prefetcher": "next_line_instr"
     },
     "L1D": {
         "sets": 64,
@@ -65,7 +65,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "no"
+        "prefetcher": "next_line"
     },
     "L2C": {
         "sets": 1024,

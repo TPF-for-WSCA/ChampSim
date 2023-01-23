@@ -9,9 +9,9 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "-warmup_instructions",
-                "500",
+                "500000",
                 "-simulation_instructions",
-                "50000",
+                "500000",
                 "-ptrace",
                 "-traces",
                 "/home/robrunne/OneDrive/Research/datasets/traces/mediawiki/trace.gz"

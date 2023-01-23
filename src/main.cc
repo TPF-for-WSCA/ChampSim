@@ -98,6 +98,33 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
     // cout << " AVERAGE MISS LATENCY: " <<
     // (cache->total_miss_latency)/TOTAL_MISS << " cycles " <<
     // cache->total_miss_latency << "/" << TOTAL_MISS<< endl;
+
+    if (0 == cache->NAME.compare(cache->NAME.length() - 3, 3, "L1I")) {
+      cout << cache->NAME << " #CACHELINES WITH #HOLES: " << endl;
+      for (size_t i = 0; i < BLOCK_SIZE; i++) {
+        cout << setw(10) << i << setw(10) << cache->holecount_hist[cpu][i] << endl;
+      }
+
+      cout << cache->NAME << " #CACHELINES WITH HOLE SIZE: " << endl;
+      for (size_t i = 0; i < BLOCK_SIZE; i++) {
+        cout << setw(10) << i << setw(10) << cache->holesize_hist[cpu][i] << endl;
+      }
+
+      cout << cache->NAME << " #CACHELINES WITH BLOCK SIZE: " << endl;
+      for (size_t i = 0; i < BLOCK_SIZE; i++) {
+        cout << setw(10) << i << setw(10) << cache->blsize_hist[cpu][i] << endl;
+      }
+
+      cout << cache->NAME << " #CACHELINES WITH #BYTES ACCESSED: " << endl;
+      for (size_t i = 0; i < BLOCK_SIZE; i++) {
+        cout << setw(10) << i << setw(10) << cache->cl_bytesaccessed_hist[cpu][i] << endl;
+      }
+
+      cout << cache->NAME << " #CACHELINES WITH BLOCK SIZE IGNORING HOLES: " << endl;
+      for (size_t i = 0; i < BLOCK_SIZE; i++) {
+        cout << setw(10) << i << setw(10) << cache->blsize_ignore_holes_hist[cpu][i] << endl;
+      }
+    }
   }
 }
 
@@ -130,6 +157,31 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
     cout << cache->NAME;
     cout << " WRITEBACK ACCESS: " << setw(10) << cache->sim_access[cpu][3] << "  HIT: " << setw(10) << cache->sim_hit[cpu][3] << "  MISS: " << setw(10)
          << cache->sim_miss[cpu][3] << endl;
+
+    cout << cache->NAME << " #CACHELINES WITH #HOLES: " << endl;
+    for (size_t i = 0; i < BLOCK_SIZE; i++) {
+      cout << setw(10) << i << setw(10) << cache->holecount_hist[cpu][i] << endl;
+    }
+
+    cout << cache->NAME << " #CACHELINES WITH HOLE SIZE: " << endl;
+    for (size_t i = 0; i < BLOCK_SIZE; i++) {
+      cout << setw(10) << i << setw(10) << cache->holesize_hist[cpu][i] << endl;
+    }
+
+    cout << cache->NAME << " #CACHELINES WITH BLOCK SIZE: " << endl;
+    for (size_t i = 0; i < BLOCK_SIZE; i++) {
+      cout << setw(10) << i << setw(10) << cache->blsize_hist[cpu][i] << endl;
+    }
+
+    cout << cache->NAME << " #CACHELINES WITH #BYTES ACCESSED: " << endl;
+    for (size_t i = 0; i < BLOCK_SIZE; i++) {
+      cout << setw(10) << i << setw(10) << cache->cl_bytesaccessed_hist[cpu][i] << endl;
+    }
+
+    cout << cache->NAME << " #CACHELINES WITH BLOCK SIZE IGNORING HOLES: " << endl;
+    for (size_t i = 0; i < BLOCK_SIZE; i++) {
+      cout << setw(10) << i << setw(10) << cache->blsize_ignore_holes_hist[cpu][i] << endl;
+    }
   }
 }
 
