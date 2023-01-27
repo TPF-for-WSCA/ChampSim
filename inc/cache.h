@@ -30,6 +30,8 @@ void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper);
 /// @return Vector of alternatin block and hole start and end offsets
 std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uint64_t& mask);
 
+void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block);
+
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
 public:

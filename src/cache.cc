@@ -70,6 +70,17 @@ std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uin
   return result;
 }
 
+void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block)
+{
+  if (handle_pkt.size != 0) {
+    // vaddr and ip should be the same for L1I, but lookup happens on address so we also operate on address
+    assert(handle_pkt.address % 64 == handle_pkt.v_address % 64);
+    uint8_t offset = (uint8_t)(handle_pkt.address % 64);
+    uint8_t end = offset + handle_pkt.size - 1;
+    set_accessed(&hit_block.bytes_accessed, offset, end);
+  }
+}
+
 void CACHE::handle_fill()
 {
   while (writes_available_this_cycle > 0) {
@@ -234,13 +245,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
 
   BLOCK& hit_block = block[set * NUM_WAY + way];
 
-  if (handle_pkt.size != 0) {
-    // vaddr and ip should be the same for L1I, but lookup happens on address so we also operate on address
-    assert(handle_pkt.address % 64 == handle_pkt.v_address % 64);
-    uint8_t offset = (uint8_t)(handle_pkt.address % 64);
-    uint8_t end = offset + handle_pkt.size - 1;
-    set_accessed(&hit_block.bytes_accessed, offset, end);
-  }
+  record_cacheline_accesses(handle_pkt, hit_block);
   handle_pkt.data = hit_block.data;
 
   // update prefetcher on load instruction
@@ -420,13 +425,8 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     if (handle_pkt.type == PREFETCH)
       pf_fill++;
 
-    fill_block.bytes_accessed = 0;
-    if (handle_pkt.size != 0) {
-      assert(handle_pkt.address % 64 == handle_pkt.v_address % 64);
-      uint8_t offset = (uint8_t)(handle_pkt.address % 64);
-      uint8_t end = offset + handle_pkt.size - 1;
-      set_accessed(&fill_block.bytes_accessed, offset, end);
-    }
+    fill_block.bytes_accessed = 0; // newly added to the cache thus no accesses yet
+    record_cacheline_accesses(handle_pkt, fill_block);
 
     fill_block.valid = true;
     fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
