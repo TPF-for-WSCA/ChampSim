@@ -198,7 +198,7 @@ public:
     xed_decoded_inst_set_mode(&raw_pt_inst, XED_MACHINE_MODE_LONG_64, XED_ADDRESS_WIDTH_64b);
     xed_error_enum_t xed_error = xed_decode(&raw_pt_inst, trace_read_instr_pt.inst_bytes.data(), trace_read_instr_pt.size);
     if (xed_error != XED_ERROR_NONE) {
-      std::cerr << "DECODING OF PT INSTR FAILED" << std::endl;
+      std::cerr << "DECODING OF PT INSTR FAILED: " << xed_error << std::endl;
       assert(0);
     }
 
