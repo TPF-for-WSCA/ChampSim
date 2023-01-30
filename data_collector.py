@@ -22,7 +22,7 @@ def run_experiment(
         "-warmup_instructions",
         "1000000",
         "-simulation_instructions",
-        "10000000",
+        "10000000000",
         "-ptrace",
         "-traces",
         trace_file_path,
@@ -65,9 +65,6 @@ def get_perfect_predictor_file(base_path, trace_dir):
 
 
 def main(args):
-    config_files = map(
-        partial(path.join, args.config_dir[0]), os.listdir(args.config_dir[0])
-    )
     traces_directory = args.traces_directory[0]
     workloads = os.listdir(traces_directory)
     trace_files = []
@@ -87,11 +84,10 @@ def main(args):
     pending_experiments = []
 
     for trace in trace_files:
-        trace_name = path.split(trace)[1][:-9]
-        workload_name = path.split(path.abspath(path.join(trace, "..")))[1]
-        output_subdir = path.join(output_dir, workload_name, trace_name)
+        trace_name = path.split(trace)[0].split('/')[-1]
+        output_subdir = path.join(output_dir, trace_name)
         # TEST ONLY
-        # run_experiment(config, trace, output_subdir)
+        # run_experiment(trace, output_subdir)
         pending_experiments.append(
             pool.apply_async(
                 run_experiment,
@@ -111,7 +107,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Run a set of experiments specified as config files in the input directory"
+        description="Run an experiment on a set of traces"
     )
     parser.add_argument(
         "--experiment_executable",

@@ -12,4 +12,4 @@ obj/
 **/*.d
 
 tracer/pin/obj-intel64/
-
+core.*
