@@ -14,7 +14,7 @@
                 "50000000",
                 "-ptrace",
                 "-traces",
-                "/home/robrunne/OneDrive/Research/datasets/traces/mediawiki/trace.gz"
+                "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",

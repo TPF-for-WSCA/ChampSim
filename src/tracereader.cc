@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -11,7 +12,7 @@ extern "C" {
 #include <xed/xed-interface.h>
 }
 
-#define GZ_BUFFER_SIZE 80
+#define GZ_BUFFER_SIZE 50
 
 static bool xedInitialized = false;
 tracereader::tracereader(uint8_t cpu, std::string _ts) : cpu(cpu), trace_string(_ts)
@@ -180,9 +181,11 @@ public:
 
   ooo_model_instr get()
   {
-    char buffer[GZ_BUFFER_SIZE];
+    char buffer[GZ_BUFFER_SIZE] = {0};
     pt_instr trace_read_instr_pt;
     do {
+
+      std::memset(buffer, 0, GZ_BUFFER_SIZE);
       // gzgets reads at max one line (\n)
       if (gzgets(trace_file, buffer, GZ_BUFFER_SIZE) == Z_NULL) {
         std::cout << "REACHED END OF TRACE: " << trace_string << std::endl;

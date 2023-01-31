@@ -244,15 +244,15 @@ std::optional<uint64_t> PagingStructureCache::check_hit(uint64_t address)
 void PageTableWalker::print_deadlock()
 {
   if (!std::empty(MSHR)) {
-    std::cout << NAME << " MSHR Entry" << std::endl;
+    std::cerr << NAME << " MSHR Entry" << std::endl;
     std::size_t j = 0;
     for (PACKET entry : MSHR) {
-      std::cout << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
-      std::cout << " address: " << std::hex << entry.address << " v_address: " << entry.v_address << std::dec << " type: " << +entry.type;
-      std::cout << " translation_level: " << +entry.translation_level;
-      std::cout << " fill_level: " << +entry.fill_level << " event_cycle: " << entry.event_cycle << std::endl;
+      std::cerr << "[" << NAME << " MSHR] entry: " << j++ << " instr_id: " << entry.instr_id;
+      std::cerr << " address: " << std::hex << entry.address << " v_address: " << entry.v_address << std::dec << " type: " << +entry.type;
+      std::cerr << " translation_level: " << +entry.translation_level;
+      std::cerr << " fill_level: " << +entry.fill_level << " event_cycle: " << entry.event_cycle << std::endl;
     }
   } else {
-    std::cout << NAME << " MSHR empty" << std::endl;
+    std::cerr << NAME << " MSHR empty" << std::endl;
   }
 }
