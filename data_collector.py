@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from functools import partial
 from multiprocessing import Pool, cpu_count
 from os import path
@@ -10,6 +11,18 @@ import subprocess
 import sys
 
 executable = "/cluster/work/romankb/dynamorio/build/clients/bin64/drcachesim"
+
+
+class Color(Enum):
+    RED = "\033[31m"
+    ENDC = "\033[m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    BLUE = "\033[34m"
+
+
+def cprint(string, color: Color):
+    print(color.value + string + Color.ENDC.value)
 
 
 def run_experiment(
@@ -31,10 +44,12 @@ def run_experiment(
     os.makedirs(output_dir, exist_ok=True)
     sys.stdout.flush()
     sys.stderr.flush()
+    success = True
     completed_experiment = subprocess.run(cmd, -1, capture_output=True)
     if completed_experiment.returncode != 0:
         print(f"WARNING: EXPERIMENT {' '.join(cmd)} returned non-zero code")
         print(f"STDERR: {completed_experiment.stderr}\n")
+        success = False
     else:
         print(f"Experiment {' '.join(cmd)} completed successfully\n")
 
@@ -58,6 +73,7 @@ def run_experiment(
         f.flush()
     sys.stdout.flush()
     sys.stderr.flush()
+    return success
 
 
 def get_perfect_predictor_file(base_path, trace_dir):
@@ -84,7 +100,7 @@ def main(args):
     pending_experiments = []
 
     for trace in trace_files:
-        trace_name = path.split(trace)[0].split('/')[-1]
+        trace_name = path.split(trace)[0].split("/")[-1]
         output_subdir = path.join(output_dir, trace_name)
         # TEST ONLY
         # run_experiment(trace, output_subdir)
@@ -99,7 +115,13 @@ def main(args):
         )
 
     # To prevent subprcesses to be killed
-    [experiment.wait() for experiment in pending_experiments]
+    experiments = [experiment.get() for experiment in pending_experiments]
+
+    for i in range(len(trace_files)):
+        if experiments[i]:
+            cprint(f"{trace_files[i]} finished successfully", Color.GREEN)
+        else:
+            cprint(f"{trace_files[i]} finished with errors", Color.RED)
 
     pool.close()
     pool.join()
