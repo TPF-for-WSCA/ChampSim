@@ -853,6 +853,15 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
         if (dependent->source_memory[j] == sq_it->virtual_address) { // this is required since a single
                                                                      // instruction can issue multiple loads
 
+          // TODO: Get rid of this check once we have data accesses in the trace
+          if (dependent->lq_index[j]->producer_id == std::numeric_limits<uint64_t>::max()) {
+            cerr << "Uninitialized DTLB dependency detected / needs fixing later [data trace must be available]" << endl;
+            continue; // after warmup it can happen that we see an uninitialized value -- ignore
+          }
+          if (dependent->lq_index[j]->producer_id != sq_it->instr_id) {
+            cerr << "[SQ2] " << __func__ << " lq_index: " << j << " producer_id: " << dependent->lq_index[j]->producer_id;
+            cerr << " does not match to the store instr_id: " << sq_it->instr_id << endl;
+          }
           // now we can resolve RAW dependency
           assert(dependent->lq_index[j]->producer_id == sq_it->instr_id);
           // update corresponding LQ entry
