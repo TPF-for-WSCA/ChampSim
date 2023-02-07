@@ -48,6 +48,7 @@ std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uin
       trailing = false;
       prev_bit = current_bit;
       current.first = byte;
+      continue;
     } else if (current_bit == 0 && trailing) {
       continue;
     }
@@ -55,11 +56,15 @@ std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uin
     if (current_bit == 0 && prev_bit == 1) {
       current.second = byte - 1;
       result.push_back(current);
-      prev_bit = current_bit;
       current = Block();
+      current.first = byte;
     } else if (current_bit == 1 && prev_bit == 0) {
+      current.second = byte - 1;
+      result.push_back(current);
+      current = Block();
       current.first = byte;
     }
+    prev_bit = current_bit;
   }
 
   if (prev_bit == 1 && current_bit == 1) {
@@ -381,6 +386,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
       uint8_t size = block.second - block.first; // size is +1 as we have first and last index
       if (is_hole) {
         holesize_hist[handle_pkt.cpu][size]++;
+        is_hole = !is_hole;
         continue;
       }
       if (i == 0) {
