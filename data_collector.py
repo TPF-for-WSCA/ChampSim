@@ -11,6 +11,7 @@ import sys
 
 executable = "/cluster/work/romankb/dynamorio/build/clients/bin64/drcachesim"
 
+experiment_instructions="1000000000"
 
 def run_experiment(
     trace_file_path,
@@ -22,7 +23,7 @@ def run_experiment(
         "-warmup_instructions",
         "1000000",
         "-simulation_instructions",
-        "10000000000",
+        experiment_instructions,
         "-ptrace",
         "-traces",
         trace_file_path,
@@ -80,7 +81,7 @@ def main(args):
         global executable
         executable = args.exec
 
-    pool = Pool(processes=20)
+    pool = Pool(processes=5)
     pending_experiments = []
 
     for trace in trace_files:
