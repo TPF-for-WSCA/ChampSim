@@ -37,6 +37,8 @@ def run_experiment(
         "1000000",
         "-simulation_instructions",
         experiment_instructions,
+        "-result_dir",
+        output_dir,
         "-ptrace",
         "-traces",
         trace_file_path,
