@@ -428,6 +428,9 @@ void finish_warmup()
   for (uint32_t i = 0; i < NUM_CPUS; i++) {
     cout << "Warmup complete CPU " << i << " instructions: " << ooo_cpu[i]->num_retired << " cycles: " << ooo_cpu[i]->current_cycle;
     cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
+    cout << " Failed decodes: " << traces[i]->failed_decoding_instructions << " out of ";
+    cout << traces[i]->total_decoding_instructions << " decoded instructions" << endl;
+    cout << "Decode error rate: " << (double)traces[i]->failed_decoding_instructions / (double)traces[i]->total_decoding_instructions << endl;
 
     ooo_cpu[i]->begin_sim_cycle = ooo_cpu[i]->current_cycle;
     ooo_cpu[i]->begin_sim_instr = ooo_cpu[i]->num_retired;
@@ -603,6 +606,10 @@ int main(int argc, char** argv)
         cout << "Heartbeat CPU " << i << " instructions: " << ooo_cpu[i]->num_retired << " cycles: " << ooo_cpu[i]->current_cycle;
         cout << " heartbeat IPC: " << heartbeat_ipc << " cumulative IPC: " << cumulative_ipc;
         cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
+        cout << " Failed decodes: " << traces[i]->failed_decoding_instructions << " out of ";
+        cout << traces[i]->total_decoding_instructions << " decoded instructions" << endl;
+        cout << "Decode error rate: " << (double)traces[i]->failed_decoding_instructions / (double)traces[i]->total_decoding_instructions << endl;
+
         ooo_cpu[i]->next_print_instruction += STAT_PRINTING_PERIOD;
 
         ooo_cpu[i]->last_sim_instr = ooo_cpu[i]->num_retired;
@@ -631,6 +638,9 @@ int main(int argc, char** argv)
         cout << "Finished CPU " << i << " instructions: " << ooo_cpu[i]->finish_sim_instr << " cycles: " << ooo_cpu[i]->finish_sim_cycle;
         cout << " cumulative IPC: " << ((float)ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle);
         cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
+        cout << " Failed decodes: " << traces[i]->failed_decoding_instructions << " out of ";
+        cout << traces[i]->total_decoding_instructions << " decoded instructions" << endl;
+        cout << "Decode error rate: " << (double)traces[i]->failed_decoding_instructions / (double)traces[i]->total_decoding_instructions << endl;
 
         for (auto it = caches.rbegin(); it != caches.rend(); ++it)
           record_roi_stats(i, *it);

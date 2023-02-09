@@ -158,13 +158,24 @@ private:
     }
   }
 
-  ooo_model_instr translate_instr(pt_instr ptinstr)
+  // Inspired by the makeNop function in thermometer version of ChampSim
+  xed_decoded_inst_t make_nop(uint64_t size)
   {
-    ooo_model_instr inst;
-    int num_reg_ops = 0;
-    int num_mem_ops = 0;
-    inst.ip = ptinstr.pc;
-    // inst.size = ptinstr.size;
+    xed_decoded_inst_t ins;
+    xed_decoded_inst_zero(&ins);
+    xed_decoded_inst_set_mode(&ins, XED_MACHINE_MODE_LONG_64, XED_ADDRESS_WIDTH_64b);
+    uint8_t buf[16];
+    xed_error_enum_t res = xed_encode_nop(&buf[0], size);
+    if (res != XED_ERROR_NONE) {
+      std::cerr << "XED NOP encoder error: " << xed_error_enum_t2str(res);
+      assert(0);
+    }
+    res = xed_decode(&ins, buf, size);
+    if (res != XED_ERROR_NONE) {
+      std::cerr << "XED NOP decode error: " << xed_error_enum_t2str(res);
+      assert(0);
+    }
+    return ins;
   }
 
 public:
@@ -200,9 +211,12 @@ public:
     xed_decoded_inst_zero(&raw_pt_inst);
     xed_decoded_inst_set_mode(&raw_pt_inst, XED_MACHINE_MODE_LONG_64, XED_ADDRESS_WIDTH_64b);
     xed_error_enum_t xed_error = xed_decode(&raw_pt_inst, trace_read_instr_pt.inst_bytes.data(), trace_read_instr_pt.size);
+    total_decoding_instructions++; // should correspond to simulated instructions (at least)
     if (xed_error != XED_ERROR_NONE) {
-      std::cerr << "DECODING OF PT INSTR FAILED: " << xed_error << std::endl;
-      assert(0);
+      // std::cerr << "DECODING OF PT INSTR FAILED: " << xed_error << std::endl;
+      raw_pt_inst = make_nop(trace_read_instr_pt.size);
+      failed_decoding_instructions++;
+      // assert(0);
     }
 
     uint32_t numOperands = xed_decoded_inst_noperands(&raw_pt_inst);

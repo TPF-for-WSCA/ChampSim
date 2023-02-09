@@ -64,6 +64,7 @@
         "stop_token": "cpp",
         "thread": "cpp",
         "typeindex": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "codecvt": "cpp"
     }
 }
