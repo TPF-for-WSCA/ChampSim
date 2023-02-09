@@ -12,7 +12,8 @@ import sys
 
 executable = "/cluster/work/romankb/dynamorio/build/clients/bin64/drcachesim"
 
-experiment_instructions="1000000000"
+experiment_instructions = "1000000000"
+
 
 class Color(Enum):
     RED = "\033[31m"
@@ -37,6 +38,8 @@ def run_experiment(
         "1000000",
         "-simulation_instructions",
         experiment_instructions,
+        "-result_dir",
+        output_dir,
         "-ptrace",
         "-traces",
         trace_file_path,

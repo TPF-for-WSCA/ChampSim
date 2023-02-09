@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <getopt.h>
@@ -21,6 +22,8 @@ uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, all_
         MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_pintrace = 0, knob_cloudsuite = 0, knob_low_bandwidth = 0;
 
 uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
+
+std::string result_dir;
 
 auto start_time = time(NULL);
 
@@ -101,29 +104,81 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
 
     if (0 == cache->NAME.compare(cache->NAME.length() - 3, 3, "L1I")) {
       cout << cache->NAME << " #CACHELINES WITH #HOLES: " << endl;
+
+      std::ofstream csv_file;
+      std::filesystem::path csv_file_path = result_dir;
+      csv_file_path /= "num_cl_with_num_holes.tsv";
+      csv_file.open(csv_file_path, std::ios::out);
+      if (!csv_file) {
+        std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+      }
       for (size_t i = 0; i < BLOCK_SIZE; i++) {
+        if (csv_file) {
+          csv_file << i << "\t" << cache->holecount_hist[cpu][i] << endl;
+        }
         cout << setw(10) << i << setw(10) << cache->holecount_hist[cpu][i] << endl;
       }
+      csv_file.close();
 
       cout << cache->NAME << " #CACHELINES WITH HOLE SIZE: " << endl;
+      csv_file_path.remove_filename();
+      csv_file_path /= "num_cl_with_hole_size.tsv";
+      csv_file.open(csv_file_path);
+      if (!csv_file) {
+        std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+      }
       for (size_t i = 0; i < BLOCK_SIZE; i++) {
+        if (csv_file) {
+          csv_file << i << "\t" << cache->holesize_hist[cpu][i] << endl;
+        }
         cout << setw(10) << i << setw(10) << cache->holesize_hist[cpu][i] << endl;
       }
+      csv_file.close();
 
       cout << cache->NAME << " #CACHELINES WITH BLOCK SIZE: " << endl;
+      csv_file_path.remove_filename();
+      csv_file_path /= "num_cl_with_block_size.tsv";
+      csv_file.open(csv_file_path);
+      if (!csv_file) {
+        std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+      }
       for (size_t i = 0; i < BLOCK_SIZE; i++) {
+        if (csv_file) {
+          csv_file << i + 1 << "\t" << cache->blsize_hist[cpu][i] << endl;
+        }
         cout << setw(10) << i << setw(10) << cache->blsize_hist[cpu][i] << endl;
       }
+      csv_file.close();
 
       cout << cache->NAME << " #CACHELINES WITH #BYTES ACCESSED: " << endl;
+      csv_file_path.remove_filename();
+      csv_file_path /= "num_cl_with_bytes_accessed.tsv";
+      csv_file.open(csv_file_path);
+      if (!csv_file) {
+        std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+      }
       for (size_t i = 0; i < BLOCK_SIZE; i++) {
+        if (csv_file) {
+          csv_file << i + 1 << "\t" << cache->cl_bytesaccessed_hist[cpu][i] << endl;
+        }
         cout << setw(10) << i << setw(10) << cache->cl_bytesaccessed_hist[cpu][i] << endl;
       }
+      csv_file.close();
 
       cout << cache->NAME << " #CACHELINES WITH BLOCK SIZE IGNORING HOLES: " << endl;
+      csv_file_path.remove_filename();
+      csv_file_path /= "num_cl_with_first_to_last_size.tsv";
+      csv_file.open(csv_file_path);
+      if (!csv_file) {
+        std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+      }
       for (size_t i = 0; i < BLOCK_SIZE; i++) {
+        if (csv_file) {
+          csv_file << i + 1 << "\t" << cache->blsize_ignore_holes_hist[cpu][i] << endl;
+        }
         cout << setw(10) << i << setw(10) << cache->blsize_ignore_holes_hist[cpu][i] << endl;
       }
+      csv_file.close();
     }
   }
 }
@@ -159,29 +214,81 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
          << cache->sim_miss[cpu][3] << endl;
 
     cout << cache->NAME << " #CACHELINES WITH #HOLES: " << endl;
+
+    std::ofstream csv_file;
+    std::filesystem::path csv_file_path = result_dir;
+    csv_file_path /= "num_cl_with_num_holes.tsv";
+    csv_file.open(csv_file_path, std::ios::out);
+    if (!csv_file) {
+      std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+    }
     for (size_t i = 0; i < BLOCK_SIZE; i++) {
+      if (csv_file) {
+        csv_file << i << "\t" << cache->holecount_hist[cpu][i] << endl;
+      }
       cout << setw(10) << i << setw(10) << cache->holecount_hist[cpu][i] << endl;
     }
+    csv_file.close();
 
     cout << cache->NAME << " #CACHELINES WITH HOLE SIZE: " << endl;
+    csv_file_path.remove_filename();
+    csv_file_path /= "num_cl_with_hole_size.tsv";
+    csv_file.open(csv_file_path);
+    if (!csv_file) {
+      std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+    }
     for (size_t i = 0; i < BLOCK_SIZE; i++) {
+      if (csv_file) {
+        csv_file << i << "\t" << cache->holesize_hist[cpu][i] << endl;
+      }
       cout << setw(10) << i << setw(10) << cache->holesize_hist[cpu][i] << endl;
     }
+    csv_file.close();
 
     cout << cache->NAME << " #CACHELINES WITH BLOCK SIZE: " << endl;
+    csv_file_path.remove_filename();
+    csv_file_path /= "num_cl_with_block_size.tsv";
+    csv_file.open(csv_file_path);
+    if (!csv_file) {
+      std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+    }
     for (size_t i = 0; i < BLOCK_SIZE; i++) {
+      if (csv_file) {
+        csv_file << i + 1 << "\t" << cache->blsize_hist[cpu][i] << endl;
+      }
       cout << setw(10) << i << setw(10) << cache->blsize_hist[cpu][i] << endl;
     }
+    csv_file.close();
 
     cout << cache->NAME << " #CACHELINES WITH #BYTES ACCESSED: " << endl;
+    csv_file_path.remove_filename();
+    csv_file_path /= "num_cl_with_bytes_accessed.tsv";
+    csv_file.open(csv_file_path);
+    if (!csv_file) {
+      std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+    }
     for (size_t i = 0; i < BLOCK_SIZE; i++) {
+      if (csv_file) {
+        csv_file << i + 1 << "\t" << cache->cl_bytesaccessed_hist[cpu][i] << endl;
+      }
       cout << setw(10) << i << setw(10) << cache->cl_bytesaccessed_hist[cpu][i] << endl;
     }
+    csv_file.close();
 
     cout << cache->NAME << " #CACHELINES WITH BLOCK SIZE IGNORING HOLES: " << endl;
+    csv_file_path.remove_filename();
+    csv_file_path /= "num_cl_with_first_to_last_size.tsv";
+    csv_file.open(csv_file_path);
+    if (!csv_file) {
+      std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+    }
     for (size_t i = 0; i < BLOCK_SIZE; i++) {
+      if (csv_file) {
+        csv_file << i + 1 << "\t" << cache->blsize_ignore_holes_hist[cpu][i] << endl;
+      }
       cout << setw(10) << i << setw(10) << cache->blsize_ignore_holes_hist[cpu][i] << endl;
     }
+    csv_file.close();
   }
 }
 
@@ -376,6 +483,7 @@ int main(int argc, char** argv)
                                          {"hide_heartbeat", no_argument, 0, 'h'},
                                          {"cloudsuite", no_argument, 0, 'c'},
                                          {"ptrace", no_argument, 0, 'p'},
+                                         {"result_dir", required_argument, 0, 'r'},
                                          {"traces", no_argument, &traces_encountered, 1},
                                          {0, 0, 0, 0}};
 
@@ -397,6 +505,9 @@ int main(int argc, char** argv)
       break;
     case 'p':
       knob_pintrace = 1;
+      break;
+    case 'r':
+      result_dir = optarg;
       break;
     case 0:
       break;
