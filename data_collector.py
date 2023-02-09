@@ -12,7 +12,7 @@ import sys
 
 executable = "/cluster/work/romankb/dynamorio/build/clients/bin64/drcachesim"
 
-experiment_instructions="1000000000"
+experiment_instructions="100000000"
 
 class Color(Enum):
     RED = "\033[31m"
