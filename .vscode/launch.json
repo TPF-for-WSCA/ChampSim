@@ -28,6 +28,18 @@
             ],
             "MIMode": "gdb",
             "preLaunchTask": "make DebugBuild"
+        },
+        {
+            "name": "Python: MergingBlocks",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/aggregation_scripts/apply_merge_strategies.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "stopOnEntry": false,
+            "args": [
+                "~/Downloads/results"
+            ]
         }
     ]
 }
