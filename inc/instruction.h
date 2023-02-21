@@ -91,6 +91,32 @@ struct ooo_model_instr {
     std::copy(std::begin(instr.source_registers), std::end(instr.source_registers), std::begin(this->source_registers));
     std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
 
+    auto category = xed_decoded_inst_get_category(&instr.decoded_instruction);
+    this->is_branch = true;
+    switch (category) {
+    case XED_CATEGORY_COND_BR:
+      this->branch_type = BRANCH_CONDITIONAL;
+      break;
+    case XED_CATEGORY_UNCOND_BR:
+      if (xed3_operand_get_brdisp_width(&instr.decoded_instruction))
+        this->branch_type = BRANCH_DIRECT_JUMP;
+      else
+        this->branch_type = BRANCH_INDIRECT;
+      break;
+    case XED_CATEGORY_CALL:
+      if (xed3_operand_get_brdisp_width(&instr.decoded_instruction))
+        this->branch_type = BRANCH_DIRECT_CALL;
+      else
+        this->branch_type = BRANCH_INDIRECT_CALL;
+      break;
+    case XED_CATEGORY_RET:
+      this->branch_type = BRANCH_RETURN;
+      break;
+    default:
+      this->branch_type = NOT_BRANCH;
+      this->is_branch = NOT_BRANCH;
+      break;
+    }
     this->ip = instr.pc;
     this->is_branch = instr.is_branch;
     this->branch_taken = instr.branch_taken;

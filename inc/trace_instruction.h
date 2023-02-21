@@ -3,6 +3,10 @@
 
 #include <limits>
 
+extern "C" {
+#include <xed/xed-interface.h>
+}
+
 // instruction format
 constexpr std::size_t NUM_INSTR_DESTINATIONS_SPARC = 4;
 constexpr std::size_t NUM_INSTR_DESTINATIONS_X86 = 3;
@@ -46,6 +50,8 @@ struct cloudsuite_instr {
 struct pt_instr {
   uint64_t pc = 0;
   uint8_t size = 0;
+
+  xed_decoded_inst_t decoded_instruction;
 
   unsigned char is_branch = 0;
   unsigned char branch_taken = 0;

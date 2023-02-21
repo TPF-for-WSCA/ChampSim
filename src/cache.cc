@@ -353,6 +353,23 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
   return true;
 }
 
+void CACHE::write_buffers_to_disk()
+{
+  if (cl_accessmask_buffer.size() == 0) {
+    return;
+  }
+  if (!cl_accessmask_file.is_open()) {
+    std::filesystem::path result_path = result_dir;
+    result_path /= "cl_access_masks.bin";
+    cl_accessmask_file = std::ofstream(result_path.c_str(), std::ios::binary | std::ios::out);
+  }
+  for (auto& mask : cl_accessmask_buffer) {
+    cl_accessmask_file.write(reinterpret_cast<char*>(&mask), sizeof(uint64_t));
+  }
+  cl_accessmask_file.flush();
+  cl_accessmask_buffer.clear();
+}
+
 bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
 {
   DP(if (warmup_complete[handle_pkt.cpu]) {
@@ -374,6 +391,15 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
 
   // quick and dirty / mainly dirty: only apply if name ends in L1I
   if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
+    if (warmup_complete[handle_pkt.cpu]) {
+      // we onlu write to the file if warmup is complete
+      if (cl_accessmask_buffer.size() < WRITE_BUFFER_SIZE) {
+        cl_accessmask_buffer.push_back(fill_block.bytes_accessed);
+      } else {
+        write_buffers_to_disk();
+        cl_accessmask_buffer.push_back(fill_block.bytes_accessed);
+      }
+    }
     auto hitblocks = get_blockboundaries_from_mask(fill_block.bytes_accessed);
     if (hitblocks.size() == 0) {
       // no access? what do we do?

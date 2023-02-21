@@ -33,17 +33,6 @@
             }
         },
         {
-            "label": "make DebugBuild",
-            "type": "shell",
-            "command": "make",
-            "options": {
-                "env": {
-                    "XED_INCLUDE_DIRS": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-                    "XED_LIBRARY_DIR": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib"
-                }
-            }
-        },
-        {
             "label": "remake",
             "type": "shell",
             "command": "make",
@@ -55,5 +44,16 @@
                 }
             }
         },
+        {
+            "label": "make DebugBuild",
+            "type": "shell",
+            "command": "make",
+            "options": {
+                "env": {
+                    "XED_INCLUDE_DIRS": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+                    "XED_LIBRARY_DIR": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib"
+                }
+            }
+        }
     ]
 }

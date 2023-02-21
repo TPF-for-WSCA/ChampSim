@@ -11,12 +11,12 @@
                 "-warmup_instructions",
                 "5000",
                 "-simulation_instructions",
-                "500000",
+                "50000",
                 "-result_dir",
                 "~/Downloads/test_results",
                 "-ptrace",
                 "-traces",
-                "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz"
+                "/home/robrunne/OneDrive/Research/datasets/traces/python/python.gz"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",

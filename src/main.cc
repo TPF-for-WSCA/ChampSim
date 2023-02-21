@@ -101,10 +101,12 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
     // cout << " AVERAGE MISS LATENCY: " <<
     // (cache->total_miss_latency)/TOTAL_MISS << " cycles " <<
     // cache->total_miss_latency << "/" << TOTAL_MISS<< endl;
+    cout << cache->NAME;
+    cout << " MPKI: " << (1000.0 * TOTAL_MISS) / (ooo_cpu[cpu]->num_retired - warmup_instructions) << endl;
 
     if (0 == cache->NAME.compare(cache->NAME.length() - 3, 3, "L1I")) {
-      cout << cache->NAME << " #CACHELINES WITH #HOLES: " << endl;
 
+      cout << cache->NAME << " #CACHELINES WITH #HOLES: " << endl;
       std::ofstream csv_file;
       std::filesystem::path csv_file_path = result_dir;
       csv_file_path /= "num_cl_with_num_holes.tsv";
@@ -129,7 +131,7 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
       }
       for (size_t i = 0; i < BLOCK_SIZE; i++) {
         if (csv_file) {
-          csv_file << i << "\t" << cache->holesize_hist[cpu][i] << endl;
+          csv_file << i + 1 << "\t" << cache->holesize_hist[cpu][i] << endl;
         }
         cout << setw(10) << i << setw(10) << cache->holesize_hist[cpu][i] << endl;
       }
@@ -391,6 +393,15 @@ void reset_cache_stats(uint32_t cpu, CACHE* cache)
     cache->sim_miss[cpu][i] = 0;
   }
 
+  for (uint32_t i = 0; i < BLOCK_SIZE; i++) {
+    cache->holecount_hist[cpu][i] = 0;
+    cache->holesize_hist[cpu][i] = 0;
+    cache->cl_bytesaccessed_hist[cpu][i] = 0;
+    cache->blsize_hist[cpu][i] = 0;
+    cache->blsize_ignore_holes_hist[cpu][i] = 0;
+  }
+
+  cache->cl_accessmask_buffer.clear();
   cache->pf_requested = 0;
   cache->pf_issued = 0;
   cache->pf_useful = 0;
@@ -430,7 +441,7 @@ void finish_warmup()
     cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
     cout << " Failed decodes: " << traces[i]->failed_decoding_instructions << " out of ";
     cout << traces[i]->total_decoding_instructions << " decoded instructions" << endl;
-    cout << "Decode error rate: " << (double)traces[i]->failed_decoding_instructions / (double)traces[i]->total_decoding_instructions << endl;
+    cout << "Decode error rate: " << (100.0 * traces[i]->failed_decoding_instructions) / (double)traces[i]->total_decoding_instructions << "%" << endl;
 
     ooo_cpu[i]->begin_sim_cycle = ooo_cpu[i]->current_cycle;
     ooo_cpu[i]->begin_sim_instr = ooo_cpu[i]->num_retired;
@@ -608,7 +619,7 @@ int main(int argc, char** argv)
         cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
         cout << " Failed decodes: " << traces[i]->failed_decoding_instructions << " out of ";
         cout << traces[i]->total_decoding_instructions << " decoded instructions" << endl;
-        cout << "Decode error rate: " << (double)traces[i]->failed_decoding_instructions / (double)traces[i]->total_decoding_instructions << endl;
+        cout << "Decode error rate: " << (100.0 * traces[i]->failed_decoding_instructions) / (double)traces[i]->total_decoding_instructions << "%" << endl;
 
         ooo_cpu[i]->next_print_instruction += STAT_PRINTING_PERIOD;
 
@@ -640,10 +651,12 @@ int main(int argc, char** argv)
         cout << " (Simulation time: " << elapsed_hour << " hr " << elapsed_minute << " min " << elapsed_second << " sec) " << endl;
         cout << " Failed decodes: " << traces[i]->failed_decoding_instructions << " out of ";
         cout << traces[i]->total_decoding_instructions << " decoded instructions" << endl;
-        cout << "Decode error rate: " << (double)traces[i]->failed_decoding_instructions / (double)traces[i]->total_decoding_instructions << endl;
+        cout << "Decode error rate: " << (100.0 * traces[i]->failed_decoding_instructions) / (double)traces[i]->total_decoding_instructions << "%" << endl;
 
-        for (auto it = caches.rbegin(); it != caches.rend(); ++it)
+        for (auto it = caches.rbegin(); it != caches.rend(); ++it) {
+          (*it)->write_buffers_to_disk();
           record_roi_stats(i, *it);
+        }
       }
     }
   }

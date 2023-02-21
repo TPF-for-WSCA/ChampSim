@@ -1,6 +1,8 @@
 #ifndef CACHE_H
 #define CACHE_H
 
+#include <filesystem>
+#include <fstream>
 #include <functional>
 #include <list>
 #include <string>
@@ -14,8 +16,10 @@
 
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
+#define WRITE_BUFFER_SIZE 100
 
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
+extern std::string result_dir;
 
 /// @brief Set bits (lower, upper) to 1 in the mask. lower and upper are included. Zero indexed
 /// @param mask The mask that will be modified
@@ -34,12 +38,17 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block);
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
+
+private:
+  std::ofstream cl_accessmask_file;
+
 public:
   uint32_t cpu;
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
   const uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
+  std::vector<uint64_t> cl_accessmask_buffer;
   const uint32_t MAX_READ, MAX_WRITE;
   uint32_t reads_available_this_cycle, writes_available_this_cycle;
   const bool prefetch_as_load;
@@ -48,6 +57,7 @@ public:
   bool ever_seen_data = false;
   const unsigned pref_activate_mask = (1 << static_cast<int>(LOAD)) | (1 << static_cast<int>(PREFETCH));
 
+  void write_buffers_to_disk(void);
   // prefetch stats
   uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0;
 
@@ -119,7 +129,15 @@ public:
         MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask),
         repl_type(repl), pref_type(pref)
   {
+    if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
+      cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
+    }
   }
+  ~CACHE()
+  {
+    if (cl_accessmask_file.is_open())
+      cl_accessmask_file.close();
+  };
 };
 
 #endif

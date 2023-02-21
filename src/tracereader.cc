@@ -219,6 +219,8 @@ public:
       // assert(0);
     }
 
+    trace_read_instr_pt.decoded_instruction = raw_pt_inst;
+
     uint32_t numOperands = xed_decoded_inst_noperands(&raw_pt_inst);
     xed_iclass_enum_t opcode = xed_decoded_inst_get_iclass(&raw_pt_inst);
     uint32_t inRegIdx = 0, outRegIdx = 0;

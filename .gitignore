@@ -3,7 +3,7 @@ inc/cache_modules.inc
 inc/ooo_cpu_modules.inc
 src/core_inst.cc
 .champsimconfig_cache
-./Makefile
+/Makefile
 
 bin/
 obj/
