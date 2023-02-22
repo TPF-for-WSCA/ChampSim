@@ -11,12 +11,12 @@
                 "-warmup_instructions",
                 "5000",
                 "-simulation_instructions",
-                "50000",
+                "5000000",
                 "-result_dir",
                 "~/Downloads/test_results",
                 "-ptrace",
                 "-traces",
-                "/home/robrunne/OneDrive/Research/datasets/traces/python/python.gz"
+                "/home/robrunne/OneDrive/Research/datasets/traces/postgres/postgres.gz"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",
