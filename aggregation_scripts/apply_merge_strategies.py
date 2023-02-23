@@ -9,7 +9,7 @@ from functools import partial
 
 # Statistics
 
-total_lines_after_split_by_strategy = defaultdict(int)
+TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY = defaultdict(int)
 
 
 class Strategy:
@@ -19,7 +19,7 @@ class Strategy:
 
     def split(self, line):
         if len(line) == 0:
-            return 1
+            return 1, [line]
         return self.split_fn(line)
 
     def __init__(self, name, split_fn):
@@ -35,6 +35,7 @@ That said it starts and ends with a True except it was empty on eviction.
 def split_n(line, n):
     prev = True
     holes = []
+    blocks = []
     for elem in line:
         if prev and not elem:
             holes.append(1)
@@ -51,7 +52,7 @@ def split_np(line, n):
 
 
 strategies = [
-    Strategy("no split", lambda line: 1),
+    Strategy("no split", lambda line: (1, [line])),
     Strategy("Split One Byte Hole", partial(split_n, n=1)),
     Strategy("Split Two Bytes Hole", partial(split_n, n=2)),
     Strategy("Split Four Bytes Hole", partial(split_n, n=4)),
@@ -98,7 +99,6 @@ def int_t_to_boolean_list(line, bits=64):
 
 
 def apply_splits_for_workload(workload_name, tracefile_path):
-    global total_lines_after_split_by_strategy
     with open(tracefile_path, "rb") as tracefile:
         while True:
             line = tracefile.read(8)
@@ -115,48 +115,51 @@ def apply_splits_for_workload(workload_name, tracefile_path):
                 # no hole case, single block
                 # we need to add one to each splitting strategy, as no holes appear there as well
                 for strategy in strategies:
-                    total_lines_after_split_by_strategy[strategy.name] += 1
+                    TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY[strategy.name] += 1
                 continue
             for strategy in strategies:
                 total_blocks = strategy.split(trimmed_mask)
-                total_lines_after_split_by_strategy[
+                TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY[
                     strategy.name
                 ] += total_blocks
 
 
 def main(args):
     trace_directory = args.trace_dir
-    global total_lines_after_split_by_strategy
+    global TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY
     for workload in os.listdir(trace_directory):
+        if workload.endswith(".txt") or workload == "graphs":
+            continue
+        print(f"Handling {workload}...")
         apply_splits_for_workload(
             workload,
             os.path.join(trace_directory, workload, "cl_access_masks.bin"),
         )
 
         # print out results
-        print(total_lines_after_split_by_strategy)
+        print(TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY)
 
         result_file_path = os.path.join(
             trace_directory, workload, "cl_splits_overhead.tsv"
         )
         with open(
-            result_file_path, "w", encoding="utf-16", newline=""
+            result_file_path, "w", encoding="utf-8", newline=""
         ) as result_file:
             writer = csv.DictWriter(
                 result_file,
-                total_lines_after_split_by_strategy.keys(),
+                TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY.keys(),
                 dialect="excel-tab",
             )
             writer.writeheader()
-            writer.writerow(total_lines_after_split_by_strategy)
-            total_lines = total_lines_after_split_by_strategy["no split"]
+            writer.writerow(TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY)
+            total_lines = TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY["no split"]
             percentage_overhead = {}
-            for key, value in total_lines_after_split_by_strategy.items():
+            for key, value in TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY.items():
                 percentage_overhead[key] = (value / total_lines) - 1.0
             writer.writerow(percentage_overhead)
 
         # reset counters
-        total_lines_after_split_by_strategy = defaultdict(int)
+        TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY = defaultdict(int)
 
 
 if __name__ == "__main__":
