@@ -82,7 +82,7 @@ def split_n(line, n):
     if len(splits) == len(actual_blocks):
         # we did split but not add the last block...
         actual_blocks.append(blocks[-1])
-    return (len(splits) + 1, blocks)
+    return (len(splits) + 1, actual_blocks)
 
 
 def split_np(line, n):
