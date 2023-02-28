@@ -67,7 +67,7 @@ def split_n(line, n):
         prev = elem
         if elem:
             current[1] = i
-    if current[0] < current[1] and current[1] != 0:
+    if current[0] <= current[1] and current[1] != 0:
         # we have one left over
         blocks.append(current)
     # we might need to merge blocks
