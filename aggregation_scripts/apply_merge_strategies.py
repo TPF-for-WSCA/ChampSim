@@ -4,12 +4,27 @@ import os
 import struct
 import sys
 
-from collections import defaultdict, deque
+from collections import defaultdict
+from collections.abc import MutableMapping
 from functools import partial
 
 # Statistics
 
 TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY = defaultdict(int)
+TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY = defaultdict(
+    lambda: defaultdict(lambda: [0, 0])
+)
+
+
+def flatten(d, parent_key="", sep="_"):
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key if parent_key else str()}{sep if parent_key else str()}{k if parent_key else k}"
+        if isinstance(v, MutableMapping):
+            items.extend(flatten(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
 
 class Strategy:
@@ -19,12 +34,15 @@ class Strategy:
 
     def split(self, line):
         if len(line) == 0:
-            return 1, [line]
+            return 1, [[0, len(line) - 1]]
         return self.split_fn(line)
 
     def __init__(self, name, split_fn):
         self.name = name
         self.split_fn = split_fn
+
+    def __str__(self) -> str:
+        return self.name
 
 
 """ For all split functions, we know that we only look at the part of the line that containse something.
@@ -36,14 +54,35 @@ def split_n(line, n):
     prev = True
     holes = []
     blocks = []
-    for elem in line:
+    current = [0, 0]
+    for i, elem in enumerate(line):
         if prev and not elem:
             holes.append(1)
+            blocks.append(current)
+            current = [0, 0]
+        if not prev and elem:
+            current = [i, 0]
         if not prev and not elem:
             holes[-1] += 1
         prev = elem
-    splits = [hole for hole in holes if hole >= n]
-    return len(splits) + 1
+        if elem:
+            current[1] = i
+    if current[0] < current[1] and current[1] != 0:
+        # we have one left over
+        blocks.append(current)
+    # we might need to merge blocks
+    actual_blocks = []
+    splits = []
+    for i, hole in enumerate(holes):
+        if hole >= n:
+            splits.append(hole)
+            actual_blocks.append(blocks[i])
+        else:
+            actual_blocks.append([blocks[i][0], blocks[i + 1][1]])
+    if len(splits) == len(actual_blocks):
+        # we did split but not add the last block...
+        actual_blocks.append(blocks[-1])
+    return (len(splits) + 1, blocks)
 
 
 def split_np(line, n):
@@ -52,7 +91,7 @@ def split_np(line, n):
 
 
 strategies = [
-    Strategy("no split", lambda line: (1, [line])),
+    Strategy("no split", lambda line: (1, [[0, len(line) - 1]])),
     Strategy("Split One Byte Hole", partial(split_n, n=1)),
     Strategy("Split Two Bytes Hole", partial(split_n, n=2)),
     Strategy("Split Four Bytes Hole", partial(split_n, n=4)),
@@ -81,7 +120,10 @@ def trim_mask(mask):
         elif bit == 0:
             num_zero_bits += 1
         trimmed_mask.append(bit)
-    return trimmed_mask[: -(len(mask) - last_bit_pos)]
+    return (
+        trimmed_mask[: -(len(mask) - last_bit_pos)],
+        len(mask) - len(trimmed_mask),
+    )
 
 
 def int_t_to_boolean_list(line, bits=64):
@@ -98,6 +140,28 @@ def int_t_to_boolean_list(line, bits=64):
     return mask_array
 
 
+def count_overlap_alignment(block, offset, strategy):
+    global TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY
+    if block[0] + offset <= 31 and block[1] + offset > 31:
+        TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][8][1] += 1
+        TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][16][1] += 1
+        TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][32][1] += 1
+        return
+    if (block[0] + offset) // 16 != (block[1] + offset) // 16:
+        TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][8][1] += 1
+        TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][16][1] += 1
+        TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][32][0] += 1
+        return
+    if (block[0] + offset) // 8 != (block[1] + offset) // 8:
+        TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][8][1] += 1
+        TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][16][0] += 1
+        TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][32][0] += 1
+        return
+    TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][8][0] += 1
+    TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][16][0] += 1
+    TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][32][0] += 1
+
+
 def apply_splits_for_workload(workload_name, tracefile_path):
     with open(tracefile_path, "rb") as tracefile:
         while True:
@@ -110,7 +174,7 @@ def apply_splits_for_workload(workload_name, tracefile_path):
             if not array_line:
                 print(f"Decoding of line {line} failed", file=sys.stderr)
                 break
-            trimmed_mask = trim_mask(array_line)
+            trimmed_mask, first_byte = trim_mask(array_line)
             if all(trimmed_mask):
                 # no hole case, single block
                 # we need to add one to each splitting strategy, as no holes appear there as well
@@ -118,10 +182,13 @@ def apply_splits_for_workload(workload_name, tracefile_path):
                     TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY[strategy.name] += 1
                 continue
             for strategy in strategies:
-                total_blocks = strategy.split(trimmed_mask)
+                total_blocks, blocks = strategy.split(trimmed_mask)
                 TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY[
                     strategy.name
                 ] += total_blocks
+
+                for block in blocks:
+                    count_overlap_alignment(block, first_byte, str(strategy))
 
 
 def main(args):
@@ -156,6 +223,31 @@ def main(args):
             percentage_overhead = {}
             for key, value in TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY.items():
                 percentage_overhead[key] = (value / total_lines) - 1.0
+            writer.writerow(percentage_overhead)
+
+        result_file_path = os.path.join(
+            trace_directory, workload, "cl_splits_crossings.tsv"
+        )
+
+        with open(
+            result_file_path, "w", encoding="utf-8", newline=""
+        ) as result_file:
+            flattened_data = flatten(
+                TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY, "", " @ "
+            )
+            writer = csv.DictWriter(
+                result_file,
+                flattened_data.keys(),
+                dialect="excel-tab",
+            )
+            writer.writeheader()
+            writer.writerow(flattened_data)
+            percentage_overhead = {}
+            for (
+                key,
+                value,
+            ) in flattened_data.items():
+                percentage_overhead[key] = value[1] / (value[0] + value[1])
             writer.writerow(percentage_overhead)
 
         # reset counters
