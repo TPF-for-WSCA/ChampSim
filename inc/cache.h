@@ -102,14 +102,14 @@ public:
   void add_mshr(PACKET* packet);
   void va_translate_prefetches();
 
-  void handle_fill();
-  void handle_writeback();
-  void handle_read();
-  void handle_prefetch();
+  virtual void handle_fill();
+  virtual void handle_writeback();
+  virtual void handle_read();
+  virtual void handle_prefetch();
 
   void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
   bool readlike_miss(PACKET& handle_pkt);
-  bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt);
+  virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt);
 
   bool should_activate_prefetcher(int type);
 
@@ -138,6 +138,33 @@ public:
     if (cl_accessmask_file.is_open())
       cl_accessmask_file.close();
   };
+};
+
+class VCL_CACHE : public CACHE
+{
+public:
+  VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
+            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr,
+            bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
+      : CACHE(v1, freq_scale, fill_level, v2, v3, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
+              pref_act_mask, ll, pref, repl)
+  {
+    for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {
+      block[i].size = way_sizes[i % NUM_WAY];
+    }
+  }
+  // virtual int add_rq(PACKET* packet) override;
+  // virtual int add_wq(PACKET* packet) override;
+  // virtual int add_pq(PACKET* packet) override;
+
+  virtual void handle_fill() override;
+  virtual void handle_read() override;
+  // virtual void handle_prefetch() override;
+  virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt) override;
+  virtual void handle_writeback() override;
+  uint32_t lru_victim(BLOCK* current_set, uint8_t min_size);
+  virtual ~VCL_CACHE(){};
+  bool hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size);
 };
 
 #endif

@@ -848,3 +848,183 @@ void CACHE::print_deadlock()
     std::cerr << NAME << " MSHR empty" << std::endl;
   }
 }
+
+uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
+{
+  BLOCK* endofset = std::next(current_set, NUM_WAY);
+  BLOCK* begin_of_subset = current_set;
+  while (begin_of_subset->size < min_size && begin_of_subset < endofset) {
+    begin_of_subset++;
+  }
+  if (begin_of_subset->size < min_size) {
+    std::cerr << "Couldn't find way that fits size" << std::endl;
+    assert(0);
+  }
+  return std::distance(begin_of_subset,
+                       std::max_element(begin_of_subset, endofset, [](BLOCK lhs, BLOCK rhs) { return !rhs.valid || (lhs.valid && lhs.lru < rhs.lru); }));
+}
+
+void VCL_CACHE::handle_fill()
+{
+  while (writes_available_this_cycle > 0) {
+    auto fill_mshr = MSHR.begin();
+    if (fill_mshr == std::end(MSHR) || fill_mshr->event_cycle > current_cycle)
+      return;
+
+    // VCL Impl: Immediately insert into buffer, search for address if evicted buffer entry has been used
+    // find victim
+    uint32_t set = get_set(fill_mshr->address);
+
+    auto set_begin = std::next(std::begin(block), set * NUM_WAY);
+    auto set_end = std::next(set_begin, NUM_WAY);
+    auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
+    uint32_t way = std::distance(set_begin, first_inv);
+    if (way == NUM_WAY) {
+      way = lru_victim(&block.data()[set * NUM_WAY], 8); // TODO: FIX FOR SIZE once we have buffer
+      // TODO: RECORD STATISTICS IF ANY
+    }
+
+    bool success = filllike_miss(set, way, *fill_mshr);
+    if (!success)
+      return;
+
+    if (way != NUM_WAY) {
+      // update processed packets
+      fill_mshr->data = block[set * NUM_WAY + way].data;
+
+      for (auto ret : fill_mshr->to_return)
+        ret->return_data(&(*fill_mshr));
+    }
+
+    MSHR.erase(fill_mshr);
+    writes_available_this_cycle--;
+  }
+}
+
+void VCL_CACHE::handle_writeback()
+{
+  if (writes_available_this_cycle > 0 && WQ.has_ready()) {
+    std::cerr << "Did not expect that we see writebacks in L1I" << std::endl;
+    assert(0);
+  }
+}
+
+bool VCL_CACHE::hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size)
+{
+  BLOCK b = block[set * NUM_WAY + way];
+  uint8_t access_offset = address % 64;
+  return way < NUM_WAY && b.offset <= access_offset && access_offset + size <= b.offset + b.size;
+}
+
+void VCL_CACHE::handle_read()
+{
+  while (reads_available_this_cycle > 0) {
+
+    if (!RQ.has_ready())
+      return;
+
+    // handle the oldest entry
+    PACKET& handle_pkt = RQ.front();
+
+    // A (hopefully temporary) hack to know whether to send the evicted paddr or
+    // vaddr to the prefetcher
+    ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
+
+    uint32_t set = get_set(handle_pkt.address);
+    uint32_t way = get_way(handle_pkt.address, set);
+
+    if (hit_check(set, way, handle_pkt.address, handle_pkt.size)) // HIT
+    {
+      readlike_hit(set, way, handle_pkt);
+    } else {
+      bool success = readlike_miss(handle_pkt);
+      if (!success)
+        return;
+    }
+
+    // remove this entry from RQ
+    RQ.pop_front();
+    reads_available_this_cycle--;
+  }
+}
+
+bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
+{
+  DP(if (warmup_complete[handle_pkt.cpu]) {
+    std::cout << "[" << NAME << "] " << __func__ << " miss";
+    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << handle_pkt.address;
+    std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
+    std::cout << " type: " << +handle_pkt.type;
+    std::cout << " cycle: " << current_cycle << std::endl;
+  });
+
+  bool bypass = (way == NUM_WAY);
+#ifndef LLC_BYPASS
+  assert(!bypass);
+#endif
+  assert(handle_pkt.type != WRITEBACK || !bypass);
+
+  BLOCK& fill_block = block[set * NUM_WAY + way];
+
+  bool evicting_dirty = !bypass && (lower_level != NULL) && fill_block.dirty;
+  uint64_t evicting_address = 0;
+
+  if (!bypass) {
+    if (evicting_dirty) {
+      PACKET writeback_packet;
+
+      writeback_packet.fill_level = lower_level->fill_level;
+      writeback_packet.cpu = handle_pkt.cpu;
+      writeback_packet.address = fill_block.address;
+      writeback_packet.data = fill_block.data;
+      writeback_packet.instr_id = handle_pkt.instr_id;
+      writeback_packet.ip = 0;
+      writeback_packet.type = WRITEBACK;
+
+      auto result = lower_level->add_wq(&writeback_packet);
+      if (result == -2)
+        return false;
+    }
+
+    if (ever_seen_data)
+      evicting_address = fill_block.address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+    else
+      evicting_address = fill_block.v_address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+
+    if (fill_block.prefetch)
+      pf_useless++;
+
+    if (handle_pkt.type == PREFETCH)
+      pf_fill++;
+
+    fill_block.valid = true;
+    fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
+    fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
+    fill_block.address = handle_pkt.address;
+    fill_block.v_address = handle_pkt.v_address;
+    fill_block.data = handle_pkt.data;
+    fill_block.ip = handle_pkt.ip;
+    fill_block.cpu = handle_pkt.cpu;
+    fill_block.instr_id = handle_pkt.instr_id;
+    fill_block.offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.address % 64);
+  }
+
+  if (warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
+    total_miss_latency += current_cycle - handle_pkt.cycle_enqueued;
+
+  // update prefetcher
+  cpu = handle_pkt.cpu;
+  handle_pkt.pf_metadata =
+      impl_prefetcher_cache_fill((virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), set, way,
+                                 handle_pkt.type == PREFETCH, evicting_address, handle_pkt.pf_metadata);
+
+  // update replacement policy
+  impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
+
+  // COLLECT STATS
+  sim_miss[handle_pkt.cpu][handle_pkt.type]++;
+  sim_access[handle_pkt.cpu][handle_pkt.type]++;
+
+  return true;
+}
