@@ -43,6 +43,17 @@
         "rq_size": 64,
         "wq_size": 64,
         "pq_size": 32,
+        "buffer": true,
+        "way_sizes": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8
+        ],
         "mshr_size": 8,
         "latency": 4,
         "max_read": 2,
