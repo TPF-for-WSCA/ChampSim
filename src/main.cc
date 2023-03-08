@@ -654,6 +654,7 @@ int main(int argc, char** argv)
         cout << "Decode error rate: " << (100.0 * traces[i]->failed_decoding_instructions) / (double)traces[i]->total_decoding_instructions << "%" << endl;
 
         for (auto it = caches.rbegin(); it != caches.rend(); ++it) {
+          (*it)->record_remainder_cachelines(i);
           (*it)->write_buffers_to_disk();
           record_roi_stats(i, *it);
         }

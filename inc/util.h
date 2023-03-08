@@ -32,6 +32,35 @@ struct eq_addr {
   }
 };
 
+template <typename T>
+struct eq_vcl_addr {
+  using argument_type = T;
+  const decltype(argument_type::address) val;
+  const decltype(argument_type::offset) offset;
+  const decltype(argument_type::size) size;
+  const std::size_t shamt = 0;
+
+  explicit eq_vcl_addr(decltype(argument_type::address) val, decltype(argument_type::offset) offset, decltype(argument_type::size) size)
+      : val(val), offset(offset), size(size)
+  {
+  }
+  eq_vcl_addr(decltype(argument_type::address) val, decltype(argument_type::offset) offset, decltype(argument_type::size) size, std::size_t shamt)
+      : val(val), offset(offset), size(size), shamt(shamt)
+  {
+  }
+
+  bool operator()(const argument_type& test)
+  {
+    is_valid<argument_type> validtest;
+    if (!validtest(test)) {
+      return false;
+    }
+    auto testoffset = test.v_address % 64;
+    auto testendoffset = testoffset + test.size;
+    return (test.address >> shamt) == (val >> shamt) && testoffset <= offset && offset + size < testendoffset;
+  }
+};
+
 template <typename T, typename BIN, typename U = T, typename UN_T = is_valid<T>, typename UN_U = is_valid<U>>
 struct invalid_is_minimal {
   bool operator()(const T& lhs, const U& rhs)

@@ -93,23 +93,27 @@ public:
   uint32_t get_size(uint8_t queue_type, uint64_t address) override;
 
   uint32_t get_set(uint64_t address);
-  uint32_t get_way(uint64_t address, uint32_t set);
+  virtual uint32_t get_way(PACKET& packet, uint32_t set);
 
-  int invalidate_entry(uint64_t inval_addr);
+  // int invalidate_entry(uint64_t inval_addr);  // NOTE: As of this commit no-one used this function - needs to be adjusted to use a PACKET instead of a
+  // uint64_t to support vcl cache
   int prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
   int prefetch_line(uint64_t ip, uint64_t base_addr, uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata); // deprecated
 
   void add_mshr(PACKET* packet);
   void va_translate_prefetches();
 
-  void handle_fill();
-  void handle_writeback();
-  void handle_read();
-  void handle_prefetch();
+  virtual void handle_fill();
+  virtual void handle_writeback();
+  virtual void handle_read();
+  void record_remainder_cachelines(uint32_t cpu);
+  virtual void handle_prefetch();
+
+  void record_cacheline_stats(uint32_t cpu, BLOCK& handle_block);
 
   void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
   bool readlike_miss(PACKET& handle_pkt);
-  bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt);
+  virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt);
 
   bool should_activate_prefetcher(int type);
 
@@ -138,6 +142,34 @@ public:
     if (cl_accessmask_file.is_open())
       cl_accessmask_file.close();
   };
+};
+
+class VCL_CACHE : public CACHE
+{
+public:
+  VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
+            uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr,
+            bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
+      : CACHE(v1, freq_scale, fill_level, v2, v3, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
+              pref_act_mask, ll, pref, repl)
+  {
+    for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {
+      block[i].size = way_sizes[i % NUM_WAY];
+    }
+  }
+  // virtual int add_rq(PACKET* packet) override;
+  // virtual int add_wq(PACKET* packet) override;
+  // virtual int add_pq(PACKET* packet) override;
+
+  virtual void handle_fill() override;
+  virtual void handle_read() override;
+  // virtual void handle_prefetch() override;
+  virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt) override;
+  virtual void handle_writeback() override;
+  uint32_t lru_victim(BLOCK* current_set, uint8_t min_size);
+  virtual ~VCL_CACHE(){};
+  uint32_t get_way(PACKET& packet, uint32_t set) override;
+  bool hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size);
 };
 
 #endif

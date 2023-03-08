@@ -19,6 +19,8 @@ class BLOCK
 public:
   bool valid = false, prefetch = false, dirty = false;
 
+  uint8_t size = 64, offset = 0;
+
   uint64_t address = 0, v_address = 0, tag = 0, data = 0, ip = 0, cpu = 0, instr_id = 0, bytes_accessed = 0;
 
   // replacement state
