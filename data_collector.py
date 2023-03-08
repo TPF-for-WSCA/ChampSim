@@ -12,7 +12,7 @@ import sys
 
 executable = "/cluster/work/romankb/dynamorio/build/clients/bin64/drcachesim"
 
-experiment_instructions="100000000"
+experiment_instructions=1000000000
 
 class Color(Enum):
     RED = "\033[31m"
@@ -36,28 +36,24 @@ def run_experiment(
         "-warmup_instructions",
         "1000000",
         "-simulation_instructions",
-        experiment_instructions,
+        str(experiment_instructions),
         "-result_dir",
         output_dir,
         "-ptrace",
         "-traces",
         trace_file_path,
     ]
-    print(f"EXECUTE {' '.join(cmd)}")
+    print(f"EXECUTE {' '.join(str(cmd))}", flush=True)
     os.makedirs(output_dir, exist_ok=True)
-    sys.stdout.flush()
-    sys.stderr.flush()
     success = True
     completed_experiment = subprocess.run(cmd, -1, capture_output=True)
     if completed_experiment.returncode != 0:
-        print(f"WARNING: EXPERIMENT {' '.join(cmd)} returned non-zero code")
-        print(f"STDERR: {completed_experiment.stderr}\n")
+        print(f"WARNING: EXPERIMENT {' '.join(cmd)} returned non-zero code", flush=True)
+        print(f"STDERR: {completed_experiment.stderr}\n", flush=True)
         success = False
     else:
-        print(f"Experiment {' '.join(cmd)} completed successfully\n")
+        print(f"Experiment {' '.join(cmd)} completed successfully\n", flush=True)
 
-    sys.stdout.flush()
-    sys.stderr.flush()
     config_file_name = path.split(trace_file_path)[1].split(".")[0]
     with open(
         path.join(output_dir, f"{config_file_name}_log.txt"), mode="ab+"
@@ -84,6 +80,9 @@ def get_perfect_predictor_file(base_path, trace_dir):
 
 
 def main(args):
+    global experiment_instructions
+    if args.instr:
+        experiment_instructions = args.instr
     traces_directory = args.traces_directory[0]
     workloads = os.listdir(traces_directory)
     trace_files = []
@@ -99,7 +98,7 @@ def main(args):
         global executable
         executable = args.exec
 
-    pool = Pool(processes=5)
+    pool = Pool(processes=8)
     pending_experiments = []
 
     for trace in trace_files:
@@ -107,6 +106,7 @@ def main(args):
         output_subdir = path.join(output_dir, trace_name)
         # TEST ONLY
         # run_experiment(trace, output_subdir)
+        print(f"Run {trace_name} experiment", flush=True)
         pending_experiments.append(
             pool.apply_async(
                 run_experiment,
@@ -117,7 +117,7 @@ def main(args):
             )
         )
 
-    # To prevent subprcesses to be killed
+    # To prevent subprocesses to be killed
     experiments = [experiment.get() for experiment in pending_experiments]
 
     for i in range(len(trace_files)):
@@ -158,6 +158,13 @@ if __name__ == "__main__":
         type=str,
         nargs=1,
         help="Directory where output should be stored",
+    )
+
+    parser.add_argument(
+        "--instructions",
+        dest="instr",
+        type=int,
+        help=f"Optional: Number of instructions to simulate. Default is {experiment_instructions}"
     )
 
     args = parser.parse_args()

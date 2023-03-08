@@ -10,6 +10,6 @@ obj/
 
 **/*.o
 **/*.d
-
+*.swp
 tracer/pin/obj-intel64/
 core.*
