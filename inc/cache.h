@@ -80,9 +80,9 @@ public:
   uint64_t total_miss_latency = 0;
 
   // functions
-  int add_rq(PACKET* packet) override;
-  int add_wq(PACKET* packet) override;
-  int add_pq(PACKET* packet) override;
+  virtual int add_rq(PACKET* packet) override;
+  virtual int add_wq(PACKET* packet) override;
+  virtual int add_pq(PACKET* packet) override;
 
   void return_data(PACKET* packet) override;
   void operate() override;
@@ -112,7 +112,7 @@ public:
   void record_cacheline_stats(uint32_t cpu, BLOCK& handle_block);
 
   void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
-  bool readlike_miss(PACKET& handle_pkt);
+  virtual bool readlike_miss(PACKET& handle_pkt);
   virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt);
 
   bool should_activate_prefetcher(int type);
@@ -157,15 +157,17 @@ public:
       block[i].size = way_sizes[i % NUM_WAY];
     }
   }
-  // virtual int add_rq(PACKET* packet) override;
-  // virtual int add_wq(PACKET* packet) override;
-  // virtual int add_pq(PACKET* packet) override;
+  virtual int add_rq(PACKET* packet) override;
+  virtual int add_wq(PACKET* packet) override;
+  virtual int add_pq(PACKET* packet) override;
 
   virtual void handle_fill() override;
   virtual void handle_read() override;
   // virtual void handle_prefetch() override;
+  // virtual bool readlike_miss(PACKET& handle_pkt) override;
   virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt) override;
   virtual void handle_writeback() override;
+  // virtual void return_data(PACKET* packet) override;
   uint32_t lru_victim(BLOCK* current_set, uint8_t min_size);
   virtual ~VCL_CACHE(){};
   uint32_t get_way(PACKET& packet, uint32_t set) override;
