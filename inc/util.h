@@ -2,6 +2,7 @@
 #define UTIL_H
 
 #include <cstdint>
+#include <typeinfo>
 
 constexpr unsigned lg2(uint64_t n) { return n < 2 ? 0 : 1 + lg2(n / 2); }
 
@@ -36,15 +37,15 @@ template <typename T>
 struct eq_vcl_addr {
   using argument_type = T;
   const decltype(argument_type::address) val;
-  const decltype(argument_type::offset) offset;
+  const decltype(argument_type::v_address) offset;
   const decltype(argument_type::size) size;
   const std::size_t shamt = 0;
 
-  explicit eq_vcl_addr(decltype(argument_type::address) val, decltype(argument_type::offset) offset, decltype(argument_type::size) size)
+  explicit eq_vcl_addr(decltype(argument_type::address) val, decltype(argument_type::v_address) offset, decltype(argument_type::size) size)
       : val(val), offset(offset), size(size)
   {
   }
-  eq_vcl_addr(decltype(argument_type::address) val, decltype(argument_type::offset) offset, decltype(argument_type::size) size, std::size_t shamt)
+  eq_vcl_addr(decltype(argument_type::address) val, decltype(argument_type::v_address) offset, decltype(argument_type::size) size, std::size_t shamt)
       : val(val), offset(offset), size(size), shamt(shamt)
   {
   }
