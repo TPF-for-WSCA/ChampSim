@@ -198,60 +198,63 @@ def main(args):
         if workload.endswith(".txt") or workload == "graphs":
             continue
         print(f"Handling {workload}...")
-        apply_splits_for_workload(
-            workload,
-            os.path.join(trace_directory, workload, "cl_access_masks.bin"),
-        )
-
-        # print out results
-        print(TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY)
-
-        result_file_path = os.path.join(
-            trace_directory, workload, "cl_splits_overhead.tsv"
-        )
-        with open(
-            result_file_path, "w", encoding="utf-8", newline=""
-        ) as result_file:
-            writer = csv.DictWriter(
-                result_file,
-                TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY.keys(),
-                dialect="excel-tab",
+        try:
+            apply_splits_for_workload(
+                workload,
+                os.path.join(trace_directory, workload, "cl_access_masks.bin"),
             )
-            writer.writeheader()
-            writer.writerow(TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY)
-            total_lines = TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY["no split"]
-            percentage_overhead = {}
-            for key, value in TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY.items():
-                percentage_overhead[key] = (value / total_lines) - 1.0
-            writer.writerow(percentage_overhead)
 
-        result_file_path = os.path.join(
-            trace_directory, workload, "cl_splits_crossings.tsv"
-        )
+            # print out results
+            print(TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY)
 
-        with open(
-            result_file_path, "w", encoding="utf-8", newline=""
-        ) as result_file:
-            flattened_data = flatten(
-                TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY, "", " @ "
+            result_file_path = os.path.join(
+                trace_directory, workload, "cl_splits_overhead.tsv"
             )
-            writer = csv.DictWriter(
-                result_file,
-                flattened_data.keys(),
-                dialect="excel-tab",
-            )
-            writer.writeheader()
-            writer.writerow(flattened_data)
-            percentage_overhead = {}
-            for (
-                key,
-                value,
-            ) in flattened_data.items():
-                percentage_overhead[key] = value[1] / (value[0] + value[1])
-            writer.writerow(percentage_overhead)
+            with open(
+                result_file_path, "w", encoding="utf-8", newline=""
+            ) as result_file:
+                writer = csv.DictWriter(
+                    result_file,
+                    TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY.keys(),
+                    dialect="excel-tab",
+                )
+                writer.writeheader()
+                writer.writerow(TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY)
+                total_lines = TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY["no split"]
+                percentage_overhead = {}
+                for key, value in TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY.items():
+                    percentage_overhead[key] = (value / total_lines) - 1.0
+                writer.writerow(percentage_overhead)
 
-        # reset counters
-        TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY = defaultdict(int)
+            result_file_path = os.path.join(
+                trace_directory, workload, "cl_splits_crossings.tsv"
+            )
+
+            with open(
+                result_file_path, "w", encoding="utf-8", newline=""
+            ) as result_file:
+                flattened_data = flatten(
+                    TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY, "", " @ "
+                )
+                writer = csv.DictWriter(
+                    result_file,
+                    flattened_data.keys(),
+                    dialect="excel-tab",
+                )
+                writer.writeheader()
+                writer.writerow(flattened_data)
+                percentage_overhead = {}
+                for (
+                    key,
+                    value,
+                ) in flattened_data.items():
+                    percentage_overhead[key] = value[1] / (value[0] + value[1])
+                writer.writerow(percentage_overhead)
+
+            # reset counters
+            TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY = defaultdict(int)
+        except Exception:
+            continue  # Ignore this workload / log written to stderr
 
 
 if __name__ == "__main__":

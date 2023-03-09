@@ -12,5 +12,5 @@
 
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
-python /cluster/home/romankb/workspace/ChampSim/aggregation_scripts/apply_merge_strategies.py /cluster/work/users/romankb/results/champsim_bigmem/ >> ~/pyaggregate.log
+python /cluster/home/romankb/workspace/ChampSim/aggregation_scripts/apply_merge_strategies.py /cluster/work/users/romankb/results/champsim_bigcache_fixed/ >> ~/pyaggregate.log
 
