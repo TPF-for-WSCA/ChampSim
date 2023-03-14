@@ -102,7 +102,7 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
     // (cache->total_miss_latency)/TOTAL_MISS << " cycles " <<
     // cache->total_miss_latency << "/" << TOTAL_MISS<< endl;
     cout << cache->NAME;
-    cout << " MPKI: " << (1000.0 * TOTAL_MISS) / (ooo_cpu[cpu]->num_retired - warmup_instructions) << endl;
+    cout << " MPKI: " << (1000.0 * TOTAL_MISS) / (ooo_cpu[cpu]->num_retired - ooo_cpu[cpu]->begin_sim_instr) << endl;
 
     if (0 == cache->NAME.compare(cache->NAME.length() - 3, 3, "L1I")) {
 

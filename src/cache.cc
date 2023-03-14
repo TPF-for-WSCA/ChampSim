@@ -1163,6 +1163,10 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
 
   BLOCK& fill_block = block[set * NUM_WAY + way];
 
+  // if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
+  //   record_cacheline_stats(handle_pkt.cpu, fill_block);
+  // }
+
   bool evicting_dirty = !bypass && (lower_level != NULL) && fill_block.dirty;
   uint64_t evicting_address = 0;
 
@@ -1203,7 +1207,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
     fill_block.ip = handle_pkt.ip;
     fill_block.cpu = handle_pkt.cpu;
     fill_block.instr_id = handle_pkt.instr_id;
-    fill_block.offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.address % BLOCK_SIZE);
+    fill_block.offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
   }
 
   if (warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
