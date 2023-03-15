@@ -12,5 +12,5 @@
 
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
-python /cluster/home/romankb/workspace/ChampSim/data_collector.py --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/champsim --traces_directory /cluster/work/users/romankb/dataset/tanvir --output_dir /cluster/work/users/romankb/results/champsim_smallcache_fixed/ >> ~/pyrunner.log
+python /cluster/home/romankb/workspace/ChampSim/data_collector.py --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/champsim_vcl --traces_directory /cluster/work/users/romankb/dataset/tanvir --output_dir /cluster/work/users/romankb/results/champsim_vcl/ >> ~/pyrunner.log
 
