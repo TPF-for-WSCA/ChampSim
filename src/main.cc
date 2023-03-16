@@ -600,9 +600,6 @@ int main(int argc, char** argv)
     std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
 
     for (std::size_t i = 0; i < ooo_cpu.size(); ++i) {
-      if (ooo_cpu[i]->fetch_stall || !ooo_cpu[i]->instrs_to_read_this_cycle) {
-        ooo_cpu[i]->frontend_stall_cycles++;
-      }
       // read from trace
       while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0) {
         ooo_cpu[i]->init_instruction(traces[i]->get());
