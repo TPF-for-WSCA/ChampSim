@@ -10,7 +10,7 @@
     "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib",
     "ooo_cpu": [{
         "frequency": 4000,
-        "ifetch_buffer_size": 64,
+        "ifetch_buffer_size": 6,
         "decode_buffer_size": 32,
         "dispatch_buffer_size": 32,
         "rob_size": 352,
