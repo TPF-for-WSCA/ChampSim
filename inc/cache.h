@@ -119,6 +119,8 @@ public:
 
   void print_deadlock() override;
 
+  virtual void print_private_stats(void){};
+
 #include "cache_modules.inc"
 
   const repl_t repl_type;
@@ -156,10 +158,14 @@ public:
     for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {
       block[i].size = way_sizes[i % NUM_WAY];
     }
+    way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
+    if (way_hits == NULL)
+      std::cerr << "COULD NOT ALLOCATE WAY_HIT ARRAY" << std::endl;
   }
   virtual int add_rq(PACKET* packet) override;
   virtual int add_wq(PACKET* packet) override;
   virtual int add_pq(PACKET* packet) override;
+  virtual void print_private_stats(void) override;
 
   virtual void handle_fill() override;
   virtual void handle_read() override;
@@ -169,9 +175,12 @@ public:
   virtual void handle_writeback() override;
   // virtual void return_data(PACKET* packet) override;
   uint32_t lru_victim(BLOCK* current_set, uint8_t min_size);
-  virtual ~VCL_CACHE(){};
+  virtual ~VCL_CACHE() { free(way_hits); };
   uint32_t get_way(PACKET& packet, uint32_t set) override;
   bool hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size);
+
+private:
+  uint64_t* way_hits;
 };
 
 #endif

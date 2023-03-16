@@ -961,7 +961,7 @@ void VCL_CACHE::handle_read()
 
     uint32_t set = get_set(handle_pkt.address);
     uint32_t way = get_way(handle_pkt, set);
-
+    // TODO: We might need multiple accesses
     if (hit_check(set, way, handle_pkt.address, handle_pkt.size)) // HIT
     {
       readlike_hit(set, way, handle_pkt);
@@ -1144,6 +1144,14 @@ int VCL_CACHE::add_rq(PACKET* packet)
   return RQ.occupancy();
 }
 
+void VCL_CACHE::print_private_stats()
+{
+  std::cout << "L1I LINES HANDLED PER WAY" << std::endl;
+  for (int i = 0; i < NUM_WAY; ++i) {
+    std::cout << std::right << std::setw(3) << i << ":\t" << way_hits[i] << std::endl;
+  }
+}
+
 bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
 {
   DP(if (warmup_complete[handle_pkt.cpu]) {
@@ -1208,6 +1216,8 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
     fill_block.cpu = handle_pkt.cpu;
     fill_block.instr_id = handle_pkt.instr_id;
     fill_block.offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
+    // We already acounted for the evicted block on insert, so what we count here is the insertion of a new block
+    way_hits[way]++;
   }
 
   if (warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))

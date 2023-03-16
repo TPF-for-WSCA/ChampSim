@@ -600,6 +600,9 @@ int main(int argc, char** argv)
     std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
 
     for (std::size_t i = 0; i < ooo_cpu.size(); ++i) {
+      if (ooo_cpu[i]->fetch_stall || !ooo_cpu[i]->instrs_to_read_this_cycle) {
+        ooo_cpu[i]->frontend_stall_cycles++;
+      }
       // read from trace
       while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0) {
         ooo_cpu[i]->init_instruction(traces[i]->get());
@@ -656,6 +659,7 @@ int main(int argc, char** argv)
         for (auto it = caches.rbegin(); it != caches.rend(); ++it) {
           (*it)->record_remainder_cachelines(i);
           (*it)->write_buffers_to_disk();
+          (*it)->print_private_stats();
           record_roi_stats(i, *it);
         }
       }
@@ -684,6 +688,7 @@ int main(int argc, char** argv)
   for (uint32_t i = 0; i < NUM_CPUS; i++) {
     cout << endl << "CPU " << i << " cumulative IPC: " << ((float)ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle);
     cout << " instructions: " << ooo_cpu[i]->finish_sim_instr << " cycles: " << ooo_cpu[i]->finish_sim_cycle << endl;
+    cout << "CPU " << i << " FRONTEND STALLS:\t" << ooo_cpu[i]->frontend_stall_cycles << endl;
     for (auto it = caches.rbegin(); it != caches.rend(); ++it)
       print_roi_stats(i, *it);
   }
