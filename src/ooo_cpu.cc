@@ -391,6 +391,9 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
 void O3_CPU::promote_to_decode()
 {
   unsigned available_fetch_bandwidth = FETCH_WIDTH;
+  if (IFETCH_BUFFER.front().fetched != COMPLETED) {
+    frontend_stall_cycles++;
+  }
   while (available_fetch_bandwidth > 0 && !IFETCH_BUFFER.empty() && !DECODE_BUFFER.full() && IFETCH_BUFFER.front().translated == COMPLETED
          && IFETCH_BUFFER.front().fetched == COMPLETED) {
     if (!warmup_complete[cpu] || IFETCH_BUFFER.front().decoded)

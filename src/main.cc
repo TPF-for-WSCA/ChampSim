@@ -685,7 +685,7 @@ int main(int argc, char** argv)
   for (uint32_t i = 0; i < NUM_CPUS; i++) {
     cout << endl << "CPU " << i << " cumulative IPC: " << ((float)ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle);
     cout << " instructions: " << ooo_cpu[i]->finish_sim_instr << " cycles: " << ooo_cpu[i]->finish_sim_cycle << endl;
-    cout << "CPU " << i << " FRONTEND STALLS:\t" << ooo_cpu[i]->frontend_stall_cycles << endl;
+    cout << "CPU " << i << " FRONTEND STALLED CYCLES:\t" << ooo_cpu[i]->frontend_stall_cycles << endl;
     for (auto it = caches.rbegin(); it != caches.rend(); ++it)
       print_roi_stats(i, *it);
   }
