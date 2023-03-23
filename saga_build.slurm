@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="postprocessing"
+#SBATCH --job-name="build_experiment_binaries"
 #SBATCH --account=nn4650k
 #SBATCH --nodes=1
 #SBATCH -c1
