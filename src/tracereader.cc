@@ -329,12 +329,10 @@ public:
         //   printf("%02X", raw_pt_inst._byte_array._enc[bi]);
         // printf("\n");
         // std::cout << "Processing " << buf << std::endl;
-        if (readOp) {
-          trace_read_instr_pt.source_memory[inMemIdx++] = 1;
-        }
-        if (writeOp) {
-          trace_read_instr_pt.destination_memory[outMemIdx++] = 1;
-        }
+        trace_read_instr_pt.mem_refs += 1;
+
+        // We just count the number of accesses we don't care about the access itself for now.
+        // will overexagerate the effect on ipc, but effect can still be provable
       }
     }
 

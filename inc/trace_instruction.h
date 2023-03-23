@@ -56,6 +56,8 @@ struct pt_instr {
   unsigned char is_branch = 0;
   unsigned char branch_taken = 0;
 
+  int mem_refs = 0;
+
   unsigned char destination_registers[NUM_INSTR_DESTINATIONS_X86] = {};
   unsigned char source_registers[NUM_INSTR_SOURCES] = {};
 

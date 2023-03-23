@@ -121,6 +121,7 @@ struct ooo_model_instr {
     this->is_branch = instr.is_branch;
     this->branch_taken = instr.branch_taken;
     this->size = instr.size;
+    this->num_mem_ops = instr.mem_refs;
 
     asid[0] = cpu;
     asid[1] = cpu;
