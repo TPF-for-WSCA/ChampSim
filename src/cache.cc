@@ -88,6 +88,7 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block)
 
 void CACHE::handle_fill()
 {
+
   while (writes_available_this_cycle > 0) {
     auto fill_mshr = MSHR.begin();
     if (fill_mshr == std::end(MSHR) || fill_mshr->event_cycle > current_cycle)
@@ -139,7 +140,7 @@ void CACHE::handle_writeback()
 
     BLOCK& fill_block = block[set * NUM_WAY + way];
 
-    if (way < NUM_WAY) // HIT
+    if (way < NUM_WAY || perfect_cache) // HIT
     {
       impl_replacement_update_state(handle_pkt.cpu, set, way, fill_block.address, handle_pkt.ip, 0, handle_pkt.type, 1);
 
@@ -195,7 +196,7 @@ void CACHE::handle_read()
     uint32_t set = get_set(handle_pkt.address);
     uint32_t way = get_way(handle_pkt, set);
 
-    if (way < NUM_WAY) // HIT
+    if (way < NUM_WAY || perfect_cache) // HIT
     {
       readlike_hit(set, way, handle_pkt);
     } else {
@@ -222,7 +223,7 @@ void CACHE::handle_prefetch()
     uint32_t set = get_set(handle_pkt.address);
     uint32_t way = get_way(handle_pkt, set);
 
-    if (way < NUM_WAY) // HIT
+    if (way < NUM_WAY || perfect_cache) // HIT
     {
       readlike_hit(set, way, handle_pkt);
     } else {
@@ -248,6 +249,8 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
     std::cout << " cycle: " << current_cycle << std::endl;
   });
 
+  if (perfect_cache)
+    way = 0; // we attribute everything to the first way to ensure no out-of-bounds
   BLOCK& hit_block = block[set * NUM_WAY + way];
 
   record_cacheline_accesses(handle_pkt, hit_block);

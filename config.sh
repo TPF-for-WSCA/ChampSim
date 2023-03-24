@@ -20,7 +20,7 @@ def norm_fname(fname):
 # Begin format strings
 ###
 
-cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {fill_level}, {sets}, {ways}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {lower_level}, CACHE::pref_t::{prefetcher_name}, CACHE::repl_t::{replacement_name});\n'
+cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {fill_level}, {sets}, {ways}, {perfect}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {lower_level}, CACHE::pref_t::{prefetcher_name}, CACHE::repl_t::{replacement_name});\n'
 vlc_cache_fmtstr = 'VCL_CACHE {name}("{name}", {frequency}, {fill_level}, {sets}, {ways}, way_sizes, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {lower_level}, CACHE::pref_t::{prefetcher_name}, CACHE::repl_t::{replacement_name});\n'
 ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {fill_level}, {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 0, {lower_level});\n'
 
@@ -439,6 +439,10 @@ with open(instantiation_file_name, 'wt') as wfp:
             wfp.write(f'uint8_t way_sizes[{len(elem["way_sizes"])}] = {{{", ".join("{}".format(val) for val in elem["way_sizes"])}}};\n')
             wfp.write(vlc_cache_fmtstr.format(**elem))
         else:
+            if 'perfect' in elem and elem['perfect']:
+                elem['perfect'] = 1
+            else:
+                elem['perfect'] = 0
             wfp.write(cache_fmtstr.format(**elem))
 
     for cpu in cores:

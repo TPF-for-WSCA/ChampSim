@@ -16,7 +16,7 @@
                 "~/Downloads/test_results",
                 "-ptrace",
                 "-traces",
-                "/home/robrunne/OneDrive/Research/datasets/traces/postgres/postgres.gz"
+                "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",

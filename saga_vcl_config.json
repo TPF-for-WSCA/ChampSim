@@ -102,6 +102,7 @@
     "prefetcher": "no_instr"
   },
   "L1D": {
+    "perfect": true,
     "sets": 64,
     "ways": 12,
     "rq_size": 64,
