@@ -179,7 +179,7 @@ public:
   uint32_t lru_victim(BLOCK* current_set, uint8_t min_size);
   virtual ~VCL_CACHE() { free(way_hits); };
   uint32_t get_way(PACKET& packet, uint32_t set) override;
-  bool hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size);
+  uint8_t hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size);
 
 private:
   uint64_t* way_hits;

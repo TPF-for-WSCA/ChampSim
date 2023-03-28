@@ -79,8 +79,8 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block)
 {
   if (handle_pkt.size != 0) {
     // vaddr and ip should be the same for L1I, but lookup happens on address so we also operate on address
-    assert(handle_pkt.address % BLOCK_SIZE == handle_pkt.v_address % BLOCK_SIZE);
-    uint8_t offset = (uint8_t)(handle_pkt.address % BLOCK_SIZE);
+    // assert(handle_pkt.address % BLOCK_SIZE == handle_pkt.v_address % BLOCK_SIZE); // not true in case of overlapping blocks
+    uint8_t offset = (uint8_t)(handle_pkt.v_address % BLOCK_SIZE);
     uint8_t end = offset + handle_pkt.size - 1;
     set_accessed(&hit_block.bytes_accessed, offset, end);
   }
@@ -934,18 +934,44 @@ void VCL_CACHE::handle_writeback()
   }
 }
 
-bool VCL_CACHE::hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size)
+uint8_t VCL_CACHE::hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size)
 {
   BLOCK b = block[set * NUM_WAY + way];
   uint8_t access_offset = address % BLOCK_SIZE;
-  return way < NUM_WAY && b.offset <= access_offset && access_offset + size <= b.offset + b.size;
+  if (b.offset <= access_offset && access_offset < b.offset + b.size && access_offset + size < b.offset + b.size) {
+    return 0;
+  } else if (b.offset <= access_offset && access_offset < b.offset + b.size) {
+    return b.offset + b.size; // we hit in the first part, but not in the second part
+  }
+  return -1;
 }
 
 uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
 {
+  auto offset = packet.v_address % BLOCK_SIZE;
+  // std::cout << "get_way(TAG: " << std::hex << std::setw(10) << ((packet.v_address >> OFFSET_BITS) >> lg2(NUM_SET)) << std::dec << ", SET: " << std::setw(3)
+  //           << set << ", OFFSET: " << std::setw(3) << offset << ") @ " << std::setw(5) << current_cycle << std::endl;
   auto begin = std::next(block.begin(), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
-  return std::distance(begin, std::find_if(begin, end, eq_vcl_addr<BLOCK>(packet.address, packet.v_address % BLOCK_SIZE, packet.size, OFFSET_BITS)));
+  uint32_t way = 0;
+  // expanded loop for easier debugging
+  while (begin < end) {
+    if (!begin->valid) {
+      goto not_found;
+    }
+    if ((packet.address >> OFFSET_BITS) != (begin->address >> OFFSET_BITS)) {
+      goto not_found;
+    }
+    if (begin->v_address % BLOCK_SIZE <= offset && offset < (begin->v_address % BLOCK_SIZE) + begin->size) {
+      // std::cout << "hit: 1, address:" << packet.v_address << std::endl;
+      return way;
+    }
+  not_found:
+    way++;
+    begin = std::next(begin);
+  }
+  // std::cout << "hit: 0, address:" << packet.v_address << std::endl;
+  return NUM_WAY; // we did not find a way
 }
 
 void VCL_CACHE::handle_read()
@@ -964,18 +990,33 @@ void VCL_CACHE::handle_read()
 
     uint32_t set = get_set(handle_pkt.address);
     uint32_t way = get_way(handle_pkt, set);
+    // TODO: WE MIGHT NEED ALSO MULTIPLE WAYS
     // TODO: We might need multiple accesses
-    if (hit_check(set, way, handle_pkt.address, handle_pkt.size)) // HIT
+    if (way < NUM_WAY) // HIT
     {
+      // std::cout << "hit in SET: " << std::setw(3) << set << ", way: " << std::setw(3) << way << std::endl;
       readlike_hit(set, way, handle_pkt);
+      uint64_t newoffset = hit_check(set, way, handle_pkt.address, handle_pkt.size);
+      if (!newoffset) {
+        RQ.pop_front();
+        reads_available_this_cycle--;
+        continue;
+      }
+      if (newoffset < 0) {
+        assert(0);
+      }
+      handle_pkt.size = handle_pkt.size - (newoffset - handle_pkt.v_address % BLOCK_SIZE);
+      uint64_t mask = ~(BLOCK_SIZE - 1);
+      handle_pkt.v_address = (handle_pkt.v_address & mask) + newoffset;
+      handle_pkt.address = (handle_pkt.address & mask) + newoffset; // offset matches: all 64 byte aligned
     } else {
       bool success = readlike_miss(handle_pkt);
+      RQ.pop_front();
       if (!success)
-        return;
+        return; // buffer full = try next cycle
     }
 
     // remove this entry from RQ
-    RQ.pop_front();
     reads_available_this_cycle--;
   }
 }
@@ -1150,7 +1191,7 @@ int VCL_CACHE::add_rq(PACKET* packet)
 void VCL_CACHE::print_private_stats()
 {
   std::cout << "L1I LINES HANDLED PER WAY" << std::endl;
-  for (int i = 0; i < NUM_WAY; ++i) {
+  for (uint32_t i = 0; i < NUM_WAY; ++i) {
     std::cout << std::right << std::setw(3) << i << ":\t" << way_hits[i] << std::endl;
   }
 }

@@ -2,6 +2,7 @@
 #define UTIL_H
 
 #include <cstdint>
+#include <iostream>
 #include <typeinfo>
 
 constexpr unsigned lg2(uint64_t n) { return n < 2 ? 0 : 1 + lg2(n / 2); }
@@ -58,7 +59,9 @@ struct eq_vcl_addr {
     }
     auto testoffset = test.v_address % 64;
     auto testendoffset = testoffset + test.size;
-    return (test.address >> shamt) == (val >> shamt) && testoffset <= offset && offset + size < testendoffset;
+    bool same_base = (test.address >> shamt) == (val >> shamt);
+    bool start_within_range = testoffset <= offset && offset < testendoffset;
+    return same_base && start_within_range;
   }
 };
 
