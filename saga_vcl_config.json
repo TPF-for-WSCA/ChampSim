@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim_vcl",
+  "executable_name": "bin/champsim_vcl_16",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
@@ -41,11 +41,9 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 32,
+    "ways": 30,
     "buffer": false,
     "way_sizes": [
-      16,
-      16,
       16,
       16,
       16,
