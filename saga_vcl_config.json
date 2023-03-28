@@ -41,7 +41,7 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 32,
+    "ways": 30,
     "buffer": false,
     "way_sizes": [
       16,
