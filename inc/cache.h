@@ -41,6 +41,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 
 private:
   std::ofstream cl_accessmask_file;
+  std::ofstream cl_num_blocks_in_cache;
 
 public:
   uint32_t cpu;
@@ -49,15 +50,16 @@ public:
   const uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
   std::vector<uint64_t> cl_accessmask_buffer;
+  std::vector<uint64_t> cl_blocks_in_cache_buffer;
   const uint32_t MAX_READ, MAX_WRITE;
-  uint32_t reads_available_this_cycle, writes_available_this_cycle;
+  uint32_t reads_available_this_cycle, writes_available_this_cycle, num_blocks_in_cache;
   const bool prefetch_as_load;
   const bool match_offset_bits;
   const bool virtual_prefetch;
   bool ever_seen_data = false;
   const unsigned pref_activate_mask = (1 << static_cast<int>(LOAD)) | (1 << static_cast<int>(PREFETCH));
 
-  void write_buffers_to_disk(void);
+  virtual void write_buffers_to_disk(void);
   // prefetch stats
   uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0;
 
@@ -94,6 +96,7 @@ public:
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
   uint32_t get_size(uint8_t queue_type, uint64_t address) override;
 
+  uint32_t get_tag(uint64_t address);
   uint32_t get_set(uint64_t address);
   virtual uint32_t get_way(PACKET& packet, uint32_t set);
 
@@ -110,8 +113,10 @@ public:
   virtual void handle_read();
   void record_remainder_cachelines(uint32_t cpu);
   virtual void handle_prefetch();
+  virtual void record_block_insert_removal(int set, int way, uint64_t newtag);
 
   void record_cacheline_stats(uint32_t cpu, BLOCK& handle_block);
+  virtual void record_overlap(void){};
 
   void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
   virtual bool readlike_miss(PACKET& handle_pkt);
@@ -163,11 +168,15 @@ public:
     way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
     if (way_hits == NULL)
       std::cerr << "COULD NOT ALLOCATE WAY_HIT ARRAY" << std::endl;
+    overlap_bytes_history.reserve(WRITE_BUFFER_SIZE);
+    current_overlap = 0;
   }
   virtual int add_rq(PACKET* packet) override;
   virtual int add_wq(PACKET* packet) override;
   virtual int add_pq(PACKET* packet) override;
   virtual void print_private_stats(void) override;
+  // void write_buffers_to_disk(void) override;
+  // virtual void record_overlap(void) override;
 
   virtual void handle_fill() override;
   virtual void handle_read() override;
@@ -183,6 +192,8 @@ public:
 
 private:
   uint64_t* way_hits;
+  std::vector<uint32_t> overlap_bytes_history;
+  uint32_t current_overlap;
 };
 
 #endif
