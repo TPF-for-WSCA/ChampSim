@@ -373,12 +373,16 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
     num_blocks_in_cache--;
   if (!newtag_present)
     num_blocks_in_cache++;
+  if (cl_blocks_in_cache_buffer.size() >= WRITE_BUFFER_SIZE) {
+    write_buffers_to_disk();
+  }
   cl_blocks_in_cache_buffer.push_back(num_blocks_in_cache);
 }
 
+// TODO: Make more generic for all simple series
 void CACHE::write_buffers_to_disk()
 {
-  if (cl_accessmask_buffer.size() == 0) {
+  if (cl_accessmask_buffer.size() == 0 && cl_blocks_in_cache_buffer.size() == 0) {
     return;
   }
   if (!cl_accessmask_file.is_open()) {
@@ -386,11 +390,21 @@ void CACHE::write_buffers_to_disk()
     result_path /= "cl_access_masks.bin";
     cl_accessmask_file = std::ofstream(result_path.c_str(), std::ios::binary | std::ios::out);
   }
+  if (!cl_num_blocks_in_cache.is_open()) {
+    std::filesystem::path result_path = result_dir;
+    result_path /= "cl_num_blocks.bin";
+    cl_num_blocks_in_cache = std::ofstream(result_path.c_str(), std::ios::binary | std::ios::out);
+  }
   for (auto& mask : cl_accessmask_buffer) {
     cl_accessmask_file.write(reinterpret_cast<char*>(&mask), sizeof(uint64_t));
   }
+  for (auto& num_blocks : cl_blocks_in_cache_buffer) {
+    cl_num_blocks_in_cache.write(reinterpret_cast<char*>(&num_blocks), sizeof(uint64_t));
+  }
   cl_accessmask_file.flush();
+  cl_num_blocks_in_cache.flush();
   cl_accessmask_buffer.clear();
+  cl_blocks_in_cache_buffer.clear();
 }
 
 void CACHE::record_remainder_cachelines(uint32_t cpu)
@@ -457,6 +471,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     std::cout << " cycle: " << current_cycle << std::endl;
   });
 
+  record_block_insert_removal(set, way, handle_pkt.address);
   bool bypass = (way == NUM_WAY);
 #ifndef LLC_BYPASS
   assert(!bypass);
@@ -1239,6 +1254,8 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
   });
 
   bool bypass = (way == NUM_WAY);
+  record_block_insert_removal(set, way, handle_pkt.address);
+
 #ifndef LLC_BYPASS
   assert(!bypass);
 #endif

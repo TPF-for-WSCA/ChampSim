@@ -145,6 +145,7 @@ public:
     if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
     }
+    cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
   }
   ~CACHE()
   {
