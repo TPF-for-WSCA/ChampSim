@@ -63,13 +63,20 @@ def mutliple_sizes_run():
     for subdir in os.listdir(out_dir):
         if not os.path.isdir(os.path.join(out_dir, subdir)):
             continue
-        size = subdir.split("champsim")[2]
-        matches = re.match(r"(\d+)([km])", size).groups()
-        factor = 1024 if matches[1] == "k" else 1024 * 1024
-        size_bytes = int(matches[0]) * factor
-        ipc_by_cachesize_and_workload[size_bytes] = single_run(
-            f"{out_dir}/{subdir}"
-        )
+        matches = re.search(r"(\d+)([km])?", subdir)
+        matches = matches.groups()
+        if matches[1]:
+            factor = 1024 if matches[1] == "k" else 1024 * 1024
+            size_bytes = int(matches[0]) * factor
+            ipc_by_cachesize_and_workload[size_bytes] = single_run(
+                f"{out_dir}/{subdir}"
+            )
+        elif matches[0]:
+            ipc_by_cachesize_and_workload[matches[0]] = single_run(
+                f"{out_dir}/{subdir}"
+            )
+        else:
+            ipc_by_cachesize_and_workload[subdir] = single_run(f"{out_dir}/{subdir}")
     return ipc_by_cachesize_and_workload
 
 

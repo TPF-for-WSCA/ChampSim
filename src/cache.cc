@@ -1042,7 +1042,6 @@ void VCL_CACHE::handle_read()
       uint64_t newoffset = hit_check(set, way, handle_pkt.address, handle_pkt.size);
       if (!newoffset) {
         RQ.pop_front();
-        reads_available_this_cycle--;
         continue;
       }
       if (newoffset < 0) {

@@ -16,7 +16,7 @@
 
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
-#define WRITE_BUFFER_SIZE 10000
+#define WRITE_BUFFER_SIZE 10
 
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern std::string result_dir;
