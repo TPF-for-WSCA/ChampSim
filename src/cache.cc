@@ -364,9 +364,9 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
   for (int i = 0; i < NUM_WAY; i++) {
     if (i == way)
       continue;
-    if (block[set * NUM_WAY + i].address >> (OFFSET_BITS + lg2(NUM_SET)) == address >> (OFFSET_BITS + lg2(NUM_SET)))
+    if (block[set * NUM_WAY + i].address >> (OFFSET_BITS) == address >> (OFFSET_BITS))
       newtag_present = true;
-    if (block[set * NUM_WAY + i].tag == repl_block.tag)
+    if (block[set * NUM_WAY + i].address >> OFFSET_BITS == repl_block.address >> OFFSET_BITS)
       oldtag_present = true;
   }
   if (!oldtag_present)
@@ -376,10 +376,12 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
   if (cl_blocks_in_cache_buffer.size() >= WRITE_BUFFER_SIZE) {
     write_buffers_to_disk();
   }
+  assert(num_blocks_in_cache <= NUM_WAY * NUM_SET);
   cl_blocks_in_cache_buffer.push_back(num_blocks_in_cache);
 }
 
 // TODO: Make more generic for all simple series
+// TODO: ONLY TRACK WHEN WARMUP COMPLETE>>>
 void CACHE::write_buffers_to_disk()
 {
   if (cl_accessmask_buffer.size() == 0 && cl_blocks_in_cache_buffer.size() == 0) {
@@ -471,7 +473,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     std::cout << " cycle: " << current_cycle << std::endl;
   });
 
-  record_block_insert_removal(set, way, handle_pkt.address);
   bool bypass = (way == NUM_WAY);
 #ifndef LLC_BYPASS
   assert(!bypass);
@@ -483,6 +484,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
   // quick and dirty / mainly dirty: only apply if name ends in L1I
   if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
     record_cacheline_stats(handle_pkt.cpu, fill_block);
+    record_block_insert_removal(set, way, handle_pkt.address);
   }
   bool evicting_dirty = !bypass && (lower_level != NULL) && fill_block.dirty;
   uint64_t evicting_address = 0;
@@ -584,7 +586,7 @@ void CACHE::operate_reads()
 /// @brief Translate address to tag
 /// @param address The adress to be translated
 /// @return The tag of the cacheline (without offset and index bits)
-uint32_t CACHE::get_tag(uint64_t address) { return ((address >> OFFSET_BITS) >> (lg2(NUM_SET))); }
+uint32_t CACHE::get_tag(uint64_t address) { return ((address >> OFFSET_BITS)); }
 uint32_t CACHE::get_set(uint64_t address) { return ((address >> OFFSET_BITS) & bitmask(lg2(NUM_SET))); }
 
 uint32_t CACHE::get_way(PACKET& packet, uint32_t set)
@@ -1002,7 +1004,7 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
     if (!begin->valid) {
       goto not_found;
     }
-    if ((packet.address >> (OFFSET_BITS + lg2(NUM_SET))) != (begin->address >> (OFFSET_BITS + lg2(NUM_SET)))) {
+    if ((packet.address >> (OFFSET_BITS)) != (begin->address >> (OFFSET_BITS))) {
       goto not_found;
     }
     if (begin->v_address % BLOCK_SIZE <= offset && offset < (begin->v_address % BLOCK_SIZE) + begin->size) {
@@ -1075,9 +1077,8 @@ int VCL_CACHE::add_pq(PACKET* packet)
   })
 
   // check for the latest wirtebacks in the write queue
-  champsim::delay_queue<PACKET>::iterator found_wq =
-      std::find_if(WQ.begin(), WQ.end(),
-                   eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, match_offset_bits ? 0 : (OFFSET_BITS + lg2(NUM_SET))));
+  champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(
+      WQ.begin(), WQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, match_offset_bits ? 0 : (OFFSET_BITS)));
 
   if (found_wq != WQ.end()) {
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_WQ" << std::endl;)
@@ -1091,8 +1092,7 @@ int VCL_CACHE::add_pq(PACKET* packet)
   }
 
   // check for duplicates in the PQ
-  auto found =
-      std::find_if(PQ.begin(), PQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, (OFFSET_BITS + lg2(NUM_SET))));
+  auto found = std::find_if(PQ.begin(), PQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, (OFFSET_BITS)));
   if (found != PQ.end()) {
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_PQ" << std::endl;)
 
@@ -1133,9 +1133,8 @@ int VCL_CACHE::add_wq(PACKET* packet)
   })
 
   // check for duplicates in the write queue
-  champsim::delay_queue<PACKET>::iterator found_wq =
-      std::find_if(WQ.begin(), WQ.end(),
-                   eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, match_offset_bits ? 0 : (OFFSET_BITS + lg2(NUM_SET))));
+  champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(
+      WQ.begin(), WQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, match_offset_bits ? 0 : (OFFSET_BITS)));
 
   if (found_wq != WQ.end()) {
 
@@ -1179,9 +1178,8 @@ int VCL_CACHE::add_rq(PACKET* packet)
   })
 
   // check for the latest writebacks in the write queue
-  champsim::delay_queue<PACKET>::iterator found_wq =
-      std::find_if(WQ.begin(), WQ.end(),
-                   eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, match_offset_bits ? 0 : (OFFSET_BITS + lg2(NUM_SET))));
+  champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(
+      WQ.begin(), WQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, match_offset_bits ? 0 : (OFFSET_BITS)));
 
   if (found_wq != WQ.end()) {
 
@@ -1196,8 +1194,7 @@ int VCL_CACHE::add_rq(PACKET* packet)
   }
 
   // check for duplicates in the read queue
-  auto found_rq =
-      std::find_if(RQ.begin(), RQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, (OFFSET_BITS + lg2(NUM_SET))));
+  auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, (OFFSET_BITS)));
   if (found_rq != RQ.end()) {
 
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_RQ" << std::endl;)
