@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name="num-collection-champsim-quick"
 #SBATCH --account=nn4650k
-#SBATCH --nodes=1
+#SBATCH --nodes=3
 #SBATCH -c8
 #SBATCH --mem-per-cpu=2G
 #SBATCH --time=01-00:00:00
