@@ -42,6 +42,9 @@
   "L1I": {
     "sets": 64,
     "ways": 42,
+    "rq_size": 64,
+    "wq_size": 64,
+    "pq_size": 32,
     "buffer": false,
     "aligned": true,
     "way_sizes": [
@@ -86,11 +89,9 @@
       12,
       12,
       12,
+      12,
       12
     ],
-    "rq_size": 64,
-    "wq_size": 64,
-    "pq_size": 32,
     "mshr_size": 8,
     "latency": 4,
     "max_read": 2,

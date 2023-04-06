@@ -160,6 +160,7 @@ class VCL_CACHE : public CACHE
 private:
   bool aligned = false; // should the blocks be aligned to the way size?
   bool buffer = false;  // Enable a buffer way - TODO: Might be replaced by a count of buffer ways later
+  uint8_t* way_sizes;
 
 public:
   VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, bool aligned, uint32_t v5,
@@ -167,7 +168,7 @@ public:
             bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl),
-        aligned(aligned), buffer(buffer)
+        aligned(aligned), buffer(buffer), way_sizes(way_sizes)
   {
     for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {
       block[i].size = way_sizes[i % NUM_WAY];
