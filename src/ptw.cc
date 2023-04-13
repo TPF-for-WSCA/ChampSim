@@ -60,6 +60,7 @@ void PageTableWalker::handle_read()
     packet.to_return = handle_pkt.to_return; // Set the return for MSHR packet same as read packet.
     packet.type = handle_pkt.type;
 
+    assert(packet.size <= 64);
     auto it = MSHR.insert(std::end(MSHR), packet);
     it->cycle_enqueued = current_cycle;
     it->event_cycle = std::numeric_limits<uint64_t>::max();
@@ -173,6 +174,7 @@ int PageTableWalker::add_rq(PACKET* packet)
   }
 
   // if there is no duplicate, add it to RQ
+  assert(packet->size <= 64);
   RQ.push_back(*packet);
 
   return RQ.occupancy();
