@@ -939,7 +939,9 @@ void VCL_CACHE::handle_fill()
     auto fill_mshr = MSHR.begin();
     if (fill_mshr == std::end(MSHR) || fill_mshr->event_cycle > current_cycle)
       return;
-    assert((fill_mshr->address % BLOCK_SIZE) + fill_mshr->size <= 64);
+    if ((fill_mshr->address % BLOCK_SIZE) + fill_mshr->size > 64) {
+      fill_mshr->size = 64 - fill_mshr->address % BLOCK_SIZE;
+    }
     // VCL Impl: Immediately insert into buffer, search for address if evicted buffer entry has been used
     // find victim
     // no buffer impl: insert in invalid big enough block (any way)
@@ -1010,7 +1012,8 @@ uint8_t VCL_CACHE::hit_check(uint32_t& set, uint32_t& way, uint64_t& address, ui
 {
   BLOCK b = block[set * NUM_WAY + way];
   uint8_t access_offset = address % BLOCK_SIZE;
-  if (b.offset <= access_offset && access_offset < b.offset + b.size && access_offset + size < b.offset + b.size) {
+  // NON VCL ignores block boundary crossing accesses at this point - so do we
+  if ((b.offset <= access_offset && access_offset < b.offset + b.size && access_offset + size < b.offset + b.size) || (b.offset + b.size >= 64)) {
     return 0;
   } else if (b.offset <= access_offset && access_offset < b.offset + b.size) {
     return b.offset + b.size; // we hit in the first part, but not in the second part
