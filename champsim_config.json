@@ -136,7 +136,8 @@
         "ptw_rq_size": 16,
         "ptw_mshr_size": 5,
         "ptw_max_read": 2,
-        "ptw_max_write": 2
+        "ptw_max_write": 2,
+        "counting_block_method": "EVICTION"
     },
     "LLC": {
         "frequency": 4000,
