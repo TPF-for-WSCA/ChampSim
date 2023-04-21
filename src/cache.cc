@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <string.h>
 
 #include "champsim.h"
 #include "champsim_constants.h"
@@ -83,6 +84,10 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block)
     uint8_t offset = (uint8_t)(handle_pkt.v_address % BLOCK_SIZE);
     uint8_t end = offset + handle_pkt.size - 1;
     set_accessed(&hit_block.bytes_accessed, offset, end);
+    for (int i = offset; i <= end; i++) {
+      hit_block.accesses_per_bytes[i]++;
+    }
+    hit_block.accesses++;
   }
 }
 
@@ -150,6 +155,7 @@ void CACHE::handle_writeback()
 
       // mark dirty
       fill_block.dirty = 1;
+      fill_block.accesses++;
     } else // MISS
     {
       bool success;
@@ -445,7 +451,8 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
   uint8_t total_accessed = 0, first_accessed = 0, last_accessed = 0;
   for (size_t i = 0; i < hitblocks.size(); i++) {
     auto block = hitblocks[i];
-    uint8_t size = block.second - block.first; // size is +1 as we have first and last index
+    uint8_t size = block.second - block.first; // actual size is +1 as we have first and last index
+    assert(size >= 0 && size < 64);
     if (is_hole) {
       holesize_hist[cpu][size]++;
       is_hole = !is_hole;
@@ -456,11 +463,24 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
     }
     last_accessed = block.second;
     total_accessed += size;
-    blsize_hist[cpu][size]++;
+    // count how many accesses to this block
+
+    uint64_t count = 1;
+    if (count_method == CountBlockMethod::SUM_ACCESSES) {
+      count = 0;
+      for (int j = block.first; j < block.second; j++) {
+        count += handle_block.accesses_per_bytes[j];
+      }
+    }
+    blsize_hist[cpu][size] += count;
     is_hole = !is_hole; // alternating block/hole
   }
-  cl_bytesaccessed_hist[cpu][total_accessed]++;
-  blsize_ignore_holes_hist[cpu][last_accessed - first_accessed]++;
+  uint64_t count = 1;
+  if (count_method == CountBlockMethod::SUM_ACCESSES) {
+    count = handle_block.accesses;
+  }
+  cl_bytesaccessed_hist[cpu][total_accessed] += count;
+  blsize_ignore_holes_hist[cpu][last_accessed - first_accessed] += count;
 }
 
 bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
@@ -519,6 +539,8 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
       pf_fill++;
 
     fill_block.bytes_accessed = 0; // newly added to the cache thus no accesses yet
+    memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
+
     record_cacheline_accesses(handle_pkt, fill_block);
 
     fill_block.valid = true;
@@ -530,6 +552,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     fill_block.ip = handle_pkt.ip;
     fill_block.cpu = handle_pkt.cpu;
     fill_block.instr_id = handle_pkt.instr_id;
+    fill_block.accesses = 1;
   }
 
   if (warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
