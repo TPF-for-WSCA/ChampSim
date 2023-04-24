@@ -10,6 +10,7 @@
 #SBATCH -e /cluster/work/romankb/slurm-default-sizes-%j.err
 #SBATCH -o /cluster/work/romankb/slurm-default-sizes-%j.out
 
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
 binaries=("champsim8k" "champsim64k" "champsim4k" "champsim32k" "champsim2k" "champsim1k" "champsim16k" "champsim128k" "champsim_bigcache")
