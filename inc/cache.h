@@ -37,6 +37,7 @@ std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uin
 void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block);
 
 enum class CountBlockMethod { EVICTION, SUM_ACCESSES };
+enum class BufferOrganisation { FULLY_ASSOCIATIVE, DIRECT_MAPPED };
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
@@ -177,17 +178,28 @@ private:
   bool aligned = false; // should the blocks be aligned to the way size?
   bool buffer = false;  // Enable a buffer way - TODO: Might be replaced by a count of buffer ways later
   uint8_t* way_sizes;
+  uint32_t buffer_size = 0;
+  std::vector<BLOCK> buffer_cache;
+  BufferOrganisation organisation;
 
 public:
-  VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, bool aligned, uint32_t v5,
-            uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits,
-            bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
+  VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, uint32_t buffer_size, bool aligned,
+            uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write,
+            std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref,
+            repl_t repl, BufferOrganisation buffer_organisation)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl),
-        aligned(aligned), buffer(buffer), way_sizes(way_sizes)
+        aligned(aligned), buffer(buffer), buffer_size(buffer_size), way_sizes(way_sizes), organisation(buffer_organisation)
   {
     for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {
       block[i].size = way_sizes[i % NUM_WAY];
+    }
+    if ((buffer_size % NUM_SET != 0 || NUM_SET % buffer_size != 0) && organisation == BufferOrganisation::DIRECT_MAPPED) {
+      std::cerr << "can't directmap if num sets and buffer size are not divisible in either direction" << std::endl;
+      assert(0);
+    }
+    if (buffer) {
+      buffer_cache.resize(buffer_size);
     }
     way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
     if (way_hits == NULL)
@@ -206,12 +218,16 @@ public:
   virtual void handle_read() override;
   // virtual void handle_prefetch() override;
   // virtual bool readlike_miss(PACKET& handle_pkt) override;
+  void buffer_hit(BLOCK& b, PACKET& handle_pkt);
   virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt) override;
   virtual void handle_writeback() override;
   // virtual void return_data(PACKET* packet) override;
   uint32_t lru_victim(BLOCK* current_set, uint8_t min_size);
   virtual ~VCL_CACHE() { free(way_hits); };
   uint32_t get_way(PACKET& packet, uint32_t set) override;
+  BLOCK* probe_buffer(PACKET& packet, uint32_t set);
+  void handle_fill_from_buffer(BLOCK& b, uint32_t set);
+
   uint8_t hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size);
 
 private:

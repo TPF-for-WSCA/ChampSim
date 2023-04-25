@@ -956,6 +956,19 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
                        std::max_element(begin_of_subset, endofset, [](BLOCK lhs, BLOCK rhs) { return !rhs.valid || (lhs.valid && lhs.lru < rhs.lru); }));
 }
 
+void VCL_CACHE::handle_fill_from_buffer(BLOCK& b, uint32_t set)
+{
+  // TODO: extract accessed bytes and depending on strategy insert into cache
+  auto hitblocks = get_blockboundaries_from_mask(b.bytes_accessed);
+  for (int i = 0; i < hitblocks.size(); i++) {
+    if (i % 2 != 0) {
+      continue; // it's a hole
+    }
+    // TODO: insert depending on insertion behaviour (e.g. find fitting way/find smallest fitting way/...)
+  }
+  assert(0);
+}
+
 void VCL_CACHE::handle_fill()
 {
   while (writes_available_this_cycle > 0) {
@@ -968,12 +981,26 @@ void VCL_CACHE::handle_fill()
     // VCL Impl: Immediately insert into buffer, search for address if evicted buffer entry has been used
     // find victim
     // no buffer impl: insert in invalid big enough block (any way)
+
     uint32_t set = get_set(fill_mshr->address);
+
+    if (buffer) {
+      BLOCK* b = probe_buffer(*fill_mshr, set);
+      // TODO: Insert b into cache
+      handle_fill_from_buffer(*b, set);
+      b->valid = true;
+      b->address = fill_mshr->address;
+      b->v_address = fill_mshr->v_address;
+      b->data = fill_mshr->data;
+      b->ip = fill_mshr->ip;
+      b->cpu = fill_mshr->ip;
+      b->instr_id = fill_mshr->instr_id;
+    }
 
     uint8_t num_blocks_to_write = 1;
 
     while (num_blocks_to_write > 0) {
-
+      // TODO: If buffer go to buffer and insert whatever is in the buffer
       auto set_begin = std::next(std::begin(block), set * NUM_WAY);
       auto set_end = std::next(set_begin, NUM_WAY);
       auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
@@ -1044,6 +1071,21 @@ uint8_t VCL_CACHE::hit_check(uint32_t& set, uint32_t& way, uint64_t& address, ui
   return -1;
 }
 
+BLOCK* VCL_CACHE::probe_buffer(PACKET& packet, uint32_t set)
+{
+  uint32_t idx = set >> lg2(NUM_SET / buffer_size);
+  if (organisation == BufferOrganisation::DIRECT_MAPPED) {
+    return &buffer_cache[idx];
+  }
+  // Fully associative
+  for (BLOCK& b : block) {
+    if (b.tag == get_tag(packet.address)) {
+      return &b;
+    }
+  }
+  return NULL;
+}
+
 uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
 {
   auto offset = packet.v_address % BLOCK_SIZE;
@@ -1072,6 +1114,21 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
   return NUM_WAY; // we did not find a way
 }
 
+void VCL_CACHE::buffer_hit(BLOCK& b, PACKET& p)
+{
+  // TODO: Track buffer stats separately
+  // record_cacheline_accesses(handle_pkt, hit_block)
+  p.data = b.data;
+  sim_hit[p.cpu][p.type]++;
+  sim_access[p.cpu][p.type]++;
+  for (auto ret : p.to_return)
+    ret->return_data(&p);
+  if (b.prefetch) {
+    pf_useful++;
+    b.prefetch = 0;
+  }
+}
+
 void VCL_CACHE::handle_read()
 {
   while (reads_available_this_cycle > 0) {
@@ -1088,9 +1145,12 @@ void VCL_CACHE::handle_read()
 
     uint32_t set = get_set(handle_pkt.address);
     uint32_t way = get_way(handle_pkt, set);
+    BLOCK* b = probe_buffer(handle_pkt, set);
     // TODO: WE MIGHT NEED ALSO MULTIPLE WAYS
     // TODO: We might need multiple accesses
-    if (way < NUM_WAY) // HIT
+    if (b) {
+      buffer_hit(*b, handle_pkt);
+    } else if (way < NUM_WAY) // HIT
     {
       // std::cout << "hit in SET: " << std::setw(3) << set << ", way: " << std::setw(3) << way << std::endl;
       readlike_hit(set, way, handle_pkt);
@@ -1107,6 +1167,8 @@ void VCL_CACHE::handle_read()
       uint64_t mask = ~(BLOCK_SIZE - 1);
       handle_pkt.v_address = (handle_pkt.v_address & mask) + newoffset;
       handle_pkt.address = (handle_pkt.address & mask) + newoffset; // offset matches: all 64 byte aligned
+      // not done reading this thing just yet
+      continue;
     } else {
       bool success = readlike_miss(handle_pkt);
       RQ.pop_front();
