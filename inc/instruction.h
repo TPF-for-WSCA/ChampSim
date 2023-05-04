@@ -64,6 +64,11 @@ struct ooo_model_instr {
     std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
 
     this->ip = instr.ip;
+    assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
+    this->size = 4;                                 // average for x86 (rounded up)
+    if (this->ip % 2 == 0)
+      this->size = 2; // compressed instr.
+
     this->is_branch = instr.is_branch;
     this->branch_taken = instr.branch_taken;
 
@@ -79,8 +84,13 @@ struct ooo_model_instr {
     std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
 
     this->ip = instr.ip;
+
+    assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
     this->is_branch = instr.is_branch;
     this->branch_taken = instr.branch_taken;
+    this->size = 4; // average for x86 (rounded up)
+    if (this->ip % 2 == 0)
+      this->size = 2; // compressed instr.
 
     std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
   }

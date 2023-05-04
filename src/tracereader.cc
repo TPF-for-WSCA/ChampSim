@@ -103,13 +103,16 @@ ooo_model_instr tracereader::read_single_instr()
 {
   T trace_read_instr;
 
-  while (!fread(&trace_read_instr, sizeof(T), 1, trace_file)) {
-    // reached end of file for this trace
-    std::cout << "*** Reached end of trace: " << trace_string << std::endl;
+  // filter out faulty instructions (ipc1 contains a few of those)
+  while (((input_instr*)&trace_read_instr)->ip == 0) {
+    while (!fread(&trace_read_instr, sizeof(T), 1, trace_file)) {
+      // reached end of file for this trace
+      std::cout << "*** Reached end of trace: " << trace_string << std::endl;
 
-    // close the trace file and re-open it
-    close();
-    open(trace_string);
+      // close the trace file and re-open it
+      close();
+      open(trace_string);
+    }
   }
 
   // copy the instruction into the performance model's instruction format
