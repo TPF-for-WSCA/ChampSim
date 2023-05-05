@@ -13,6 +13,7 @@ extern "C" {
 }
 
 #define GZ_BUFFER_SIZE 50
+extern uint8_t knob_intel;
 
 static const char* XED_REG_STR[] = {
     "XED_REG_INVALID",   "XED_REG_BNDCFGU", "XED_REG_BNDSTATUS", "XED_REG_BND0",       "XED_REG_BND1",       "XED_REG_BND2",      "XED_REG_BND3",
@@ -153,10 +154,19 @@ public:
     if (!initialized) {
       last_instr = trace_read_instr;
       initialized = true;
+      trace_read_instr = read_single_instr<cloudsuite_instr>();
     }
 
     last_instr.branch_target = trace_read_instr.ip;
+    if (knob_intel)
+      if (last_instr.is_branch || trace_read_instr.ip ^ last_instr.ip > 64) { // if xor is larger than 64 it must be an interrupt and thus we can't fix the size
+        last_instr.size = 2; // We don't know the size but it seems that the average branch instruction size is 2
+      } else {
+        last_instr.size = trace_read_instr.ip - last_instr.ip;
+      }
+
     ooo_model_instr retval = last_instr;
+    assert(retval.size < 65);
 
     last_instr = trace_read_instr;
     return retval;
@@ -178,10 +188,20 @@ public:
     if (!initialized) {
       last_instr = trace_read_instr;
       initialized = true;
+      trace_read_instr = read_single_instr<input_instr>();
     }
 
     last_instr.branch_target = trace_read_instr.ip;
+
+    if (knob_intel)
+      if (last_instr.is_branch || trace_read_instr.ip ^ last_instr.ip > 64) { // if xor is larger than 64 it must be an interrupt and thus we can't fix the size
+        last_instr.size = 2; // We don't know the size but it seems that the average branch instruction size is 2
+      } else {
+        last_instr.size = trace_read_instr.ip - last_instr.ip;
+      }
+
     ooo_model_instr retval = last_instr;
+    assert(retval.size < 65);
 
     last_instr = trace_read_instr;
     return retval;

@@ -64,16 +64,22 @@ struct ooo_model_instr {
     std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
 
     this->ip = instr.ip;
-    assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
-    this->size = 4;                                 // average for x86 (rounded up)
-    if (this->ip % 2 == 0)
-      this->size = 2; // compressed instr.
 
     this->is_branch = instr.is_branch;
     this->branch_taken = instr.branch_taken;
 
     asid[0] = cpu;
     asid[1] = cpu;
+
+    extern uint8_t knob_intel;
+    if (knob_intel) {
+      return;
+    }
+
+    assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
+    this->size = 4;                                 // average for x86 (rounded up)
+    if (this->ip % 2 == 0)
+      this->size = 2; // compressed instr.
   }
 
   ooo_model_instr(uint8_t cpu, cloudsuite_instr instr)
@@ -85,15 +91,21 @@ struct ooo_model_instr {
 
     this->ip = instr.ip;
 
-    assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
     this->is_branch = instr.is_branch;
     this->branch_taken = instr.branch_taken;
-    this->size = 4; // average for x86 (rounded up)
+
+    extern uint8_t knob_intel;
+    std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
+    if (knob_intel) {
+      return;
+    }
+
+    assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
+    this->size = 4;                                 // average for x86 (rounded up)
     if (this->ip % 2 == 0)
       this->size = 2; // compressed instr.
-
-    std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
   }
+
   ooo_model_instr(uint8_t cpu, pt_instr instr)
   {
     std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
