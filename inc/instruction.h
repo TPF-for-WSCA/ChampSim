@@ -27,6 +27,7 @@
 
 struct ooo_model_instr {
   uint64_t instr_id = 0, ip = 0, event_cycle = 0, size = 0;
+  int indirect_branches = 0;
 
   bool is_branch = 0, is_memory = 0, branch_taken = 0, branch_mispredicted = 0, source_added[NUM_INSTR_SOURCES] = {},
        destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {};
@@ -64,11 +65,22 @@ struct ooo_model_instr {
     std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
 
     this->ip = instr.ip;
+
     this->is_branch = instr.is_branch;
     this->branch_taken = instr.branch_taken;
 
     asid[0] = cpu;
     asid[1] = cpu;
+
+    extern uint8_t knob_intel;
+    if (knob_intel) {
+      return;
+    }
+
+    assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
+    this->size = 4;                                 // average for x86 (rounded up)
+    if (this->ip % 2 == 0)
+      this->size = 2; // compressed instr.
   }
 
   ooo_model_instr(uint8_t cpu, cloudsuite_instr instr)
@@ -79,11 +91,22 @@ struct ooo_model_instr {
     std::copy(std::begin(instr.source_memory), std::end(instr.source_memory), std::begin(this->source_memory));
 
     this->ip = instr.ip;
+
     this->is_branch = instr.is_branch;
     this->branch_taken = instr.branch_taken;
 
+    extern uint8_t knob_intel;
     std::copy(std::begin(instr.asid), std::begin(instr.asid), std::begin(this->asid));
+    if (knob_intel) {
+      return;
+    }
+
+    assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
+    this->size = 4;                                 // average for x86 (rounded up)
+    if (this->ip % 2 == 0)
+      this->size = 2; // compressed instr.
   }
+
   ooo_model_instr(uint8_t cpu, pt_instr instr)
   {
     std::copy(std::begin(instr.destination_registers), std::end(instr.destination_registers), std::begin(this->destination_registers));
@@ -100,14 +123,18 @@ struct ooo_model_instr {
     case XED_CATEGORY_UNCOND_BR:
       if (xed3_operand_get_brdisp_width(&instr.decoded_instruction))
         this->branch_type = BRANCH_DIRECT_JUMP;
-      else
+      else {
         this->branch_type = BRANCH_INDIRECT;
+        indirect_branches++;
+      }
       break;
     case XED_CATEGORY_CALL:
       if (xed3_operand_get_brdisp_width(&instr.decoded_instruction))
         this->branch_type = BRANCH_DIRECT_CALL;
-      else
+      else {
         this->branch_type = BRANCH_INDIRECT_CALL;
+        indirect_branches++;
+      }
       break;
     case XED_CATEGORY_RET:
       this->branch_type = BRANCH_RETURN;

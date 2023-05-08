@@ -12,7 +12,8 @@ import sys
 
 executable = "/cluster/work/romankb/dynamorio/build/clients/bin64/drcachesim"
 
-experiment_instructions=90000000
+experiment_instructions = 90000000
+
 
 class Color(Enum):
     RED = "\033[31m"
@@ -39,20 +40,29 @@ def run_experiment(
         str(experiment_instructions),
         "-result_dir",
         output_dir,
-        "-ptrace",
-        "-traces",
-        trace_file_path,
     ]
+    if args.intel:
+        cmd.append("-intel")
+    if args.trace_format == "c":
+        cmd.append("-c")
+    if args.trace_format == "p":
+        cmd.append("-ptrace")
+    cmd.extend(["-traces", trace_file_path])
     print(f"EXECUTE {' '.join(str(cmd))}", flush=True)
     os.makedirs(output_dir, exist_ok=True)
     success = True
     completed_experiment = subprocess.run(cmd, -1, capture_output=True)
     if completed_experiment.returncode != 0:
-        print(f"WARNING: EXPERIMENT {' '.join(cmd)} returned non-zero code", flush=True)
+        print(
+            f"WARNING: EXPERIMENT {' '.join(cmd)} returned non-zero code",
+            flush=True,
+        )
         print(f"STDERR: {completed_experiment.stderr}\n", flush=True)
         success = False
     else:
-        print(f"Experiment {' '.join(cmd)} completed successfully\n", flush=True)
+        print(
+            f"Experiment {' '.join(cmd)} completed successfully\n", flush=True
+        )
 
     config_file_name = path.split(trace_file_path)[1].split(".")[0]
     with open(
@@ -87,11 +97,18 @@ def main(args):
     workloads = os.listdir(traces_directory)
     trace_files = []
     for workload in workloads:
-        workload_dir = path.join(traces_directory, workload)
-        filenames = filter(
-            lambda trace: trace.endswith(".gz"), os.listdir(workload_dir)
-        )
-        trace_files.extend(map(partial(path.join, workload_dir), filenames))
+        if args.subdir:
+            workload_dir = path.join(traces_directory, workload)
+            filenames = filter(
+                lambda trace: trace.endswith(".gz") or trace.endswith(".xz"),
+                os.listdir(workload_dir),
+            )
+            trace_files.extend(
+                map(partial(path.join, workload_dir), filenames)
+            )
+        else:
+            if workload.endswith(".gz") or workload.endswith(".xz"):
+                trace_files.append(path.join(traces_directory, workload))
 
     output_dir = args.output_dir[0]
     if args.exec:
@@ -102,7 +119,9 @@ def main(args):
     pending_experiments = []
 
     for trace in trace_files:
-        trace_name = path.split(trace)[0].split("/")[-1]
+        trace_name = trace.split("/")[-1].split(".")[0]
+        if args.subdir:
+            trace_name = path.split(trace)[0].split("/")[-1]
         output_subdir = path.join(output_dir, trace_name)
         # TEST ONLY
         # run_experiment(trace, output_subdir)
@@ -152,6 +171,9 @@ if __name__ == "__main__":
         help="Directory containing all traces in named subfolders",
     )
     parser.add_argument(
+        "--trace_format", type=str, nargs="?", default="champsim"
+    )
+    parser.add_argument(
         "--output_dir",
         dest="output_dir",
         metavar="OUTPUT DIR",
@@ -164,8 +186,21 @@ if __name__ == "__main__":
         "--instructions",
         dest="instr",
         type=int,
-        help=f"Optional: Number of instructions to simulate. Default is {experiment_instructions}"
+        help=f"Optional: Number of instructions to simulate. Default is {experiment_instructions}",
     )
+
+    parser.add_argument(
+        "--nosub",
+        dest="subdir",
+        action="store_false",
+    )
+    parser.set_defaults(subdir=True)
+
+    parser.add_argument(
+        "--intel",
+        action="store_true",
+    )
+    parser.set_defaults(intel=False)
 
     args = parser.parse_args()
     main(args)
