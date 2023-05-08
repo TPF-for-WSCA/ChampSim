@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "champsim.h"
+#include "circular_buffer.hpp"
 #include "delay_queue.hpp"
 #include "memory_class.h"
 #include "ooo_cpu.h"
@@ -51,7 +52,7 @@ public:
   uint32_t cpu;
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
-  const uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
+  uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
   std::vector<uint64_t> cl_accessmask_buffer;
   std::vector<uint64_t> cl_blocks_in_cache_buffer;
@@ -171,6 +172,36 @@ public:
   };
 };
 
+class BUFFER_CACHE : public CACHE
+{
+private:
+  void insert_merge(BLOCK b);
+  template <typename U>
+  using buffer_t = champsim::circular_buffer<U>;
+
+public:
+  buffer_t<BLOCK> merge_block{MAX_WRITE};
+  uint64_t total_accesses;
+  uint64_t hits;
+  BUFFER_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t perfect_cache, uint32_t v5, uint32_t v6, uint32_t v7,
+               uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load,
+               bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method)
+      : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
+              pref_act_mask, ll, pref, repl, method){};
+
+  /// @brief Check if packet is in cache. If it is, rv is the block, if not it is null. If hit, accessed bytes and statistics will be recorded
+  /// @param packet The request packet to be handled
+  /// @return The block if it is found.
+  BLOCK* probe_buffer(PACKET& packet);
+
+  /// @brief Insert a serviced read from lower level. If an entry is evicted, it is entered into the merge register
+  /// @param packet The packet to be inserting
+  /// @return Returns true if successful and false if not. Reasons for being not successful could be full merge register;
+  bool fill_miss(PACKET& packet);
+
+  void operate_merge(VCL_CACHE& cache);
+};
+
 class VCL_CACHE : public CACHE
 {
 
@@ -178,28 +209,34 @@ private:
   bool aligned = false; // should the blocks be aligned to the way size?
   bool buffer = false;  // Enable a buffer way - TODO: Might be replaced by a count of buffer ways later
   uint8_t* way_sizes;
-  uint32_t buffer_size = 0;
-  std::vector<BLOCK> buffer_cache;
+  uint32_t buffer_sets = 0;
+  uint32_t buffer_ways = 0;
   BufferOrganisation organisation;
+  BUFFER_CACHE buffer_cache;
 
 public:
-  VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, uint32_t buffer_size, bool aligned,
+  VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, uint32_t buffer_sets, bool aligned,
             uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write,
             std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref,
             repl_t repl, BufferOrganisation buffer_organisation)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl),
-        aligned(aligned), buffer(buffer), buffer_size(buffer_size), way_sizes(way_sizes), organisation(buffer_organisation)
+        aligned(aligned), buffer(buffer), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation),
+        buffer_cache(BUFFER_CACHE((v1 + "_buffer"), freq_scale, fill_level, buffer_sets, buffer_ways, 0, std::min(buffer_sets, v5), std::min(v6, buffer_sets),
+                                  std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read, max_write / 2, offset_bits, false, true, false, 0, ll,
+                                  pref_t::CPU_REDIRECT_pprefetcherDno_instr_, repl_t::rreplacementDlru, CountBlockMethod::SUM_ACCESSES))
   {
     for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {
       block[i].size = way_sizes[i % NUM_WAY];
     }
-    if ((buffer_size % NUM_SET != 0 || NUM_SET % buffer_size != 0) && organisation == BufferOrganisation::DIRECT_MAPPED) {
+    if ((buffer_sets % NUM_SET != 0 || NUM_SET % buffer_sets != 0) && organisation == BufferOrganisation::DIRECT_MAPPED) {
       std::cerr << "can't directmap if num sets and buffer size are not divisible in either direction" << std::endl;
       assert(0);
     }
     if (buffer) {
-      buffer_cache.resize(buffer_size);
+      uint32_t buffer_hit_latency = organisation == BufferOrganisation::DIRECT_MAPPED ? 0 : 1;
+      buffer_cache.HIT_LATENCY = buffer_hit_latency;
+      buffer_cache.HIT_LATENCY = buffer_hit_latency;
     }
     way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
     if (way_hits == NULL)

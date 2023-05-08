@@ -43,7 +43,7 @@
         "rq_size": 64,
         "wq_size": 64,
         "pq_size": 32,
-        "buffer": false,
+        "buffer": true,
         "buffer_size": 16,
         "buffer_organisation": "DIRECT_MAPPED",
         "aligned": true,

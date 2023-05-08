@@ -160,6 +160,13 @@ public:
   const_reverse_iterator crend() const noexcept { return const_reverse_iterator(begin()); }
 
   void clear() { head_ = tail_ = 0; }
+
+  void push_back(T item, bool copy)
+  {
+    assert(!full());
+    operator[](tail_) = item;
+    tail_ = circ_inc(tail_, 1, *this);
+  }
   void push_back(const T& item)
   {
     assert(!full());

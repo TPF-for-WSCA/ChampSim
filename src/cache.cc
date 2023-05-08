@@ -552,7 +552,8 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     fill_block.ip = handle_pkt.ip;
     fill_block.cpu = handle_pkt.cpu;
     fill_block.instr_id = handle_pkt.instr_id;
-    fill_block.accesses = 1;
+    fill_block.accesses = 0;
+    record_cacheline_accesses(handle_pkt, fill_block);
   }
 
   if (warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
@@ -941,6 +942,53 @@ void CACHE::print_deadlock()
   }
 }
 
+BLOCK* BUFFER_CACHE::probe_buffer(PACKET& packet)
+{
+  uint32_t set = get_set(packet.address);
+  uint32_t way = get_way(packet, set);
+  if (way == NUM_WAY) {
+    return NULL;
+  }
+  BLOCK& hitb = block[set * NUM_WAY + way];
+  record_cacheline_accesses(packet, hitb);
+  return &hitb;
+};
+
+bool BUFFER_CACHE::fill_miss(PACKET& packet)
+{
+  assert(NULL == probe_buffer(packet));
+  uint32_t set = get_set(packet.address);
+  auto set_begin = std::next(std::begin(block), set * NUM_WAY);
+  auto set_end = std::next(set_begin, NUM_WAY);
+  auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
+  uint32_t way = std::distance(set_begin, first_inv);
+  if (way == NUM_WAY) {
+    way = impl_replacement_find_victim(packet.cpu, packet.instr_id, set, &block.data()[set * NUM_WAY], packet.ip, packet.address, packet.type);
+    // TODO: RECORD STATISTICS IF ANY
+  }
+
+  assert(!merge_block.full());
+  BLOCK& fill_block = block[set * NUM_WAY + way];
+
+  if (fill_block.valid) {
+    merge_block.push_back(fill_block, true);
+  }
+
+  fill_block.bytes_accessed = 0;
+  memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
+  fill_block.valid = true;
+  fill_block.prefetch = (packet.type == PREFETCH && packet.pf_origin_level == fill_level);
+  fill_block.dirty = (packet.type == WRITEBACK || (packet.type == RFO && packet.to_return.empty()));
+  fill_block.address = packet.address;
+  fill_block.v_address = packet.v_address;
+  fill_block.data = packet.data;
+  fill_block.ip = packet.ip;
+  fill_block.cpu = packet.cpu;
+  fill_block.instr_id = packet.instr_id;
+  fill_block.accesses = 0;
+  record_cacheline_accesses(packet, fill_block);
+}
+
 uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
 {
   BLOCK* endofset = std::next(current_set, NUM_WAY);
@@ -1071,9 +1119,9 @@ uint8_t VCL_CACHE::hit_check(uint32_t& set, uint32_t& way, uint64_t& address, ui
   return -1;
 }
 
-BLOCK* VCL_CACHE::probe_buffer(PACKET& packet, uint32_t set)
+/*BLOCK* VCL_CACHE::probe_buffer(PACKET& packet, uint32_t set)
 {
-  uint32_t idx = set >> lg2(NUM_SET / buffer_size);
+  uint32_t idx = set >> lg2(NUM_SET / buffer_sets);
   if (organisation == BufferOrganisation::DIRECT_MAPPED) {
     return &buffer_cache[idx];
   }
@@ -1084,7 +1132,7 @@ BLOCK* VCL_CACHE::probe_buffer(PACKET& packet, uint32_t set)
     }
   }
   return NULL;
-}
+}*/
 
 uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
 {
