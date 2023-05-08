@@ -11,14 +11,14 @@
                 "-warmup_instructions",
                 "5000",
                 "-simulation_instructions",
-                "90000000",
+                "900000",
                 "-result_dir",
                 "~/Downloads/results/test_results",
-                // "-ptrace",
-                "-intel",
+                "-ptrace",
+                // "-intel",
                 "-traces",
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
-                "/home/robrunne/OneDrive/Research/datasets/crc2/astar_23B.trace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/traces/verilator/trace.gz"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",

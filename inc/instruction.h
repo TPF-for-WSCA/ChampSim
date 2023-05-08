@@ -27,6 +27,7 @@
 
 struct ooo_model_instr {
   uint64_t instr_id = 0, ip = 0, event_cycle = 0, size = 0;
+  int indirect_branches = 0;
 
   bool is_branch = 0, is_memory = 0, branch_taken = 0, branch_mispredicted = 0, source_added[NUM_INSTR_SOURCES] = {},
        destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {};
@@ -122,14 +123,18 @@ struct ooo_model_instr {
     case XED_CATEGORY_UNCOND_BR:
       if (xed3_operand_get_brdisp_width(&instr.decoded_instruction))
         this->branch_type = BRANCH_DIRECT_JUMP;
-      else
+      else {
         this->branch_type = BRANCH_INDIRECT;
+        indirect_branches++;
+      }
       break;
     case XED_CATEGORY_CALL:
       if (xed3_operand_get_brdisp_width(&instr.decoded_instruction))
         this->branch_type = BRANCH_DIRECT_CALL;
-      else
+      else {
         this->branch_type = BRANCH_INDIRECT_CALL;
+        indirect_branches++;
+      }
       break;
     case XED_CATEGORY_RET:
       this->branch_type = BRANCH_RETURN;

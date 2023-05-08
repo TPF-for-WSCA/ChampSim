@@ -656,6 +656,7 @@ int main(int argc, char** argv)
         cout << " Failed decodes: " << traces[i]->failed_decoding_instructions << " out of ";
         cout << traces[i]->total_decoding_instructions << " decoded instructions" << endl;
         cout << "Decode error rate: " << (100.0 * traces[i]->failed_decoding_instructions) / (double)traces[i]->total_decoding_instructions << "%" << endl;
+        cout << "Indirect branches: " << ooo_cpu[i]->indirect_branches << endl;
 
         for (auto it = caches.rbegin(); it != caches.rend(); ++it) {
           (*it)->record_remainder_cachelines(i);
