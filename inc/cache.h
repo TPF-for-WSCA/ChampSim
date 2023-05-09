@@ -95,7 +95,7 @@ public:
 
   void return_data(PACKET* packet) override;
   void operate() override;
-  void operate_writes();
+  virtual void operate_writes();
   void operate_reads();
 
   uint32_t get_occupancy(uint8_t queue_type, uint64_t address) override;
@@ -194,12 +194,12 @@ public:
   /// @return The block if it is found.
   BLOCK* probe_buffer(PACKET& packet);
 
+  BLOCK* probe_merge(PACKET& packet);
+
   /// @brief Insert a serviced read from lower level. If an entry is evicted, it is entered into the merge register
   /// @param packet The packet to be inserting
   /// @return Returns true if successful and false if not. Reasons for being not successful could be full merge register;
   bool fill_miss(PACKET& packet);
-
-  void operate_merge(VCL_CACHE& cache);
 };
 
 class VCL_CACHE : public CACHE
@@ -222,14 +222,16 @@ public:
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl),
         aligned(aligned), buffer(buffer), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation),
-        buffer_cache(BUFFER_CACHE((v1 + "_buffer"), freq_scale, fill_level, buffer_sets, buffer_ways, 0, std::min(buffer_sets, v5), std::min(v6, buffer_sets),
-                                  std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read, max_write / 2, offset_bits, false, true, false, 0, ll,
-                                  pref_t::CPU_REDIRECT_pprefetcherDno_instr_, repl_t::rreplacementDlru, CountBlockMethod::SUM_ACCESSES))
+        buffer_cache(BUFFER_CACHE((v1 + "_buffer"), freq_scale, fill_level, (buffer_organisation == BufferOrganisation::DIRECT_MAPPED) ? buffer_sets : 1,
+                                  (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : 1, 0, std::min(buffer_sets, v5),
+                                  std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read, max_write / 2, offset_bits,
+                                  false, true, false, 0, ll, pref_t::CPU_REDIRECT_pprefetcherDno_instr_, repl_t::rreplacementDlru,
+                                  CountBlockMethod::SUM_ACCESSES))
   {
     for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {
       block[i].size = way_sizes[i % NUM_WAY];
     }
-    if ((buffer_sets % NUM_SET != 0 || NUM_SET % buffer_sets != 0) && organisation == BufferOrganisation::DIRECT_MAPPED) {
+    if ((buffer_sets % NUM_SET != 0 && NUM_SET % buffer_sets != 0) && organisation == BufferOrganisation::DIRECT_MAPPED) {
       std::cerr << "can't directmap if num sets and buffer size are not divisible in either direction" << std::endl;
       assert(0);
     }
@@ -251,17 +253,26 @@ public:
   // void write_buffers_to_disk(void) override;
   // virtual void record_overlap(void) override;
 
+  virtual void operate_writes() override;
+  virtual void operate_buffer_merges();
+
   virtual void handle_fill() override;
   virtual void handle_read() override;
   // virtual void handle_prefetch() override;
   // virtual bool readlike_miss(PACKET& handle_pkt) override;
   void buffer_hit(BLOCK& b, PACKET& handle_pkt);
   virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt) override;
+  virtual bool filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block);
   virtual void handle_writeback() override;
   // virtual void return_data(PACKET* packet) override;
   uint32_t lru_victim(BLOCK* current_set, uint8_t min_size);
   virtual ~VCL_CACHE() { free(way_hits); };
   uint32_t get_way(PACKET& packet, uint32_t set) override;
+  /// @brief Get all ways that match the tag of packet
+  /// @param tag The tag to look up
+  /// @param set The set that we search for the tag
+  /// @return Vector of way indexes
+  std::vector<uint32_t> get_way(uint32_t tag, uint32_t set);
   BLOCK* probe_buffer(PACKET& packet, uint32_t set);
   void handle_fill_from_buffer(BLOCK& b, uint32_t set);
 

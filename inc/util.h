@@ -14,10 +14,18 @@ constexpr uint64_t splice_bits(uint64_t upper, uint64_t lower, std::size_t bits)
 template <typename T>
 struct is_valid {
   using argument_type = T;
-  is_valid() {}
+  size_t size;
+  is_valid() { size = 0; };
   bool operator()(const argument_type& test) { return test.valid; }
 };
 
+template <typename T>
+struct is_valid_size {
+  using argument_type = T;
+  size_t size;
+  is_valid_size(size_t S) { size = S; };
+  bool operator()(const argument_type& test) { return test.valid && test.size <= size; }
+};
 template <typename T>
 struct eq_addr {
   using argument_type = T;

@@ -942,6 +942,7 @@ void CACHE::print_deadlock()
   }
 }
 
+// TODO: statistics
 BLOCK* BUFFER_CACHE::probe_buffer(PACKET& packet)
 {
   uint32_t set = get_set(packet.address);
@@ -950,13 +951,32 @@ BLOCK* BUFFER_CACHE::probe_buffer(PACKET& packet)
     return NULL;
   }
   BLOCK& hitb = block[set * NUM_WAY + way];
+  if (!hitb.valid)
+    return NULL;
+  impl_replacement_update_state(packet.cpu, set, way, packet.address, packet.ip, 0, packet.type, 1);
+
+  // COLLECT STATS
+  sim_hit[packet.cpu][packet.type]++;
+  sim_access[packet.cpu][packet.type]++;
+
+  for (auto ret : packet.to_return)
+    ret->return_data(&packet);
   record_cacheline_accesses(packet, hitb);
   return &hitb;
 };
 
+// TODO: Statistics
+BLOCK* BUFFER_CACHE::probe_merge(PACKET& packet)
+{
+  uint32_t tag = get_tag(packet.address);
+  for (auto b : merge_block) {
+    if (tag == get_tag(b.address))
+      return &b;
+  }
+}
+
 bool BUFFER_CACHE::fill_miss(PACKET& packet)
 {
-  assert(NULL == probe_buffer(packet));
   uint32_t set = get_set(packet.address);
   auto set_begin = std::next(std::begin(block), set * NUM_WAY);
   auto set_end = std::next(set_begin, NUM_WAY);
@@ -967,7 +987,9 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
     // TODO: RECORD STATISTICS IF ANY
   }
 
-  assert(!merge_block.full());
+  if (merge_block.full()) {
+    return false;
+  }
   BLOCK& fill_block = block[set * NUM_WAY + way];
 
   if (fill_block.valid) {
@@ -987,6 +1009,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
   fill_block.instr_id = packet.instr_id;
   fill_block.accesses = 0;
   record_cacheline_accesses(packet, fill_block);
+  return true;
 }
 
 uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
@@ -1004,17 +1027,42 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
                        std::max_element(begin_of_subset, endofset, [](BLOCK lhs, BLOCK rhs) { return !rhs.valid || (lhs.valid && lhs.lru < rhs.lru); }));
 }
 
-void VCL_CACHE::handle_fill_from_buffer(BLOCK& b, uint32_t set)
+void VCL_CACHE::operate_writes()
 {
-  // TODO: extract accessed bytes and depending on strategy insert into cache
-  auto hitblocks = get_blockboundaries_from_mask(b.bytes_accessed);
-  for (int i = 0; i < hitblocks.size(); i++) {
-    if (i % 2 != 0) {
-      continue; // it's a hole
+  operate_buffer_merges();
+  CACHE::operate_writes();
+}
+
+void VCL_CACHE::operate_buffer_merges()
+{
+  while (!buffer_cache.merge_block.empty()) {
+    BLOCK& merge_block = buffer_cache.merge_block.front();
+    uint32_t set = get_set(merge_block.address); // set of the VCL cache, not the buffer
+    auto set_begin = std::next(std::begin(block), set * NUM_WAY);
+    auto set_end = std::next(set_begin, NUM_WAY);
+    uint32_t tag = get_tag(merge_block.address); // dito
+    auto _in_cache = get_way(tag, set);
+    // set all of them to invalid and insert again - not hardware like but easier in sw
+    for (uint32_t& way : _in_cache) {
+      BLOCK& b = block[set * NUM_WAY + way];
+      set_accessed(&merge_block.bytes_accessed, b.offset, b.offset + b.size - 1);
+      b.valid = false;
     }
-    // TODO: insert depending on insertion behaviour (e.g. find fitting way/find smallest fitting way/...)
+    auto blocks = get_blockboundaries_from_mask(merge_block.bytes_accessed);
+    for (int i = 0; i < blocks.size(); i++) {
+      if (i % 2 != 0) {
+        continue; // Hole, not accessed.
+      }
+      size_t block_size = blocks[i].second - blocks[i].first + 1;
+      auto first_inv = std::find_if_not(set_begin, set_end, is_valid_size<BLOCK>(block_size));
+      uint32_t way = std::distance(set_begin, first_inv);
+      if (way == NUM_WAY) {
+        way = lru_victim(&block.data()[set * NUM_WAY], block_size);
+      }
+      filllike_miss(set, way, blocks[i].first, merge_block);
+    }
+    buffer_cache.merge_block.pop_front();
   }
-  assert(0);
 }
 
 void VCL_CACHE::handle_fill()
@@ -1031,21 +1079,13 @@ void VCL_CACHE::handle_fill()
     // no buffer impl: insert in invalid big enough block (any way)
 
     uint32_t set = get_set(fill_mshr->address);
+    uint8_t num_blocks_to_write = 1;
 
     if (buffer) {
-      BLOCK* b = probe_buffer(*fill_mshr, set);
-      // TODO: Insert b into cache
-      handle_fill_from_buffer(*b, set);
-      b->valid = true;
-      b->address = fill_mshr->address;
-      b->v_address = fill_mshr->v_address;
-      b->data = fill_mshr->data;
-      b->ip = fill_mshr->ip;
-      b->cpu = fill_mshr->ip;
-      b->instr_id = fill_mshr->instr_id;
+      if (!buffer_cache.fill_miss(*fill_mshr))
+        return;
+      goto inserted;
     }
-
-    uint8_t num_blocks_to_write = 1;
 
     while (num_blocks_to_write > 0) {
       // TODO: If buffer go to buffer and insert whatever is in the buffer
@@ -1091,6 +1131,7 @@ void VCL_CACHE::handle_fill()
       num_blocks_to_write--;
     }
 
+  inserted:
     MSHR.erase(fill_mshr);
     writes_available_this_cycle--;
   }
@@ -1134,6 +1175,29 @@ uint8_t VCL_CACHE::hit_check(uint32_t& set, uint32_t& way, uint64_t& address, ui
   return NULL;
 }*/
 
+std::vector<uint32_t> VCL_CACHE::get_way(uint32_t tag, uint32_t set)
+{
+  auto begin = std::next(block.begin(), set * NUM_WAY);
+  auto end = std::next(begin, NUM_WAY);
+
+  std::vector<uint32_t> ways;
+  ways.reserve(NUM_WAY);
+
+  uint32_t way = 0;
+  while (begin < end) {
+    if (!begin->valid)
+      goto next;
+    if (get_tag(begin->v_address) != tag)
+      goto next;
+    // hit: tag matched
+    ways.push_back(way);
+  next:
+    way++;
+    begin = std::next(begin);
+  }
+  return ways;
+}
+
 uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
 {
   auto offset = packet.v_address % BLOCK_SIZE;
@@ -1162,21 +1226,6 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
   return NUM_WAY; // we did not find a way
 }
 
-void VCL_CACHE::buffer_hit(BLOCK& b, PACKET& p)
-{
-  // TODO: Track buffer stats separately
-  // record_cacheline_accesses(handle_pkt, hit_block)
-  p.data = b.data;
-  sim_hit[p.cpu][p.type]++;
-  sim_access[p.cpu][p.type]++;
-  for (auto ret : p.to_return)
-    ret->return_data(&p);
-  if (b.prefetch) {
-    pf_useful++;
-    b.prefetch = 0;
-  }
-}
-
 void VCL_CACHE::handle_read()
 {
   while (reads_available_this_cycle > 0) {
@@ -1193,11 +1242,18 @@ void VCL_CACHE::handle_read()
 
     uint32_t set = get_set(handle_pkt.address);
     uint32_t way = get_way(handle_pkt, set);
-    BLOCK* b = probe_buffer(handle_pkt, set);
+    BLOCK* b = buffer_cache.probe_buffer(handle_pkt);
+    if (!b)
+      b = buffer_cache.probe_merge(handle_pkt);
     // TODO: WE MIGHT NEED ALSO MULTIPLE WAYS
     // TODO: We might need multiple accesses
     if (b) {
-      buffer_hit(*b, handle_pkt);
+      RQ.pop_front();
+      reads_available_this_cycle--;
+      sim_hit[handle_pkt.cpu][handle_pkt.type]++;
+      sim_access[handle_pkt.cpu][handle_pkt.type]++;
+      handle_pkt.data = b->data;
+      continue;
     } else if (way < NUM_WAY) // HIT
     {
       // std::cout << "hit in SET: " << std::setw(3) << set << ", way: " << std::setw(3) << way << std::endl;
@@ -1401,6 +1457,54 @@ void VCL_CACHE::print_private_stats()
   for (uint32_t i = 0; i < NUM_WAY; ++i) {
     std::cout << std::right << std::setw(3) << i << ":\t" << way_hits[i] << std::endl;
   }
+}
+
+bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block)
+{
+  record_block_insert_removal(set, way, handle_block.address);
+  BLOCK& fill_block = block[set * NUM_WAY + way];
+
+  bool evicting_dirty = (lower_level != NULL) && fill_block.dirty;
+  uint64_t evicting_address = 0;
+  if (evicting_dirty) {
+    PACKET writeback_packet;
+
+    writeback_packet.fill_level = lower_level->fill_level;
+    writeback_packet.cpu = handle_block.cpu;
+    writeback_packet.address = fill_block.address;
+    writeback_packet.data = fill_block.data;
+    writeback_packet.instr_id = handle_block.instr_id;
+    writeback_packet.ip = handle_block.ip;
+    writeback_packet.type = WRITEBACK;
+
+    auto result = lower_level->add_wq(&writeback_packet);
+    if (result == -2)
+      return false;
+  }
+
+  if (ever_seen_data)
+    evicting_address = fill_block.address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+  else
+    evicting_address = fill_block.v_address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+
+  if (fill_block.prefetch)
+    pf_useless++;
+
+  fill_block.valid = true;
+  fill_block.prefetch = false; // prefetches would go into the buffer and on merge be useless
+  fill_block.dirty = handle_block.dirty;
+  fill_block.address = handle_block.address;
+  fill_block.v_address = handle_block.v_address;
+  fill_block.ip = handle_block.ip;
+  fill_block.cpu = handle_block.cpu;
+  fill_block.tag = get_tag(handle_block.address);
+  fill_block.instr_id = handle_block.instr_id;
+  fill_block.offset = std::min((uint64_t)64 - fill_block.size, offset);
+  auto endidx = 64 - fill_block.offset - fill_block.size;
+  fill_block.data = (handle_block.data << offset) >> offset >> endidx << endidx;
+  // We already acounted for the evicted block on insert, so what we count here is the insertion of a new block
+  way_hits[way]++;
+  return true;
 }
 
 bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
