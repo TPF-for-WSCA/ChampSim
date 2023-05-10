@@ -24,7 +24,12 @@ struct is_valid_size {
   using argument_type = T;
   size_t size;
   is_valid_size(size_t S) { size = S; };
-  bool operator()(const argument_type& test) { return test.valid && test.size <= size; }
+  bool operator()(const argument_type& test)
+  {
+    if (size < test.size && !test.valid)
+      return false; // it fits and it is not valid
+    return true;
+  }
 };
 template <typename T>
 struct eq_addr {

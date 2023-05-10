@@ -552,6 +552,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     fill_block.ip = handle_pkt.ip;
     fill_block.cpu = handle_pkt.cpu;
     fill_block.instr_id = handle_pkt.instr_id;
+    fill_block.tag = get_tag(handle_pkt.address);
     fill_block.accesses = 0;
     record_cacheline_accesses(handle_pkt, fill_block);
   }
@@ -959,8 +960,6 @@ BLOCK* BUFFER_CACHE::probe_buffer(PACKET& packet)
   sim_hit[packet.cpu][packet.type]++;
   sim_access[packet.cpu][packet.type]++;
 
-  for (auto ret : packet.to_return)
-    ret->return_data(&packet);
   record_cacheline_accesses(packet, hitb);
   return &hitb;
 };
@@ -1006,9 +1005,11 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
   fill_block.data = packet.data;
   fill_block.ip = packet.ip;
   fill_block.cpu = packet.cpu;
+  fill_block.tag = get_tag(packet.address);
   fill_block.instr_id = packet.instr_id;
   fill_block.accesses = 0;
   record_cacheline_accesses(packet, fill_block);
+
   return true;
 }
 
@@ -1081,12 +1082,15 @@ void VCL_CACHE::handle_fill()
     uint32_t set = get_set(fill_mshr->address);
     uint8_t num_blocks_to_write = 1;
 
+    uint64_t orig_addr = fill_mshr->address;
+    uint64_t orig_vaddr = fill_mshr->v_address;
+    uint64_t orig_size = fill_mshr->size;
+
     if (buffer) {
       if (!buffer_cache.fill_miss(*fill_mshr))
         return;
       goto inserted;
     }
-
     while (num_blocks_to_write > 0) {
       // TODO: If buffer go to buffer and insert whatever is in the buffer
       auto set_begin = std::next(std::begin(block), set * NUM_WAY);
@@ -1120,18 +1124,17 @@ void VCL_CACHE::handle_fill()
         fill_mshr->size = fill_mshr->size - diff;
       }
 
-      if (way != NUM_WAY) {
-        // update processed packets
-        fill_mshr->data = block[set * NUM_WAY + way].data;
-
-        for (auto ret : fill_mshr->to_return)
-          ret->return_data(&(*fill_mshr));
-      }
-
       num_blocks_to_write--;
     }
 
   inserted:
+    // restore mshr entry
+    fill_mshr->address = orig_addr;
+    fill_mshr->v_address = orig_vaddr;
+    fill_mshr->size = orig_size;
+    // data must already be copied in from above serviced
+    for (auto ret : fill_mshr->to_return)
+      ret->return_data(&(*fill_mshr));
     MSHR.erase(fill_mshr);
     writes_available_this_cycle--;
   }
@@ -1187,7 +1190,7 @@ std::vector<uint32_t> VCL_CACHE::get_way(uint32_t tag, uint32_t set)
   while (begin < end) {
     if (!begin->valid)
       goto next;
-    if (get_tag(begin->v_address) != tag)
+    if (get_tag(begin->address) != tag)
       goto next;
     // hit: tag matched
     ways.push_back(way);
@@ -1253,6 +1256,8 @@ void VCL_CACHE::handle_read()
       sim_hit[handle_pkt.cpu][handle_pkt.type]++;
       sim_access[handle_pkt.cpu][handle_pkt.type]++;
       handle_pkt.data = b->data;
+      for (auto ret : handle_pkt.to_return)
+        ret->return_data(&handle_pkt);
       continue;
     } else if (way < NUM_WAY) // HIT
     {
@@ -1571,6 +1576,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
     fill_block.data = handle_pkt.data;
     fill_block.ip = handle_pkt.ip;
     fill_block.cpu = handle_pkt.cpu;
+    fill_block.tag = get_tag(handle_pkt.address);
     fill_block.instr_id = handle_pkt.instr_id;
     if (aligned) {
       uint8_t original_offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
