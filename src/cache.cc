@@ -969,8 +969,11 @@ BLOCK* BUFFER_CACHE::probe_merge(PACKET& packet)
 {
   uint32_t tag = get_tag(packet.address);
   for (auto b : merge_block) {
-    if (tag == get_tag(b.address))
+    if (tag == get_tag(b.address)) {
+      sim_hit[packet.cpu][packet.type]++;
+      sim_access[packet.cpu][packet.type]++;
       return &b;
+    }
   }
 }
 
@@ -1010,6 +1013,8 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
   fill_block.accesses = 0;
   record_cacheline_accesses(packet, fill_block);
 
+  sim_miss[packet.cpu][packet.type]++;
+  sim_access[packet.cpu][packet.type]++;
   return true;
 }
 
