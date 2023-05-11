@@ -1256,10 +1256,9 @@ void VCL_CACHE::handle_read()
     // TODO: WE MIGHT NEED ALSO MULTIPLE WAYS
     // TODO: We might need multiple accesses
     if (b) {
+      // statistics in the buffer
       RQ.pop_front();
       reads_available_this_cycle--;
-      sim_hit[handle_pkt.cpu][handle_pkt.type]++;
-      sim_access[handle_pkt.cpu][handle_pkt.type]++;
       handle_pkt.data = b->data;
       for (auto ret : handle_pkt.to_return)
         ret->return_data(&handle_pkt);

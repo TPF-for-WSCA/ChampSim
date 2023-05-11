@@ -55,6 +55,13 @@ void record_roi_stats(uint32_t cpu, CACHE* cache)
     cache->roi_access[cpu][i] = cache->sim_access[cpu][i];
     cache->roi_hit[cpu][i] = cache->sim_hit[cpu][i];
     cache->roi_miss[cpu][i] = cache->sim_miss[cpu][i];
+    if (cache->buffer) {
+      BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
+      cache->roi_access[cpu][i] += bc.sim_access[cpu][i];
+      cache->roi_hit[cpu][i] += bc.sim_hit[cpu][i];
+      cache->roi_miss[cpu][i] += bc.sim_miss[cpu][i];
+      assert(cache->roi_access[cpu][i] == cache->roi_hit[cpu][i] + cache->roi_miss[cpu][i]);
+    }
   }
 }
 
@@ -66,6 +73,13 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
     TOTAL_ACCESS += cache->roi_access[cpu][i];
     TOTAL_HIT += cache->roi_hit[cpu][i];
     TOTAL_MISS += cache->roi_miss[cpu][i];
+    if (cache->buffer) {
+      BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
+      cache->roi_access[cpu][i] += bc.sim_access[cpu][i];
+      cache->roi_hit[cpu][i] += bc.sim_hit[cpu][i];
+      cache->roi_miss[cpu][i] += bc.sim_miss[cpu][i];
+      assert(cache->roi_access[cpu][i] == cache->roi_hit[cpu][i] + cache->roi_miss[cpu][i]);
+    }
   }
 
   if (TOTAL_ACCESS > 0) {
@@ -193,6 +207,12 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
     TOTAL_ACCESS += cache->sim_access[cpu][i];
     TOTAL_HIT += cache->sim_hit[cpu][i];
     TOTAL_MISS += cache->sim_miss[cpu][i];
+    if (cache->buffer) {
+      BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
+      TOTAL_ACCESS += bc.sim_access[cpu][i];
+      TOTAL_HIT += bc.sim_hit[cpu][i];
+      TOTAL_MISS += bc.sim_miss[cpu][i];
+    }
   }
 
   if (TOTAL_ACCESS > 0) {
