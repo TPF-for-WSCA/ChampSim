@@ -14,6 +14,8 @@ TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY = defaultdict(int)
 TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY = defaultdict(
     lambda: defaultdict(lambda: [0, 0])
 )
+BLOCK_SIZES_HISTOGRAM = defaultdict(lambda: [0 for i in range(64)])
+WAY_SIZES_BY_WORKLOAD = defaultdict(list)
 
 
 def flatten(d, parent_key="", sep="_"):
@@ -109,19 +111,21 @@ def trim_mask(mask):
     num_zero_bits = 0
     trimmed_mask = []
     for bit in mask:
-        if bit == 0 and not started:
+        if not bit and not started:
             last_bit_pos += 1
             continue
-        if bit == 1:
+        if bit:
             last_bit_pos += num_zero_bits
             last_bit_pos += 1
             num_zero_bits = 0
             started = True
-        elif bit == 0:
+        elif not bit:
             num_zero_bits += 1
         trimmed_mask.append(bit)
     return (
-        trimmed_mask[: -(len(mask) - last_bit_pos)],
+        trimmed_mask[: -(len(mask) - last_bit_pos)]
+        if (len(mask) - last_bit_pos) != 0
+        else trimmed_mask,
         len(mask) - len(trimmed_mask),
     )
 
@@ -162,47 +166,147 @@ def count_overlap_alignment(block, offset, strategy):
     TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][32][0] += 1
 
 
-def apply_splits_for_workload(workload_name, tracefile_path):
+def get_mask_from_tracefile(tracefile_path):
     with open(tracefile_path, "rb") as tracefile:
         while True:
             line = tracefile.read(8)
             if not line:
                 break
-
             intline = struct.unpack("ii", line)
             array_line = int_t_to_boolean_list(intline)
             if not array_line:
                 print(f"Decoding of line {line} failed", file=sys.stderr)
                 break
-            trimmed_mask, first_byte = trim_mask(array_line)
-            if all(trimmed_mask):
-                # no hole case, single block
-                # we need to add one to each splitting strategy, as no holes appear there as well
-                for strategy in strategies:
-                    TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY[strategy.name] += 1
-                continue
-            for strategy in strategies:
-                total_blocks, blocks = strategy.split(trimmed_mask)
-                TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY[
-                    strategy.name
-                ] += total_blocks
+            yield array_line
 
-                for block in blocks:
-                    count_overlap_alignment(block, first_byte, str(strategy))
+
+def merge_single_mask(first_byte, trimmed_mask):
+    if all(trimmed_mask):
+        # no hole case, single block
+        # we need to add one to each splitting strategy, as no holes appear there as well
+        for strategy in strategies:
+            TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY[strategy.name] += 1
+            BLOCK_SIZES_HISTOGRAM[strategy.name][len(trimmed_mask) - 1] += 1
+        return
+    for strategy in strategies:
+        total_blocks, blocks = strategy.split(trimmed_mask)
+        TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY[strategy.name] += total_blocks
+        for block in blocks:
+            count_overlap_alignment(block, first_byte, str(strategy))
+            BLOCK_SIZES_HISTOGRAM[strategy.name][block[1] - block[0]] += 1
+
+
+def create_uniform_buckets_of_size(num_buckets):
+    normalised_histogram = [
+        b / sum(BLOCK_SIZES_HISTOGRAM["no split"])
+        for b in BLOCK_SIZES_HISTOGRAM["no split"]
+    ]
+    target = 1.0 / num_buckets
+    bucket_sizes = []
+    bucket_percentages = []
+    counter = 1
+    sumup = 0
+    prev_bucket = 0.0
+    bucket_idx = 1
+    for percentage in normalised_histogram:
+        if percentage > target:
+            split = int(percentage / target)
+            value = percentage / split
+        else:
+            value = percentage
+        if value == 0:
+            counter += 1
+            continue
+        single_val = value
+        counter_increment = 0
+        if counter < 64:  # dont increase if we already hit the ceiling
+            counter_increment = 1
+        while value <= percentage:
+            comp_value = sumup + single_val
+            diff_with = abs(comp_value - (target * bucket_idx))
+            diff_without = abs((target * bucket_idx) - sumup)
+            if comp_value > (target * bucket_idx) and diff_with < diff_without:
+                if counter < 64:  # dont increase if we already hit the ceiling
+                    counter += counter_increment
+                bucket_percentages.append(comp_value - prev_bucket)
+                bucket_sizes.append(counter)
+                prev_bucket = comp_value
+                sumup += single_val
+                counter_increment = 0
+                bucket_idx += 1
+                value += single_val
+                continue
+            elif (
+                comp_value > (target * bucket_idx) and diff_without < diff_with
+            ):
+                bucket_sizes.append(counter)
+                bucket_percentages.append(sumup - prev_bucket)
+                prev_bucket = sumup
+                bucket_idx += 1
+            if counter < 64:  # dont increase if we already hit the ceiling
+                counter += counter_increment
+            counter_increment = 0
+            sumup += single_val
+            value += single_val
+    while len(bucket_sizes) < num_buckets:
+        bucket_sizes.append(bucket_sizes[-1])
+    # print(f"target bucket size: {target}")
+    # print(f"Actual buckets: {bucket_percentages}")
+    return bucket_sizes, bucket_percentages
+
+
+def apply_way_analysis(workload_name, tracefile_path):
+    for mask in get_mask_from_tracefile(tracefile_path):
+        trimmed_mask, first_byte = trim_mask(mask)
+        merge_single_mask(first_byte, trimmed_mask)
+
+    target_size = 512
+    error = 512
+    selected_waysizes = []
+    for i in range(8, 32):
+        bucket_sizes, _ = create_uniform_buckets_of_size(i)
+        if abs(target_size - sum(bucket_sizes)) < error:
+            error = abs(target_size - sum(bucket_sizes))
+            selected_waysizes = bucket_sizes
+    print(f"Optimal waysizes with error: {error}")
+    print(selected_waysizes)
+    WAY_SIZES_BY_WORKLOAD[workload_name] = selected_waysizes
+
+
+def apply_splits_for_workload(workload_name, tracefile_path):
+    for array_line in get_mask_from_tracefile(tracefile_path):
+        trimmed_mask, first_byte = trim_mask(array_line)
+        merge_single_mask(first_byte, trimmed_mask)
 
 
 def main(args):
     trace_directory = args.trace_dir
     global TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY
     for workload in os.listdir(trace_directory):
-        if workload.endswith(".txt") or workload == "graphs":
+        if (
+            workload.endswith(".txt")
+            or workload == "graphs"
+            or workload == "raw_data"
+        ):
             continue
         print(f"Handling {workload}...")
         try:
-            apply_splits_for_workload(
-                workload,
-                os.path.join(trace_directory, workload, "cl_access_masks.bin"),
-            )
+            if args.action == "merge_strategy":
+                apply_splits_for_workload(
+                    workload,
+                    os.path.join(
+                        trace_directory, workload, "cl_access_masks.bin"
+                    ),
+                )
+            elif args.action == "optimal_way":
+                apply_way_analysis(
+                    workload,
+                    os.path.join(
+                        trace_directory, workload, "cl_access_masks.bin"
+                    ),
+                )
+            else:
+                exit(-1)
 
             # print out results
             print(TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY)
@@ -253,8 +357,18 @@ def main(args):
 
             # reset counters
             TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY = defaultdict(int)
-        except Exception:
+        except Exception as ex:
+            print(f"Unknown exception occured {ex}")
             continue  # Ignore this workload / log written to stderr
+
+    way_file_path = result_file_path = os.path.join(
+        trace_directory, "way_sizes.tsv"
+    )
+    with open(way_file_path, "w", encoding="utf-8", newline="") as wayfile:
+        writer = csv.writer(wayfile, dialect="excel-tab")
+        for workload, waysizes in WAY_SIZES_BY_WORKLOAD.items():
+            entry = [workload, *waysizes]
+            writer.writerow(entry)
 
 
 if __name__ == "__main__":
@@ -263,5 +377,11 @@ if __name__ == "__main__":
         " blocks under given strategies"
     )
     parser.add_argument("trace_dir", type=str)
+    parser.add_argument(
+        "action",
+        type=str,
+        default="merge_strategy",
+        choices=["merge_strategy", "optimal_way"],
+    )
     args = parser.parse_args()
     main(args)
