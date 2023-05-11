@@ -111,7 +111,11 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
     cout << "  USEFUL: " << setw(10) << cache->pf_useful << "  USELESS: " << setw(10) << cache->pf_useless << endl;
 
     cout << cache->NAME;
-    cout << " AVERAGE MISS LATENCY: " << (1.0 * (cache->total_miss_latency)) / TOTAL_MISS << " cycles" << endl;
+    uint64_t total_miss_latency = cache->total_miss_latency;
+    if (cache->buffer) {
+      total_miss_latency += ((VCL_CACHE*)cache)->buffer_cache.total_miss_latency;
+    }
+    cout << " AVERAGE MISS LATENCY: " << (1.0 * (total_miss_latency)) / TOTAL_MISS << " cycles" << endl;
     // cout << " AVERAGE MISS LATENCY: " <<
     // (cache->total_miss_latency)/TOTAL_MISS << " cycles " <<
     // cache->total_miss_latency << "/" << TOTAL_MISS<< endl;

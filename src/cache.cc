@@ -1013,6 +1013,8 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
   fill_block.accesses = 0;
   record_cacheline_accesses(packet, fill_block);
 
+  if (warmup_complete[packet.cpu] && (packet.cycle_enqueued != 0))
+    total_miss_latency += current_cycle - packet.cycle_enqueued;
   sim_miss[packet.cpu][packet.type]++;
   sim_access[packet.cpu][packet.type]++;
   return true;
@@ -1031,6 +1033,13 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
   }
   return std::distance(begin_of_subset,
                        std::max_element(begin_of_subset, endofset, [](BLOCK lhs, BLOCK rhs) { return !rhs.valid || (lhs.valid && lhs.lru < rhs.lru); }));
+}
+
+void VCL_CACHE::operate()
+{
+  // let buffer cache whatever it needs to do
+  buffer_cache._operate();
+  CACHE::operate();
 }
 
 void VCL_CACHE::operate_writes()

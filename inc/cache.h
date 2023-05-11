@@ -95,7 +95,7 @@ public:
   virtual int add_pq(PACKET* packet) override;
 
   void return_data(PACKET* packet) override;
-  void operate() override;
+  virtual void operate() override;
   virtual void operate_writes();
   void operate_reads();
 
@@ -190,6 +190,8 @@ public:
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl, method){};
 
+  ~BUFFER_CACHE() { merge_block.clear(); };
+
   /// @brief Check if packet is in cache. If it is, rv is the block, if not it is null. If hit, accessed bytes and statistics will be recorded
   /// @param packet The request packet to be handled
   /// @return The block if it is found.
@@ -254,6 +256,7 @@ public:
   // void write_buffers_to_disk(void) override;
   // virtual void record_overlap(void) override;
 
+  virtual void operate() override;
   virtual void operate_writes() override;
   virtual void operate_buffer_merges();
 
