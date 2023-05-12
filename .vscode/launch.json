@@ -40,7 +40,7 @@
             "justMyCode": true,
             "stopOnEntry": false,
             "args": [
-                "~/OneDrive/Research/results/sizes_scaled/sizes_champsim128m",
+                "~/OneDrive/Research/results/sizes_scaled/sizes_champsim64k",
                 "optimal_way"
             ]
         }

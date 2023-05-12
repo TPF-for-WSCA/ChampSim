@@ -198,8 +198,8 @@ def merge_single_mask(first_byte, trimmed_mask):
 
 def create_uniform_buckets_of_size(num_buckets):
     normalised_histogram = [
-        b / sum(BLOCK_SIZES_HISTOGRAM["no split"])
-        for b in BLOCK_SIZES_HISTOGRAM["no split"]
+        b / sum(BLOCK_SIZES_HISTOGRAM["Split Two Bytes Hole"])
+        for b in BLOCK_SIZES_HISTOGRAM["Split Two Bytes Hole"]
     ]
     target = 1.0 / num_buckets
     bucket_sizes = []
@@ -215,24 +215,22 @@ def create_uniform_buckets_of_size(num_buckets):
         else:
             value = percentage
         if value == 0:
-            counter += 1
+            if counter < 64:
+                counter += 1
             continue
         single_val = value
-        counter_increment = 0
-        if counter < 64:  # dont increase if we already hit the ceiling
-            counter_increment = 1
+        inc_counter = True
         while value <= percentage:
             comp_value = sumup + single_val
             diff_with = abs(comp_value - (target * bucket_idx))
             diff_without = abs((target * bucket_idx) - sumup)
             if comp_value > (target * bucket_idx) and diff_with < diff_without:
-                if counter < 64:  # dont increase if we already hit the ceiling
-                    counter += counter_increment
+                if inc_counter and counter < 64:
+                    counter += 1
                 bucket_percentages.append(comp_value - prev_bucket)
                 bucket_sizes.append(counter)
                 prev_bucket = comp_value
                 sumup += single_val
-                counter_increment = 0
                 bucket_idx += 1
                 value += single_val
                 continue
@@ -243,11 +241,11 @@ def create_uniform_buckets_of_size(num_buckets):
                 bucket_percentages.append(sumup - prev_bucket)
                 prev_bucket = sumup
                 bucket_idx += 1
-            if counter < 64:  # dont increase if we already hit the ceiling
-                counter += counter_increment
-            counter_increment = 0
+            inc_counter = False
             sumup += single_val
             value += single_val
+        if counter < 64:  # dont increase if we already hit the ceiling
+            counter += 1
     while len(bucket_sizes) < num_buckets:
         bucket_sizes.append(bucket_sizes[-1])
     # print(f"target bucket size: {target}")
@@ -263,7 +261,7 @@ def apply_way_analysis(workload_name, tracefile_path):
     target_size = 512
     error = 512
     selected_waysizes = []
-    for i in range(8, 32):
+    for i in range(8, 64):
         bucket_sizes, _ = create_uniform_buckets_of_size(i)
         if abs(target_size - sum(bucket_sizes)) < error:
             error = abs(target_size - sum(bucket_sizes))
