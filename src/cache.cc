@@ -428,6 +428,15 @@ void CACHE::record_remainder_cachelines(uint32_t cpu)
     }
     record_cacheline_stats(cpu, b);
   }
+
+  if (buffer) {
+    VCL_CACHE* vc = static_cast<VCL_CACHE*>(this);
+    for (BLOCK b : vc->buffer_cache.block) {
+      if (!b.valid)
+        continue;
+      record_cacheline_stats(cpu, b);
+    }
+  }
 }
 
 void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)

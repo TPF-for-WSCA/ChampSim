@@ -119,7 +119,7 @@ def main(args):
     pending_experiments = []
 
     for trace in trace_files:
-        trace_name = trace.split("/")[-1].split(".")[0]
+        trace_name = trace.split("/")[-1].rsplit(".", 1)[0]
         if args.subdir:
             trace_name = path.split(trace)[0].split("/")[-1]
         output_subdir = path.join(output_dir, trace_name)
