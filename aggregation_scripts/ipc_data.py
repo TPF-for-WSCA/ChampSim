@@ -64,15 +64,16 @@ def mutliple_sizes_run():
         if not os.path.isdir(os.path.join(out_dir, subdir)):
             continue
         matches = re.search(r"(\d+)([km])?", subdir)
+        if not matches:
+            ipc_by_cachesize_and_workload[subdir] = single_run(
+                f"{out_dir}/{subdir}"
+            )
+            continue
         matches = matches.groups()
         if matches[1]:
             factor = 1024 if matches[1] == "k" else 1024 * 1024
             size_bytes = int(matches[0]) * factor
             ipc_by_cachesize_and_workload[size_bytes] = single_run(
-                f"{out_dir}/{subdir}"
-            )
-        elif matches[0]:
-            ipc_by_cachesize_and_workload[matches[0]] = single_run(
                 f"{out_dir}/{subdir}"
             )
         else:
