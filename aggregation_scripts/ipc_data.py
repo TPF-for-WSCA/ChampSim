@@ -76,24 +76,30 @@ def mutliple_sizes_run():
                 f"{out_dir}/{subdir}"
             )
         else:
-            ipc_by_cachesize_and_workload[subdir] = single_run(f"{out_dir}/{subdir}")
+            ipc_by_cachesize_and_workload[subdir] = single_run(
+                f"{out_dir}/{subdir}"
+            )
     return ipc_by_cachesize_and_workload
 
 
 def write_tsv(data):
-    header = False
     filename = "./ipc.tsv" if type == STATS.IPC else "./mpki.tsv"
     with open(filename, "w+") as outfile:
+        max_csize = 0
+        abs_max = 0
         for csize, values in data.items():
-            if not header:
-                header = True
-                for workload, ipc in data[csize].items():
-                    outfile.write(f"\t{workload}")
-                outfile.write("\n")
-
+            if len(values) > abs_max:
+                abs_max = len(values)
+                max_csize = csize
+        headers = []
+        for workload, _ in data[max_csize].items():
+            outfile.write(f"\t{workload}")
+            headers.append(workload)
+        outfile.write("\n")
+        for csize, values in data.items():
             outfile.write(f"{csize}")
-            for workload, ipc in data[csize].items():
-                outfile.write(f"\t{ipc}")
+            for header in headers:
+                outfile.write(f"\t{data[csize].get(header, None)}")
             outfile.write("\n")
 
 

@@ -171,7 +171,11 @@ if __name__ == "__main__":
         help="Directory containing all traces in named subfolders",
     )
     parser.add_argument(
-        "--trace_format", type=str, nargs="?", default="champsim"
+        "--trace_format",
+        type=str,
+        nargs="?",
+        default="champsim",
+        choices=["p", "c"],
     )
     parser.add_argument(
         "--output_dir",
