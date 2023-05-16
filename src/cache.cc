@@ -974,14 +974,17 @@ BLOCK* BUFFER_CACHE::probe_buffer(PACKET& packet)
 };
 
 // TODO: Statistics
-BLOCK* BUFFER_CACHE::probe_merge(PACKET& packet)
+BLOCK* __attribute__((optimize("O0"))) BUFFER_CACHE::probe_merge(PACKET& packet)
 {
+  if (merge_block.empty()) {
+    return NULL;
+  }
   uint32_t tag = get_tag(packet.address);
-  for (auto b : merge_block) {
-    if (tag == get_tag(b.address)) {
+  for (auto it = merge_block.rbegin(); it != merge_block.rend(); it++) {
+    if (tag == get_tag(it->address)) {
       sim_hit[packet.cpu][packet.type]++;
       sim_access[packet.cpu][packet.type]++;
-      return &b;
+      return &(*it);
     }
   }
 }

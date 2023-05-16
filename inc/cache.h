@@ -197,7 +197,7 @@ public:
   /// @return The block if it is found.
   BLOCK* probe_buffer(PACKET& packet);
 
-  BLOCK* probe_merge(PACKET& packet);
+  BLOCK* __attribute__((optimize("O0"))) probe_merge(PACKET& packet);
 
   /// @brief Insert a serviced read from lower level. If an entry is evicted, it is entered into the merge register
   /// @param packet The packet to be inserting
