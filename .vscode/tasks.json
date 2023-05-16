@@ -55,5 +55,13 @@
                 }
             }
         },
+        {
+            "label": "bin/champsim",
+            "command": "make bin/champsim -f /home/robrunne/Workspace/Simulators/ChampSim/Makefile",
+            "type": "shell",
+            "options": {
+                "cwd": "/home/robrunne/Workspace/Simulators/ChampSim"
+            }
+        },
     ]
 }
