@@ -32,12 +32,14 @@ def run_experiment(
     output_dir,
     vcl_perfect_predictor=None,
 ):
+    warmup_instr = int(experiment_instructions / 4)
+    sim_instructions = experiment_instructions - warmup_instr
     cmd = [
         executable,
         "-warmup_instructions",
-        "1000000",
+        str(warmup_instr),
         "-simulation_instructions",
-        str(experiment_instructions),
+        str(sim_instructions),
         "-result_dir",
         output_dir,
     ]
