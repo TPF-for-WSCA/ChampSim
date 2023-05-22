@@ -63,7 +63,7 @@ def mutliple_sizes_run():
     for subdir in os.listdir(out_dir):
         if not os.path.isdir(os.path.join(out_dir, subdir)):
             continue
-        matches = re.search(r"(\d+)([km])?", subdir)
+        matches = re.search(r"(\d+)([km])+", subdir)
         if not matches:
             ipc_by_cachesize_and_workload[subdir] = single_run(
                 f"{out_dir}/{subdir}"
