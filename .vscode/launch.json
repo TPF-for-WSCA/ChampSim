@@ -46,6 +46,18 @@
                 "~/OneDrive/Research/results/sizes_scaled/sizes_champsim64k",
                 "optimal_way"
             ]
+        },
+        {
+            "name": "Python: LinesPerWay",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/aggregation_scripts/ways_handled.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "stopOnEntry": false,
+            "args": [
+                "/home/robrunne/Downloads/testoutput/32k"
+            ]
         }
     ]
 }
