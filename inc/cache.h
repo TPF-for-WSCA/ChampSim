@@ -48,6 +48,9 @@ private:
   std::ofstream cl_num_blocks_in_cache;
   CountBlockMethod count_method;
 
+protected:
+  uint64_t* way_hits;
+
 public:
   bool buffer = false;
   uint32_t cpu;
@@ -132,7 +135,7 @@ public:
 
   void print_deadlock() override;
 
-  virtual void print_private_stats(void){};
+  virtual void print_private_stats(void);
 
 #include "cache_modules.inc"
 
@@ -152,6 +155,9 @@ public:
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
     }
     cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
+    way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
+    if (way_hits == NULL)
+      std::cerr << "COULD NOT ALLOCATE WAY_HIT ARRAY" << std::endl;
   }
   CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t perfect_cache, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
         uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
@@ -165,9 +171,13 @@ public:
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
     }
     cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
+    way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
+    if (way_hits == NULL)
+      std::cerr << "COULD NOT ALLOCATE WAY_HIT ARRAY" << std::endl;
   }
   ~CACHE()
   {
+    free((void*)way_hits);
     if (cl_accessmask_file.is_open())
       cl_accessmask_file.close();
   };
@@ -243,16 +253,13 @@ public:
       buffer_cache.HIT_LATENCY = buffer_hit_latency;
       buffer_cache.HIT_LATENCY = buffer_hit_latency;
     }
-    way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
-    if (way_hits == NULL)
-      std::cerr << "COULD NOT ALLOCATE WAY_HIT ARRAY" << std::endl;
+
     overlap_bytes_history.reserve(WRITE_BUFFER_SIZE);
     current_overlap = 0;
   }
   virtual int add_rq(PACKET* packet) override;
   virtual int add_wq(PACKET* packet) override;
   virtual int add_pq(PACKET* packet) override;
-  virtual void print_private_stats(void) override;
   // void write_buffers_to_disk(void) override;
   // virtual void record_overlap(void) override;
 
@@ -283,7 +290,6 @@ public:
   uint8_t hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size);
 
 private:
-  uint64_t* way_hits;
   std::vector<uint32_t> overlap_bytes_history;
   uint32_t current_overlap;
 };

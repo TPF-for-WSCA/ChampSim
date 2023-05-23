@@ -581,6 +581,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
   // COLLECT STATS
   sim_miss[handle_pkt.cpu][handle_pkt.type]++;
   sim_access[handle_pkt.cpu][handle_pkt.type]++;
+  way_hits[way]++;
 
   return true;
 }
@@ -1481,9 +1482,9 @@ int VCL_CACHE::add_rq(PACKET* packet)
   return RQ.occupancy();
 }
 
-void VCL_CACHE::print_private_stats()
+void CACHE::print_private_stats()
 {
-  std::cout << "L1I LINES HANDLED PER WAY" << std::endl;
+  std::cout << NAME << " LINES HANDLED PER WAY" << std::endl;
   for (uint32_t i = 0; i < NUM_WAY; ++i) {
     std::cout << std::right << std::setw(3) << i << ":\t" << way_hits[i] << std::endl;
   }
