@@ -204,6 +204,7 @@ void CACHE::handle_read()
 
     if (way < NUM_WAY || perfect_cache) // HIT
     {
+      way_hits[way]++;
       readlike_hit(set, way, handle_pkt);
     } else {
       bool success = readlike_miss(handle_pkt);
@@ -508,6 +509,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
   assert(!bypass);
 #endif
   assert(handle_pkt.type != WRITEBACK || !bypass);
+  way_hits[way]++;
 
   BLOCK& fill_block = block[set * NUM_WAY + way];
 
@@ -1287,6 +1289,8 @@ void VCL_CACHE::handle_read()
       continue;
     } else if (way < NUM_WAY) // HIT
     {
+      way_hits[way]++;
+
       // std::cout << "hit in SET: " << std::setw(3) << set << ", way: " << std::setw(3) << way << std::endl;
       readlike_hit(set, way, handle_pkt);
       uint64_t newoffset = hit_check(set, way, handle_pkt.address, handle_pkt.size);
@@ -1494,6 +1498,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
 {
   record_block_insert_removal(set, way, handle_block.address);
   BLOCK& fill_block = block[set * NUM_WAY + way];
+  way_hits[way]++;
 
   bool evicting_dirty = (lower_level != NULL) && fill_block.dirty;
   uint64_t evicting_address = 0;
@@ -1534,7 +1539,6 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   auto endidx = 64 - fill_block.offset - fill_block.size;
   fill_block.data = (handle_block.data << offset) >> offset >> endidx << endidx;
   // We already acounted for the evicted block on insert, so what we count here is the insertion of a new block
-  way_hits[way]++;
   return true;
 }
 
@@ -1548,6 +1552,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
     std::cout << " type: " << +handle_pkt.type;
     std::cout << " cycle: " << current_cycle << std::endl;
   });
+  way_hits[way]++;
 
   bool bypass = (way == NUM_WAY);
   record_block_insert_removal(set, way, handle_pkt.address);
@@ -1619,7 +1624,6 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
     } else
       fill_block.offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
     // We already acounted for the evicted block on insert, so what we count here is the insertion of a new block
-    way_hits[way]++;
   }
 
   if (warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
