@@ -16,7 +16,7 @@ module load Python/3.9.6-GCCcore-11.2.0
 binaries=("champsim32k" "champsim64k" "champsim_vcl_buffer_16" "champsim_bigcache")
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 90000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2 --nosub --intel --output_dir /cluster/work/romankb/results/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 250000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2 --nosub --intel --output_dir /cluster/work/romankb/results/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
 done
 
 for job in `jobs -p`

@@ -150,6 +150,7 @@ public:
   ooo_model_instr get()
   {
     ooo_model_instr trace_read_instr = read_single_instr<cloudsuite_instr>();
+    assert(trace_read_instr.ip % 4 == 0 || trace_read_instr.ip % 2 == 0 || knob_intel);
 
     if (!initialized) {
       last_instr = trace_read_instr;
@@ -158,12 +159,20 @@ public:
     }
 
     last_instr.branch_target = trace_read_instr.ip;
-    if (knob_intel)
+    if (knob_intel) {
       if (last_instr.is_branch || trace_read_instr.ip ^ last_instr.ip > 64) { // if xor is larger than 64 it must be an interrupt and thus we can't fix the size
-        last_instr.size = 2; // We don't know the size but it seems that the average branch instruction size is 2
+        last_instr.size = 3; // We don't know the size but it seems that the average branch instruction size is 2
       } else {
         last_instr.size = trace_read_instr.ip - last_instr.ip;
       }
+    } else {
+      // assume ARM trace
+      last_instr.size = 4;
+      if (last_instr.ip % 4 != 0) {
+        assert(last_instr.ip % 2 == 0);
+        last_instr.size = 2; // thumb instruction set
+      }
+    }
 
     ooo_model_instr retval = last_instr;
     assert(retval.size < 65);
@@ -185,6 +194,8 @@ public:
   {
     ooo_model_instr trace_read_instr = read_single_instr<input_instr>();
 
+    assert(trace_read_instr.ip % 4 == 0 || trace_read_instr.ip % 2 == 0 || knob_intel);
+
     if (!initialized) {
       last_instr = trace_read_instr;
       initialized = true;
@@ -193,13 +204,20 @@ public:
 
     last_instr.branch_target = trace_read_instr.ip;
 
-    if (knob_intel)
+    if (knob_intel) {
       if (last_instr.is_branch || trace_read_instr.ip ^ last_instr.ip > 64) { // if xor is larger than 64 it must be an interrupt and thus we can't fix the size
         last_instr.size = 2; // We don't know the size but it seems that the average branch instruction size is 2
       } else {
         last_instr.size = trace_read_instr.ip - last_instr.ip;
       }
-
+    } else {
+      // assume ARM trace
+      last_instr.size = 4;
+      if (last_instr.ip % 4 != 0) {
+        assert(last_instr.ip % 2 == 0);
+        last_instr.size = 2; // thumb instruction set
+      }
+    }
     ooo_model_instr retval = last_instr;
     assert(retval.size < 65);
 
