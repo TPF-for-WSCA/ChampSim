@@ -277,7 +277,6 @@ public:
   virtual void handle_writeback() override;
   // virtual void return_data(PACKET* packet) override;
   uint32_t lru_victim(BLOCK* current_set, uint8_t min_size);
-  virtual ~VCL_CACHE() { free(way_hits); };
   uint32_t get_way(PACKET& packet, uint32_t set) override;
   /// @brief Get all ways that match the tag of packet
   /// @param tag The tag to look up
