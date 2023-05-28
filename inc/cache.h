@@ -194,11 +194,15 @@ public:
   buffer_t<BLOCK> merge_block{MAX_WRITE};
   uint64_t total_accesses;
   uint64_t hits;
+  uint64_t merge_hit;
   BUFFER_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t perfect_cache, uint32_t v5, uint32_t v6, uint32_t v7,
                uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load,
                bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
-              pref_act_mask, ll, pref, repl, method){};
+              pref_act_mask, ll, pref, repl, method)
+  {
+    merge_hit = 0;
+  };
 
   ~BUFFER_CACHE() { merge_block.clear(); };
 

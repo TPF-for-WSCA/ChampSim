@@ -971,6 +971,7 @@ BLOCK* BUFFER_CACHE::probe_buffer(PACKET& packet)
   // COLLECT STATS
   sim_hit[packet.cpu][packet.type]++;
   sim_access[packet.cpu][packet.type]++;
+  way_hits[way]++;
 
   record_cacheline_accesses(packet, hitb);
   return &hitb;
@@ -987,6 +988,7 @@ BLOCK* __attribute__((optimize("O0"))) BUFFER_CACHE::probe_merge(PACKET& packet)
     if (tag == get_tag(it->address)) {
       sim_hit[packet.cpu][packet.type]++;
       sim_access[packet.cpu][packet.type]++;
+      merge_hit++;
       return &(*it);
     }
   }
@@ -1032,6 +1034,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
     total_miss_latency += current_cycle - packet.cycle_enqueued;
   sim_miss[packet.cpu][packet.type]++;
   sim_access[packet.cpu][packet.type]++;
+  way_hits[way]++;
   return true;
 }
 
@@ -1046,7 +1049,7 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
     std::cerr << "Couldn't find way that fits size" << std::endl;
     assert(0);
   }
-  return std::distance(begin_of_subset,
+  return std::distance(current_set,
                        std::max_element(begin_of_subset, endofset, [](BLOCK lhs, BLOCK rhs) { return !rhs.valid || (lhs.valid && lhs.lru < rhs.lru); }));
 }
 
@@ -1491,6 +1494,12 @@ void CACHE::print_private_stats()
   std::cout << NAME << " LINES HANDLED PER WAY" << std::endl;
   for (uint32_t i = 0; i < NUM_WAY; ++i) {
     std::cout << std::right << std::setw(3) << i << ":\t" << way_hits[i] << std::endl;
+  }
+  if (this->buffer) {
+    BUFFER_CACHE& bc = ((VCL_CACHE*)this)->buffer_cache;
+    bc.print_private_stats();
+    std::cout << std::right << std::setw(3) << "merge register"
+              << ":\t" << bc.merge_hit << std::endl;
   }
 }
 
