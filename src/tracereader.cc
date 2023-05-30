@@ -14,6 +14,7 @@ extern "C" {
 
 #define GZ_BUFFER_SIZE 50
 extern uint8_t knob_intel;
+extern int8_t knob_ip_offset;
 
 static const char* XED_REG_STR[] = {
     "XED_REG_INVALID",   "XED_REG_BNDCFGU", "XED_REG_BNDSTATUS", "XED_REG_BND0",       "XED_REG_BND1",       "XED_REG_BND2",      "XED_REG_BND3",
@@ -58,6 +59,16 @@ static const char* XED_REG_STR[] = {
     "XED_REG_ZMM21",     "XED_REG_ZMM22",   "XED_REG_ZMM23",     "XED_REG_ZMM24",      "XED_REG_ZMM25",      "XED_REG_ZMM26",     "XED_REG_ZMM27",
     "XED_REG_ZMM28",     "XED_REG_ZMM29",   "XED_REG_ZMM30",     "XED_REG_ZMM31",      "XED_REG_LAST",
 };
+
+bool offset_check(uint64_t ipa, uint64_t ipb, uint8_t offset)
+{
+  if (ipa < ipb) {
+    uint64_t tmp = ipa;
+    ipa = ipb;
+    ipb = tmp;
+  }
+  return (ipa - ipb) > offset;
+}
 
 const char* XedRegEnumToStr(uint8_t val) { return XED_REG_STR[val]; }
 
@@ -160,8 +171,9 @@ public:
 
     last_instr.branch_target = trace_read_instr.ip;
     if (knob_intel) {
-      if (last_instr.is_branch || trace_read_instr.ip ^ last_instr.ip > 64) { // if xor is larger than 64 it must be an interrupt and thus we can't fix the size
-        last_instr.size = 3; // We don't know the size but it seems that the average branch instruction size is 2
+      if (last_instr.is_branch
+          || offset_check(last_instr.ip, trace_read_instr.ip, 15)) { // if xor is larger than 64 it must be an interrupt and thus we can't fix the size
+        last_instr.size = 2;                                         // We don't know the size but it seems that the average branch instruction size is 2
       } else {
         last_instr.size = trace_read_instr.ip - last_instr.ip;
       }
@@ -205,8 +217,9 @@ public:
     last_instr.branch_target = trace_read_instr.ip;
 
     if (knob_intel) {
-      if (last_instr.is_branch || trace_read_instr.ip ^ last_instr.ip > 64) { // if xor is larger than 64 it must be an interrupt and thus we can't fix the size
-        last_instr.size = 2; // We don't know the size but it seems that the average branch instruction size is 2
+      if (last_instr.is_branch
+          || offset_check(last_instr.ip, trace_read_instr.ip, 15)) { // if xor is larger than  it must be an interrupt and thus we can't fix the size
+        last_instr.size = 2;                                         // We don't know the size but it seems that the average branch instruction size is 2
       } else {
         last_instr.size = trace_read_instr.ip - last_instr.ip;
       }

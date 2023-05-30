@@ -552,8 +552,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     fill_block.bytes_accessed = 0; // newly added to the cache thus no accesses yet
     memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
 
-    record_cacheline_accesses(handle_pkt, fill_block);
-
     fill_block.valid = true;
     fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
     fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
