@@ -76,7 +76,10 @@ struct ooo_model_instr {
     if (knob_intel) {
       return;
     }
+    extern int8_t knob_ip_offset;
+    std::cout << "ip: " << this->ip << std::endl;
 
+    this->ip += knob_ip_offset;
     assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
     this->size = 4;                                 // average for x86 (rounded up)
     if (this->ip % 2 == 0)
@@ -100,7 +103,9 @@ struct ooo_model_instr {
     if (knob_intel) {
       return;
     }
+    extern int8_t knob_ip_offset;
 
+    this->ip += knob_ip_offset;
     assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
     this->size = 4;                                 // average for x86 (rounded up)
     if (this->ip % 2 == 0)

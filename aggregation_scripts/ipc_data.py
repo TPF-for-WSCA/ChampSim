@@ -57,9 +57,10 @@ def single_run(path):
     return stat_by_workload
 
 
-def mutliple_sizes_run():
+def mutliple_sizes_run(out_dir=None):
     ipc_by_cachesize_and_workload = {}
-    out_dir = sys.argv[1]
+    if not out_dir:
+        out_dir = sys.argv[1]
     for subdir in os.listdir(out_dir):
         if not os.path.isdir(os.path.join(out_dir, subdir)):
             continue
@@ -83,9 +84,13 @@ def mutliple_sizes_run():
     return ipc_by_cachesize_and_workload
 
 
-def write_tsv(data):
-    filename = "./ipc.tsv" if type == STATS.IPC else "./mpki.tsv"
-    with open(filename, "w+") as outfile:
+def write_tsv(data, out_path=None):
+    filename = "ipc.tsv" if type == STATS.IPC else "mpki.tsv"
+    if out_path:
+        out_path = os.path.join(out_path, filename)
+    else:
+        out_path = os.path.join("./", filename)
+    with open(out_path, "w+") as outfile:
         max_csize = 0
         abs_max = 0
         for csize, values in data.items():
@@ -104,11 +109,24 @@ def write_tsv(data):
             outfile.write("\n")
 
 
+def multiple_benchmarks_run():
+    curr_dir = sys.argv[1]
+    for benchmark in os.listdir(curr_dir):
+        benchpath = os.path.join(curr_dir, benchmark)
+        if not os.path.isdir(benchpath):
+            continue
+        data = mutliple_sizes_run(out_dir=benchpath)
+        write_tsv(data, out_path=benchpath)
+
+
 data = {}
 if sys.argv[3] == "MPKI":
     type = STATS.MPKI
 if sys.argv[2] == "single":
     data["const"] = single_run(sys.argv[1])
+elif sys.argv[2] == "multibench":
+    multiple_benchmarks_run()
+    exit(0)
 else:
     data = mutliple_sizes_run()
 
