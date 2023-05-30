@@ -13,7 +13,7 @@
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
 #binaries=("champsim32k" "champsim64k" "champsim_vcl_buffer_16" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d" "champsim128m")
-binaries=("champsim32k" "champsim64k" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d") 
+binaries=("champsim32k" "champsim64k" "champsim128m" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d" "champsim_vcl_buffer_16") 
 for binary in ${binaries[@]}
 do
     python /cluster/home/romankb/workspace/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/dpc3/champsim-traces/speccpu  --intel --nosub --output_dir /cluster/work/users/romankb/results/dpc3/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
