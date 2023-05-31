@@ -1245,6 +1245,7 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
   auto begin = std::next(block.begin(), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
   uint32_t way = 0;
+  bool found_tag = false;
   // expanded loop for easier debugging
   while (begin < end) {
     if (!begin->valid) {
@@ -1253,6 +1254,7 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
     if ((packet.address >> (OFFSET_BITS)) != (begin->address >> (OFFSET_BITS))) {
       goto not_found;
     }
+    found_tag = true;
     if (begin->offset <= offset && offset < begin->offset + begin->size) {
       // std::cout << "hit: 1, address:" << packet.v_address << std::endl;
       return way;
@@ -1262,6 +1264,8 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
     begin = std::next(begin);
   }
   // std::cout << "hit: 0, address:" << packet.v_address << std::endl;
+  if (found_tag)
+    sim_partial_miss[packet.cpu][packet.type]++;
   return NUM_WAY; // we did not find a way
 }
 

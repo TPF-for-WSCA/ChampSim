@@ -80,8 +80,9 @@ public:
 
   std::list<PACKET> MSHR; // MSHR
 
-  uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {}, sim_hit[NUM_CPUS][NUM_TYPES] = {}, sim_miss[NUM_CPUS][NUM_TYPES] = {}, roi_access[NUM_CPUS][NUM_TYPES] = {},
-           roi_hit[NUM_CPUS][NUM_TYPES] = {}, roi_miss[NUM_CPUS][NUM_TYPES] = {}, holecount_hist[NUM_CPUS][BLOCK_SIZE] = {},
+  uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {}, sim_hit[NUM_CPUS][NUM_TYPES] = {}, sim_miss[NUM_CPUS][NUM_TYPES] = {},
+           sim_partial_miss[NUM_CPUS][NUM_TYPES] = {}, roi_access[NUM_CPUS][NUM_TYPES] = {}, roi_hit[NUM_CPUS][NUM_TYPES] = {},
+           roi_miss[NUM_CPUS][NUM_TYPES] = {}, roi_partial_miss[NUM_CPUS][NUM_TYPES] = {}, holecount_hist[NUM_CPUS][BLOCK_SIZE] = {},
            holesize_hist[NUM_CPUS][BLOCK_SIZE] = {}, cl_bytesaccessed_hist[NUM_CPUS][BLOCK_SIZE] = {}, blsize_hist[NUM_CPUS][BLOCK_SIZE] = {},
            blsize_ignore_holes_hist[NUM_CPUS][BLOCK_SIZE] = {};
 

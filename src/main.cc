@@ -56,14 +56,17 @@ void record_roi_stats(uint32_t cpu, CACHE* cache)
     cache->roi_access[cpu][i] = cache->sim_access[cpu][i];
     cache->roi_hit[cpu][i] = cache->sim_hit[cpu][i];
     cache->roi_miss[cpu][i] = cache->sim_miss[cpu][i];
+    cache->roi_partial_miss[cpu][i] = cache->sim_partial_miss[cpu][i];
     if (cache->buffer) {
       BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
       cache->roi_access[cpu][i] += bc.sim_access[cpu][i];
       cache->roi_hit[cpu][i] += bc.sim_hit[cpu][i];
       cache->roi_miss[cpu][i] += bc.sim_miss[cpu][i];
+      cache->roi_partial_miss[cpu][i] = bc.sim_partial_miss[cpu][i];
       bc.roi_access[cpu][i] = bc.sim_access[cpu][i];
       bc.roi_hit[cpu][i] += bc.sim_hit[cpu][i];
       bc.roi_miss[cpu][i] += bc.sim_miss[cpu][i];
+      bc.roi_partial_miss[cpu][i] = bc.sim_partial_miss[cpu][i];
       assert(cache->roi_access[cpu][i] == cache->roi_hit[cpu][i] + cache->roi_miss[cpu][i]);
     }
   }
@@ -265,12 +268,13 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
 
 void print_sim_stats(uint32_t cpu, CACHE* cache)
 {
-  uint64_t TOTAL_ACCESS = 0, TOTAL_HIT = 0, TOTAL_MISS = 0;
+  uint64_t TOTAL_ACCESS = 0, TOTAL_HIT = 0, TOTAL_MISS = 0, TOTAL_PARTIAL_MISS = 0;
 
   for (uint32_t i = 0; i < NUM_TYPES; i++) {
     TOTAL_ACCESS += cache->sim_access[cpu][i];
     TOTAL_HIT += cache->sim_hit[cpu][i];
     TOTAL_MISS += cache->sim_miss[cpu][i];
+    TOTAL_PARTIAL_MISS += cache->sim_partial_miss[cpu][i];
     if (cache->buffer) {
       BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
       TOTAL_ACCESS += bc.sim_access[cpu][i];
@@ -483,6 +487,7 @@ void reset_cache_stats(uint32_t cpu, CACHE* cache)
     cache->sim_access[cpu][i] = 0;
     cache->sim_hit[cpu][i] = 0;
     cache->sim_miss[cpu][i] = 0;
+    cache->sim_partial_miss[cpu][i] = 0;
   }
 
   for (uint32_t i = 0; i < BLOCK_SIZE; i++) {
@@ -511,6 +516,11 @@ void reset_cache_stats(uint32_t cpu, CACHE* cache)
   cache->WQ_TO_CACHE = 0;
   cache->WQ_FORWARD = 0;
   cache->WQ_FULL = 0;
+
+  if (cache->buffer) {
+    BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
+    reset_cache_stats(cpu, bc);
+  }
 }
 
 void finish_warmup()
