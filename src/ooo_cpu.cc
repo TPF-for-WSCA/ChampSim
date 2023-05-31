@@ -14,7 +14,8 @@ extern uint8_t MAX_INSTR_DESTINATIONS;
 
 void O3_CPU::operate()
 {
-  instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy());
+  // subtract 1, as we might insert two into the buffer (overlap)
+  instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy()) - 1);
 
   retire_rob();                    // retire
   complete_inflight_instruction(); // finalize execution
@@ -252,8 +253,25 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     arch_instr.num_reg_ops = 0;
   }
 
+  // Ensure no overlapping instructions
+  bool overlap = false;
+  ooo_model_instr overhang_instr = arch_instr;
+  if ((arch_instr.ip % BLOCK_SIZE) + arch_instr.size > 64) {
+    arch_instr.size = BLOCK_SIZE - (arch_instr.ip % BLOCK_SIZE);
+    overhang_instr.ip += arch_instr.size;
+    overhang_instr.instruction_pa += arch_instr.size;
+    overhang_instr.size -= arch_instr.size;
+    assert(overhang_instr.size > 0);
+    arch_instr.is_branch = 0; // we only predict a branch once - once it is fully fetched
+  }
+
   // Add to IFETCH_BUFFER
   IFETCH_BUFFER.push_back(arch_instr);
+
+  if (overlap) {
+    instrs_to_read_this_cycle--;
+    IFETCH_BUFFER.push_back(overhang_instr);
+  }
 
   instr_unique_id++;
 }
@@ -362,30 +380,46 @@ void O3_CPU::fetch_instruction()
 void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
 {
   // add it to the L1-I's read queue
-  PACKET fetch_packet;
-  fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
-  fetch_packet.cpu = cpu;
-  fetch_packet.address = begin->instruction_pa;
-  fetch_packet.data = begin->instruction_pa;
-  fetch_packet.v_address = begin->ip;
-  fetch_packet.instr_id = begin->instr_id;
-  fetch_packet.ip = begin->ip;
-  fetch_packet.size = begin->size;
-  fetch_packet.type = LOAD;
-  fetch_packet.asid[0] = 0;
-  fetch_packet.asid[1] = 0;
-  fetch_packet.to_return = {&L1I_bus};
-  for (; begin != end; ++begin)
+  std::vector<ooo_model_instr> new_cl_fetch;
+  for (; begin != end; ++begin) {
+    PACKET fetch_packet;
+    fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
+    fetch_packet.cpu = cpu;
+    fetch_packet.address = begin->instruction_pa;
+    fetch_packet.data = begin->instruction_pa;
+    fetch_packet.v_address = begin->ip;
+    fetch_packet.instr_id = begin->instr_id;
+    fetch_packet.ip = begin->ip;
+    if (((begin->ip + begin->size - 1) >> LOG2_BLOCK_SIZE) > (begin->ip >> LOG2_BLOCK_SIZE)) {
+      fetch_packet.size = BLOCK_SIZE - (fetch_packet.ip % BLOCK_SIZE);
+      // ooo_model_instr nextlineinstr = (*begin);
+      // nextlineinstr.ip = begin->ip + fetch_packet.size;
+      // nextlineinstr.instruction_pa = begin->instruction_pa + fetch_packet.size;
+      // nextlineinstr.size = begin->size - fetch_packet.size;
+      // new_cl_fetch.push_back(nextlineinstr);
+    } else {
+      fetch_packet.size = begin->size;
+    }
+    fetch_packet.type = LOAD;
+    fetch_packet.asid[0] = 0;
+    fetch_packet.asid[1] = 0;
+    fetch_packet.to_return = {&L1I_bus};
     fetch_packet.instr_depend_on_me.push_back(begin);
 
-  int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
+    // std::cout << "fetch: " << std::setw(16) << fetch_packet.ip << ", size: " << std::setw(3) << fetch_packet.size << std::endl;
+    int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
 
-  if (rq_index != -2) {
-    // mark all instructions from this cache line as having been fetched
-    for (auto dep_it : fetch_packet.instr_depend_on_me) {
-      dep_it->fetched = INFLIGHT;
+    if (rq_index != -2) {
+      // mark all instructions from this cache line as having been fetched
+      for (auto dep_it : fetch_packet.instr_depend_on_me) {
+        dep_it->fetched = INFLIGHT;
+      }
     }
   }
+
+  // assert(new_cl_fetch.size() <= 1);
+  // if (new_cl_fetch.size() > 0)
+  //   IFETCH_BUFFER.push_front(new_cl_fetch[0]);
 }
 
 void O3_CPU::promote_to_decode()

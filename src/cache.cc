@@ -397,12 +397,14 @@ void CACHE::write_buffers_to_disk()
   }
   if (!cl_accessmask_file.is_open()) {
     std::filesystem::path result_path = result_dir;
-    result_path /= "cl_access_masks.bin";
+    string filename = this->NAME + "_cl_access_masks.bin";
+    result_path /= filename;
     cl_accessmask_file = std::ofstream(result_path.c_str(), std::ios::binary | std::ios::out);
   }
   if (!cl_num_blocks_in_cache.is_open()) {
     std::filesystem::path result_path = result_dir;
-    result_path /= "cl_num_blocks.bin";
+    string filename = this->NAME + "_cl_num_blocks.bin";
+    result_path /= filename;
     cl_num_blocks_in_cache = std::ofstream(result_path.c_str(), std::ios::binary | std::ios::out);
   }
   for (auto& mask : cl_accessmask_buffer) {
@@ -671,19 +673,22 @@ int CACHE::add_rq(PACKET* packet)
   }
 
   // check for duplicates in the read queue
-  auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, OFFSET_BITS));
-  if (found_rq != RQ.end()) {
+  if (0 != this->NAME.compare(this->NAME.length() - 3, 3, "L1I")) {
 
-    DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_RQ" << std::endl;)
+    auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, OFFSET_BITS));
+    if (found_rq != RQ.end()) {
 
-    packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
-    packet_dep_merge(found_rq->sq_index_depend_on_me, packet->sq_index_depend_on_me);
-    packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
-    packet_dep_merge(found_rq->to_return, packet->to_return);
+      DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_RQ" << std::endl;)
 
-    RQ_MERGED++;
+      packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
+      packet_dep_merge(found_rq->sq_index_depend_on_me, packet->sq_index_depend_on_me);
+      packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
+      packet_dep_merge(found_rq->to_return, packet->to_return);
 
-    return 0; // merged index
+      RQ_MERGED++;
+
+      return 0; // merged index
+    }
   }
 
   // check occupancy
@@ -1011,6 +1016,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
 
   if (fill_block.valid) {
     merge_block.push_back(fill_block, true);
+    record_cacheline_stats(packet.cpu, fill_block);
   }
 
   fill_block.bytes_accessed = 0;
@@ -1448,22 +1454,21 @@ int VCL_CACHE::add_rq(PACKET* packet)
     WQ_FORWARD++;
     return -1;
   }
-
   // check for duplicates in the read queue
-  auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, (OFFSET_BITS)));
-  if (found_rq != RQ.end()) {
-
-    DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_RQ" << std::endl;)
-
-    packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
-    packet_dep_merge(found_rq->sq_index_depend_on_me, packet->sq_index_depend_on_me);
-    packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
-    packet_dep_merge(found_rq->to_return, packet->to_return);
-
-    RQ_MERGED++;
-
-    return 0; // merged index
-  }
+  // auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, (OFFSET_BITS)));
+  // if (found_rq != RQ.end()) {
+  //
+  //  DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_RQ" << std::endl;)
+  //
+  //  packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
+  //  packet_dep_merge(found_rq->sq_index_depend_on_me, packet->sq_index_depend_on_me);
+  //  packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
+  //  packet_dep_merge(found_rq->to_return, packet->to_return);
+  //
+  //  RQ_MERGED++;
+  //
+  //  return 0; // merged index
+  //}
 
   // check occupancy
   if (RQ.full()) {
