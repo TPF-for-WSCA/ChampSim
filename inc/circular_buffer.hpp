@@ -173,6 +173,12 @@ public:
     operator[](tail_) = item;
     tail_ = circ_inc(tail_, 1, *this);
   }
+  void push_front(const T item)
+  {
+    assert(!full());
+    head_ = circ_inc(head_, -1, *this);
+    operator[](head_) = item;
+  }
   void push_back(const T&& item)
   {
     assert(!full());
