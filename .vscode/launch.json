@@ -9,18 +9,18 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "-warmup_instructions",
-                "5000000",
+                "50",
                 "-simulation_instructions",
-                "10000000",
+                "1000",
                 "-result_dir",
                 "~/Downloads/results/test_results",
-                "-ptrace",
+                // "-ptrace",
                 // "-cloudsuite",
                 "-intel",
                 "-traces",
-                "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
+                // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
                 // "/home/robrunne/OneDrive/Research/datasets/ipc1/client_001.champsimtrace.xz"
-                //"/home/robrunne/OneDrive/Research/datasets/crc2/astar_163B.trace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/crc2/astar_163B.trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
             ],
             "stopAtEntry": false,
