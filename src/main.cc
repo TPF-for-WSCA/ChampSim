@@ -62,11 +62,11 @@ void record_roi_stats(uint32_t cpu, CACHE* cache)
       cache->roi_access[cpu][i] += bc.sim_access[cpu][i];
       cache->roi_hit[cpu][i] += bc.sim_hit[cpu][i];
       cache->roi_miss[cpu][i] += bc.sim_miss[cpu][i];
-      cache->roi_partial_miss[cpu][i] = bc.sim_partial_miss[cpu][i];
+      cache->roi_partial_miss[cpu][i] += bc.sim_partial_miss[cpu][i];
       bc.roi_access[cpu][i] = bc.sim_access[cpu][i];
       bc.roi_hit[cpu][i] += bc.sim_hit[cpu][i];
       bc.roi_miss[cpu][i] += bc.sim_miss[cpu][i];
-      bc.roi_partial_miss[cpu][i] = bc.sim_partial_miss[cpu][i];
+      bc.roi_partial_miss[cpu][i] += bc.sim_partial_miss[cpu][i];
       assert(cache->roi_access[cpu][i] == cache->roi_hit[cpu][i] + cache->roi_miss[cpu][i]);
     }
   }
@@ -158,12 +158,13 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
 
 void print_roi_stats(uint32_t cpu, CACHE* cache)
 {
-  uint64_t TOTAL_ACCESS = 0, TOTAL_HIT = 0, TOTAL_MISS = 0;
+  uint64_t TOTAL_ACCESS = 0, TOTAL_HIT = 0, TOTAL_MISS = 0, TOTAL_PARTIAL_MISS = 0;
 
   for (uint32_t i = 0; i < NUM_TYPES; i++) {
     TOTAL_ACCESS += cache->roi_access[cpu][i];
     TOTAL_HIT += cache->roi_hit[cpu][i];
     TOTAL_MISS += cache->roi_miss[cpu][i];
+    TOTAL_PARTIAL_MISS += cache->roi_partial_miss[cpu][i];
     //     if (cache->buffer) {
     //       BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
     //       cache->roi_access[cpu][i] += bc.sim_access[cpu][i];
@@ -175,73 +176,98 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
     //       assert(cache->roi_access[cpu][i] == cache->roi_hit[cpu][i] + cache->roi_miss[cpu][i]);
     //     }
   }
+  long double miss_ratio = 0;
+  if (TOTAL_PARTIAL_MISS != 0 && TOTAL_MISS != 0)
+    miss_ratio = ((long double)TOTAL_PARTIAL_MISS / (long double)TOTAL_MISS) * 100;
 
   if (TOTAL_ACCESS > 0) {
     cout << cache->NAME;
-    cout << " TOTAL     ACCESS: " << setw(10) << TOTAL_ACCESS << "  HIT: " << setw(10) << TOTAL_HIT << "  MISS: " << setw(10) << TOTAL_MISS << endl;
+    cout << " TOTAL     ACCESS: " << setw(10) << TOTAL_ACCESS << "  HIT: " << setw(10) << TOTAL_HIT << "  MISS: " << setw(10) << TOTAL_MISS
+         << "  PARTIAL MISS: " << setw(10) << TOTAL_PARTIAL_MISS << " ( " << fixed << setprecision(2) << miss_ratio << "%)" << endl;
+
+    miss_ratio = 0;
+    if (cache->roi_miss[cpu][0] != 0 && cache->roi_partial_miss[cpu][0] != 0)
+      miss_ratio = ((long double)cache->roi_partial_miss[cpu][0] / (long double)cache->roi_miss[cpu][0]) * 100;
+    cout << cache->NAME;
+    cout << " LOAD      ACCESS: " << setw(10) << cache->roi_access[cpu][0] << "  HIT: " << setw(10) << cache->roi_hit[cpu][0] << "  MISS: " << setw(10)
+         << cache->roi_miss[cpu][0] << "  PARTIAL MISS: " << setw(10) << cache->roi_partial_miss[cpu][0] << " ( " << fixed << setprecision(2) << miss_ratio
+         << "%)" << endl;
+
+    miss_ratio = 0;
+    if (cache->roi_miss[cpu][1] != 0 && cache->roi_partial_miss[cpu][1] != 0)
+      miss_ratio = ((long double)cache->roi_partial_miss[cpu][1] / (long double)cache->roi_miss[cpu][1]) * 100;
+    cout << cache->NAME;
+    cout << " RFO       ACCESS: " << setw(10) << cache->roi_access[cpu][1] << "  HIT: " << setw(10) << cache->roi_hit[cpu][1] << "  MISS: " << setw(10)
+         << cache->roi_miss[cpu][1] << "  PARTIAL MISS: " << setw(10) << cache->roi_partial_miss[cpu][1] << " ( " << fixed << setprecision(2) << miss_ratio
+         << "%)" << endl;
+
+    miss_ratio = 0;
+    if (cache->roi_miss[cpu][2] != 0 && cache->roi_partial_miss[cpu][2] != 0)
+      miss_ratio = ((long double)cache->roi_partial_miss[cpu][2] / (long double)cache->roi_miss[cpu][2]) * 100;
+    cout << cache->NAME;
+    cout << " PREFETCH  ACCESS: " << setw(10) << cache->roi_access[cpu][2] << "  HIT: " << setw(10) << cache->roi_hit[cpu][2] << "  MISS: " << setw(10)
+         << cache->roi_miss[cpu][2] << "  PARTIAL MISS: " << setw(10) << cache->roi_partial_miss[cpu][2] << " ( " << fixed << setprecision(2) << miss_ratio
+         << "%)" << endl;
+
+    miss_ratio = 0;
+    if (cache->roi_miss[cpu][3] != 0 && cache->roi_partial_miss[cpu][3] != 0)
+      miss_ratio = ((long double)cache->roi_partial_miss[cpu][3] / (long double)cache->roi_miss[cpu][3]) * 100;
+    cout << cache->NAME;
+    cout << " WRITEBACK ACCESS: " << setw(10) << cache->roi_access[cpu][3] << "  HIT: " << setw(10) << cache->roi_hit[cpu][3] << "  MISS: " << setw(10)
+         << cache->roi_miss[cpu][3] << "  PARTIAL MISS: " << setw(10) << cache->roi_partial_miss[cpu][3] << " ( " << fixed << setprecision(2) << miss_ratio
+         << "%)" << endl;
+
+    miss_ratio = 0;
+    if (cache->roi_miss[cpu][4] != 0 && cache->roi_partial_miss[cpu][4] != 0)
+      miss_ratio = ((long double)cache->roi_partial_miss[cpu][4] / (long double)cache->roi_miss[cpu][4]) * 100;
+    cout << cache->NAME;
+    cout << " TRANSLATION ACCESS: " << setw(10) << cache->roi_access[cpu][4] << "  HIT: " << setw(10) << cache->roi_hit[cpu][4] << "  MISS: " << setw(10)
+         << cache->roi_miss[cpu][4] << "  PARTIAL MISS: " << setw(10) << cache->roi_partial_miss[cpu][4] << " ( " << fixed << setprecision(2) << miss_ratio
+         << "%)" << endl;
+
+    cout << cache->NAME;
+    cout << " PREFETCH  REQUESTED: " << setw(10) << cache->pf_requested << "  ISSUED: " << setw(10) << cache->pf_issued;
+    cout << "  USEFUL: " << setw(10) << cache->pf_useful << "  USELESS: " << setw(10) << cache->pf_useless << endl;
 
     if (cache->buffer) {
       BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
       cout << bc.NAME;
-      cout << " LOAD      ACCESS: " << setw(10) << bc.roi_access[cpu][0] << "  HIT: " << setw(10) << bc.roi_hit[cpu][0] << "  MISS: " << setw(10)
+      cout << " LOAD        ACCESS: " << setw(10) << bc.roi_access[cpu][0] << "  HIT: " << setw(10) << bc.roi_hit[cpu][0] << "  MISS: " << setw(10)
            << bc.roi_miss[cpu][0] << endl;
     }
 
-    cout << cache->NAME;
-    cout << " LOAD      ACCESS: " << setw(10) << cache->roi_access[cpu][0] << "  HIT: " << setw(10) << cache->roi_hit[cpu][0] << "  MISS: " << setw(10)
-         << cache->roi_miss[cpu][0] << endl;
-
     if (cache->buffer) {
       BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
       cout << bc.NAME;
-      cout << " RFO      ACCESS: " << setw(10) << bc.roi_access[cpu][1] << "  HIT: " << setw(10) << bc.roi_hit[cpu][1] << "  MISS: " << setw(10)
+      cout << " RFO         ACCESS: " << setw(10) << bc.roi_access[cpu][1] << "  HIT: " << setw(10) << bc.roi_hit[cpu][1] << "  MISS: " << setw(10)
            << bc.roi_miss[cpu][1] << endl;
     }
 
-    cout << cache->NAME;
-    cout << " RFO       ACCESS: " << setw(10) << cache->roi_access[cpu][1] << "  HIT: " << setw(10) << cache->roi_hit[cpu][1] << "  MISS: " << setw(10)
-         << cache->roi_miss[cpu][1] << endl;
-
     if (cache->buffer) {
       BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
       cout << bc.NAME;
-      cout << " PREFETCH  ACCESS: " << setw(10) << bc.roi_access[cpu][2] << "  HIT: " << setw(10) << bc.roi_hit[cpu][2] << "  MISS: " << setw(10)
+      cout << " PREFETCH    ACCESS: " << setw(10) << bc.roi_access[cpu][2] << "  HIT: " << setw(10) << bc.roi_hit[cpu][2] << "  MISS: " << setw(10)
            << bc.roi_miss[cpu][2] << endl;
     }
 
-    cout << cache->NAME;
-    cout << " PREFETCH  ACCESS: " << setw(10) << cache->roi_access[cpu][2] << "  HIT: " << setw(10) << cache->roi_hit[cpu][2] << "  MISS: " << setw(10)
-         << cache->roi_miss[cpu][2] << endl;
-
     if (cache->buffer) {
       BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
       cout << bc.NAME;
-      cout << " WRITEBACK ACCESS: " << setw(10) << bc.roi_access[cpu][3] << "  HIT: " << setw(10) << bc.roi_hit[cpu][3] << "  MISS: " << setw(10)
+      cout << " WRITEBACK   ACCESS: " << setw(10) << bc.roi_access[cpu][3] << "  HIT: " << setw(10) << bc.roi_hit[cpu][3] << "  MISS: " << setw(10)
            << bc.roi_miss[cpu][3] << endl;
     }
-    cout << cache->NAME;
-    cout << " WRITEBACK ACCESS: " << setw(10) << cache->roi_access[cpu][3] << "  HIT: " << setw(10) << cache->roi_hit[cpu][3] << "  MISS: " << setw(10)
-         << cache->roi_miss[cpu][3] << endl;
-
     if (cache->buffer) {
       BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
       cout << bc.NAME;
       cout << " TRANSLATION ACCESS: " << setw(10) << bc.roi_access[cpu][4] << "  HIT: " << setw(10) << bc.roi_hit[cpu][4] << "  MISS: " << setw(10)
            << bc.roi_miss[cpu][4] << endl;
     }
-    cout << cache->NAME;
-    cout << " TRANSLATION ACCESS: " << setw(10) << cache->roi_access[cpu][4] << "  HIT: " << setw(10) << cache->roi_hit[cpu][4] << "  MISS: " << setw(10)
-         << cache->roi_miss[cpu][4] << endl;
-
     if (cache->buffer) {
       BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
       cout << bc.NAME;
-      cout << " PREFETCH  ACCESS: " << setw(10) << bc.roi_access[cpu][5] << "  HIT: " << setw(10) << bc.roi_hit[cpu][5] << "  MISS: " << setw(10)
+      cout << " PREFETCH    ACCESS: " << setw(10) << bc.roi_access[cpu][5] << "  HIT: " << setw(10) << bc.roi_hit[cpu][5] << "  MISS: " << setw(10)
            << bc.roi_miss[cpu][5] << endl;
     }
-    cout << cache->NAME;
-    cout << " PREFETCH  REQUESTED: " << setw(10) << cache->pf_requested << "  ISSUED: " << setw(10) << cache->pf_issued;
-    cout << "  USEFUL: " << setw(10) << cache->pf_useful << "  USELESS: " << setw(10) << cache->pf_useless << endl;
 
     cout << cache->NAME;
     uint64_t total_miss_latency = cache->total_miss_latency;
@@ -282,26 +308,46 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
       TOTAL_MISS += bc.sim_miss[cpu][i];
     }
   }
+  long double miss_ratio = 0;
+  if (TOTAL_PARTIAL_MISS != 0 && TOTAL_MISS != 0)
+    miss_ratio = ((long double)TOTAL_PARTIAL_MISS / (long double)TOTAL_MISS) * 100;
 
   if (TOTAL_ACCESS > 0) {
     cout << cache->NAME;
-    cout << " TOTAL     ACCESS: " << setw(10) << TOTAL_ACCESS << "  HIT: " << setw(10) << TOTAL_HIT << "  MISS: " << setw(10) << TOTAL_MISS << endl;
+    cout << " TOTAL     ACCESS: " << setw(10) << TOTAL_ACCESS << "  HIT: " << setw(10) << TOTAL_HIT << "  MISS: " << setw(10) << TOTAL_MISS
+         << "  PARTIAL MISS: " << setw(10) << TOTAL_PARTIAL_MISS << " ( " << fixed << setprecision(2) << miss_ratio << "%)" << endl;
 
+    miss_ratio = 0;
+    if (cache->sim_miss[cpu][0] != 0 && cache->sim_partial_miss[cpu][0] != 0)
+      miss_ratio = ((long double)cache->sim_partial_miss[cpu][0] / (long double)cache->sim_miss[cpu][0]) * 100;
     cout << cache->NAME;
     cout << " LOAD      ACCESS: " << setw(10) << cache->sim_access[cpu][0] << "  HIT: " << setw(10) << cache->sim_hit[cpu][0] << "  MISS: " << setw(10)
-         << cache->sim_miss[cpu][0] << endl;
+         << cache->sim_miss[cpu][0] << "  PARTIAL MISS: " << setw(10) << cache->sim_partial_miss[cpu][0] << " ( " << fixed << setprecision(2) << miss_ratio
+         << "%)" << endl;
 
+    miss_ratio = 0;
+    if (cache->sim_miss[cpu][1] != 0 && cache->sim_partial_miss[cpu][1] != 0)
+      miss_ratio = ((long double)cache->sim_partial_miss[cpu][1] / (long double)cache->sim_miss[cpu][1]) * 100;
     cout << cache->NAME;
     cout << " RFO       ACCESS: " << setw(10) << cache->sim_access[cpu][1] << "  HIT: " << setw(10) << cache->sim_hit[cpu][1] << "  MISS: " << setw(10)
-         << cache->sim_miss[cpu][1] << endl;
+         << cache->sim_miss[cpu][1] << "  PARTIAL MISS: " << setw(10) << cache->sim_partial_miss[cpu][1] << " ( " << fixed << setprecision(2) << miss_ratio
+         << "%)" << endl;
 
+    miss_ratio = 0;
+    if (cache->sim_miss[cpu][2] != 0 && cache->sim_partial_miss[cpu][2] != 0)
+      miss_ratio = ((long double)cache->sim_partial_miss[cpu][2] / (long double)cache->sim_miss[cpu][2]) * 100;
     cout << cache->NAME;
     cout << " PREFETCH  ACCESS: " << setw(10) << cache->sim_access[cpu][2] << "  HIT: " << setw(10) << cache->sim_hit[cpu][2] << "  MISS: " << setw(10)
-         << cache->sim_miss[cpu][2] << endl;
+         << cache->sim_miss[cpu][2] << "  PARTIAL MISS: " << setw(10) << cache->sim_partial_miss[cpu][2] << " ( " << fixed << setprecision(2) << miss_ratio
+         << "%)" << endl;
 
+    miss_ratio = 0;
+    if (cache->sim_miss[cpu][3] != 0 && cache->sim_partial_miss[cpu][3] != 0)
+      miss_ratio = ((long double)cache->sim_partial_miss[cpu][3] / (long double)cache->sim_miss[cpu][3]) * 100;
     cout << cache->NAME;
     cout << " WRITEBACK ACCESS: " << setw(10) << cache->sim_access[cpu][3] << "  HIT: " << setw(10) << cache->sim_hit[cpu][3] << "  MISS: " << setw(10)
-         << cache->sim_miss[cpu][3] << endl;
+         << cache->sim_miss[cpu][3] << "  PARTIAL MISS: " << setw(10) << cache->sim_partial_miss[cpu][3] << " ( " << fixed << setprecision(2) << miss_ratio
+         << "%)" << endl;
 
     if (0 == cache->NAME.compare(cache->NAME.length() - 3, 3, "L1I")) {
       print_block_stats(cpu, cache);
@@ -518,7 +564,7 @@ void reset_cache_stats(uint32_t cpu, CACHE* cache)
   cache->WQ_FULL = 0;
 
   if (cache->buffer) {
-    BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
+    BUFFER_CACHE* bc = &((VCL_CACHE*)cache)->buffer_cache;
     reset_cache_stats(cpu, bc);
   }
 }

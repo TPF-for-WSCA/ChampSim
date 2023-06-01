@@ -30,7 +30,6 @@ def flatten(d, parent_key="", sep="_"):
 
 
 class Strategy:
-
     name = ""
     split_fn = lambda line: (1)
 
@@ -258,8 +257,8 @@ def apply_way_analysis(workload_name, tracefile_path):
         trimmed_mask, first_byte = trim_mask(mask)
         merge_single_mask(first_byte, trimmed_mask)
 
-    target_size = 512
-    error = 512
+    target_size = 448
+    error = target_size
     selected_waysizes = []
     for i in range(8, 64):
         bucket_sizes, _ = create_uniform_buckets_of_size(i)
@@ -281,6 +280,8 @@ def main(args):
     trace_directory = args.trace_dir
     global TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY
     for workload in os.listdir(trace_directory):
+        if not os.path.isdir(os.path.join(trace_directory, workload)):
+            continue
         if (
             workload.endswith(".txt")
             or workload == "graphs"
@@ -293,14 +294,18 @@ def main(args):
                 apply_splits_for_workload(
                     workload,
                     os.path.join(
-                        trace_directory, workload, "cl_access_masks.bin"
+                        trace_directory,
+                        workload,
+                        "cpu0_L1I_cl_access_masks.bin",
                     ),
                 )
             elif args.action == "optimal_way":
                 apply_way_analysis(
                     workload,
                     os.path.join(
-                        trace_directory, workload, "cl_access_masks.bin"
+                        trace_directory,
+                        workload,
+                        "cpu0_L1I_cl_access_masks.bin",
                     ),
                 )
             else:
@@ -310,7 +315,7 @@ def main(args):
             print(TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY)
 
             result_file_path = os.path.join(
-                trace_directory, workload, "cl_splits_overhead.tsv"
+                trace_directory, workload, "cpu0_L1I_cl_splits_overhead.tsv"
             )
             with open(
                 result_file_path, "w", encoding="utf-8", newline=""

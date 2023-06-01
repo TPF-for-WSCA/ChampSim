@@ -1237,7 +1237,7 @@ std::vector<uint32_t> VCL_CACHE::get_way(uint32_t tag, uint32_t set)
   return ways;
 }
 
-uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
+uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set, bool& partial_miss)
 {
   auto offset = packet.v_address % BLOCK_SIZE;
   // std::cout << "get_way(TAG: " << std::hex << std::setw(10) << ((packet.v_address >> OFFSET_BITS) >> lg2(NUM_SET)) << std::dec << ", SET: " << std::setw(3)
@@ -1246,6 +1246,7 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
   auto end = std::next(begin, NUM_WAY);
   uint32_t way = 0;
   bool found_tag = false;
+  partial_miss = false;
   // expanded loop for easier debugging
   while (begin < end) {
     if (!begin->valid) {
@@ -1265,7 +1266,7 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
   }
   // std::cout << "hit: 0, address:" << packet.v_address << std::endl;
   if (found_tag)
-    sim_partial_miss[packet.cpu][packet.type]++;
+    partial_miss = true;
   return NUM_WAY; // we did not find a way
 }
 
@@ -1284,12 +1285,13 @@ void VCL_CACHE::handle_read()
     ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
 
     uint32_t set = get_set(handle_pkt.address);
-    uint32_t way = get_way(handle_pkt, set);
+    bool partial_miss = false;
+    uint32_t way = get_way(handle_pkt, set, partial_miss);
     BLOCK* b = buffer_cache.probe_buffer(handle_pkt);
     if (!b)
       b = buffer_cache.probe_merge(handle_pkt);
-    // TODO: WE MIGHT NEED ALSO MULTIPLE WAYS
-    // TODO: We might need multiple accesses
+
+    // HIT IN BUFFER/MERGE REGISTER / always use that first
     if (b) {
       // statistics in the buffer
       RQ.pop_front();
@@ -1298,8 +1300,10 @@ void VCL_CACHE::handle_read()
       for (auto ret : handle_pkt.to_return)
         ret->return_data(&handle_pkt);
       continue;
-    } else if (way < NUM_WAY) // HIT
-    {
+    }
+
+    // HIT IN VCL CACHE
+    if (way < NUM_WAY) {
       way_hits[way]++;
 
       // std::cout << "hit in SET: " << std::setw(3) << set << ", way: " << std::setw(3) << way << std::endl;
@@ -1319,12 +1323,16 @@ void VCL_CACHE::handle_read()
       handle_pkt.address = (handle_pkt.address & mask) + newoffset; // offset matches: all 64 byte aligned
       // not done reading this thing just yet
       continue;
-    } else {
-      bool success = readlike_miss(handle_pkt);
-      RQ.pop_front();
-      if (!success)
-        return; // buffer full = try next cycle
     }
+
+    // MISS
+    if (partial_miss) {
+      sim_partial_miss[handle_pkt.cpu][handle_pkt.type]++;
+    }
+    bool success = readlike_miss(handle_pkt);
+    RQ.pop_front();
+    if (!success)
+      return; // buffer full = try next cycle
 
     // remove this entry from RQ
     reads_available_this_cycle--;
