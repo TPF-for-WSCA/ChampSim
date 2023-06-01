@@ -117,7 +117,7 @@ def main(args):
         global executable
         executable = args.exec
 
-    pool = Pool(processes=64)
+    pool = Pool(processes=16)
     pending_experiments = []
 
     for trace in trace_files:
