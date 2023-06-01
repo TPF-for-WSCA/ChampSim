@@ -2,8 +2,8 @@
 #SBATCH --job-name="num-collection-champsim-sizes"
 #SBATCH --account=share-ie-idi
 #SBATCH --nodes=1
-#SBATCH -c8
-#SBATCH --mem-per-cpu=2G
+#SBATCH -c16
+#SBATCH --mem-per-cpu=8G
 #SBATCH --time=00-06:00:00
 #SBATCH --mail-user=romankb@ntnu.no
 #SBATCH --mail-type=ALL
@@ -13,10 +13,12 @@
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
-binaries=("champsim32k" "champsim64k" "champsim_vcl_buffer_16" "champsim_bigcache")
+binaries=("champsim64k" "champsim32k" "champsim128m" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d" "champsim_vcl_buffer_16")
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1 --nosub --output_dir /cluster/work/romankb/results/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/spec --nosub --output_dir /cluster/work/romankb/results/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec_${binary}.log
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/server --nosub --output_dir /cluster/work/romankb/results/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server_${binary}.log
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/client --nosub --output_dir /cluster/work/romankb/results/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client_${binary}.log
 done
 
 for job in `jobs -p`
