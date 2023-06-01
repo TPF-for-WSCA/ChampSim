@@ -77,7 +77,6 @@ struct ooo_model_instr {
       return;
     }
     extern int8_t knob_ip_offset;
-    std::cout << "ip: " << this->ip << std::endl;
 
     this->ip += knob_ip_offset;
     assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
