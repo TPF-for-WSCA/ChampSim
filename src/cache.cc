@@ -15,6 +15,7 @@
 
 extern VirtualMemory vmem;
 extern uint8_t warmup_complete[NUM_CPUS];
+extern uint8_t knob_stall_on_miss;
 
 void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper)
 {
@@ -208,6 +209,9 @@ void CACHE::handle_read()
       readlike_hit(set, way, handle_pkt);
     } else {
       bool success = readlike_miss(handle_pkt);
+      if (knob_stall_on_miss) {
+        reads_available_this_cycle = 1;
+      }
       if (!success)
         return;
     }
@@ -1333,7 +1337,10 @@ void VCL_CACHE::handle_read()
       return; // buffer full = try next cycle
 
     // remove this entry from RQ
-    reads_available_this_cycle--;
+    if (knob_stall_on_miss)
+      reads_available_this_cycle = 0;
+    else
+      reads_available_this_cycle--;
   }
 }
 
@@ -1464,22 +1471,6 @@ int VCL_CACHE::add_rq(PACKET* packet)
     WQ_FORWARD++;
     return -1;
   }
-  // check for duplicates in the read queue
-  // auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, (OFFSET_BITS)));
-  // if (found_rq != RQ.end()) {
-  //
-  //  DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_RQ" << std::endl;)
-  //
-  //  packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
-  //  packet_dep_merge(found_rq->sq_index_depend_on_me, packet->sq_index_depend_on_me);
-  //  packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
-  //  packet_dep_merge(found_rq->to_return, packet->to_return);
-  //
-  //  RQ_MERGED++;
-  //
-  //  return 0; // merged index
-  //}
-
   // check occupancy
   if (RQ.full()) {
     RQ_FULL++;

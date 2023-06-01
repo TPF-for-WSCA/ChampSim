@@ -45,6 +45,8 @@ def run_experiment(
     ]
     if args.intel:
         cmd.append("-intel")
+    if args.som:
+        cmd.append("-stallonmiss")
     if args.trace_format == "c":
         cmd.append("-c")
     if args.trace_format == "p":
@@ -207,6 +209,12 @@ if __name__ == "__main__":
         action="store_true",
     )
     parser.set_defaults(intel=False)
+
+    parser.add_argument(
+        "--som",
+        action="store_true",
+    )
+    parser.set_defaults(som=False)
 
     args = parser.parse_args()
     main(args)

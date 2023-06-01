@@ -19,7 +19,7 @@
 #include "vmem.h"
 
 uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, all_warmup_complete = 0, all_simulation_complete = 0,
-        MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_pintrace = 0, knob_cloudsuite = 0, knob_low_bandwidth = 0, knob_intel = 0;
+        MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_pintrace = 0, knob_cloudsuite = 0, knob_low_bandwidth = 0, knob_intel = 0, knob_stall_on_miss = 0;
 int8_t knob_ip_offset = 0;
 
 uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
@@ -658,6 +658,7 @@ int main(int argc, char** argv)
                                          {"ptrace", no_argument, 0, 'p'},
                                          {"intel", no_argument, 0, 'x'},
                                          {"ipoff", required_argument, 0, 'o'},
+                                         {"stallonmiss", no_argument, 0, 's'},
                                          {"result_dir", required_argument, 0, 'r'},
                                          {"traces", no_argument, &traces_encountered, 1},
                                          {0, 0, 0, 0}};
@@ -686,6 +687,9 @@ int main(int argc, char** argv)
       break;
     case 'o':
       knob_ip_offset = atoi(optarg);
+      break;
+    case 's':
+      knob_stall_on_miss = 1;
       break;
     case 'r':
       result_dir = optarg;
