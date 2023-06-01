@@ -392,11 +392,6 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
     fetch_packet.ip = begin->ip;
     if (((begin->ip + begin->size - 1) >> LOG2_BLOCK_SIZE) > (begin->ip >> LOG2_BLOCK_SIZE)) {
       fetch_packet.size = BLOCK_SIZE - (fetch_packet.ip % BLOCK_SIZE);
-      // ooo_model_instr nextlineinstr = (*begin);
-      // nextlineinstr.ip = begin->ip + fetch_packet.size;
-      // nextlineinstr.instruction_pa = begin->instruction_pa + fetch_packet.size;
-      // nextlineinstr.size = begin->size - fetch_packet.size;
-      // new_cl_fetch.push_back(nextlineinstr);
     } else {
       fetch_packet.size = begin->size;
     }

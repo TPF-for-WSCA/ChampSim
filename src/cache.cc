@@ -1037,6 +1037,9 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
   if (warmup_complete[packet.cpu] && (packet.cycle_enqueued != 0))
     total_miss_latency += current_cycle - packet.cycle_enqueued;
   sim_miss[packet.cpu][packet.type]++;
+  if (packet.partial) {
+    sim_partial_miss[packet.cpu][packet.type]++;
+  }
   sim_access[packet.cpu][packet.type]++;
   way_hits[way]++;
   return true;
@@ -1237,7 +1240,7 @@ std::vector<uint32_t> VCL_CACHE::get_way(uint32_t tag, uint32_t set)
   return ways;
 }
 
-uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set, bool& partial_miss)
+uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
 {
   auto offset = packet.v_address % BLOCK_SIZE;
   // std::cout << "get_way(TAG: " << std::hex << std::setw(10) << ((packet.v_address >> OFFSET_BITS) >> lg2(NUM_SET)) << std::dec << ", SET: " << std::setw(3)
@@ -1246,7 +1249,6 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set, bool& partial_miss)
   auto end = std::next(begin, NUM_WAY);
   uint32_t way = 0;
   bool found_tag = false;
-  partial_miss = false;
   // expanded loop for easier debugging
   while (begin < end) {
     if (!begin->valid) {
@@ -1266,7 +1268,7 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set, bool& partial_miss)
   }
   // std::cout << "hit: 0, address:" << packet.v_address << std::endl;
   if (found_tag)
-    partial_miss = true;
+    packet.partial = true;
   return NUM_WAY; // we did not find a way
 }
 
@@ -1285,8 +1287,7 @@ void VCL_CACHE::handle_read()
     ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
 
     uint32_t set = get_set(handle_pkt.address);
-    bool partial_miss = false;
-    uint32_t way = get_way(handle_pkt, set, partial_miss);
+    uint32_t way = get_way(handle_pkt, set);
     BLOCK* b = buffer_cache.probe_buffer(handle_pkt);
     if (!b)
       b = buffer_cache.probe_merge(handle_pkt);
@@ -1326,9 +1327,6 @@ void VCL_CACHE::handle_read()
     }
 
     // MISS
-    if (partial_miss) {
-      sim_partial_miss[handle_pkt.cpu][handle_pkt.type]++;
-    }
     bool success = readlike_miss(handle_pkt);
     RQ.pop_front();
     if (!success)
