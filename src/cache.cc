@@ -212,8 +212,10 @@ void CACHE::handle_read()
       if (knob_stall_on_miss) {
         reads_available_this_cycle = 1;
       }
-      if (!success)
+      if (!success) {
+        reads_available_this_cycle = 0;
         return;
+      }
     }
 
     // remove this entry from RQ

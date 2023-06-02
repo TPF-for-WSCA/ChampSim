@@ -9,6 +9,7 @@ from enum import Enum
 class STATS(Enum):
     IPC = 1
     MPKI = 2
+    PARTIAL = 3
 
 
 type = STATS.IPC
@@ -24,6 +25,21 @@ def extract_ipc(path):
         matches = regex.match(line)
         if matches:
             return matches.groups()[0]
+
+
+def extract_l1i_partial(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(
+        "cpu0\_L1I TOTAL.*PARTIAL MISS\:\s+(\d*) \( (\d*\.?\d+)\%\)"
+    )
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[1]
+    return 0
 
 
 def extract_l1i_mpki(path):
@@ -48,6 +64,10 @@ def single_run(path):
                 continue
             if type == STATS.MPKI:
                 stat_by_workload[workload] = extract_l1i_mpki(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.PARTIAL:
+                stat_by_workload[workload] = extract_l1i_partial(
                     f"{path}/{workload}/{logfile}"
                 )
             else:
@@ -85,7 +105,11 @@ def mutliple_sizes_run(out_dir=None):
 
 
 def write_tsv(data, out_path=None):
-    filename = "ipc.tsv" if type == STATS.IPC else "mpki.tsv"
+    filename = "ipc.tsv"
+    if type == STATS.MPKI:
+        filename = "mpki.tsv"
+    elif type == STATS.PARTIAL:
+        filename = "partial.tsv"
     if out_path:
         out_path = os.path.join(out_path, filename)
     else:
@@ -122,6 +146,8 @@ def multiple_benchmarks_run():
 data = {}
 if sys.argv[3] == "MPKI":
     type = STATS.MPKI
+elif sys.argv[3] == "PARTIAL":
+    type = STATS.PARTIAL
 if sys.argv[2] == "single":
     data["const"] = single_run(sys.argv[1])
 elif sys.argv[2] == "multibench":
