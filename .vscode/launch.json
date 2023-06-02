@@ -17,7 +17,7 @@
                 "-ptrace",
                 // "-cloudsuite",
                 "-intel",
-                "-stallonmiss",
+                // "-stallonmiss",
                 "-traces",
                 "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
                 // "/home/robrunne/OneDrive/Research/datasets/ipc1/client_001.champsimtrace.xz"
