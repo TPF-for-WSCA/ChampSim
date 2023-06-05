@@ -3,6 +3,7 @@ import csv
 import os
 import struct
 import sys
+import traceback
 
 from collections import defaultdict
 from collections.abc import MutableMapping
@@ -16,6 +17,7 @@ TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY = defaultdict(
 )
 BLOCK_SIZES_HISTOGRAM = defaultdict(lambda: [0 for i in range(64)])
 WAY_SIZES_BY_WORKLOAD = defaultdict(list)
+BLOCK_STARTS_BY_WORKLOAD = defaultdict(lambda: [0 for i in range(64)])
 arm = False
 
 
@@ -261,7 +263,7 @@ def apply_way_analysis(workload_name, tracefile_path):
         trimmed_mask, first_byte = trim_mask(mask)
         merge_single_mask(first_byte, trimmed_mask)
 
-    target_size = 448
+    target_size = 428
     error = target_size
     selected_waysizes = []
     for i in range(8, 64):
@@ -278,6 +280,37 @@ def apply_splits_for_workload(workload_name, tracefile_path):
     for array_line in get_mask_from_tracefile(tracefile_path):
         trimmed_mask, first_byte = trim_mask(array_line)
         merge_single_mask(first_byte, trimmed_mask)
+
+
+def apply_offset_bucket_analysis(worklad_name, tracefile_path):
+    for mask in get_mask_from_tracefile(tracefile_path):
+        trimmed_mask, first_byte = trim_mask(mask)
+
+        print(first_byte)
+        BLOCK_STARTS_BY_WORKLOAD[worklad_name][first_byte] += 1
+        prev_bit = True
+        for bit in trimmed_mask:
+            if bit and not prev_bit:
+                print(first_byte)
+                BLOCK_STARTS_BY_WORKLOAD[worklad_name][first_byte] += 1
+            first_byte += 1
+            prev_bit = bit
+
+
+def print_starting_offsets(trace_directory, workload):
+    result_file_path = os.path.join(
+        trace_directory, workload, "cpu0_L1I_cl_block_starts.tsv"
+    )
+    with open(
+        result_file_path, "w", encoding="utf-8", newline=""
+    ) as result_file:
+        writer = csv.DictWriter(
+            result_file,
+            BLOCK_STARTS_BY_WORKLOAD.keys(),
+            dialect="excel-tab",
+        )
+        writer.writeheader()
+        writer.writerow(BLOCK_STARTS_BY_WORKLOAD)
 
 
 def main(args):
@@ -314,6 +347,17 @@ def main(args):
                         "cpu0_L1I_cl_access_masks.bin",
                     ),
                 )
+            elif args.action == "starting_offsets":
+                apply_offset_bucket_analysis(
+                    workload,
+                    os.path.join(
+                        trace_directory,
+                        workload,
+                        "cpu0_L1I_cl_access_masks.bin",
+                    ),
+                )
+                print_starting_offsets(trace_directory, workload)
+                continue
             else:
                 exit(-1)
 
@@ -367,7 +411,7 @@ def main(args):
             # reset counters
             TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY = defaultdict(int)
         except Exception as ex:
-            print(f"Unknown exception occured {ex}")
+            print(f"Unknown exception occured {ex}, {traceback.print_exc()}")
             continue  # Ignore this workload / log written to stderr
 
     way_file_path = result_file_path = os.path.join(
@@ -390,7 +434,7 @@ if __name__ == "__main__":
         "action",
         type=str,
         default="merge_strategy",
-        choices=["merge_strategy", "optimal_way"],
+        choices=["merge_strategy", "optimal_way", "starting_offsets"],
     )
 
     parser.add_argument(
