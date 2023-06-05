@@ -45,6 +45,7 @@
     "buffer": true,
     "buffer_size": 64,
     "buffer_organisation": "DIRECT_MAPPED",
+    "buffer_fifo": false,
     "way_sizes": [
       4,
       6,
