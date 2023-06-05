@@ -318,6 +318,10 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
     packet_dep_merge(mshr_entry->instr_depend_on_me, handle_pkt.instr_depend_on_me);
     packet_dep_merge(mshr_entry->to_return, handle_pkt.to_return);
 
+    if (handle_pkt.partial) {
+      mshr_entry->partial = true;
+    }
+
     if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH) {
       // Mark the prefetch as useful
       if (mshr_entry->pf_origin_level == fill_level)
@@ -964,6 +968,36 @@ void CACHE::print_deadlock()
   }
 }
 
+void BUFFER_CACHE::initialize_replacement() {}
+
+// find replacement victim
+uint32_t BUFFER_CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+{
+  // baseline LRU
+  uint32_t way = std::distance(current_set, std::max_element(current_set, std::next(current_set, NUM_WAY), lru_comparator<BLOCK, BLOCK>()));
+  return way;
+}
+
+// called on every cache hit and cache fill
+void BUFFER_CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
+                                            uint8_t hit)
+{
+  // We only update on miss to obtain a FIFO queue behaviour
+  if (hit)
+    return;
+
+  auto begin = std::next(block.begin(), set * NUM_WAY);
+  auto end = std::next(begin, NUM_WAY);
+  uint32_t hit_lru = std::next(begin, way)->lru;
+  std::for_each(begin, end, [hit_lru](BLOCK& x) {
+    if (x.lru <= hit_lru)
+      x.lru++;
+  });
+  std::next(begin, way)->lru = 0; // promote to the MRU position
+}
+
+void BUFFER_CACHE::replacement_final_stats() {}
+
 // TODO: statistics
 BLOCK* BUFFER_CACHE::probe_buffer(PACKET& packet)
 {
@@ -975,7 +1009,6 @@ BLOCK* BUFFER_CACHE::probe_buffer(PACKET& packet)
   BLOCK& hitb = block[set * NUM_WAY + way];
   if (!hitb.valid)
     return NULL;
-  impl_replacement_update_state(packet.cpu, set, way, packet.address, packet.ip, 0, packet.type, 1);
 
   // COLLECT STATS
   sim_hit[packet.cpu][packet.type]++;
@@ -1011,9 +1044,10 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
   auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
   uint32_t way = std::distance(set_begin, first_inv);
   if (way == NUM_WAY) {
-    way = impl_replacement_find_victim(packet.cpu, packet.instr_id, set, &block.data()[set * NUM_WAY], packet.ip, packet.address, packet.type);
+    way = (this->*replacement_find_victim)(packet.cpu, packet.instr_id, set, &block.data()[set * NUM_WAY], packet.ip, packet.address, packet.type);
     // TODO: RECORD STATISTICS IF ANY
   }
+  (this->*replacement_update_state)(packet.cpu, set, way, packet.address, packet.ip, 0, packet.type, 0);
 
   if (merge_block.full()) {
     return false;

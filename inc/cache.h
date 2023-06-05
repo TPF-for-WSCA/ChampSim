@@ -188,8 +188,13 @@ class BUFFER_CACHE : public CACHE
 {
 private:
   void insert_merge(BLOCK b);
+  bool fifo;
   template <typename U>
   using buffer_t = champsim::circular_buffer<U>;
+  void (BUFFER_CACHE::*replacement_update_state)(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
+                                                 uint8_t hit);
+  uint32_t (BUFFER_CACHE::*replacement_find_victim)(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
+                                                    uint32_t type);
 
 public:
   buffer_t<BLOCK> merge_block{MAX_WRITE};
@@ -198,14 +203,29 @@ public:
   uint64_t merge_hit;
   BUFFER_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t perfect_cache, uint32_t v5, uint32_t v6, uint32_t v7,
                uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load,
-               bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method)
+               bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method,
+               bool FIFO = false)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
-              pref_act_mask, ll, pref, repl, method)
+              pref_act_mask, ll, pref, repl, method),
+        fifo(FIFO)
   {
+    if (fifo) {
+      replacement_update_state = &BUFFER_CACHE::update_replacement_state;
+      replacement_find_victim = &BUFFER_CACHE::find_victim;
+    } else {
+      replacement_update_state = &BUFFER_CACHE::impl_replacement_update_state;
+      replacement_find_victim = &BUFFER_CACHE::impl_replacement_find_victim;
+    }
     merge_hit = 0;
   };
 
   ~BUFFER_CACHE() { merge_block.clear(); };
+
+  void initialize_replacement();
+
+  void update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit);
+  uint32_t find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
+  void replacement_final_stats();
 
   /// @brief Check if packet is in cache. If it is, rv is the block, if not it is null. If hit, accessed bytes and statistics will be recorded
   /// @param packet The request packet to be handled
@@ -232,10 +252,10 @@ private:
 
 public:
   BUFFER_CACHE buffer_cache;
-  VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, uint32_t buffer_sets, bool aligned,
-            uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write,
-            std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref,
-            repl_t repl, BufferOrganisation buffer_organisation)
+  VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, uint32_t buffer_sets,
+            bool buffer_fifo, bool aligned, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read,
+            uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll,
+            pref_t pref, repl_t repl, BufferOrganisation buffer_organisation)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl),
         aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation),
@@ -243,7 +263,7 @@ public:
                                   (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : 1, 0, std::min(buffer_sets, v5),
                                   std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read, max_write / 2, offset_bits,
                                   false, true, false, 0, ll, pref_t::CPU_REDIRECT_pprefetcherDno_instr_, repl_t::rreplacementDlru,
-                                  CountBlockMethod::SUM_ACCESSES))
+                                  CountBlockMethod::SUM_ACCESSES, buffer_fifo))
   {
     CACHE::buffer = buffer;
     for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {

@@ -16,6 +16,7 @@ TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY = defaultdict(
 )
 BLOCK_SIZES_HISTOGRAM = defaultdict(lambda: [0 for i in range(64)])
 WAY_SIZES_BY_WORKLOAD = defaultdict(list)
+arm = False
 
 
 def flatten(d, parent_key="", sep="_"):
@@ -95,13 +96,13 @@ strategies = [
     Strategy("no split", lambda line: (1, [[0, len(line) - 1]])),
     Strategy("Split One Byte Hole", partial(split_n, n=1)),
     Strategy("Split Two Bytes Hole", partial(split_n, n=2)),
-    Strategy("Split Four Bytes Hole", partial(split_n, n=4)),
-    Strategy("Split 50% Hole", partial(split_np, n=50)),
-    Strategy("Split 25% Hole", partial(split_np, n=25)),
-    Strategy("Split 12.5% Hole", partial(split_np, n=12.5)),
-    Strategy("Split 6.25% Hole", partial(split_np, n=6.25)),
-    Strategy("Split 3.125% Hole", partial(split_np, n=3.125)),
 ]
+#    Strategy("Split Four Bytes Hole", partial(split_n, n=4)),
+#    Strategy("Split 50% Hole", partial(split_np, n=50)),
+#    Strategy("Split 25% Hole", partial(split_np, n=25)),
+#    Strategy("Split 12.5% Hole", partial(split_np, n=12.5)),
+#    Strategy("Split 6.25% Hole", partial(split_np, n=6.25)),
+#    Strategy("Split 3.125% Hole", partial(split_np, n=3.125)),
 
 
 def trim_mask(mask):
@@ -197,8 +198,8 @@ def merge_single_mask(first_byte, trimmed_mask):
 
 def create_uniform_buckets_of_size(num_buckets):
     normalised_histogram = [
-        b / sum(BLOCK_SIZES_HISTOGRAM["Split Two Bytes Hole"])
-        for b in BLOCK_SIZES_HISTOGRAM["Split Two Bytes Hole"]
+        b / sum(BLOCK_SIZES_HISTOGRAM["Split One Byte Hole"])
+        for b in BLOCK_SIZES_HISTOGRAM["Split One Byte Hole"]
     ]
     target = 1.0 / num_buckets
     bucket_sizes = []
@@ -207,6 +208,9 @@ def create_uniform_buckets_of_size(num_buckets):
     sumup = 0
     prev_bucket = 0.0
     bucket_idx = 1
+    increment = 1
+    if arm:
+        increment = 4
     for percentage in normalised_histogram:
         if percentage > target:
             split = int(percentage / target)
@@ -215,7 +219,7 @@ def create_uniform_buckets_of_size(num_buckets):
             value = percentage
         if value == 0:
             if counter < 64:
-                counter += 1
+                counter += increment
             continue
         single_val = value
         inc_counter = True
@@ -225,7 +229,7 @@ def create_uniform_buckets_of_size(num_buckets):
             diff_without = abs((target * bucket_idx) - sumup)
             if comp_value > (target * bucket_idx) and diff_with < diff_without:
                 if inc_counter and counter < 64:
-                    counter += 1
+                    counter += increment
                 bucket_percentages.append(comp_value - prev_bucket)
                 bucket_sizes.append(counter)
                 prev_bucket = comp_value
@@ -244,7 +248,7 @@ def create_uniform_buckets_of_size(num_buckets):
             sumup += single_val
             value += single_val
         if counter < 64:  # dont increase if we already hit the ceiling
-            counter += 1
+            counter += increment
     while len(bucket_sizes) < num_buckets:
         bucket_sizes.append(bucket_sizes[-1])
     # print(f"target bucket size: {target}")
@@ -278,7 +282,9 @@ def apply_splits_for_workload(workload_name, tracefile_path):
 
 def main(args):
     trace_directory = args.trace_dir
-    global TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY
+    global TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY, arm
+    if args.architecture == "arm":
+        arm = True
     for workload in os.listdir(trace_directory):
         if not os.path.isdir(os.path.join(trace_directory, workload)):
             continue
@@ -385,6 +391,10 @@ if __name__ == "__main__":
         type=str,
         default="merge_strategy",
         choices=["merge_strategy", "optimal_way"],
+    )
+
+    parser.add_argument(
+        "architecture", type=str, default="x86", choices=["x86", "arm"]
     )
     args = parser.parse_args()
     main(args)
