@@ -5,6 +5,7 @@
 #include <fstream>
 #include <functional>
 #include <list>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -38,7 +39,7 @@ std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uin
 void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block);
 
 enum class CountBlockMethod { EVICTION, SUM_ACCESSES };
-enum class BufferOrganisation { FULLY_ASSOCIATIVE, DIRECT_MAPPED };
+enum class BufferOrganisation { FULLY_ASSOCIATIVE, DIRECT_MAPPED, SET_ASSOCIATIVE };
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
@@ -201,6 +202,8 @@ public:
   uint64_t total_accesses;
   uint64_t hits;
   uint64_t merge_hit;
+  std::map<uint32_t, uint32_t> duration_in_buffer;
+
   BUFFER_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t perfect_cache, uint32_t v5, uint32_t v6, uint32_t v7,
                uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load,
                bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method,
@@ -231,6 +234,9 @@ public:
   /// @param packet The request packet to be handled
   /// @return The block if it is found.
   BLOCK* probe_buffer(PACKET& packet);
+  void record_duration(BLOCK& block);
+  void update_duration(void);
+  void print_private_stats(void) override;
 
   BLOCK* __attribute__((optimize("O0"))) probe_merge(PACKET& packet);
 

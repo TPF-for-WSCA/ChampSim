@@ -1036,6 +1036,25 @@ BLOCK* __attribute__((optimize("O0"))) BUFFER_CACHE::probe_merge(PACKET& packet)
   }
 }
 
+void BUFFER_CACHE::print_private_stats()
+{
+  CACHE::print_private_stats();
+  std::cout << "Time Spent in Buffer by #Cachelines:" << std::endl;
+  for (const auto& [time, count] : duration_in_buffer) {
+    std::cout << "\t" << std::setw(4) << time << ":\t" << std::setw(10) << count << std::endl;
+  }
+}
+
+void BUFFER_CACHE::record_duration(BLOCK& block) { duration_in_buffer[block.time_present] += 1; }
+void BUFFER_CACHE::update_duration()
+{
+  for (BLOCK& b : block) {
+    if (!b.valid)
+      continue;
+    b.time_present++;
+  }
+}
+
 bool BUFFER_CACHE::fill_miss(PACKET& packet)
 {
   uint32_t set = get_set(packet.address);
@@ -1049,16 +1068,16 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
   }
   (this->*replacement_update_state)(packet.cpu, set, way, packet.address, packet.ip, 0, packet.type, 0);
 
-  if (merge_block.full()) {
-    return false;
-  }
   BLOCK& fill_block = block[set * NUM_WAY + way];
 
-  if (fill_block.valid) {
+  if (merge_block.full() && fill_block.valid) {
+    return false;
+  } else if (fill_block.valid) {
+    record_duration(fill_block);
     merge_block.push_back(fill_block, true);
     record_cacheline_stats(packet.cpu, fill_block);
   }
-
+  update_duration();
   fill_block.bytes_accessed = 0;
   memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
   fill_block.valid = true;
@@ -1072,6 +1091,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
   fill_block.tag = get_tag(packet.address);
   fill_block.instr_id = packet.instr_id;
   fill_block.accesses = 0;
+  fill_block.time_present = 0;
   record_cacheline_accesses(packet, fill_block);
 
   if (warmup_complete[packet.cpu] && (packet.cycle_enqueued != 0))
