@@ -307,7 +307,7 @@ public:
   virtual bool filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block);
   virtual void handle_writeback() override;
   // virtual void return_data(PACKET* packet) override;
-  uint32_t lru_victim(BLOCK* current_set, uint8_t min_size);
+  uint32_t lru_victim(BLOCK* current_set, uint8_t min_size, uint8_t max_size = 64);
   uint32_t get_way(PACKET& packet, uint32_t set);
   /// @brief Get all ways that match the tag of packet
   /// @param tag The tag to look up

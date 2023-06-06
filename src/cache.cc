@@ -1105,19 +1105,25 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
   return true;
 }
 
-uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
+uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size, uint8_t max_size)
 {
+  if (max_size > 64)
+    max_size = 64;
   BLOCK* endofset = std::next(current_set, NUM_WAY);
+  BLOCK* end_of_subset = endofset;
   BLOCK* begin_of_subset = current_set;
   while (begin_of_subset->size < min_size && begin_of_subset < endofset) {
     begin_of_subset++;
+  }
+  while (end_of_subset->size > max_size && end_of_subset > begin_of_subset) {
+    end_of_subset--;
   }
   if (begin_of_subset->size < min_size) {
     std::cerr << "Couldn't find way that fits size" << std::endl;
     assert(0);
   }
   return std::distance(current_set,
-                       std::max_element(begin_of_subset, endofset, [](BLOCK lhs, BLOCK rhs) { return !rhs.valid || (lhs.valid && lhs.lru < rhs.lru); }));
+                       std::max_element(begin_of_subset, end_of_subset, [](BLOCK lhs, BLOCK rhs) { return !rhs.valid || (lhs.valid && lhs.lru < rhs.lru); }));
 }
 
 void VCL_CACHE::operate()

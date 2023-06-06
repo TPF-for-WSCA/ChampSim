@@ -19,9 +19,11 @@ def extract_linex_handled_by_way(path):
     with open(path) as f:
         logs = f.readlines()
     regex_title = re.compile(
-        "cpu0\_L1I_buffer LINES HANDLED PER WAY\n"
+        "cpu0\_L1I LINES HANDLED PER WAY\n"
     )  # CHANGE T WHATEVER CACHE YOU WANT TO LOOK AT
-    regex_other_title = re.compile("cpu0\_[a-zA-Z]+ LINES HANDLED PER WAY\n")
+    regex_other_title = re.compile(
+        "cpu0\_[a-z0-9A-Z\_]+ LINES HANDLED PER WAY\n"
+    )
     logs.reverse()
     lines_per_way = []
     collect_lines = False
@@ -31,6 +33,8 @@ def extract_linex_handled_by_way(path):
             lines_per_way.reverse()
             return lines_per_way
         matches = regex_other_title.match(line)
+        if not matches:
+            matches = re.compile("Time Spent in Buffer by").match(line)
         if matches:
             lines_per_way = []
             collect_lines = True
