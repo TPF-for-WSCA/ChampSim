@@ -72,6 +72,7 @@
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD",
     "prefetcher": "no_instr",
+    "lru_modifier": "PRECISE",
     "counting_block_method": "EVICTION"
   },
   "L1D": {
