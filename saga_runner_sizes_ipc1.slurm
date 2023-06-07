@@ -14,12 +14,12 @@ module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
 #binaries=("champsim64k" "champsim32k" "champsim128m" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d_arm" "champsim_vcl_buffer_16")
 #binaries=("champsim64k" "champsim32k" "champsim128m" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d_arm" "champsim_vcl_buffer_16")
-binaries=("champsim_vcl_buffer_64d_arm")
+binaries=("champsim32k" "champsim64k" "champsim128m" "champsim_vcl_buffer_64d_max_way")
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/workspace/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/ipc1/spec --nosub --output_dir /cluster/work/users/romankb/results/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec${binary}.log 
-    python /cluster/home/romankb/workspace/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/ipc1/server --nosub --output_dir /cluster/work/users/romankb/results/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server${binary}.log 
-    python /cluster/home/romankb/workspace/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/ipc1/client --nosub --output_dir /cluster/work/users/romankb/results/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client${binary}.log 
+    python /cluster/home/romankb/workspace/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/ipc1/spec --nosub --output_dir /cluster/work/users/romankb/results/crosscheck/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec${binary}.log 
+    python /cluster/home/romankb/workspace/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/ipc1/server --nosub --output_dir /cluster/work/users/romankb/results/crosscheck/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server${binary}.log 
+    python /cluster/home/romankb/workspace/ChampSim/data_collector.py --instructions 100000000 --/crosscheckexperiment_executable /cluster/home/romankb/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/ipc1/client --nosub --output_dir /cluster/work/users/romankb/results/crosscheck/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client${binary}.log 
 done
 
 for job in `jobs -p`

@@ -473,7 +473,8 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
   uint8_t total_accessed = 0, first_accessed = 0, last_accessed = 0;
   for (size_t i = 0; i < hitblocks.size(); i++) {
     auto block = hitblocks[i];
-    uint8_t size = block.second - block.first; // actual size is +1 as we have first and last index
+    uint8_t size =
+        block.second - block.first; // actual size is +1 as we have first and last index - this is useful for indexing with the size (entry 0 = length 1)
     assert(size >= 0 && size < 64);
     if (is_hole) {
       holesize_hist[cpu][size]++;
@@ -484,7 +485,7 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
       first_accessed = block.first;
     }
     last_accessed = block.second;
-    total_accessed += size;
+    total_accessed += (size + 1); // actual size
     // count how many accesses to this block
 
     uint64_t count = 1;

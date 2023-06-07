@@ -5,6 +5,7 @@ import struct
 import sys
 import traceback
 
+from argparse import RawTextHelpFormatter
 from collections import defaultdict
 from collections.abc import MutableMapping
 from functools import partial
@@ -97,10 +98,10 @@ def split_np(line, n):
 
 
 strategies = [
-    Strategy("no split", lambda line: (1, [[0, len(line) - 1]])),
-    Strategy("Split One Byte Hole", partial(split_n, n=1)),
-    Strategy("Split Two Bytes Hole", partial(split_n, n=2)),
-    Strategy("Split Four Bytes Hole", partial(split_n, n=4)),
+    Strategy("NoSplit", lambda line: (1, [[0, len(line) - 1]])),
+    Strategy("SplitOneByteHole", partial(split_n, n=1)),
+    Strategy("SplitTwoBytesHole", partial(split_n, n=2)),
+    Strategy("SplitFourBytesHole", partial(split_n, n=4)),
 ]
 #    Strategy("Split Four Bytes Hole", partial(split_n, n=4)),
 #    Strategy("Split 50% Hole", partial(split_np, n=50)),
@@ -189,6 +190,8 @@ def merge_single_mask(first_byte, trimmed_mask, only_chosen=False):
     local_strategies = (
         [strategies[CHOSEN_STRATEGY]] if only_chosen else strategies
     )
+    if not strategies[0] in local_strategies:
+        local_strategies.append(strategies[0])
     if all(trimmed_mask):
         # no hole case, single block
         # we need to add one to each splitting strategy, as no holes appear there as well
@@ -330,6 +333,8 @@ def main(args):
     if args.architecture == "arm":
         arm = True
     for workload in os.listdir(trace_directory):
+        global BLOCK_SIZES_HISTOGRAM  # We need t reset it for every workload
+        BLOCK_SIZES_HISTOGRAM = defaultdict(lambda: [0 for i in range(64)])
         if not os.path.isdir(os.path.join(trace_directory, workload)):
             continue
         if (
@@ -388,7 +393,7 @@ def main(args):
                 )
                 writer.writeheader()
                 writer.writerow(TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY)
-                total_lines = TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY["no split"]
+                total_lines = TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY["NoSplit"]
                 percentage_overhead = {}
                 for key, value in TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY.items():
                     percentage_overhead[key] = (value / total_lines) - 1.0
@@ -426,7 +431,7 @@ def main(args):
             continue  # Ignore this workload / log written to stderr
 
     way_file_path = result_file_path = os.path.join(
-        trace_directory, "way_sizes.tsv"
+        trace_directory, f"{strategies[CHOSEN_STRATEGY]}_way_sizes.tsv"
     )
     with open(way_file_path, "w", encoding="utf-8", newline="") as wayfile:
         writer = csv.writer(wayfile, dialect="excel-tab")
@@ -438,7 +443,8 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Parse cacheline access masks and calculate number of cache"
-        " blocks under given strategies"
+        " blocks under given strategies",
+        formatter_class=RawTextHelpFormatter,
     )
     parser.add_argument("trace_dir", type=str)
     parser.add_argument(
@@ -451,14 +457,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "architecture", type=str, default="x86", choices=["x86", "arm"]
     )
+    strategies_list = "\n".join(
+        [f"\t{i}:\t{strategy}" for i, strategy in enumerate(strategies)]
+    )
     parser.add_argument(
         "--strategy",
         type=int,
         default=1,
-        help=[
-            f"\n\t{i}:\t{strategy.name}"
-            for i, strategy in enumerate(strategies)
-        ],
+        help=f"Available strategies:\n\tIdx:\tStrategy Name:\n{strategies_list}",
     )
     args = parser.parse_args()
     main(args)
