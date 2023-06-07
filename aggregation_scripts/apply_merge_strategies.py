@@ -11,6 +11,8 @@ from functools import partial
 
 # Statistics
 
+CHOSEN_STRATEGY = 1
+
 TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY = defaultdict(int)
 TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY = defaultdict(
     lambda: defaultdict(lambda: [0, 0])
@@ -98,6 +100,7 @@ strategies = [
     Strategy("no split", lambda line: (1, [[0, len(line) - 1]])),
     Strategy("Split One Byte Hole", partial(split_n, n=1)),
     Strategy("Split Two Bytes Hole", partial(split_n, n=2)),
+    Strategy("Split Four Bytes Hole", partial(split_n, n=4)),
 ]
 #    Strategy("Split Four Bytes Hole", partial(split_n, n=4)),
 #    Strategy("Split 50% Hole", partial(split_np, n=50)),
@@ -182,15 +185,18 @@ def get_mask_from_tracefile(tracefile_path):
             yield array_line
 
 
-def merge_single_mask(first_byte, trimmed_mask):
+def merge_single_mask(first_byte, trimmed_mask, only_chosen=False):
+    local_strategies = (
+        [strategies[CHOSEN_STRATEGY]] if only_chosen else strategies
+    )
     if all(trimmed_mask):
         # no hole case, single block
         # we need to add one to each splitting strategy, as no holes appear there as well
-        for strategy in strategies:
+        for strategy in local_strategies:
             TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY[strategy.name] += 1
             BLOCK_SIZES_HISTOGRAM[strategy.name][len(trimmed_mask) - 1] += 1
         return
-    for strategy in strategies:
+    for strategy in local_strategies:
         total_blocks, blocks = strategy.split(trimmed_mask)
         TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY[strategy.name] += total_blocks
         for block in blocks:
@@ -200,8 +206,8 @@ def merge_single_mask(first_byte, trimmed_mask):
 
 def create_uniform_buckets_of_size(num_buckets):
     normalised_histogram = [
-        b / sum(BLOCK_SIZES_HISTOGRAM["Split One Byte Hole"])
-        for b in BLOCK_SIZES_HISTOGRAM["Split One Byte Hole"]
+        b / sum(BLOCK_SIZES_HISTOGRAM[strategies[CHOSEN_STRATEGY].name])
+        for b in BLOCK_SIZES_HISTOGRAM[strategies[CHOSEN_STRATEGY].name]
     ]
     target = 1.0 / num_buckets
     bucket_sizes = []
@@ -255,19 +261,23 @@ def create_uniform_buckets_of_size(num_buckets):
         bucket_sizes.append(bucket_sizes[-1])
     # print(f"target bucket size: {target}")
     # print(f"Actual buckets: {bucket_percentages}")
+    bucket_percentages.append(1 - sum(bucket_percentages))
     return bucket_sizes, bucket_percentages
 
 
 def apply_way_analysis(workload_name, tracefile_path):
     for mask in get_mask_from_tracefile(tracefile_path):
         trimmed_mask, first_byte = trim_mask(mask)
-        merge_single_mask(first_byte, trimmed_mask)
+        merge_single_mask(first_byte, trimmed_mask, only_chosen=True)
 
     target_size = 428
     error = target_size
     selected_waysizes = []
     for i in range(8, 64):
         bucket_sizes, _ = create_uniform_buckets_of_size(i)
+        total_size = sum(bucket_sizes)
+        if total_size > target_size:
+            break
         if abs(target_size - sum(bucket_sizes)) < error:
             error = abs(target_size - sum(bucket_sizes))
             selected_waysizes = bucket_sizes
@@ -315,7 +325,8 @@ def print_starting_offsets(trace_directory, workload):
 
 def main(args):
     trace_directory = args.trace_dir
-    global TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY, arm
+    global TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY, arm, CHOSEN_STRATEGY
+    CHOSEN_STRATEGY = args.strategy
     if args.architecture == "arm":
         arm = True
     for workload in os.listdir(trace_directory):
@@ -439,6 +450,15 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "architecture", type=str, default="x86", choices=["x86", "arm"]
+    )
+    parser.add_argument(
+        "--strategy",
+        type=int,
+        default=1,
+        help=[
+            f"\n\t{i}:\t{strategy.name}"
+            for i, strategy in enumerate(strategies)
+        ],
     )
     args = parser.parse_args()
     main(args)
