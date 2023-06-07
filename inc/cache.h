@@ -39,7 +39,7 @@ std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uin
 void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block);
 
 enum class CountBlockMethod { EVICTION, SUM_ACCESSES };
-enum LruModifier { DEFAULT = 0, PRECISE = 1, BOUND15 = 1.5, BOUND2 = 2, BOUND3 = 3 };
+enum LruModifier { DEFAULT = 0, PRECISE = 1, BOUND2 = 2, BOUND3 = 3 };
 enum class BufferOrganisation { FULLY_ASSOCIATIVE, DIRECT_MAPPED, SET_ASSOCIATIVE };
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
