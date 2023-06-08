@@ -1124,13 +1124,23 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
 {
   BLOCK* endofset = std::next(current_set, (NUM_WAY - 1));
   BLOCK* begin_of_subset = current_set;
+  uint32_t begin_way = 0;
   while (begin_of_subset->size < min_size && begin_of_subset < endofset) {
+    begin_way++;
     begin_of_subset++;
   }
-  while (lru_modifier > 0 && endofset->size > (lru_modifier * min_size) && endofset > begin_of_subset) {
-    endofset--;
+  if (lru_modifier > 0) {
+    uint32_t end_way = begin_way;
+    int count_sizes = 0;
+    int prev_size = 0;
+    while (end_way < NUM_WAY && count_sizes < lru_modifier) {
+      if (prev_size != way_sizes[end_way]) {
+        count_sizes++;
+      }
+      end_way++;
+    }
+    endofset = current_set + (end_way + 1);
   }
-  endofset++; // we need to be the iterator to the one past the element
   if (begin_of_subset->size < min_size) {
     std::cerr << "Couldn't find way that fits size" << std::endl;
     assert(0);

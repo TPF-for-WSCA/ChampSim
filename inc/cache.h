@@ -223,7 +223,7 @@ public:
     merge_hit = 0;
   };
 
-  ~BUFFER_CACHE() { merge_block.clear(); };
+  ~BUFFER_CACHE(){};
 
   void initialize_replacement();
 
