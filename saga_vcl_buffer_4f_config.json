@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim_vcl_buffer_64_f",
+  "executable_name": "bin/champsim_vcl_buffer_8_f",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
@@ -43,7 +43,7 @@
     "sets": 64,
     "ways": 12,
     "buffer": true,
-    "buffer_size": 64,
+    "buffer_size": 4,
     "buffer_organisation": "FULLY_ASSOCIATIVE",
     "buffer_fifo": true,
     "way_sizes": [
