@@ -210,6 +210,7 @@ void CACHE::handle_read()
     } else {
       bool success = readlike_miss(handle_pkt);
       if (knob_stall_on_miss) {
+        ooo_cpu[handle_pkt.cpu]->stall_on_miss = 1;
         reads_available_this_cycle = 1;
       }
       if (!success) {
@@ -517,6 +518,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     std::cout << " cycle: " << current_cycle << std::endl;
   });
 
+  ooo_cpu[handle_pkt.cpu]->stall_on_miss = 0;
   bool bypass = (way == NUM_WAY);
 #ifndef LLC_BYPASS
   assert(!bypass);
@@ -1056,8 +1058,9 @@ void BUFFER_CACHE::update_duration()
   }
 }
 
-bool BUFFER_CACHE::fill_miss(PACKET& packet)
+bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
 {
+  ooo_cpu[packet.cpu]->stall_on_miss = 0;
   uint32_t set = get_set(packet.address);
   auto set_begin = std::next(std::begin(block), set * NUM_WAY);
   auto set_end = std::next(set_begin, NUM_WAY);
@@ -1081,6 +1084,17 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet)
   update_duration();
   fill_block.bytes_accessed = 0;
   memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
+  /////
+  uint32_t parent_set = parent.get_set(packet.address); // set of the VCL cache, not the buffer
+  uint32_t tag = parent.get_tag(packet.address);        // dito
+  auto _in_cache = parent.get_way(tag, parent_set);
+  // set all of them to invalid and insert again - not hardware like but easier in sw
+  for (uint32_t& way : _in_cache) {
+    BLOCK& b = parent.block[parent_set * NUM_WAY + way];
+    set_accessed(&fill_block.bytes_accessed, b.offset, b.offset + b.size - 1);
+    b.valid = false;
+  }
+  ////
   fill_block.valid = true;
   fill_block.prefetch = (packet.type == PREFETCH && packet.pf_origin_level == fill_level);
   fill_block.dirty = (packet.type == WRITEBACK || (packet.type == RFO && packet.to_return.empty()));
@@ -1135,25 +1149,17 @@ void VCL_CACHE::operate()
 
 void VCL_CACHE::operate_writes()
 {
-  operate_buffer_merges();
+  operate_buffer_evictions();
   CACHE::operate_writes();
 }
 
-void VCL_CACHE::operate_buffer_merges()
+void VCL_CACHE::operate_buffer_evictions()
 {
   while (!buffer_cache.merge_block.empty()) {
     BLOCK& merge_block = buffer_cache.merge_block.front();
     uint32_t set = get_set(merge_block.address); // set of the VCL cache, not the buffer
     auto set_begin = std::next(std::begin(block), set * NUM_WAY);
     auto set_end = std::next(set_begin, NUM_WAY);
-    uint32_t tag = get_tag(merge_block.address); // dito
-    auto _in_cache = get_way(tag, set);
-    // set all of them to invalid and insert again - not hardware like but easier in sw
-    for (uint32_t& way : _in_cache) {
-      BLOCK& b = block[set * NUM_WAY + way];
-      set_accessed(&merge_block.bytes_accessed, b.offset, b.offset + b.size - 1);
-      b.valid = false;
-    }
     auto blocks = get_blockboundaries_from_mask(merge_block.bytes_accessed);
     for (int i = 0; i < blocks.size(); i++) {
       if (i % 2 != 0) {
@@ -1192,7 +1198,7 @@ void VCL_CACHE::handle_fill()
     uint64_t orig_size = fill_mshr->size;
 
     if (buffer) {
-      if (!buffer_cache.fill_miss(*fill_mshr))
+      if (!buffer_cache.fill_miss(*fill_mshr, *this))
         return;
       goto inserted;
     }
@@ -1399,9 +1405,10 @@ void VCL_CACHE::handle_read()
       return; // buffer full = try next cycle
 
     // remove this entry from RQ
-    if (knob_stall_on_miss)
+    if (knob_stall_on_miss) {
       reads_available_this_cycle = 0;
-    else
+      ooo_cpu[handle_pkt.cpu]->stall_on_miss = 1;
+    } else
       reads_available_this_cycle--;
   }
 }
@@ -1574,6 +1581,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   record_block_insert_removal(set, way, handle_block.address);
   BLOCK& fill_block = block[set * NUM_WAY + way];
   way_hits[way]++;
+  ooo_cpu[handle_block.cpu]->stall_on_miss = 0;
 
   bool evicting_dirty = (lower_level != NULL) && fill_block.dirty;
   uint64_t evicting_address = 0;
@@ -1629,6 +1637,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
   });
   way_hits[way]++;
 
+  ooo_cpu[handle_pkt.cpu]->stall_on_miss = 0;
   bool bypass = (way == NUM_WAY);
   record_block_insert_removal(set, way, handle_pkt.address);
 

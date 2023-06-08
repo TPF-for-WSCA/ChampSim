@@ -356,6 +356,10 @@ void O3_CPU::fetch_instruction()
 {
   // if we had a branch mispredict, turn fetching back on after the branch
   // mispredict penalty
+  if (stall_on_miss == 1) {
+    return;
+  }
+
   if ((fetch_stall == 1) && (current_cycle >= fetch_resume_cycle) && (fetch_resume_cycle != 0)) {
     fetch_stall = 0;
     fetch_resume_cycle = 0;

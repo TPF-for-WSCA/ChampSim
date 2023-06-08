@@ -185,7 +185,7 @@ public:
       cl_accessmask_file.close();
   };
 };
-
+class VCL_CACHE; // forward declaration so we can pass parent VCL cache to the Buffer Cache
 class BUFFER_CACHE : public CACHE
 {
 private:
@@ -244,7 +244,7 @@ public:
   /// @brief Insert a serviced read from lower level. If an entry is evicted, it is entered into the merge register
   /// @param packet The packet to be inserting
   /// @return Returns true if successful and false if not. Reasons for being not successful could be full merge register;
-  bool fill_miss(PACKET& packet);
+  bool fill_miss(PACKET& packet, VCL_CACHE& parent);
 };
 
 class VCL_CACHE : public CACHE
@@ -298,7 +298,7 @@ public:
 
   virtual void operate() override;
   virtual void operate_writes() override;
-  virtual void operate_buffer_merges();
+  virtual void operate_buffer_evictions();
 
   virtual void handle_fill() override;
   virtual void handle_read() override;
