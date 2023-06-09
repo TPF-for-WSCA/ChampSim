@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <set>
 #include <string.h>
 
 #include "champsim.h"
@@ -209,7 +210,8 @@ void CACHE::handle_read()
       readlike_hit(set, way, handle_pkt);
     } else {
       bool success = readlike_miss(handle_pkt);
-      if (knob_stall_on_miss) {
+
+      if (knob_stall_on_miss && 0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
         ooo_cpu[handle_pkt.cpu]->stall_on_miss = 1;
         reads_available_this_cycle = 1;
       }
@@ -377,16 +379,27 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
 
 void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
 {
+  std::cout << "@RECORD_BLOCK_INSERT_REMOVEL(set: " << set << ", way: " << way << ")" << std::endl;
   BLOCK& repl_block = block[set * NUM_WAY + way];
   bool newtag_present = false;
   bool oldtag_present = false;
   for (int i = 0; i < NUM_WAY; i++) {
     if (i == way)
       continue;
-    if (block[set * NUM_WAY + i].address >> (OFFSET_BITS) == address >> (OFFSET_BITS))
+    uint64_t incache_tag = (block[set * NUM_WAY + i].address >> (OFFSET_BITS));
+    uint64_t new_tag = (address >> (OFFSET_BITS));
+    uint64_t old_tag = repl_block.address >> OFFSET_BITS;
+    if (incache_tag == new_tag) {
       newtag_present = true;
-    if (block[set * NUM_WAY + i].address >> OFFSET_BITS == repl_block.address >> OFFSET_BITS)
+      std::cout << "IN CACHE: " << incache_tag << ", NEW INSERT: " << new_tag << " @WAY: " << i << std::endl;
+    }
+
+    // We check for 0 as this is the only case where we should not deduct (invalid is handled as normal, as soon as the last invalid block of a specifice line
+    // is filled we adjust)
+    if (incache_tag == old_tag || repl_block.address == 0) {
       oldtag_present = true;
+      std::cout << "IN CACHE: " << incache_tag << ", REPLACED TAG: " << old_tag << " @WAY: " << i << std::endl;
+    }
   }
   if (!oldtag_present)
     num_blocks_in_cache--;
@@ -395,7 +408,25 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
   if (cl_blocks_in_cache_buffer.size() >= WRITE_BUFFER_SIZE) {
     write_buffers_to_disk();
   }
-  assert(num_blocks_in_cache <= NUM_WAY * NUM_SET);
+  uint64_t max_num_blocks = NUM_WAY * NUM_SET;
+  if (buffer) {
+    VCL_CACHE* vc = (VCL_CACHE*)this;
+    max_num_blocks += (vc->buffer_cache.NUM_SET * vc->buffer_cache.NUM_WAY);
+  }
+  if (num_blocks_in_cache % 10 == 0)
+    std::cout << num_blocks_in_cache << std::endl;
+  // assert(num_blocks_in_cache <= (NUM_WAY * NUM_SET));
+  if (num_blocks_in_cache > NUM_WAY * NUM_SET) {
+    std::set<uint64_t> addresses;
+    for (auto const& b : block) {
+      if (b.valid) {
+        std::cout << b.address << std::endl;
+        addresses.insert((b.address >> OFFSET_BITS));
+      }
+    }
+    std::cout << "FOUND " << addresses.size() << " DISTINCT VALID CACHELINES" << std::endl;
+    assert(0);
+  }
   cl_blocks_in_cache_buffer.push_back(num_blocks_in_cache);
 }
 
@@ -517,8 +548,10 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     std::cout << " type: " << +handle_pkt.type;
     std::cout << " cycle: " << current_cycle << std::endl;
   });
-
-  ooo_cpu[handle_pkt.cpu]->stall_on_miss = 0;
+  if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
+    ooo_cpu[handle_pkt.cpu]->stall_on_miss = 0;
+    record_block_insert_removal(set, way, handle_pkt.address);
+  }
   bool bypass = (way == NUM_WAY);
 #ifndef LLC_BYPASS
   assert(!bypass);
@@ -529,10 +562,8 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
   BLOCK& fill_block = block[set * NUM_WAY + way];
 
   // quick and dirty / mainly dirty: only apply if name ends in L1I
-  if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
+  if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid)
     record_cacheline_stats(handle_pkt.cpu, fill_block);
-    record_block_insert_removal(set, way, handle_pkt.address);
-  }
   bool evicting_dirty = !bypass && (lower_level != NULL) && fill_block.dirty;
   uint64_t evicting_address = 0;
 
@@ -1171,6 +1202,10 @@ void VCL_CACHE::operate_buffer_evictions()
     auto set_begin = std::next(std::begin(block), set * NUM_WAY);
     auto set_end = std::next(set_begin, NUM_WAY);
     auto blocks = get_blockboundaries_from_mask(merge_block.bytes_accessed);
+    buffer_cache.merge_block.pop_front();
+    if (blocks.size() == 0) {
+      continue;
+    }
     for (int i = 0; i < blocks.size(); i++) {
       if (i % 2 != 0) {
         continue; // Hole, not accessed.
@@ -1181,9 +1216,9 @@ void VCL_CACHE::operate_buffer_evictions()
       if (way == NUM_WAY) {
         way = lru_victim(&block.data()[set * NUM_WAY], block_size);
       }
+      record_block_insert_removal(set, way, merge_block.address);
       filllike_miss(set, way, blocks[i].first, merge_block);
     }
-    buffer_cache.merge_block.pop_front();
   }
 }
 
@@ -1588,7 +1623,6 @@ void CACHE::print_private_stats()
 
 bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block)
 {
-  record_block_insert_removal(set, way, handle_block.address);
   BLOCK& fill_block = block[set * NUM_WAY + way];
   way_hits[way]++;
   ooo_cpu[handle_block.cpu]->stall_on_miss = 0;
