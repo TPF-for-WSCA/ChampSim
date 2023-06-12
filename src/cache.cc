@@ -1,7 +1,9 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <iterator>
+#include <set>
 #include <string.h>
 
 #include "champsim.h"
@@ -209,7 +211,8 @@ void CACHE::handle_read()
       readlike_hit(set, way, handle_pkt);
     } else {
       bool success = readlike_miss(handle_pkt);
-      if (knob_stall_on_miss) {
+
+      if (knob_stall_on_miss && 0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
         ooo_cpu[handle_pkt.cpu]->stall_on_miss = 1;
         reads_available_this_cycle = 1;
       }
@@ -380,22 +383,62 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
   BLOCK& repl_block = block[set * NUM_WAY + way];
   bool newtag_present = false;
   bool oldtag_present = false;
+  uint64_t new_tag = (address >> (OFFSET_BITS));
+  uint64_t old_tag = repl_block.address >> OFFSET_BITS;
+  if (!repl_block.valid)
+    oldtag_present = true; // unvalid block is "always" present
   for (int i = 0; i < NUM_WAY; i++) {
-    if (i == way)
+    if (i == way) {
       continue;
-    if (block[set * NUM_WAY + i].address >> (OFFSET_BITS) == address >> (OFFSET_BITS))
+    }
+    if (!block[set * NUM_WAY + i].valid) {
+      continue;
+    }
+    uint64_t incache_tag = (block[set * NUM_WAY + i].address >> (OFFSET_BITS));
+    if (incache_tag == new_tag) {
       newtag_present = true;
-    if (block[set * NUM_WAY + i].address >> OFFSET_BITS == repl_block.address >> OFFSET_BITS)
+    }
+
+    // We check for 0 as this is the only case where we should not deduct (invalid is handled as normal, as soon as the last invalid block of a specifice line
+    // is filled we adjust)
+    if (incache_tag == old_tag) {
       oldtag_present = true;
+    }
+    if (oldtag_present && newtag_present)
+      break;
   }
-  if (!oldtag_present)
-    num_blocks_in_cache--;
-  if (!newtag_present)
-    num_blocks_in_cache++;
+  if (current_cycle % 10000 < 10) {
+    std::set<uint64_t> addresses;
+    for (auto& b : block) {
+      if (b.valid) {
+        addresses.insert((b.address >> OFFSET_BITS));
+      }
+    }
+    assert(addresses.size() == num_blocks_in_cache);
+  }
+  int net_change = 0;
+  if (!oldtag_present) {
+    net_change--;
+  }
+  if (!newtag_present) {
+    net_change++;
+  }
+  num_blocks_in_cache += net_change;
   if (cl_blocks_in_cache_buffer.size() >= WRITE_BUFFER_SIZE) {
     write_buffers_to_disk();
   }
-  assert(num_blocks_in_cache <= NUM_WAY * NUM_SET);
+  // assert(num_blocks_in_cache <= (NUM_WAY * NUM_SET));
+  if (num_blocks_in_cache > NUM_WAY * NUM_SET) {
+    std::set<uint64_t> addresses;
+    for (auto const& b : block) {
+      if (b.valid) {
+        std::cout << b.address << std::endl;
+        addresses.insert((b.address >> OFFSET_BITS));
+      }
+    }
+    std::cout << "FOUND " << addresses.size() << " DISTINCT VALID CACHELINES" << std::endl;
+    assert(0);
+  }
   cl_blocks_in_cache_buffer.push_back(num_blocks_in_cache);
 }
 
@@ -517,8 +560,10 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     std::cout << " type: " << +handle_pkt.type;
     std::cout << " cycle: " << current_cycle << std::endl;
   });
-
-  ooo_cpu[handle_pkt.cpu]->stall_on_miss = 0;
+  if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
+    ooo_cpu[handle_pkt.cpu]->stall_on_miss = 0;
+    record_block_insert_removal(set, way, handle_pkt.address);
+  }
   bool bypass = (way == NUM_WAY);
 #ifndef LLC_BYPASS
   assert(!bypass);
@@ -529,10 +574,8 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
   BLOCK& fill_block = block[set * NUM_WAY + way];
 
   // quick and dirty / mainly dirty: only apply if name ends in L1I
-  if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
+  if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid)
     record_cacheline_stats(handle_pkt.cpu, fill_block);
-    record_block_insert_removal(set, way, handle_pkt.address);
-  }
   bool evicting_dirty = !bypass && (lower_level != NULL) && fill_block.dirty;
   uint64_t evicting_address = 0;
 
@@ -1060,6 +1103,7 @@ void BUFFER_CACHE::update_duration()
 
 bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
 {
+
   ooo_cpu[packet.cpu]->stall_on_miss = 0;
   uint32_t set = get_set(packet.address);
   auto set_begin = std::next(std::begin(block), set * NUM_WAY);
@@ -1070,13 +1114,14 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
     way = (this->*replacement_find_victim)(packet.cpu, packet.instr_id, set, &block.data()[set * NUM_WAY], packet.ip, packet.address, packet.type);
     // TODO: RECORD STATISTICS IF ANY
   }
-  (this->*replacement_update_state)(packet.cpu, set, way, packet.address, packet.ip, 0, packet.type, 0);
 
   BLOCK& fill_block = block[set * NUM_WAY + way];
-
   if (merge_block.full() && fill_block.valid) {
     return false;
-  } else if (fill_block.valid) {
+  }
+  (this->*replacement_update_state)(packet.cpu, set, way, packet.address, packet.ip, 0, packet.type, 0);
+
+  if (fill_block.valid) {
     record_duration(fill_block);
     merge_block.push_back(fill_block, true);
     record_cacheline_stats(packet.cpu, fill_block);
@@ -1089,10 +1134,17 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   uint32_t tag = parent.get_tag(packet.address);        // dito
   auto _in_cache = parent.get_way(tag, parent_set);
   // set all of them to invalid and insert again - not hardware like but easier in sw
+  bool invalidated = false;
   for (uint32_t& way : _in_cache) {
-    BLOCK& b = parent.block[parent_set * NUM_WAY + way];
+    BLOCK& b = parent.block[parent_set * parent.NUM_WAY + way];
+    if (!b.valid)
+      continue;
     set_accessed(&fill_block.bytes_accessed, b.offset, b.offset + b.size - 1);
     b.valid = false;
+    invalidated = true;
+  }
+  if (invalidated) {
+    parent.num_blocks_in_cache--; // we just invalidated all blocks of that tag
   }
   ////
   fill_block.valid = true;
@@ -1103,7 +1155,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   fill_block.data = packet.data;
   fill_block.ip = packet.ip;
   fill_block.cpu = packet.cpu;
-  fill_block.tag = get_tag(packet.address);
+  fill_block.tag = parent.get_tag(packet.address);
   fill_block.instr_id = packet.instr_id;
   fill_block.accesses = 0;
   fill_block.time_present = 0;
@@ -1139,7 +1191,7 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
       }
       end_way++;
     }
-    endofset = current_set + (end_way + 1);
+    endofset = current_set + end_way;
   }
   if (begin_of_subset->size < min_size) {
     std::cerr << "Couldn't find way that fits size" << std::endl;
@@ -1153,13 +1205,15 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
 void VCL_CACHE::operate()
 {
   // let buffer cache whatever it needs to do
-  buffer_cache._operate();
+  if (buffer)
+    buffer_cache._operate();
   CACHE::operate();
 }
 
 void VCL_CACHE::operate_writes()
 {
-  operate_buffer_evictions();
+  if (buffer)
+    operate_buffer_evictions();
   CACHE::operate_writes();
 }
 
@@ -1171,6 +1225,10 @@ void VCL_CACHE::operate_buffer_evictions()
     auto set_begin = std::next(std::begin(block), set * NUM_WAY);
     auto set_end = std::next(set_begin, NUM_WAY);
     auto blocks = get_blockboundaries_from_mask(merge_block.bytes_accessed);
+    buffer_cache.merge_block.pop_front();
+    if (blocks.size() == 0) {
+      continue;
+    }
     for (int i = 0; i < blocks.size(); i++) {
       if (i % 2 != 0) {
         continue; // Hole, not accessed.
@@ -1180,10 +1238,13 @@ void VCL_CACHE::operate_buffer_evictions()
       uint32_t way = std::distance(set_begin, first_inv);
       if (way == NUM_WAY) {
         way = lru_victim(&block.data()[set * NUM_WAY], block_size);
+        assert(way < NUM_WAY);
       }
       filllike_miss(set, way, blocks[i].first, merge_block);
     }
-    buffer_cache.merge_block.pop_front();
+  }
+  if (!buffer_cache.merge_block.empty()) {
+    std::cout << "did not empty buffer" << std::endl;
   }
 }
 
@@ -1340,8 +1401,11 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
       goto not_found;
     }
     found_tag = true;
+    if (perfect_predictor)
+      return way;
     if (begin->offset <= offset && offset < begin->offset + begin->size) {
       // std::cout << "hit: 1, address:" << packet.v_address << std::endl;
+      assert(way_sizes[way] == begin->size);
       return way;
     }
   not_found:
@@ -1370,8 +1434,10 @@ void VCL_CACHE::handle_read()
 
     uint32_t set = get_set(handle_pkt.address);
     uint32_t way = get_way(handle_pkt, set);
-    BLOCK* b = buffer_cache.probe_buffer(handle_pkt);
-    if (!b)
+    BLOCK* b = NULL;
+    if (buffer)
+      b = buffer_cache.probe_buffer(handle_pkt);
+    if (buffer && !b)
       b = buffer_cache.probe_merge(handle_pkt);
 
     // HIT IN BUFFER/MERGE REGISTER / always use that first
@@ -1588,10 +1654,10 @@ void CACHE::print_private_stats()
 
 bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block)
 {
-  record_block_insert_removal(set, way, handle_block.address);
   BLOCK& fill_block = block[set * NUM_WAY + way];
   way_hits[way]++;
   ooo_cpu[handle_block.cpu]->stall_on_miss = 0;
+  record_block_insert_removal(set, way, handle_block.address);
 
   bool evicting_dirty = (lower_level != NULL) && fill_block.dirty;
   uint64_t evicting_address = 0;
