@@ -380,7 +380,6 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
 
 void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
 {
-  std::cout << "@RECORD_BLOCK_INSERT_REMOVAL(set: " << set << ", way: " << way << ", tag: " << (address >> OFFSET_BITS) << ")" << std::endl;
   BLOCK& repl_block = block[set * NUM_WAY + way];
   bool newtag_present = false;
   bool oldtag_present = false;
@@ -390,25 +389,20 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
     oldtag_present = true; // unvalid block is "always" present
   for (int i = 0; i < NUM_WAY; i++) {
     if (i == way) {
-      std::cout << "VICTIM: " << old_tag << ", valid: " << repl_block.valid << std::endl;
       continue;
     }
     if (!block[set * NUM_WAY + i].valid) {
-      std::cout << "INVALID " << std::endl;
       continue;
     }
     uint64_t incache_tag = (block[set * NUM_WAY + i].address >> (OFFSET_BITS));
-    std::cout << "INCACHE TAG: " << incache_tag << std::endl;
     if (incache_tag == new_tag) {
       newtag_present = true;
-      std::cout << "IN CACHE: " << incache_tag << ", NEW INSERT: " << new_tag << " @WAY: " << i << std::endl;
     }
 
     // We check for 0 as this is the only case where we should not deduct (invalid is handled as normal, as soon as the last invalid block of a specifice line
     // is filled we adjust)
     if (incache_tag == old_tag) {
       oldtag_present = true;
-      std::cout << "IN CACHE: " << incache_tag << ", REPLACED TAG: " << old_tag << " @WAY: " << i << std::endl;
     }
     if (oldtag_present && newtag_present)
       break;
@@ -416,40 +410,14 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
   int net_change = 0;
   if (!oldtag_present) {
     net_change--;
-    std::cout << "LINE " << (repl_block.address >> OFFSET_BITS) << " dropped" << std::endl;
   }
   if (!newtag_present) {
     net_change++;
-    std::cout << "LINE " << (address >> OFFSET_BITS) << " inserted" << std::endl;
-  }
-  std::set<uint64_t> addresses;
-  addresses.clear();
-  for (int cset = 0; cset < NUM_SET; cset++)
-    for (int cway = 0; cway < NUM_WAY; cway++) {
-      BLOCK& b = block[cset * NUM_WAY + cway];
-      if (b.valid) {
-        addresses.insert((b.address >> OFFSET_BITS));
-      }
-    }
-
-  for (auto& addr : addresses) {
-    std::cout << addr << std::endl;
-  }
-  int diff = abs((int64_t)(addresses.size() - num_blocks_in_cache));
-  if (diff > 0) {
-    std::cout << "SIZE MISMATCH:\tHARD COUNT: " << addresses.size() << "\tSOFT COUNT: " << num_blocks_in_cache << std::endl;
   }
   num_blocks_in_cache += net_change;
   if (cl_blocks_in_cache_buffer.size() >= WRITE_BUFFER_SIZE) {
     write_buffers_to_disk();
   }
-  uint64_t max_num_blocks = NUM_WAY * NUM_SET;
-  if (buffer) {
-    VCL_CACHE* vc = (VCL_CACHE*)this;
-    max_num_blocks += (vc->buffer_cache.NUM_SET * vc->buffer_cache.NUM_WAY);
-  }
-  if (num_blocks_in_cache % 10 == 0)
-    std::cout << num_blocks_in_cache << std::endl;
   // assert(num_blocks_in_cache <= (NUM_WAY * NUM_SET));
   if (num_blocks_in_cache > NUM_WAY * NUM_SET) {
     std::set<uint64_t> addresses;
@@ -463,9 +431,6 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
     assert(0);
   }
   cl_blocks_in_cache_buffer.push_back(num_blocks_in_cache);
-  if (num_blocks_in_cache < 0)
-    std::cout << "UH OH";
-  std::cout << "EXIT COUNT: " << num_blocks_in_cache << std::endl;
 }
 
 // TODO: Make more generic for all simple series
@@ -1181,7 +1146,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   fill_block.data = packet.data;
   fill_block.ip = packet.ip;
   fill_block.cpu = packet.cpu;
-  fill_block.tag = get_tag(packet.address);
+  fill_block.tag = parent.get_tag(packet.address);
   fill_block.instr_id = packet.instr_id;
   fill_block.accesses = 0;
   fill_block.time_present = 0;
@@ -1217,7 +1182,7 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
       }
       end_way++;
     }
-    endofset = current_set + (end_way + 1);
+    endofset = current_set + end_way;
   }
   if (begin_of_subset->size < min_size) {
     std::cerr << "Couldn't find way that fits size" << std::endl;
@@ -1264,6 +1229,7 @@ void VCL_CACHE::operate_buffer_evictions()
       uint32_t way = std::distance(set_begin, first_inv);
       if (way == NUM_WAY) {
         way = lru_victim(&block.data()[set * NUM_WAY], block_size);
+        assert(way < NUM_WAY);
       }
       filllike_miss(set, way, blocks[i].first, merge_block);
     }
