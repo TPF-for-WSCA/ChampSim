@@ -407,6 +407,15 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
     if (oldtag_present && newtag_present)
       break;
   }
+  if (current_cycle % 10000 < 10) {
+    std::set<uint64_t> addresses;
+    for (auto& b : block) {
+      if (b.valid) {
+        addresses.insert((b.address >> OFFSET_BITS));
+      }
+    }
+    assert(addresses.size() == num_blocks_in_cache);
+  }
   int net_change = 0;
   if (!oldtag_present) {
     net_change--;
