@@ -252,6 +252,7 @@ class VCL_CACHE : public CACHE
 
 private:
   bool aligned = false; // should the blocks be aligned to the way size?
+  bool perfect_predictor = false;
   uint8_t* way_sizes;
   uint32_t buffer_sets = 0;
   uint32_t buffer_ways = 0;
@@ -263,10 +264,11 @@ public:
   VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, uint32_t buffer_sets,
             bool buffer_fifo, bool aligned, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read,
             uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll,
-            pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier)
+            pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, bool perfect_predictor = false)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl),
-        aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation), lru_modifier(lru_modifier),
+        aligned(aligned), perfect_predictor(perfect_predictor), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation),
+        lru_modifier(lru_modifier),
         buffer_cache(BUFFER_CACHE((v1 + "_buffer"), freq_scale, fill_level, (buffer_organisation == BufferOrganisation::DIRECT_MAPPED) ? buffer_sets : 1,
                                   (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : 1, 0, std::min(buffer_sets, v5),
                                   std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read, max_write / 2, offset_bits,

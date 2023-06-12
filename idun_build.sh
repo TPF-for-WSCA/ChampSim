@@ -1,6 +1,7 @@
 #!/bin/bash
 
-build_configs=("idun_64k_config.json" "idun_32k_config.json" "idun_128m_config.json" "idun_vcl_64d_max_way_config.json")
+#build_configs=("idun_64k_config.json" "idun_32k_config.json" "idun_128m_config.json" "idun_vcl_64d_max_way_config.json")
+build_configs=("idun_32k_config.json" "idun_vcl_buffer_8f_config.json" "idun_vcl_buffer_4f_config.json" "idun_vcl_buffer_128f_config.json" "idun_vcl_buffer_64f_config.json" "idun_vcl_buffer_32f_config.json" "idun_vcl_buffer_16f_config.json" "idun_vcl_buffer_256f_config.json") 
 
 old_dir=pwd
 cd ~/ChampSim/
