@@ -10,6 +10,7 @@ class STATS(Enum):
     IPC = 1
     MPKI = 2
     PARTIAL = 3
+    BUFFER_DURATION = 4
 
 
 type = STATS.IPC
@@ -148,6 +149,7 @@ if sys.argv[3] == "MPKI":
     type = STATS.MPKI
 elif sys.argv[3] == "PARTIAL":
     type = STATS.PARTIAL
+elif sys.argv[3] == ""
 if sys.argv[2] == "single":
     data["const"] = single_run(sys.argv[1])
 elif sys.argv[2] == "multibench":
