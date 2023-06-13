@@ -1086,9 +1086,15 @@ void BUFFER_CACHE::print_private_stats()
 {
   CACHE::print_private_stats();
   std::cout << "Time Spent in Buffer by #Cachelines:" << std::endl;
+  uint64_t total_time = 0;
+  uint64_t total_evictions = 0;
   for (const auto& [time, count] : duration_in_buffer) {
     std::cout << "\t" << std::setw(4) << time << ":\t" << std::setw(10) << count << std::endl;
+    total_time += (time * count);
+    total_evictions += count;
   }
+  std::cout << "AVERAGE Time Spent in Buffer: ";
+  std::cout << (total_time / total_evictions) << std::endl;
 }
 
 void BUFFER_CACHE::record_duration(BLOCK& block) { duration_in_buffer[block.time_present] += 1; }
@@ -1401,8 +1407,6 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
       goto not_found;
     }
     found_tag = true;
-    if (perfect_predictor)
-      return way;
     if (begin->offset <= offset && offset < begin->offset + begin->size) {
       // std::cout << "hit: 1, address:" << packet.v_address << std::endl;
       assert(way_sizes[way] == begin->size);

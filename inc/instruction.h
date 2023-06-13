@@ -149,7 +149,6 @@ struct ooo_model_instr {
       break;
     }
     this->ip = instr.pc;
-    this->is_branch = instr.is_branch;
     this->branch_taken = instr.branch_taken;
     this->size = instr.size;
     if (instr.mem_refs > 0)
