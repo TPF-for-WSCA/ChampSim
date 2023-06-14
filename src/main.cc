@@ -269,6 +269,9 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
     cout << " PREFETCH  REQUESTED: " << setw(10) << cache->pf_requested << "  ISSUED: " << setw(10) << cache->pf_issued;
     cout << "  USEFUL: " << setw(10) << cache->pf_useful << "  USELESS: " << setw(10) << cache->pf_useless << endl;
 
+    cout << cache->NAME;
+    cout << " EVICTIONS: " << setw(10) << cache->TOTAL_CACHELINES << "  USELESS: " << setw(10) << cache->USELESS_CACHELINE << endl;
+
     if (cache->buffer) {
       BUFFER_CACHE& bc = ((VCL_CACHE*)cache)->buffer_cache;
       miss_ratio = 0;
@@ -318,6 +321,9 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
       cout << " PREFETCH    ACCESS: " << setw(10) << bc.roi_access[cpu][5] << "  HIT: " << setw(10) << bc.roi_hit[cpu][5] << "  MISS: " << setw(10)
            << bc.roi_miss[cpu][5] << "  PARTIAL MISS: " << setw(10) << bc.roi_partial_miss[cpu][5] << " ( " << fixed << setprecision(2) << miss_ratio << "%)"
            << endl;
+
+      cout << bc.NAME;
+      cout << " EVICTIONS: " << setw(10) << bc.TOTAL_CACHELINES << "  USELESS: " << setw(10) << bc.USELESS_CACHELINE << endl;
     }
 
     cout << cache->NAME;
@@ -601,6 +607,8 @@ void reset_cache_stats(uint32_t cpu, CACHE* cache)
   cache->pf_useful = 0;
   cache->pf_useless = 0;
   cache->pf_fill = 0;
+  cache->USELESS_CACHELINE = 0;
+  cache->TOTAL_CACHELINES = 0;
 
   cache->total_miss_latency = 0;
 

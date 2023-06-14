@@ -574,6 +574,11 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
   bool evicting_dirty = !bypass && (lower_level != NULL) && fill_block.dirty;
   uint64_t evicting_address = 0;
 
+  if (fill_block.valid && fill_block.accesses == 0) {
+    USELESS_CACHELINE++;
+  }
+  TOTAL_CACHELINES++;
+
   if (!bypass) {
     if (evicting_dirty) {
       PACKET writeback_packet;
@@ -1120,6 +1125,10 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   if (merge_block.full() && fill_block.valid) {
     return false;
   }
+  if (fill_block.valid && fill_block.accesses == 0) {
+    USELESS_CACHELINE++;
+  }
+  TOTAL_CACHELINES++;
   (this->*replacement_update_state)(packet.cpu, set, way, packet.address, packet.ip, 0, packet.type, 0);
 
   if (fill_block.valid) {
@@ -1657,7 +1666,10 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   way_hits[way]++;
   ooo_cpu[handle_block.cpu]->stall_on_miss = 0;
   record_block_insert_removal(set, way, handle_block.address);
-
+  if (fill_block.valid && fill_block.accesses == 0) {
+    USELESS_CACHELINE++;
+  }
+  TOTAL_CACHELINES++;
   bool evicting_dirty = (lower_level != NULL) && fill_block.dirty;
   uint64_t evicting_address = 0;
   if (evicting_dirty) {
@@ -1684,6 +1696,8 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   if (fill_block.prefetch)
     pf_useless++;
 
+  fill_block.bytes_accessed = 0;
+  memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
   fill_block.valid = true;
   fill_block.prefetch = false; // prefetches would go into the buffer and on merge be useless
   fill_block.dirty = handle_block.dirty;
@@ -1694,6 +1708,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   fill_block.tag = get_tag(handle_block.address);
   fill_block.instr_id = handle_block.instr_id;
   fill_block.offset = std::min((uint64_t)64 - fill_block.size, offset);
+  fill_block.accesses = 0;
   auto endidx = 64 - fill_block.offset - fill_block.size;
   fill_block.data = (handle_block.data << offset) >> offset >> endidx << endidx;
   // We already acounted for the evicted block on insert, so what we count here is the insertion of a new block
@@ -1722,7 +1737,10 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
   assert(handle_pkt.type != WRITEBACK || !bypass);
 
   BLOCK& fill_block = block[set * NUM_WAY + way];
-
+  if (fill_block.valid && fill_block.accesses == 0) {
+    USELESS_CACHELINE++;
+  }
+  TOTAL_CACHELINES++;
   // if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
   //   record_cacheline_stats(handle_pkt.cpu, fill_block);
   // }
@@ -1768,6 +1786,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
     fill_block.cpu = handle_pkt.cpu;
     fill_block.tag = get_tag(handle_pkt.address);
     fill_block.instr_id = handle_pkt.instr_id;
+    record_cacheline_accesses(handle_pkt, fill_block);
     if (aligned) {
       uint8_t original_offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
       fill_block.offset = (original_offset - original_offset % fill_block.size);

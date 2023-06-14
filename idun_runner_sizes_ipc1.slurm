@@ -13,7 +13,7 @@
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
-binaries=("champsim4k" "champsim8k" "champsim16k" "champsim64k" "champsim32k" "champsim64k" "champsim128k" "champsim256k")
+binaries=("champsim4k" "champsim8k" "champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim256k")
 for binary in ${binaries[@]}
 do
     python /cluster/home/romankb/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/spec --nosub --output_dir /cluster/work/romankb/results/size_sensitivity/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec_${binary}.log

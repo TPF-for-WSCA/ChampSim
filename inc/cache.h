@@ -90,7 +90,7 @@ public:
            blsize_ignore_holes_hist[NUM_CPUS][BLOCK_SIZE] = {};
 
   uint64_t RQ_ACCESS = 0, RQ_MERGED = 0, RQ_FULL = 0, RQ_TO_CACHE = 0, PQ_ACCESS = 0, PQ_MERGED = 0, PQ_FULL = 0, PQ_TO_CACHE = 0, WQ_ACCESS = 0, WQ_MERGED = 0,
-           WQ_FULL = 0, WQ_FORWARD = 0, WQ_TO_CACHE = 0;
+           WQ_FULL = 0, WQ_FORWARD = 0, WQ_TO_CACHE = 0, USELESS_CACHELINE = 0, TOTAL_CACHELINES = 0;
 
   uint8_t perfect_cache = 0;
 
