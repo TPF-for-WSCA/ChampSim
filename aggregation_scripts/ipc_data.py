@@ -60,8 +60,10 @@ def single_run(path):
     for workload in os.listdir(path):
         if not os.path.isdir(os.path.join(path, workload)):
             continue  # if we do this for a single single run
+        if workload in ["graphs", "raw_data"]:
+            continue
         for logfile in os.listdir(f"{path}/{workload}"):
-            if not ".txt" in logfile:
+            if not ".txt" in logfile or logfile.startswith("."):
                 continue
             if type == STATS.MPKI:
                 stat_by_workload[workload] = extract_l1i_mpki(
@@ -149,7 +151,8 @@ if sys.argv[3] == "MPKI":
     type = STATS.MPKI
 elif sys.argv[3] == "PARTIAL":
     type = STATS.PARTIAL
-elif sys.argv[3] == ""
+elif sys.argv[3] == "BUFFER_DURATION":
+    type = STATS.BUFFER_DURATION
 if sys.argv[2] == "single":
     data["const"] = single_run(sys.argv[1])
 elif sys.argv[2] == "multibench":
