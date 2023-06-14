@@ -85,7 +85,8 @@ public:
   uint64_t sim_access[NUM_CPUS][NUM_TYPES] = {}, sim_hit[NUM_CPUS][NUM_TYPES] = {}, sim_miss[NUM_CPUS][NUM_TYPES] = {},
            sim_partial_miss[NUM_CPUS][NUM_TYPES] = {}, roi_access[NUM_CPUS][NUM_TYPES] = {}, roi_hit[NUM_CPUS][NUM_TYPES] = {},
            roi_miss[NUM_CPUS][NUM_TYPES] = {}, roi_partial_miss[NUM_CPUS][NUM_TYPES] = {}, holecount_hist[NUM_CPUS][BLOCK_SIZE] = {},
-           holesize_hist[NUM_CPUS][BLOCK_SIZE] = {}, cl_bytesaccessed_hist[NUM_CPUS][BLOCK_SIZE] = {}, blsize_hist[NUM_CPUS][BLOCK_SIZE] = {},
+           holesize_hist[NUM_CPUS][BLOCK_SIZE] = {}, cl_bytesaccessed_hist[NUM_CPUS][BLOCK_SIZE] = {},
+           cl_bytesaccessed_hist_accesses[NUM_CPUS][BLOCK_SIZE] = {}, blsize_hist[NUM_CPUS][BLOCK_SIZE] = {}, blsize_hist_accesses[NUM_CPUS][BLOCK_SIZE] = {},
            blsize_ignore_holes_hist[NUM_CPUS][BLOCK_SIZE] = {};
 
   uint64_t RQ_ACCESS = 0, RQ_MERGED = 0, RQ_FULL = 0, RQ_TO_CACHE = 0, PQ_ACCESS = 0, PQ_MERGED = 0, PQ_FULL = 0, PQ_TO_CACHE = 0, WQ_ACCESS = 0, WQ_MERGED = 0,

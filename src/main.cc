@@ -80,7 +80,6 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
   std::filesystem::path csv_file_path = result_dir;
   string filename = cache->NAME + "_num_cl_with_num_holes.tsv";
   csv_file_path /= filename;
-  cout << cache->NAME << "OPEN FILE " << csv_file_path << endl;
   csv_file.open(csv_file_path, std::ios::out);
   cout << cache->NAME << "FILE SUCCESSFULLY OPENED" << endl;
   if (!csv_file) {
@@ -131,6 +130,23 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
   }
   csv_file.close();
 
+  cout << cache->NAME << " #CACHELINES WITH BLOCK SIZE SCALED BY ACCESS: " << endl;
+  csv_file_path.remove_filename();
+  filename = cache->NAME + "_num_cl_with_block_size_accesses_scaled.tsv";
+  csv_file_path /= filename;
+  csv_file.open(csv_file_path);
+  if (!csv_file) {
+    std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+    std::cerr << std::flush;
+  }
+  for (size_t i = 0; i < BLOCK_SIZE; i++) {
+    if (csv_file) {
+      csv_file << i + 1 << "\t" << cache->blsize_hist_accesses[cpu][i] << endl;
+    }
+    cout << setw(10) << i << setw(10) << cache->blsize_hist_accesses[cpu][i] << endl;
+  }
+  csv_file.close();
+
   cout << cache->NAME << " #CACHELINES WITH #BYTES ACCESSED: " << endl;
   csv_file_path.remove_filename();
   filename = cache->NAME + "_num_cl_with_bytes_accessed.tsv";
@@ -144,6 +160,22 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
       csv_file << i + 1 << "\t" << cache->cl_bytesaccessed_hist[cpu][i] << endl;
     }
     cout << setw(10) << i << setw(10) << cache->cl_bytesaccessed_hist[cpu][i] << endl;
+  }
+  csv_file.close();
+
+  cout << cache->NAME << " #CACHELINES WITH #BYTES ACCESSED SCALED BY ACCESSES: " << endl;
+  csv_file_path.remove_filename();
+  filename = cache->NAME + "_num_cl_with_bytes_accessed_accesses_scaled.tsv";
+  csv_file_path /= filename;
+  csv_file.open(csv_file_path);
+  if (!csv_file) {
+    std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+  }
+  for (size_t i = 0; i < BLOCK_SIZE; i++) {
+    if (csv_file) {
+      csv_file << i + 1 << "\t" << cache->cl_bytesaccessed_hist_accesses[cpu][i] << endl;
+    }
+    cout << setw(10) << i << setw(10) << cache->cl_bytesaccessed_hist_accesses[cpu][i] << endl;
   }
   csv_file.close();
 

@@ -532,22 +532,17 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
     total_accessed += (size + 1); // actual size
     // count how many accesses to this block
 
-    uint64_t count = 1;
-    if (count_method == CountBlockMethod::SUM_ACCESSES) {
-      count = 0;
-      for (int j = block.first; j < block.second; j++) {
-        count += handle_block.accesses_per_bytes[j];
-      }
+    uint64_t count = 0;
+    for (int j = block.first; j < block.second; j++) {
+      count += handle_block.accesses_per_bytes[j];
     }
-    blsize_hist[cpu][size] += count;
+    blsize_hist[cpu][size] += 1;
+    blsize_hist_accesses[cpu][size] += count;
     is_hole = !is_hole; // alternating block/hole
   }
-  uint64_t count = 1;
-  if (count_method == CountBlockMethod::SUM_ACCESSES) {
-    count = handle_block.accesses;
-  }
-  cl_bytesaccessed_hist[cpu][total_accessed] += count;
-  blsize_ignore_holes_hist[cpu][last_accessed - first_accessed] += count;
+  cl_bytesaccessed_hist[cpu][total_accessed] += 1;
+  cl_bytesaccessed_hist_accesses[cpu][total_accessed] += handle_block.accesses;
+  blsize_ignore_holes_hist[cpu][last_accessed - first_accessed] += 1;
 }
 
 bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
