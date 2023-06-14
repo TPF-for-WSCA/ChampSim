@@ -13,11 +13,11 @@
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
-binaries=("champsim32k" "champsim64k" "champsim128m" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d" "champsim_vcl_buffer_16")
+binaries=("champsim4k" "champsim8k" "champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim256k")
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/cloud --nosub --intel --output_dir /cluster/work/romankb/results/crc2_cloud/sizes_${binary}/ >> ~/pyrunner_crc2_cloud_${binary}.log
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/spec --nosub --intel --output_dir /cluster/work/romankb/results/crc2_spec/sizes_${binary}/ >> ~/pyrunner_crc2_spec_${binary}.log
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/cloud --nosub --intel --output_dir /cluster/work/romankb/results/size_sensitivity/crc2_cloud/sizes_${binary}/ >> ~/pyrunner_crc2_cloud_${binary}.log
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/spec --nosub --intel --output_dir /cluster/work/romankb/results/size_sensitivity/crc2_spec/sizes_${binary}/ >> ~/pyrunner_crc2_spec_${binary}.log
 done
 
 for job in `jobs -p`
