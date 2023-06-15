@@ -49,6 +49,21 @@
             ]
         },
         {
+            "name": "Python: ExtractLogs",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/aggregation_scripts/ipc_data.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "stopOnEntry": false,
+            "args": [
+                "~/OneDrive/Research/results/useless_vcl/tanvir/sizes_champsim_vcl_buffer_64d_max_way",
+                "single",
+                "USELESS_LINES",
+                "true"
+            ]
+        },
+        {
             "name": "Python: LinesPerWay",
             "type": "python",
             "request": "launch",

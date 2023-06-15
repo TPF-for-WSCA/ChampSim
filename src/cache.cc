@@ -381,6 +381,9 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
 void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
 {
   BLOCK& repl_block = block[set * NUM_WAY + way];
+  if (!repl_block.valid) {
+    num_invalid_blocks_in_cache--;
+  }
   bool newtag_present = false;
   bool oldtag_present = false;
   uint64_t new_tag = (address >> (OFFSET_BITS));
@@ -440,13 +443,14 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
     assert(0);
   }
   cl_blocks_in_cache_buffer.push_back(num_blocks_in_cache);
+  cl_invalid_blocks_in_cache_buffer.push_back(num_invalid_blocks_in_cache);
 }
 
 // TODO: Make more generic for all simple series
 // TODO: ONLY TRACK WHEN WARMUP COMPLETE>>>
 void CACHE::write_buffers_to_disk()
 {
-  if (cl_accessmask_buffer.size() == 0 && cl_blocks_in_cache_buffer.size() == 0) {
+  if (cl_accessmask_buffer.size() == 0 && cl_blocks_in_cache_buffer.size() == 0 && cl_invalid_blocks_in_cache_buffer.size() == 0) {
     return;
   }
   if (!cl_accessmask_file.is_open()) {
@@ -461,16 +465,27 @@ void CACHE::write_buffers_to_disk()
     result_path /= filename;
     cl_num_blocks_in_cache = std::ofstream(result_path.c_str(), std::ios::binary | std::ios::out);
   }
+  if (!cl_num_invalid_blocks_in_cache.is_open()) {
+    std::filesystem::path result_path = result_dir;
+    string filename = this->NAME + "_cl_num_invalid_blocks.bin";
+    result_path /= filename;
+    cl_num_invalid_blocks_in_cache = std::ofstream(result_path.c_str(), std::ios::binary | std::ios::out);
+  }
   for (auto& mask : cl_accessmask_buffer) {
     cl_accessmask_file.write(reinterpret_cast<char*>(&mask), sizeof(uint64_t));
   }
   for (auto& num_blocks : cl_blocks_in_cache_buffer) {
     cl_num_blocks_in_cache.write(reinterpret_cast<char*>(&num_blocks), sizeof(uint64_t));
   }
+  for (auto& num_blocks : cl_invalid_blocks_in_cache_buffer) {
+    cl_num_invalid_blocks_in_cache.write(reinterpret_cast<char*>(&num_blocks), sizeof(uint32_t));
+  }
   cl_accessmask_file.flush();
   cl_num_blocks_in_cache.flush();
+  cl_num_invalid_blocks_in_cache.flush();
   cl_accessmask_buffer.clear();
   cl_blocks_in_cache_buffer.clear();
+  cl_invalid_blocks_in_cache_buffer.clear();
 }
 
 void CACHE::record_remainder_cachelines(uint32_t cpu)
@@ -757,7 +772,7 @@ int CACHE::add_rq(PACKET* packet)
   }
 
   // if there is no duplicate, add it to RQ
-  assert(packet->size <= 64);
+  assert(packet->size < 64);
   if (warmup_complete[cpu])
     RQ.push_back(*packet);
   else
@@ -1149,10 +1164,14 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
     BLOCK& b = parent.block[parent_set * parent.NUM_WAY + way];
     if (!b.valid)
       continue;
-    set_accessed(&fill_block.bytes_accessed, b.offset, b.offset + b.size - 1);
+    set_accessed(&fill_block.bytes_accessed, b.offset, b.offset + b.size - 1); // we only mark them as accessed but not count accesses per bytes
     b.valid = false;
+    parent.num_invalid_blocks_in_cache++;
+
     invalidated = true;
   }
+  parent.cl_invalid_blocks_in_cache_buffer.push_back(parent.num_invalid_blocks_in_cache);
+
   if (invalidated) {
     parent.num_blocks_in_cache--; // we just invalidated all blocks of that tag
   }
@@ -1347,7 +1366,7 @@ uint8_t VCL_CACHE::hit_check(uint32_t& set, uint32_t& way, uint64_t& address, ui
   BLOCK b = block[set * NUM_WAY + way];
   uint8_t access_offset = address % BLOCK_SIZE;
   // NON VCL ignores block boundary crossing accesses at this point - so do we
-  if ((b.offset <= access_offset && access_offset < b.offset + b.size && access_offset + size < b.offset + b.size) || (b.offset + b.size >= 64)) {
+  if ((b.offset <= access_offset && access_offset < b.offset + b.size && (access_offset + size - 1) < b.offset + b.size) || (b.offset + b.size >= 64)) {
     return 0;
   } else if (b.offset <= access_offset && access_offset < b.offset + b.size) {
     return b.offset + b.size; // we hit in the first part, but not in the second part
@@ -1474,7 +1493,9 @@ void VCL_CACHE::handle_read()
       if (newoffset > 63) {
         assert(0);
       }
-      handle_pkt.size = handle_pkt.size - (newoffset - handle_pkt.v_address % BLOCK_SIZE);
+      assert(handle_pkt.size > 0 && handle_pkt.size < 64);
+      uint64_t diff = (newoffset - handle_pkt.v_address % BLOCK_SIZE);
+      handle_pkt.size = handle_pkt.size - diff;
       uint64_t mask = ~(BLOCK_SIZE - 1);
       handle_pkt.v_address = (handle_pkt.v_address & mask) + newoffset;
       handle_pkt.address = (handle_pkt.address & mask) + newoffset; // offset matches: all 64 byte aligned
@@ -1634,7 +1655,7 @@ int VCL_CACHE::add_rq(PACKET* packet)
   }
 
   // if there is no duplicate, add it to RQ
-  assert(packet->size <= 64);
+  assert(packet->size < 64);
   if (warmup_complete[cpu])
     RQ.push_back(*packet);
   else

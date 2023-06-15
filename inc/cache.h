@@ -39,7 +39,7 @@ std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uin
 void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block);
 
 enum class CountBlockMethod { EVICTION, SUM_ACCESSES };
-enum LruModifier { DEFAULT = 0, PRECISE = 1, BOUND2 = 2, BOUND3 = 3 };
+enum LruModifier { DEFAULT = 0, PRECISE = 1, BOUND2 = 2, BOUND3 = 3, BOUND4 = 4 };
 enum class BufferOrganisation { FULLY_ASSOCIATIVE, DIRECT_MAPPED, SET_ASSOCIATIVE };
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
@@ -48,6 +48,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 private:
   std::ofstream cl_accessmask_file;
   std::ofstream cl_num_blocks_in_cache;
+  std::ofstream cl_num_invalid_blocks_in_cache;
   CountBlockMethod count_method;
 
 protected:
@@ -62,8 +63,9 @@ public:
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
   std::vector<uint64_t> cl_accessmask_buffer;
   std::vector<uint64_t> cl_blocks_in_cache_buffer;
+  std::vector<uint32_t> cl_invalid_blocks_in_cache_buffer;
   const uint32_t MAX_READ, MAX_WRITE;
-  uint32_t reads_available_this_cycle, writes_available_this_cycle, num_blocks_in_cache;
+  uint32_t reads_available_this_cycle, writes_available_this_cycle, num_blocks_in_cache, num_invalid_blocks_in_cache;
   const bool prefetch_as_load;
   const bool match_offset_bits;
   const bool virtual_prefetch;
@@ -158,7 +160,9 @@ public:
     if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
     }
+    num_invalid_blocks_in_cache = NUM_SET * NUM_WAY;
     cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
+    cl_invalid_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
     way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
     if (way_hits == NULL)
       std::cerr << "COULD NOT ALLOCATE WAY_HIT ARRAY" << std::endl;
@@ -175,6 +179,7 @@ public:
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
     }
     cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
+    cl_invalid_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
     way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
     if (way_hits == NULL)
       std::cerr << "COULD NOT ALLOCATE WAY_HIT ARRAY" << std::endl;

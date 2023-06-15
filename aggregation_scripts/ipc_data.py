@@ -11,9 +11,12 @@ class STATS(Enum):
     MPKI = 2
     PARTIAL = 3
     BUFFER_DURATION = 4
+    USELESS = 5
 
 
 type = STATS.IPC
+
+buffer = False
 
 
 def extract_ipc(path):
@@ -41,6 +44,24 @@ def extract_l1i_partial(path):
         if matches:
             return matches.groups()[1]
     return 0
+
+
+def extrace_useless_percentage(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile("cpu0\_L1I EVICTIONS\:\s+(\d*)\s+USELESS:\s+(\d*)")
+    if buffer:
+        regex = re.compile(
+            "cpu0\_L1I_buffer EVICTIONS\:\s+(\d*)\s+USELESS:\s+(\d*)"
+        )
+
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return int(matches.groups()[1]) / int(matches.groups()[0])
+    return -1
 
 
 def extract_l1i_mpki(path):
@@ -71,6 +92,10 @@ def single_run(path):
                 )
             elif type == STATS.PARTIAL:
                 stat_by_workload[workload] = extract_l1i_partial(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.USELESS:
+                stat_by_workload[workload] = extrace_useless_percentage(
                     f"{path}/{workload}/{logfile}"
                 )
             else:
@@ -108,11 +133,18 @@ def mutliple_sizes_run(out_dir=None):
 
 
 def write_tsv(data, out_path=None):
-    filename = "ipc.tsv"
+    filename = "ipc"
     if type == STATS.MPKI:
-        filename = "mpki.tsv"
+        filename = "mpki"
     elif type == STATS.PARTIAL:
-        filename = "partial.tsv"
+        filename = "partial"
+    elif type == STATS.BUFFER_DURATION:
+        filename = "avg_buffer"
+    elif type == STATS.USELESS:
+        filename = "useless"
+    if buffer:
+        filename += "_buffer"
+    filename += ".tsv"
     if out_path:
         out_path = os.path.join(out_path, filename)
     else:
@@ -153,6 +185,10 @@ elif sys.argv[3] == "PARTIAL":
     type = STATS.PARTIAL
 elif sys.argv[3] == "BUFFER_DURATION":
     type = STATS.BUFFER_DURATION
+elif sys.argv[3] == "USELESS_LINES":
+    type = STATS.USELESS
+if len(sys.argv) == 5 and sys.argv[4]:
+    buffer = True
 if sys.argv[2] == "single":
     data["const"] = single_run(sys.argv[1])
 elif sys.argv[2] == "multibench":
