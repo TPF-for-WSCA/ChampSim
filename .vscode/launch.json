@@ -64,6 +64,19 @@
             ]
         },
         {
+            "name": "Python: Timeseries",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/aggregation_scripts/plot_timeseries.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "stopOnEntry": false,
+            "args": [
+                "~/OneDrive/Research/results/2nd_lrp_insert/ipc1_server/sizes_champsim_vcl_buffer_64d_max_way",
+                "multi"
+            ]
+        },
+        {
             "name": "Python: LinesPerWay",
             "type": "python",
             "request": "launch",

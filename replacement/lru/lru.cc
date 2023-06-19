@@ -34,7 +34,10 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
     auto begin = std::next(block.begin(), set * NUM_WAY);
     auto end = std::next(begin, NUM_WAY);
     uint32_t hit_lru = std::next(begin, way)->lru;
-    std::for_each(begin, end, [hit_lru](BLOCK& x) {
+    auto num_ways = NUM_WAY;
+    std::for_each(begin, end, [hit_lru, num_ways](BLOCK& x) {
+      if (x.lru == num_ways)
+        return;
       if (x.lru <= hit_lru)
         x.lru++;
     });
