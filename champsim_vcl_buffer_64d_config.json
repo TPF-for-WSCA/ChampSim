@@ -76,7 +76,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD",
-    "lru_modifier": "BOUND3",
+    "lru_modifier": "LRU2BOUND4",
     "prefetcher": "no_instr",
     "counting_block_method": "EVICTION"
   },

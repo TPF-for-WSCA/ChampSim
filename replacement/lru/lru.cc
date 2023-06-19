@@ -20,14 +20,26 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
   if (hit && type == WRITEBACK)
     return;
 
-  auto begin = std::next(block.begin(), set * NUM_WAY);
-  auto end = std::next(begin, NUM_WAY);
-  uint32_t hit_lru = std::next(begin, way)->lru;
-  std::for_each(begin, end, [hit_lru](BLOCK& x) {
-    if (x.lru <= hit_lru)
-      x.lru++;
-  });
-  std::next(begin, way)->lru = 0; // promote to the MRU position
+  if (type == FILL && lru_modifier > 10) {
+    auto begin = std::next(block.begin(), set * NUM_WAY);
+    auto end = std::next(begin, lru_subset.second);
+    begin = std::next(begin, lru_subset.first);
+    uint32_t second_lru = NUM_WAY - 3;
+    std::for_each(begin, end, [second_lru](BLOCK& x) {
+      if (x.lru == second_lru) {
+        x.lru++;
+      }
+    });
+  } else {
+    auto begin = std::next(block.begin(), set * NUM_WAY);
+    auto end = std::next(begin, NUM_WAY);
+    uint32_t hit_lru = std::next(begin, way)->lru;
+    std::for_each(begin, end, [hit_lru](BLOCK& x) {
+      if (x.lru <= hit_lru)
+        x.lru++;
+    });
+    std::next(begin, way)->lru = 0; // promote to the MRU position
+  }
 }
 
 void CACHE::replacement_final_stats() {}

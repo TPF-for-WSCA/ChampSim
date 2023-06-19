@@ -20,6 +20,8 @@
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
 #define WRITE_BUFFER_SIZE 10
 
+typedef std::pair<uint8_t, uint8_t> SUBSET;
+
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
 extern std::string result_dir;
 
@@ -39,7 +41,7 @@ std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uin
 void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block);
 
 enum class CountBlockMethod { EVICTION, SUM_ACCESSES };
-enum LruModifier { DEFAULT = 0, PRECISE = 1, BOUND2 = 2, BOUND3 = 3, BOUND4 = 4 };
+enum LruModifier { DEFAULT = 0, PRECISE = 1, BOUND2 = 2, BOUND3 = 3, BOUND4 = 4, LRU2BOUND2 = 20, LRU2BOUND3 = 30, LRU2BOUND4 = 40 };
 enum class BufferOrganisation { FULLY_ASSOCIATIVE, DIRECT_MAPPED, SET_ASSOCIATIVE };
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
@@ -55,6 +57,8 @@ protected:
   uint64_t* way_hits;
 
 public:
+  LruModifier lru_modifier = LruModifier::DEFAULT;
+  SUBSET lru_subset{0, 0};
   bool buffer = false;
   uint32_t cpu;
   const std::string NAME;
@@ -262,7 +266,6 @@ private:
   uint32_t buffer_sets = 0;
   uint32_t buffer_ways = 0;
   BufferOrganisation organisation;
-  LruModifier lru_modifier;
 
 public:
   BUFFER_CACHE buffer_cache;
@@ -272,7 +275,7 @@ public:
             pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl),
-        aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation), lru_modifier(lru_modifier),
+        aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation),
         buffer_cache(BUFFER_CACHE((v1 + "_buffer"), freq_scale, fill_level, (buffer_organisation == BufferOrganisation::DIRECT_MAPPED) ? buffer_sets : 1,
                                   (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : 1, 0, std::min(buffer_sets, v5),
                                   std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read, max_write / 2, offset_bits,
@@ -292,7 +295,7 @@ public:
       buffer_cache.HIT_LATENCY = buffer_hit_latency;
       buffer_cache.HIT_LATENCY = buffer_hit_latency;
     }
-
+    CACHE::lru_modifier = lru_modifier;
     overlap_bytes_history.reserve(WRITE_BUFFER_SIZE);
     current_overlap = 0;
   }

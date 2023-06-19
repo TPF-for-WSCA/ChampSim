@@ -11,7 +11,8 @@
 #define PREFETCH 2
 #define WRITEBACK 3
 #define TRANSLATION 4
-#define NUM_TYPES 5
+#define FILL 5
+#define NUM_TYPES 6
 
 // CACHE BLOCK
 class BLOCK

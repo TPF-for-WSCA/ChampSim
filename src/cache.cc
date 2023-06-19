@@ -19,6 +19,13 @@ extern VirtualMemory vmem;
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t knob_stall_on_miss;
 
+uint8_t get_lru_offset(LruModifier lru_modifier)
+{
+  if (lru_modifier > 10)
+    return lru_modifier / 10;
+  return lru_modifier;
+}
+
 void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper)
 {
   if (upper > 63) {
@@ -1211,17 +1218,22 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
     begin_of_subset++;
   }
   if (lru_modifier > 0) {
+    uint8_t num_way_bound = get_lru_offset(lru_modifier);
     uint32_t end_way = begin_way;
     int count_sizes = 0;
     int prev_size = 0;
-    while (end_way < NUM_WAY && count_sizes < lru_modifier) {
+    while (end_way < NUM_WAY && count_sizes < num_way_bound) {
       if (prev_size != way_sizes[end_way]) {
         count_sizes++;
       }
       end_way++;
     }
     endofset = current_set + end_way;
+    lru_subset = SUBSET(begin_way, end_way);
+  } else {
+    lru_subset = SUBSET(0, 0);
   }
+
   if (begin_of_subset->size < min_size) {
     std::cerr << "Couldn't find way that fits size" << std::endl;
     assert(0);
@@ -1268,6 +1280,18 @@ void VCL_CACHE::operate_buffer_evictions()
       if (way == NUM_WAY) {
         way = lru_victim(&block.data()[set * NUM_WAY], block_size);
         assert(way < NUM_WAY);
+      } else {
+        uint8_t first_way = 0;
+        for (int i = 0; i < NUM_WAY; i++) {
+          if (way_sizes[i] < block_size)
+            continue;
+          first_way = i;
+          break;
+        }
+        uint8_t last_way = first_way + get_lru_offset(lru_modifier);
+        if (last_way > NUM_WAY)
+          last_way = NUM_WAY;
+        lru_subset = SUBSET(first_way, last_way);
       }
       filllike_miss(set, way, blocks[i].first, merge_block);
     }
@@ -1311,9 +1335,13 @@ void VCL_CACHE::handle_fill()
       // if aligned, we might have to write two blocks
 
       if (way == NUM_WAY) {
-        way = lru_victim(&block.data()[set * NUM_WAY], 8); // TODO: FIX FOR SIZE once we have buffer
+        way = lru_victim(&block.data()[set * NUM_WAY], 8); // NOTE: THIS IS THE BUFFERLESS IMPLEMENTATION // TODO: CHANGE SIZE ACCORDING TO WAY SIZES
         // TODO: RECORD STATISTICS IF ANY
       }
+      uint8_t last_way = way + get_lru_offset(lru_modifier);
+      if (last_way > NUM_WAY)
+        last_way = NUM_WAY;
+      lru_subset = SUBSET(way, last_way);
 
       bool success = filllike_miss(set, way, *fill_mshr);
       if (!success)
@@ -1733,6 +1761,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   auto endidx = 64 - fill_block.offset - fill_block.size;
   fill_block.data = (handle_block.data << offset) >> offset >> endidx << endidx;
   // We already acounted for the evicted block on insert, so what we count here is the insertion of a new block
+  impl_replacement_update_state(handle_block.cpu, set, way, handle_block.address, handle_block.ip, 0, FILL, 0);
   return true;
 }
 
@@ -1835,7 +1864,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
                                  handle_pkt.type == PREFETCH, evicting_address, handle_pkt.pf_metadata);
 
   // update replacement policy
-  impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
+  impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, FILL, 0);
 
   // COLLECT STATS
   sim_miss[handle_pkt.cpu][handle_pkt.type]++;
