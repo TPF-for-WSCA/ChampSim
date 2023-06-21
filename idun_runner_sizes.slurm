@@ -17,7 +17,7 @@ module load Python/3.9.6-GCCcore-11.2.0
 binaries=("champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim_vcl_buffer_64_f" "champsim_vcl_buffer_64_lru" "champsim_vcl_buffer_64_lru_2w" "champsim_vcl_buffer_64_lru_4w" ""champsim_vcl_buffer_64_lru_8w"" "champsim_vcl_buffer_64d" "champsim_vcl_buffer_128_f" "champsim_vcl_buffer_128_lru" "champsim_vcl_buffer_128_lru_2w" "champsim_vcl_buffer_128_lru_4w" ""champsim_vcl_buffer_128_lru_8w"" "champsim_vcl_buffer_128d")
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 90000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --trace_format p --traces_directory /cluster/work/romankb/dataset/tanvir --output_dir /cluster/work/romankb/results/2nd_lrp_insert/tanvir/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 90000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --trace_format p --traces_directory /cluster/work/romankb/dataset/tanvir --output_dir /cluster/work/romankb/results/full_analysis/tanvir/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
 done
 
 for job in `jobs -p`

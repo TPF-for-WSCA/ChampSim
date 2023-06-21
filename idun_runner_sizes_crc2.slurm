@@ -16,8 +16,8 @@ module load Python/3.9.6-GCCcore-11.2.0
 binaries=("champsim_data_16k" "champsim_data_32k" "champsim_data_64k" "champsim_data_128k" "champsim_vcl_buffer_64_f_data" "champsim_vcl_buffer_64_lru_data" "champsim_vcl_buffer_64_lru_2w_data" "champsim_vcl_buffer_64_lru_4w_data" ""champsim_vcl_buffer_64_lru_8w_data"" "champsim_vcl_buffer_64d_data" "champsim_vcl_buffer_128_f_data" "champsim_vcl_buffer_128_lru_data" "champsim_vcl_buffer_128_lru_2w_data" "champsim_vcl_buffer_128_lru_4w_data" ""champsim_vcl_buffer_128_lru_8w_data"" "champsim_vcl_buffer_128d_data")
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/cloud --nosub --intel --output_dir /cluster/work/romankb/results/size_sensitivity/crc2_cloud/sizes_${binary}/ >> ~/pyrunner_crc2_cloud_${binary}.log
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/spec --nosub --intel --output_dir /cluster/work/romankb/results/size_sensitivity/crc2_spec/sizes_${binary}/ >> ~/pyrunner_crc2_spec_${binary}.log
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/cloud --nosub --intel --output_dir /cluster/work/romankb/results/full_analysis/crc2_cloud/sizes_${binary}/ >> ~/pyrunner_crc2_cloud_${binary}.log
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/spec --nosub --intel --output_dir /cluster/work/romankb/results/full_analysis/crc2_spec/sizes_${binary}/ >> ~/pyrunner_crc2_spec_${binary}.log
 done
 
 for job in `jobs -p`
