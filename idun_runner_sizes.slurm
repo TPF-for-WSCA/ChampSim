@@ -14,7 +14,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-inst
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
 #binaries=("champsim4k" "champsim8k" "champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim256k")
-binaries=("champsim16k" "champsim32k" "champsim_vcl_buffer_64d_max_way")
+binaries=("champsim16k" "champsim32k" "champsim64k" "champsim_vcl_buffer_64d_max_way")
 for binary in ${binaries[@]}
 do
     python /cluster/home/romankb/ChampSim/data_collector.py --instructions 90000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --trace_format p --traces_directory /cluster/work/romankb/dataset/tanvir --output_dir /cluster/work/romankb/results/2nd_lrp_insert/tanvir/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
