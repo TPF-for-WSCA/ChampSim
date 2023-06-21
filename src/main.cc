@@ -376,7 +376,7 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
 
     miss_ratio = 0;
     if (cache->sim_miss[cpu][0] != 0 && cache->sim_partial_miss[cpu][0] != 0)
-      miss_ratio = ((long double)cache->sim_partial_miss[cpu][0] / (long double)cache->sim_miss[cpu][0]) * 100;
+      miss_ratio = ((long double)cache->sim_partial_miss[cpu][0] / (long double)cache->sim_miss[cpu][0]);
     cout << cache->NAME;
     cout << " LOAD      ACCESS: " << setw(10) << cache->sim_access[cpu][0] << "  HIT: " << setw(10) << cache->sim_hit[cpu][0] << "  MISS: " << setw(10)
          << cache->sim_miss[cpu][0] << "  PARTIAL MISS: " << setw(10) << cache->sim_partial_miss[cpu][0] << " ( " << fixed << setprecision(2) << miss_ratio
@@ -384,7 +384,7 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
 
     miss_ratio = 0;
     if (cache->sim_miss[cpu][1] != 0 && cache->sim_partial_miss[cpu][1] != 0)
-      miss_ratio = ((long double)cache->sim_partial_miss[cpu][1] / (long double)cache->sim_miss[cpu][1]) * 100;
+      miss_ratio = ((long double)cache->sim_partial_miss[cpu][1] / (long double)cache->sim_miss[cpu][1]);
     cout << cache->NAME;
     cout << " RFO       ACCESS: " << setw(10) << cache->sim_access[cpu][1] << "  HIT: " << setw(10) << cache->sim_hit[cpu][1] << "  MISS: " << setw(10)
          << cache->sim_miss[cpu][1] << "  PARTIAL MISS: " << setw(10) << cache->sim_partial_miss[cpu][1] << " ( " << fixed << setprecision(2) << miss_ratio
@@ -392,7 +392,7 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
 
     miss_ratio = 0;
     if (cache->sim_miss[cpu][2] != 0 && cache->sim_partial_miss[cpu][2] != 0)
-      miss_ratio = ((long double)cache->sim_partial_miss[cpu][2] / (long double)cache->sim_miss[cpu][2]) * 100;
+      miss_ratio = ((long double)cache->sim_partial_miss[cpu][2] / (long double)cache->sim_miss[cpu][2]);
     cout << cache->NAME;
     cout << " PREFETCH  ACCESS: " << setw(10) << cache->sim_access[cpu][2] << "  HIT: " << setw(10) << cache->sim_hit[cpu][2] << "  MISS: " << setw(10)
          << cache->sim_miss[cpu][2] << "  PARTIAL MISS: " << setw(10) << cache->sim_partial_miss[cpu][2] << " ( " << fixed << setprecision(2) << miss_ratio
@@ -400,7 +400,7 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
 
     miss_ratio = 0;
     if (cache->sim_miss[cpu][3] != 0 && cache->sim_partial_miss[cpu][3] != 0)
-      miss_ratio = ((long double)cache->sim_partial_miss[cpu][3] / (long double)cache->sim_miss[cpu][3]) * 100;
+      miss_ratio = ((long double)cache->sim_partial_miss[cpu][3] / (long double)cache->sim_miss[cpu][3]);
     cout << cache->NAME;
     cout << " WRITEBACK ACCESS: " << setw(10) << cache->sim_access[cpu][3] << "  HIT: " << setw(10) << cache->sim_hit[cpu][3] << "  MISS: " << setw(10)
          << cache->sim_miss[cpu][3] << "  PARTIAL MISS: " << setw(10) << cache->sim_partial_miss[cpu][3] << " ( " << fixed << setprecision(2) << miss_ratio

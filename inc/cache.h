@@ -207,6 +207,11 @@ private:
                                                  uint8_t hit);
   uint32_t (BUFFER_CACHE::*replacement_find_victim)(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
                                                     uint32_t type);
+  uint32_t underruns = 0, overruns = 0, newblock = 0, mergeblocks = 0;
+  std::vector<uint32_t> underrun_bytes_histogram;
+  std::vector<uint32_t> overrun_bytes_histogram;
+  std::vector<uint32_t> newblock_bytes_histogram;
+  std::vector<uint32_t> mergeblock_bytes_histogram;
 
 public:
   buffer_t<BLOCK> merge_block{MAX_WRITE};
@@ -221,7 +226,7 @@ public:
                bool FIFO = false)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl, method),
-        fifo(FIFO)
+        fifo(FIFO), underrun_bytes_histogram(64), overrun_bytes_histogram(64), newblock_bytes_histogram(64), mergeblock_bytes_histogram(64)
   {
     if (fifo) {
       replacement_update_state = &BUFFER_CACHE::update_replacement_state;

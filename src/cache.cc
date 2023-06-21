@@ -1117,6 +1117,23 @@ void BUFFER_CACHE::print_private_stats()
   }
   std::cout << "AVERAGE Time Spent in Buffer: ";
   std::cout << (total_time / total_evictions) << std::endl;
+  std::cout << NAME << " PARTIAL MISSES";
+  std::cout << "\tUNDERRUNS: " << std::setw(10) << underruns << "\tOVERRUNS: " << std::setw(10) << overruns << "\tMERGES: " << std::setw(10) << mergeblocks
+            << "\tNEW BLOCKS: " << std::setw(10) << newblock << std::endl;
+  std::cout << NAME << " UNDERRUN SIZE:" << std::endl;
+  for (int i = 1; i < 65; i++) {
+    std::cout << i << ":\t" << +underrun_bytes_histogram[i - 1] << std::endl;
+  }
+
+  std::cout << NAME << " OVERRUN SIZE:" << std::endl;
+  for (int i = 1; i < 65; i++) {
+    std::cout << i << ":\t" << +overrun_bytes_histogram[i - 1] << std::endl;
+  }
+
+  std::cout << NAME << " NEW BLOCKS SIZE:" << std::endl;
+  for (int i = 1; i < 65; i++) {
+    std::cout << i << ":\t" << +newblock_bytes_histogram[i - 1] << std::endl;
+  }
 }
 
 void BUFFER_CACHE::record_duration(BLOCK& block) { duration_in_buffer[block.time_present] += 1; }
@@ -1144,16 +1161,68 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   }
 
   BLOCK& fill_block = block[set * NUM_WAY + way];
+  if (fill_block.old_bytes_accessed > fill_block.bytes_accessed) {
+    assert(0);
+  }
   if (merge_block.full() && fill_block.valid) {
     return false;
   }
   if (fill_block.valid && fill_block.accesses == 0) {
     USELESS_CACHELINE++;
+    assert(0);
   }
   TOTAL_CACHELINES++;
   (this->*replacement_update_state)(packet.cpu, set, way, packet.address, packet.ip, 0, packet.type, 0);
 
+  if (fill_block.valid && fill_block.old_bytes_accessed > 0 && warmup_complete[packet.cpu]) {
+    // Record over/under/new/combined
+    uint8_t curr_bp = 0;
+    uint8_t prev_new_byte = 0;
+    uint8_t prev_old_byte = 0;
+    bool overrun_active = false;
+    bool new_block_active = false;
+    uint8_t new_byte_count = 0;
+    while (curr_bp < 64) {
+      uint8_t new_byte = (fill_block.bytes_accessed >> curr_bp) & 0b1;
+      uint8_t old_byte = (fill_block.old_bytes_accessed >> curr_bp) & 0b1;
+      if (new_byte == 1 && old_byte == 0) {
+        new_byte_count++;
+        if (prev_old_byte == 1) {
+          overrun_active = true;
+        } else if (!overrun_active) {
+          // we are not overrunning and encounter a previously not accessed byte so this must be either an underrun or a new block - we don't know yet
+          new_block_active = true;
+        }
+        // partial miss
+      } else if (new_byte_count > 0) {
+        // anything to clean up?
+        if (new_block_active && old_byte == 0) {
+          newblock++;
+          newblock_bytes_histogram[new_byte_count]++;
+        } else if (new_block_active && old_byte == 1) {
+          underruns++;
+          underrun_bytes_histogram[new_byte_count]++;
+        }
+        if (overrun_active && old_byte == 1) {
+          mergeblocks++;
+          mergeblock_bytes_histogram[new_byte_count]++;
+          overrun_active = false;
+        } else if (overrun_active && old_byte == 0) {
+          overruns++;
+          overrun_bytes_histogram[new_byte_count]++;
+          overrun_active = false;
+        }
+
+        new_byte_count = 0;
+      }
+      prev_new_byte = new_byte;
+      prev_old_byte = old_byte;
+      curr_bp++;
+    }
+  }
+
   if (fill_block.valid) {
+    // Record stats
     record_duration(fill_block);
     merge_block.push_back(fill_block, true);
     record_cacheline_stats(packet.cpu, fill_block);
@@ -1179,8 +1248,12 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   }
   parent.cl_invalid_blocks_in_cache_buffer.push_back(parent.num_invalid_blocks_in_cache);
 
+  fill_block.old_bytes_accessed = 0;
   if (invalidated) {
     parent.num_blocks_in_cache--; // we just invalidated all blocks of that tag
+    fill_block.old_bytes_accessed = fill_block.bytes_accessed;
+  } else if (packet.partial) {
+    assert(0);
   }
   ////
   fill_block.valid = true;
