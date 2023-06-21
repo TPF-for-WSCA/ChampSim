@@ -1253,7 +1253,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
     parent.num_blocks_in_cache--; // we just invalidated all blocks of that tag
     fill_block.old_bytes_accessed = fill_block.bytes_accessed;
   } else if (packet.partial) {
-    assert(0);
+    std::cout << "Partial without hit in cache" << std::endl;
   }
   ////
   fill_block.valid = true;
