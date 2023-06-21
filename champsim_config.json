@@ -53,7 +53,7 @@
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD",
     "prefetcher": "no_instr",
-    "counting_block_method": "SUM_ACCESSES"
+    "counting_block_method": "EVICTION"
   },
   "L1D": {
     "sets": 64,
