@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH -c16
 #SBATCH --mem-per-cpu=8G
-#SBATCH --time=00-06:00:00
+#SBATCH --time=01-12:00:00
 #SBATCH --mail-user=romankb@ntnu.no
 #SBATCH --mail-type=ALL
 #SBATCH -e /cluster/work/romankb/slurm-default-sizes-%j.err
@@ -13,7 +13,7 @@
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
-binaries=("champsim4k" "champsim8k" "champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim256k")
+binaries=("champsim_data_4k" "champsim_data_8k" "champsim_data_16k" "champsim_data_32k" "champsim_data_64k" "champsim_data_128k" "champsim_data_256k")
 for binary in ${binaries[@]}
 do
     python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/dpc3/champsim-traces/speccpu  --intel --nosub --output_dir /cluster/work/romankb/results/size_sensitivity/dpc3/sizes_${binary}/ >> ~/pyrunner_dpc3_${binary}.log

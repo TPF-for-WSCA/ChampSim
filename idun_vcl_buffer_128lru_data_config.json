@@ -1,13 +1,13 @@
 {
-  "executable_name": "bin/champsim",
+  "executable_name": "bin/champsim_vcl_buffer_128_lru_data",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
   "num_cores": 1,
-  "CFLAGS": "-Wall -g -O0 -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-  "CXXFLAGS": "-Wall -g -O0 -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+  "CFLAGS": "-Wall -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include",
+  "CXXFLAGS": "-Wall -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include",
   "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
-  "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib",
+  "LDFLAGS": "-L/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib",
   "ooo_cpu": [
     {
       "frequency": 4000,
@@ -43,8 +43,8 @@
     "sets": 64,
     "ways": 18,
     "buffer": true,
-    "buffer_size": 64,
-    "buffer_organisation": "SET8_ASSOCIATIVE",
+    "buffer_size": 128,
+    "buffer_organisation": "FULLY_ASSOCIATIVE",
     "buffer_fifo": false,
     "way_sizes": [
       4,
@@ -76,12 +76,10 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD",
-    "lru_modifier": "LRU2BOUND4",
     "prefetcher": "no_instr",
     "counting_block_method": "EVICTION"
   },
   "L1D": {
-    "perfect": true,
     "sets": 64,
     "ways": 12,
     "rq_size": 64,

@@ -42,7 +42,7 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block);
 
 enum class CountBlockMethod { EVICTION, SUM_ACCESSES };
 enum LruModifier { DEFAULT = 0, PRECISE = 1, BOUND2 = 2, BOUND3 = 3, BOUND4 = 4, LRU2BOUND2 = 20, LRU2BOUND3 = 30, LRU2BOUND4 = 40 };
-enum class BufferOrganisation { FULLY_ASSOCIATIVE, DIRECT_MAPPED, SET_ASSOCIATIVE };
+enum BufferOrganisation { FULLY_ASSOCIATIVE = 0, DIRECT_MAPPED = 1, SET2_ASSOCIATIVE = 2, SET4_ASSOCIATIVE = 4, SET8_ASSOCIATIVE = 8 };
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
@@ -281,11 +281,11 @@ public:
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl),
         aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation),
-        buffer_cache(BUFFER_CACHE((v1 + "_buffer"), freq_scale, fill_level, (buffer_organisation == BufferOrganisation::DIRECT_MAPPED) ? buffer_sets : 1,
-                                  (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : 1, 0, std::min(buffer_sets, v5),
-                                  std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read, max_write / 2, offset_bits,
-                                  false, true, false, 0, ll, pref_t::CPU_REDIRECT_pprefetcherDno_instr_, repl_t::rreplacementDlru,
-                                  CountBlockMethod::SUM_ACCESSES, buffer_fifo))
+        buffer_cache(BUFFER_CACHE(
+            (v1 + "_buffer"), freq_scale, fill_level, (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? 1 : buffer_sets / buffer_organisation,
+            (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : buffer_organisation, 0, std::min(buffer_sets, v5),
+            std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read, max_write / 2, offset_bits, false, true, false, 0,
+            ll, pref_t::CPU_REDIRECT_pprefetcherDno_instr_, repl_t::rreplacementDlru, CountBlockMethod::SUM_ACCESSES, buffer_fifo))
   {
     CACHE::buffer = buffer;
     for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {
@@ -297,7 +297,6 @@ public:
     }
     if (buffer) {
       uint32_t buffer_hit_latency = organisation == BufferOrganisation::DIRECT_MAPPED ? 0 : 1;
-      buffer_cache.HIT_LATENCY = buffer_hit_latency;
       buffer_cache.HIT_LATENCY = buffer_hit_latency;
     }
     CACHE::lru_modifier = lru_modifier;
