@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim_vcl_buffer_128_lru_8w_data",
+  "executable_name": "bin/champsim_vcl_buffer_128_lru_8w",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
