@@ -1343,19 +1343,26 @@ void VCL_CACHE::operate_buffer_evictions()
     if (blocks.size() == 0) {
       continue;
     }
+    uint8_t min_start = 0;
     for (int i = 0; i < blocks.size(); i++) {
       if (i % 2 != 0) {
-        continue; // Hole, not accessed.
+        continue; // Hole, not accessed. // or: already in cache
       }
-      size_t block_size = blocks[i].second - blocks[i].first + 1;
+      if (min_start > blocks[i].second)
+        continue; // already in cache: the previous block already contains that block
+      uint8_t block_start = std::max(min_start, blocks[i].first);
+      size_t block_size = blocks[i].second - block_start + 1;
       auto first_inv = std::find_if_not(set_begin, set_end, is_valid_size<BLOCK>(block_size));
       uint32_t way = std::distance(set_begin, first_inv);
       if (way == NUM_WAY) {
         way = lru_victim(&block.data()[set * NUM_WAY], block_size);
         assert(way < NUM_WAY);
       } else {
+        if (block_start + way_sizes[way] > 64) {
+          block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
+        }
         uint8_t first_way = 0;
-        for (int i = 0; i < NUM_WAY; i++) {
+        for (int i = way; i < NUM_WAY; i++) {
           if (way_sizes[i] < block_size)
             continue;
           first_way = i;
@@ -1366,7 +1373,13 @@ void VCL_CACHE::operate_buffer_evictions()
           last_way = NUM_WAY;
         lru_subset = SUBSET(first_way, last_way);
       }
-      filllike_miss(set, way, blocks[i].first, merge_block);
+      if (block_start + way_sizes[way] > 64) {
+        block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
+      }
+      min_start = block_start + way_sizes[way];
+      filllike_miss(set, way, block_start, merge_block);
+      if (min_start >= 64)
+        break; // There is no block left that could be outside as we went until the end
     }
   }
   if (!buffer_cache.merge_block.empty()) {
