@@ -1042,7 +1042,8 @@ void BUFFER_CACHE::initialize_replacement() {}
 uint32_t BUFFER_CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
   // baseline LRU
-  uint32_t way = std::distance(current_set, std::max_element(current_set, std::next(current_set, NUM_WAY), lru_comparator<BLOCK, BLOCK>()));
+  auto max_elem = std::max_element(current_set, std::next(current_set, NUM_WAY), lru_comparator<BLOCK, BLOCK>());
+  uint32_t way = std::distance(current_set, max_elem);
   return way;
 }
 
@@ -1050,18 +1051,24 @@ uint32_t BUFFER_CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set
 void BUFFER_CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type,
                                             uint8_t hit)
 {
-  // We only update on miss to obtain a FIFO queue behaviour
-  if (hit)
+  if (fifo && hit)
     return;
 
   auto begin = std::next(block.begin(), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
-  uint32_t hit_lru = std::next(begin, way)->lru;
-  std::for_each(begin, end, [hit_lru](BLOCK& x) {
-    if (x.lru <= hit_lru)
-      x.lru++;
-  });
-  std::next(begin, way)->lru = 0; // promote to the MRU position
+  if (!fifo)
+    if (hit)
+      std::next(begin, way)->lru++; // counting accesses
+    else
+      std::next(begin, way)->lru = 0;
+  else {
+    uint32_t hit_lru = std::next(begin, way)->lru;
+    std::for_each(begin, end, [hit_lru](BLOCK& x) {
+      if (x.lru <= hit_lru)
+        x.lru++;
+    });
+    std::next(begin, way)->lru = 0; // promote to the MRU position
+  }
 }
 
 void BUFFER_CACHE::replacement_final_stats() {}
@@ -1084,6 +1091,7 @@ BLOCK* BUFFER_CACHE::probe_buffer(PACKET& packet)
   way_hits[way]++;
 
   record_cacheline_accesses(packet, hitb);
+  (this->*replacement_update_state)(packet.cpu, set, way, packet.address, packet.ip, 0, packet.type, 1);
   return &hitb;
 };
 

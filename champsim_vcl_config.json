@@ -45,10 +45,10 @@
     "rq_size": 64,
     "wq_size": 64,
     "pq_size": 32,
-    "buffer": false,
+    "buffer": true,
     "buffer_size": 256,
-    "buffer_organisation": "FULLY_ASSOCIATIVE",
-    "buffer_fifo": true,
+    "buffer_organisation": "SET8_ASSOCIATIVE",
+    "buffer_fifo": false,
     "way_sizes": [
       2,
       3,

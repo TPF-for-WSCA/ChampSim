@@ -228,13 +228,9 @@ public:
               pref_act_mask, ll, pref, repl, method),
         fifo(FIFO), underrun_bytes_histogram(64), overrun_bytes_histogram(64), newblock_bytes_histogram(64), mergeblock_bytes_histogram(64)
   {
-    if (fifo) {
-      replacement_update_state = &BUFFER_CACHE::update_replacement_state;
-      replacement_find_victim = &BUFFER_CACHE::find_victim;
-    } else {
-      replacement_update_state = &BUFFER_CACHE::impl_replacement_update_state;
-      replacement_find_victim = &BUFFER_CACHE::impl_replacement_find_victim;
-    }
+    replacement_update_state = &BUFFER_CACHE::update_replacement_state;
+    replacement_find_victim = &BUFFER_CACHE::find_victim;
+
     merge_hit = 0;
   };
 
