@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH -c16
 #SBATCH --mem-per-cpu=8G
-#SBATCH --time=02-00:00:00
+#SBATCH --time=00-12:00:00
 #SBATCH --mail-user=romankb@ntnu.no
 #SBATCH --mail-type=ALL
 #SBATCH -e /cluster/work/users/romankb/slurm-%j.err
