@@ -51,6 +51,7 @@ private:
   std::ofstream cl_accessmask_file;
   std::ofstream cl_num_blocks_in_cache;
   std::ofstream cl_num_invalid_blocks_in_cache;
+  std::ofstream cl_num_accesses_to_complete_profile_file;
   CountBlockMethod count_method;
 
 protected:
@@ -68,6 +69,8 @@ public:
   std::vector<uint64_t> cl_accessmask_buffer;
   std::vector<uint64_t> cl_blocks_in_cache_buffer;
   std::vector<uint32_t> cl_invalid_blocks_in_cache_buffer;
+  std::vector<uint64_t> cl_accesses_percentage_of_presence_covered;
+  std::vector<uint64_t> cl_num_accesses_to_complete_profile_buffer;
   const uint32_t MAX_READ, MAX_WRITE;
   uint32_t reads_available_this_cycle, writes_available_this_cycle, num_blocks_in_cache, num_invalid_blocks_in_cache;
   const bool prefetch_as_load;
@@ -159,10 +162,12 @@ public:
       : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
         perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat),
         OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr),
-        virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref), count_method(CountBlockMethod::EVICTION)
+        virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref), count_method(CountBlockMethod::EVICTION),
+        cl_accesses_percentage_of_presence_covered(100)
   {
     if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
+      cl_num_accesses_to_complete_profile_buffer.reserve(WRITE_BUFFER_SIZE);
     }
     num_invalid_blocks_in_cache = NUM_SET * NUM_WAY;
     cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);

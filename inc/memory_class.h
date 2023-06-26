@@ -22,6 +22,7 @@ public:
 
   uint8_t size = 64, offset = 0;
 
+  uint64_t last_modified_access = 0;
   uint64_t address = 0, v_address = 0, tag = 0, data = 0, ip = 0, cpu = 0, instr_id = 0, bytes_accessed = 0, accesses = 0, old_bytes_accessed = 0;
   uint32_t accesses_per_bytes[64] = {0}, time_present = 0;
 

@@ -94,10 +94,12 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block)
     uint8_t offset = (uint8_t)(handle_pkt.v_address % BLOCK_SIZE);
     uint8_t end = offset + handle_pkt.size - 1;
     set_accessed(&hit_block.bytes_accessed, offset, end);
+    hit_block.accesses++;
     for (int i = offset; i <= end; i++) {
+      if (!hit_block.accesses_per_bytes[i])
+        hit_block.last_modified_access = hit_block.accesses;
       hit_block.accesses_per_bytes[i]++;
     }
-    hit_block.accesses++;
   }
 }
 
