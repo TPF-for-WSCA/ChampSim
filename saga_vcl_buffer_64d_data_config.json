@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim_vcl_buffer_64d",
+  "executable_name": "bin/champsim_vcl_buffer_64d_data",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
@@ -41,7 +41,7 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 1,
+    "ways": 18,
     "buffer": true,
     "buffer_size": 64,
     "buffer_organisation": "DIRECT_MAPPED",
@@ -79,7 +79,6 @@
     "counting_block_method": "EVICTION"
   },
   "L1D": {
-    "perfect": true,
     "sets": 64,
     "ways": 12,
     "rq_size": 64,
