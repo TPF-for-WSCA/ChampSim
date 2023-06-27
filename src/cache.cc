@@ -392,6 +392,8 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
   BLOCK& repl_block = block[set * NUM_WAY + way];
   if (!repl_block.valid) {
     num_invalid_blocks_in_cache--;
+  } else {
+    // record coverage
   }
   bool newtag_present = false;
   bool oldtag_present = false;

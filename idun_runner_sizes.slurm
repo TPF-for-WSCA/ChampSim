@@ -18,7 +18,7 @@ binaries=("champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim_vcl
 #binaries=("champsim32k" "champsim64k" "champsim_simple_vcl_buffer_64_lru_8w")
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 90000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --trace_format p --traces_directory /cluster/work/romankb/dataset/tanvir --output_dir /cluster/work/romankb/results/full_analysis_v2/tanvir/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 90000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --trace_format p --traces_directory /cluster/work/romankb/dataset/tanvir --output_dir /cluster/work/romankb/results/full_analysis_v2_summed/tanvir/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
 done
 
 for job in `jobs -p`
