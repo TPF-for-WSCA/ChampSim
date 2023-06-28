@@ -36,6 +36,41 @@
             "preLaunchTask": "make DebugBuild"
         },
         {
+            "name": "C++ Mac Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceRoot}/bin/champsim",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "openOnSessionStart",
+            "args": [
+                "-warmup_instructions",
+                "22500000",
+                "-simulation_instructions",
+                "67500000",
+                "-result_dir",
+                "~/Downloads/results/vcl_clang/",
+                "-ptrace",
+                // "-cloudsuite",
+                // "-intel",
+                // "-stallonmiss",
+                "-traces",
+                "/Users/robrunne/Workspace/traces/tanvir/clang/clang.gz",
+                // "/home/robrunne/OneDrive/Research/datasets/ipc1/client_001.champsimtrace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/crc2/astar_163B.trace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}",
+            "environment": [
+                {
+                    "name": "DYLD_LIBRARY_PATH",
+                    "value": "/Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/lib:/opt/local/lib/boost/lib"
+                }
+            ],
+            "MIMode": "lldb",
+            "preLaunchTask": "make DebugBuild"
+        },
+        {
             "name": "Python: MergingBlocks",
             "type": "python",
             "request": "launch",

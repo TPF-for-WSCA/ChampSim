@@ -387,11 +387,15 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
   return true;
 }
 
-void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
+void CACHE::record_block_insert_removal(int set, int way, uint64_t address, bool warmup_completed)
 {
   BLOCK& repl_block = block[set * NUM_WAY + way];
   if (!repl_block.valid) {
     num_invalid_blocks_in_cache--;
+  } else if (warmup_complete) {
+    uint8_t covered_percentage = std::floor(100.0 * repl_block.last_modified_access / repl_block.accesses);
+    cl_accesses_percentage_of_presence_covered[covered_percentage - 1]++;
+    cl_num_accesses_to_complete_profile_buffer.push_back(repl_block.last_modified_access);
   }
   bool newtag_present = false;
   bool oldtag_present = false;
@@ -451,8 +455,10 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address)
     std::cout << "FOUND " << addresses.size() << " DISTINCT VALID CACHELINES" << std::endl;
     assert(0);
   }
-  cl_blocks_in_cache_buffer.push_back(num_blocks_in_cache);
-  cl_invalid_blocks_in_cache_buffer.push_back(num_invalid_blocks_in_cache);
+  if (warmup_complete) {
+    cl_blocks_in_cache_buffer.push_back(num_blocks_in_cache);
+    cl_invalid_blocks_in_cache_buffer.push_back(num_invalid_blocks_in_cache);
+  }
 }
 
 // TODO: Make more generic for all simple series
@@ -468,6 +474,12 @@ void CACHE::write_buffers_to_disk()
     result_path /= filename;
     cl_accessmask_file = std::ofstream(result_path.c_str(), std::ios::binary | std::ios::out);
   }
+  if (!cl_num_accesses_to_complete_profile_file.is_open()) {
+    std::filesystem::path result_path = result_dir;
+    string filename = this->NAME + "_cl_num_accesses_to_full_coverage.bin";
+    result_path /= filename;
+    cl_num_accesses_to_complete_profile_file = std::ofstream(result_path.c_str(), std::ios::binary | std::ios::out);
+  }
   if (!cl_num_blocks_in_cache.is_open()) {
     std::filesystem::path result_path = result_dir;
     string filename = this->NAME + "_cl_num_blocks.bin";
@@ -482,6 +494,9 @@ void CACHE::write_buffers_to_disk()
   }
   for (auto& mask : cl_accessmask_buffer) {
     cl_accessmask_file.write(reinterpret_cast<char*>(&mask), sizeof(uint64_t));
+  }
+  for (auto& access_count : cl_num_accesses_to_complete_profile_buffer) {
+    cl_num_accesses_to_complete_profile_file.write(reinterpret_cast<char*>(&access_count), sizeof(uint64_t));
   }
   for (auto& num_blocks : cl_blocks_in_cache_buffer) {
     cl_num_blocks_in_cache.write(reinterpret_cast<char*>(&num_blocks), sizeof(uint64_t));
@@ -581,7 +596,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
   });
   if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
     ooo_cpu[handle_pkt.cpu]->stall_on_miss = 0;
-    record_block_insert_removal(set, way, handle_pkt.address);
+    record_block_insert_removal(set, way, handle_pkt.address, warmup_complete[handle_pkt.cpu]);
   }
   bool bypass = (way == NUM_WAY);
 #ifndef LLC_BYPASS
@@ -645,6 +660,8 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     fill_block.instr_id = handle_pkt.instr_id;
     fill_block.tag = get_tag(handle_pkt.address);
     fill_block.accesses = 0;
+    fill_block.last_modified_access = 0;
+    fill_block.time_present = 0;
     record_cacheline_accesses(handle_pkt, fill_block);
   }
 
@@ -1277,6 +1294,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   fill_block.tag = parent.get_tag(packet.address);
   fill_block.instr_id = packet.instr_id;
   fill_block.accesses = 0;
+  fill_block.last_modified_access = 0;
   fill_block.time_present = 0;
   record_cacheline_accesses(packet, fill_block);
 
@@ -1443,7 +1461,7 @@ void VCL_CACHE::handle_fill()
       if (!success)
         return;
 
-      uint8_t original_offset = std::min(BLOCK_SIZE - way_sizes[way], fill_mshr->v_address % BLOCK_SIZE);
+      uint8_t original_offset = std::min((uint8_t)(BLOCK_SIZE - way_sizes[way]), (uint8_t)(fill_mshr->v_address % BLOCK_SIZE));
       uint8_t aligned_offset = (original_offset - original_offset % way_sizes[way]);
       if (!aligned && way_sizes[way] < fill_mshr->size) {
         num_blocks_to_write++;
@@ -1797,6 +1815,10 @@ void CACHE::print_private_stats()
   for (uint32_t i = 0; i < NUM_WAY; ++i) {
     std::cout << std::right << std::setw(3) << i << ":\t" << way_hits[i] << std::endl;
   }
+  std::cout << NAME << " ALL BYTES ACCESSED COVERAGE " << std::endl;
+  for (uint16_t i = 0; i < cl_accesses_percentage_of_presence_covered.size(); i++) {
+    std::cout << std::right << std::setw(3) << i << ":\t" << cl_accesses_percentage_of_presence_covered[i] << std::endl;
+  }
   if (this->buffer) {
     BUFFER_CACHE& bc = ((VCL_CACHE*)this)->buffer_cache;
     bc.print_private_stats();
@@ -1810,7 +1832,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   BLOCK& fill_block = block[set * NUM_WAY + way];
   way_hits[way]++;
   ooo_cpu[handle_block.cpu]->stall_on_miss = 0;
-  record_block_insert_removal(set, way, handle_block.address);
+  record_block_insert_removal(set, way, handle_block.address, warmup_complete[handle_block.cpu]);
   if (fill_block.valid && fill_block.accesses == 0) {
     USELESS_CACHELINE++;
   }
@@ -1852,8 +1874,10 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   fill_block.cpu = handle_block.cpu;
   fill_block.tag = get_tag(handle_block.address);
   fill_block.instr_id = handle_block.instr_id;
-  fill_block.offset = std::min((uint64_t)64 - fill_block.size, offset);
+  fill_block.offset = std::min((uint8_t)(64 - fill_block.size), (uint8_t)offset);
   fill_block.accesses = 0;
+  fill_block.last_modified_access = 0;
+  fill_block.time_present = 0;
   auto endidx = 64 - fill_block.offset - fill_block.size;
   fill_block.data = (handle_block.data << offset) >> offset >> endidx << endidx;
   // We already acounted for the evicted block on insert, so what we count here is the insertion of a new block
@@ -1875,7 +1899,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
 
   ooo_cpu[handle_pkt.cpu]->stall_on_miss = 0;
   bool bypass = (way == NUM_WAY);
-  record_block_insert_removal(set, way, handle_pkt.address);
+  record_block_insert_removal(set, way, handle_pkt.address, warmup_complete[handle_pkt.cpu]);
 
 #ifndef LLC_BYPASS
   assert(!bypass);

@@ -20,6 +20,7 @@
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
 #define WRITE_BUFFER_SIZE 10
 
+typedef unsigned long ulong;
 typedef std::pair<uint8_t, uint8_t> SUBSET;
 
 extern std::array<O3_CPU*, NUM_CPUS> ooo_cpu;
@@ -135,7 +136,7 @@ public:
   virtual void handle_read();
   void record_remainder_cachelines(uint32_t cpu);
   virtual void handle_prefetch();
-  virtual void record_block_insert_removal(int set, int way, uint64_t newtag);
+  virtual void record_block_insert_removal(int set, int way, uint64_t newtag, bool warmup_completed);
 
   void record_cacheline_stats(uint32_t cpu, BLOCK& handle_block);
   virtual void record_overlap(void){};
@@ -162,13 +163,13 @@ public:
       : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
         perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat),
         OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr),
-        virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref), count_method(CountBlockMethod::EVICTION),
-        cl_accesses_percentage_of_presence_covered(100)
+        virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref), count_method(CountBlockMethod::EVICTION)
   {
     if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
       cl_num_accesses_to_complete_profile_buffer.reserve(WRITE_BUFFER_SIZE);
     }
+    cl_accesses_percentage_of_presence_covered.resize(100);
     num_invalid_blocks_in_cache = NUM_SET * NUM_WAY;
     cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
     cl_invalid_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
@@ -187,6 +188,7 @@ public:
     if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
     }
+    cl_accesses_percentage_of_presence_covered.resize(100);
     cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
     cl_invalid_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
     way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
@@ -198,6 +200,8 @@ public:
     free((void*)way_hits);
     if (cl_accessmask_file.is_open())
       cl_accessmask_file.close();
+    if (cl_num_accesses_to_complete_profile_file.is_open())
+      cl_num_accesses_to_complete_profile_file.close();
   };
 };
 class VCL_CACHE; // forward declaration so we can pass parent VCL cache to the Buffer Cache
