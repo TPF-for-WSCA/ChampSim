@@ -602,6 +602,7 @@ void reset_cache_stats(uint32_t cpu, CACHE* cache)
   }
 
   cache->cl_accessmask_buffer.clear();
+  cache->cl_num_accesses_to_complete_profile_buffer.clear();
   cache->pf_requested = 0;
   cache->pf_issued = 0;
   cache->pf_useful = 0;

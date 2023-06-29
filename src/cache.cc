@@ -511,6 +511,7 @@ void CACHE::write_buffers_to_disk()
   cl_num_blocks_in_cache.flush();
   cl_num_invalid_blocks_in_cache.flush();
   cl_accessmask_buffer.clear();
+  cl_num_accesses_to_complete_profile_buffer.clear();
   cl_blocks_in_cache_buffer.clear();
   cl_invalid_blocks_in_cache_buffer.clear();
 }
