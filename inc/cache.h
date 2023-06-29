@@ -39,7 +39,7 @@ void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper);
 /// @return Vector of alternatin block and hole start and end offsets
 std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uint64_t& mask);
 
-void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block);
+void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev_block);
 
 enum class CountBlockMethod { EVICTION, SUM_ACCESSES };
 enum LruModifier { DEFAULT = 0, PRECISE = 1, BOUND2 = 2, BOUND3 = 3, BOUND4 = 4, LRU2BOUND2 = 20, LRU2BOUND3 = 30, LRU2BOUND4 = 40 };
@@ -57,6 +57,7 @@ private:
 
 protected:
   uint64_t* way_hits;
+  BLOCK* prev_access = NULL;
 
 public:
   LruModifier lru_modifier = LruModifier::DEFAULT;

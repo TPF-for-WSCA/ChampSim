@@ -40,7 +40,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceRoot}/bin/champsim",
-            "console": "integratedTerminal",
+            "externalConsole": true,
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "-warmup_instructions",

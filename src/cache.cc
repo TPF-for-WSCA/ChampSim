@@ -86,7 +86,7 @@ std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uin
   return result;
 }
 
-void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block)
+void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev_block)
 {
   if (handle_pkt.size != 0) {
     // vaddr and ip should be the same for L1I, but lookup happens on address so we also operate on address
@@ -94,7 +94,8 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block)
     uint8_t offset = (uint8_t)(handle_pkt.v_address % BLOCK_SIZE);
     uint8_t end = offset + handle_pkt.size - 1;
     set_accessed(&hit_block.bytes_accessed, offset, end);
-    hit_block.accesses++;
+    if (&prev_block != &hit_block)
+      hit_block.accesses++;
     for (int i = offset; i <= end; i++) {
       if (!hit_block.accesses_per_bytes[i])
         hit_block.last_modified_access = hit_block.accesses;
@@ -279,8 +280,9 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
     way = 0; // we attribute everything to the first way to ensure no out-of-bounds
   BLOCK& hit_block = block[set * NUM_WAY + way];
 
-  record_cacheline_accesses(handle_pkt, hit_block);
+  record_cacheline_accesses(handle_pkt, hit_block, *prev_access);
   handle_pkt.data = hit_block.data;
+  prev_access = &hit_block;
 
   // update prefetcher on load instruction
   if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
@@ -662,7 +664,8 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     fill_block.accesses = 0;
     fill_block.last_modified_access = 0;
     fill_block.time_present = 0;
-    record_cacheline_accesses(handle_pkt, fill_block);
+    record_cacheline_accesses(handle_pkt, fill_block, *prev_access);
+    prev_access = &fill_block;
   }
 
   if (warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
@@ -1076,7 +1079,7 @@ void BUFFER_CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t
   auto begin = std::next(block.begin(), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
   if (!fifo)
-    if (hit)
+    if (hit && &block[set * NUM_WAY + way] != prev_access)
       std::next(begin, way)->lru++; // counting accesses
     else
       std::next(begin, way)->lru = 0;
@@ -1109,7 +1112,8 @@ BLOCK* BUFFER_CACHE::probe_buffer(PACKET& packet)
   sim_access[packet.cpu][packet.type]++;
   way_hits[way]++;
 
-  record_cacheline_accesses(packet, hitb);
+  record_cacheline_accesses(packet, hitb, *prev_access);
+  prev_access = &hitb;
   (this->*replacement_update_state)(packet.cpu, set, way, packet.address, packet.ip, 0, packet.type, 1);
   return &hitb;
 };
@@ -1296,7 +1300,8 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   fill_block.accesses = 0;
   fill_block.last_modified_access = 0;
   fill_block.time_present = 0;
-  record_cacheline_accesses(packet, fill_block);
+  record_cacheline_accesses(packet, fill_block, *prev_access);
+  prev_access = &fill_block;
 
   if (warmup_complete[packet.cpu] && (packet.cycle_enqueued != 0))
     total_miss_latency += current_cycle - packet.cycle_enqueued;
@@ -1956,7 +1961,8 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
     fill_block.cpu = handle_pkt.cpu;
     fill_block.tag = get_tag(handle_pkt.address);
     fill_block.instr_id = handle_pkt.instr_id;
-    record_cacheline_accesses(handle_pkt, fill_block);
+    record_cacheline_accesses(handle_pkt, fill_block, *prev_access);
+    prev_access = &fill_block;
     if (aligned) {
       uint8_t original_offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
       fill_block.offset = (original_offset - original_offset % fill_block.size);
