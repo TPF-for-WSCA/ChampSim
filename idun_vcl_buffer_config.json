@@ -94,7 +94,7 @@
     "prefetch_activate": "LOAD",
     "prefetcher": "no_instr",
     "lru_modifier": "LRU2BOUND4",
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "L1D": {
     "perfect": true,
@@ -111,7 +111,7 @@
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
     "prefetcher": "next_line",
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "L2C": {
     "sets": 1024,
@@ -127,7 +127,7 @@
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
     "prefetcher": "no",
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "ITLB": {
     "sets": 16,
@@ -140,7 +140,7 @@
     "max_read": 2,
     "max_write": 2,
     "prefetch_as_load": false,
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "DTLB": {
     "sets": 16,
@@ -153,7 +153,7 @@
     "max_read": 2,
     "max_write": 2,
     "prefetch_as_load": false,
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "STLB": {
     "sets": 128,
@@ -166,7 +166,7 @@
     "max_read": 1,
     "max_write": 1,
     "prefetch_as_load": false,
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "PTW": {
     "pscl5_set": 1,
@@ -181,7 +181,7 @@
     "ptw_mshr_size": 5,
     "ptw_max_read": 2,
     "ptw_max_write": 2,
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "LLC": {
     "frequency": 4000,
@@ -199,7 +199,7 @@
     "prefetch_activate": "LOAD,PREFETCH",
     "prefetcher": "no",
     "replacement": "lru",
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "physical_memory": {
     "frequency": 3200,
