@@ -1,6 +1,7 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <iterator>
 #include <set>
@@ -1297,7 +1298,8 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   fill_block.cpu = packet.cpu;
   fill_block.tag = parent.get_tag(packet.address);
   fill_block.instr_id = packet.instr_id;
-  fill_block.accesses = 0;
+  fill_block.accesses =
+      (packet.type != LOAD) ? 0 : 1; // This is a demand load so num accesses is 1, as this wlil be accessed by the frontend as soon as it is filled
   fill_block.last_modified_access = 0;
   fill_block.time_present = 0;
   record_cacheline_accesses(packet, fill_block, *prev_access);
