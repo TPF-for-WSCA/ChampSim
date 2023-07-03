@@ -14,3 +14,6 @@ export filename=num_cl_with_block_size.tsv; export output_name='block_sizes_accu
  ./**/sizes_champsim32k/**/cpu0_L1I_num_cl_with_block_size.tsv $(realpath
  ./**/sizes_champsim_vcl_buffer_*
  /**/cpu0_L1I_buffer_num_cl_with_block_size.tsv | cut -d"/" -f9-11 -) --print
+
+
+
