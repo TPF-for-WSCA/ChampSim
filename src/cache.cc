@@ -568,6 +568,9 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
       is_hole = !is_hole;
       continue;
     }
+    if (size == 0) {
+      std::cout << "This is an ARM trace how do we see size 0?" << std::endl;
+    }
     if (i == 0) {
       first_accessed = block.first;
     }
@@ -1088,7 +1091,7 @@ void BUFFER_CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t
     if (hit && &block[set * NUM_WAY + way] != prev_access)
       std::next(begin, way)->lru++; // counting accesses
     else {
-      std::next(begin, way)->lru = 0;
+      std::next(begin, way)->lru = 1;
       std::next(begin, way)->max_time = 0;
     }
   else {

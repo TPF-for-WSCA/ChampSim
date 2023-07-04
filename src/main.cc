@@ -155,7 +155,7 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
   if (!csv_file) {
     std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
   }
-  for (size_t i = 0; i < BLOCK_SIZE; i++) {
+  for (size_t i = 0; i < BLOCK_SIZE + 1; i++) {
     if (csv_file) {
       csv_file << i + 1 << "\t" << cache->cl_bytesaccessed_hist[cpu][i] << endl;
     }
@@ -171,7 +171,7 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
   if (!csv_file) {
     std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
   }
-  for (size_t i = 0; i < BLOCK_SIZE; i++) {
+  for (size_t i = 0; i < BLOCK_SIZE + 1; i++) {
     if (csv_file) {
       csv_file << i + 1 << "\t" << cache->cl_bytesaccessed_hist_accesses[cpu][i] << endl;
     }
