@@ -116,6 +116,11 @@ struct cmp_lru {
   bool operator()(const T& lhs, const U& rhs) { return lhs.lru < rhs.lru; }
 };
 
+template <typename T, typename U = T>
+struct cmp_mti {
+  bool operator()(const T& lhs, const U& rhs) { return lhs.max_time < rhs.max_time; }
+};
+
 /*
  * A comparator to determine the LRU element. To use this comparator, the type
  * must have a member variable named "lru" and have a specialization of
@@ -129,6 +134,12 @@ struct cmp_lru {
  */
 template <typename T, typename U = T>
 struct lru_comparator : invalid_is_maximal<T, cmp_lru<T, U>, U> {
+  using first_argument_type = T;
+  using second_argument_type = U;
+};
+
+template <typename T, typename U = T>
+struct max_time_comparator : invalid_is_maximal<T, cmp_mti<T, U>, U> {
   using first_argument_type = T;
   using second_argument_type = U;
 };

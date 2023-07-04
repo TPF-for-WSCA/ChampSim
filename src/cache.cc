@@ -283,7 +283,6 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
 
   record_cacheline_accesses(handle_pkt, hit_block, *prev_access);
   handle_pkt.data = hit_block.data;
-  prev_access = &hit_block;
 
   // update prefetcher on load instruction
   if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
@@ -307,6 +306,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
     pf_useful++;
     hit_block.prefetch = 0;
   }
+  prev_access = &hit_block;
 }
 
 bool CACHE::readlike_miss(PACKET& handle_pkt)
@@ -667,7 +667,6 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
     fill_block.last_modified_access = 0;
     fill_block.time_present = 0;
     record_cacheline_accesses(handle_pkt, fill_block, *prev_access);
-    prev_access = &fill_block;
   }
 
   if (warmup_complete[handle_pkt.cpu] && (handle_pkt.cycle_enqueued != 0))
@@ -687,6 +686,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
   sim_access[handle_pkt.cpu][handle_pkt.type]++;
   way_hits[way]++;
 
+  prev_access = &fill_block;
   return true;
 }
 
@@ -1067,6 +1067,10 @@ uint32_t BUFFER_CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set
 {
   // baseline LRU
   auto max_elem = std::max_element(current_set, std::next(current_set, NUM_WAY), lru_comparator<BLOCK, BLOCK>());
+  auto time_max = std::max_element(current_set, std::next(current_set, NUM_WAY), max_time_comparator<BLOCK, BLOCK>());
+  if (!fifo && max_elem->valid && time_max->valid && time_max->max_time > 64) {
+    max_elem = time_max;
+  }
   uint32_t way = std::distance(current_set, max_elem);
   return way;
 }
@@ -1083,8 +1087,10 @@ void BUFFER_CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t
   if (!fifo)
     if (hit && &block[set * NUM_WAY + way] != prev_access)
       std::next(begin, way)->lru++; // counting accesses
-    else
+    else {
       std::next(begin, way)->lru = 0;
+      std::next(begin, way)->max_time = 0;
+    }
   else {
     uint32_t hit_lru = std::next(begin, way)->lru;
     std::for_each(begin, end, [hit_lru](BLOCK& x) {
@@ -1092,7 +1098,9 @@ void BUFFER_CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t
         x.lru++;
     });
     std::next(begin, way)->lru = 0; // promote to the MRU position
+    std::next(begin, way)->max_time = 0;
   }
+  std::for_each(begin, end, [](BLOCK& x) { x.max_time++; });
 }
 
 void BUFFER_CACHE::replacement_final_stats() {}
@@ -1115,8 +1123,8 @@ BLOCK* BUFFER_CACHE::probe_buffer(PACKET& packet)
   way_hits[way]++;
 
   record_cacheline_accesses(packet, hitb, *prev_access);
-  prev_access = &hitb;
   (this->*replacement_update_state)(packet.cpu, set, way, packet.address, packet.ip, 0, packet.type, 1);
+  prev_access = &hitb;
   return &hitb;
 };
 
@@ -1965,7 +1973,6 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
     fill_block.tag = get_tag(handle_pkt.address);
     fill_block.instr_id = handle_pkt.instr_id;
     record_cacheline_accesses(handle_pkt, fill_block, *prev_access);
-    prev_access = &fill_block;
     if (aligned) {
       uint8_t original_offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
       fill_block.offset = (original_offset - original_offset % fill_block.size);
@@ -1999,5 +2006,6 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
   sim_miss[handle_pkt.cpu][handle_pkt.type]++;
   sim_access[handle_pkt.cpu][handle_pkt.type]++;
 
+  prev_access = &fill_block;
   return true;
 }
