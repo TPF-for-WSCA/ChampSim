@@ -9,9 +9,9 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "-warmup_instructions",
-                "22500000",
+                "250000000",
                 "-simulation_instructions",
-                "67500000",
+                "750000000",
                 "-result_dir",
                 "~/Downloads/results/vcl_clang/",
                 "-ptrace",
