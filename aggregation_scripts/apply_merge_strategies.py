@@ -1,5 +1,6 @@
 import argparse
 import csv
+import math
 import os
 import struct
 import sys
@@ -222,6 +223,7 @@ def create_uniform_buckets_of_size(num_buckets):
     increment = 1
     if arm:
         increment = 4
+        counter = 4
     for percentage in normalised_histogram:
         if percentage > target:
             split = int(percentage / target)
@@ -268,23 +270,33 @@ def create_uniform_buckets_of_size(num_buckets):
     return bucket_sizes, bucket_percentages
 
 
-def apply_way_analysis(workload_name, tracefile_path):
+def apply_way_analysis(
+    workload_name, tracefile_path, num_buffer_entries=64, num_sets=64
+):
     for mask in get_mask_from_tracefile(tracefile_path):
         trimmed_mask, first_byte = trim_mask(mask)
         merge_single_mask(first_byte, trimmed_mask, only_chosen=True)
 
-    target_size = 428
+    # 64 B per entry + 8B counters per entry + 128B merge registers overall (merge registers might be optimised away)
+    buffer_bytes_per_set = (num_buffer_entries * (64 + 8) + 128) / num_sets
+    target_size = 512 - buffer_bytes_per_set
     error = target_size
     selected_waysizes = []
+    local_overhead = 0
     for i in range(8, 64):
+        overhead = math.ceil((6 * i) / 8)  # 6 bits per tag
+        local_target_size = target_size - overhead
         bucket_sizes, _ = create_uniform_buckets_of_size(i)
         total_size = sum(bucket_sizes)
-        if total_size > target_size:
+        if total_size > local_target_size:
             break
-        if abs(target_size - sum(bucket_sizes)) < error:
-            error = abs(target_size - sum(bucket_sizes))
+        if abs(local_target_size - sum(bucket_sizes)) < error:
+            error = abs(local_target_size - sum(bucket_sizes))
             selected_waysizes = bucket_sizes
-    print(f"Optimal waysizes with error: {error}")
+            local_overhead = overhead
+    print(
+        f"Optimal waysizes with error: {error}, overall size: {sum(selected_waysizes) + buffer_bytes_per_set + local_overhead}"
+    )
     print(selected_waysizes)
     WAY_SIZES_BY_WORKLOAD[workload_name] = selected_waysizes
 

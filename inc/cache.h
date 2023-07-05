@@ -42,6 +42,7 @@ std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uin
 void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev_block);
 
 enum class CountBlockMethod { EVICTION, SUM_ACCESSES };
+enum class BufferHistory { NONE, PARTIAL, FULL };
 enum LruModifier { DEFAULT = 0, PRECISE = 1, BOUND2 = 2, BOUND3 = 3, BOUND4 = 4, LRU2BOUND2 = 20, LRU2BOUND3 = 30, LRU2BOUND4 = 40 };
 enum BufferOrganisation { FULLY_ASSOCIATIVE = 0, DIRECT_MAPPED = 1, SET2_ASSOCIATIVE = 2, SET4_ASSOCIATIVE = 4, SET8_ASSOCIATIVE = 8 };
 
@@ -228,15 +229,16 @@ public:
   uint64_t total_accesses;
   uint64_t hits;
   uint64_t merge_hit;
+  BufferHistory history;
   std::map<uint32_t, uint32_t> duration_in_buffer;
 
   BUFFER_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t perfect_cache, uint32_t v5, uint32_t v6, uint32_t v7,
                uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load,
                bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method,
-               bool FIFO = false)
+               bool FIFO = false, BufferHistory history = BufferHistory::FULL)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl, method),
-        fifo(FIFO), underrun_bytes_histogram(64), overrun_bytes_histogram(64), newblock_bytes_histogram(64), mergeblock_bytes_histogram(64)
+        fifo(FIFO), underrun_bytes_histogram(64), overrun_bytes_histogram(64), newblock_bytes_histogram(64), mergeblock_bytes_histogram(64), history(history)
   {
     replacement_update_state = &BUFFER_CACHE::update_replacement_state;
     replacement_find_victim = &BUFFER_CACHE::find_victim;
@@ -283,7 +285,7 @@ public:
   VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, uint32_t buffer_sets,
             bool buffer_fifo, bool aligned, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read,
             uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll,
-            pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, CountBlockMethod method)
+            pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, CountBlockMethod method, BufferHistory history)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl, method),
         aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation),
@@ -291,7 +293,7 @@ public:
             (v1 + "_buffer"), freq_scale, fill_level, (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? 1 : buffer_sets / buffer_organisation,
             (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : buffer_organisation, 0, std::min(buffer_sets, v5),
             std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read, max_write / 2, offset_bits, false, true, false, 0,
-            ll, pref_t::CPU_REDIRECT_pprefetcherDno_instr_, repl_t::rreplacementDlru, method, buffer_fifo))
+            ll, pref_t::CPU_REDIRECT_pprefetcherDno_instr_, repl_t::rreplacementDlru, method, buffer_fifo, history))
   {
     CACHE::buffer = buffer;
     for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {

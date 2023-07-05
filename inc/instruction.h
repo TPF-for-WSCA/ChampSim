@@ -81,7 +81,7 @@ struct ooo_model_instr {
     this->ip += knob_ip_offset;
     assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
     this->size = 4;                                 // average for x86 (rounded up)
-    if (this->ip % 2 == 0)
+    if (this->ip % 2 == 0 and not(this->ip % 4 == 0))
       this->size = 2; // compressed instr.
   }
 
@@ -107,7 +107,7 @@ struct ooo_model_instr {
     this->ip += knob_ip_offset;
     assert(this->ip % 4 == 0 || this->ip % 2 == 0); // check if it an ARM trace
     this->size = 4;                                 // average for x86 (rounded up)
-    if (this->ip % 2 == 0)
+    if (this->ip % 2 == 0 and not(this->ip % 4 == 0))
       this->size = 2; // compressed instr.
   }
 

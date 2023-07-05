@@ -82,7 +82,8 @@
             "stopOnEntry": false,
             "args": [
                 "~/OneDrive/Research/results/sizes_scaled/sizes_champsim64k",
-                "optimal_way"
+                "optimal_way",
+                "x86"
             ]
         },
         {

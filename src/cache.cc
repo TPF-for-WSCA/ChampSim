@@ -1284,7 +1284,10 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
     BLOCK& b = parent.block[parent_set * parent.NUM_WAY + way];
     if (!b.valid)
       continue;
-    set_accessed(&fill_block.bytes_accessed, b.offset, b.offset + b.size - 1); // we only mark them as accessed but not count accesses per bytes
+    if (history == BufferHistory::FULL)
+      set_accessed(&fill_block.bytes_accessed, b.offset, b.offset + b.size - 1); // we only mark them as accessed but not count accesses per bytes
+    else if (history == BufferHistory::PARTIAL)
+      set_accessed(&fill_block.prev_present, b.offset, b.offset + b.size - 1);
     b.valid = false;
     parent.num_invalid_blocks_in_cache++;
 
@@ -1385,7 +1388,21 @@ void VCL_CACHE::operate_buffer_evictions()
     uint32_t set = get_set(merge_block.address); // set of the VCL cache, not the buffer
     auto set_begin = std::next(std::begin(block), set * NUM_WAY);
     auto set_end = std::next(set_begin, NUM_WAY);
-    auto blocks = get_blockboundaries_from_mask(merge_block.bytes_accessed);
+    uint64_t bytes_accessed_bitmask = merge_block.bytes_accessed;
+    if (buffer_cache.history == BufferHistory::PARTIAL) {
+      uint64_t combined_mask = merge_block.bytes_accessed | merge_block.prev_present;
+      auto partialblocks = get_blockboundaries_from_mask(combined_mask);
+      for (auto b : partialblocks)
+        for (uint8_t i = b.first; i < b.second + 1; i++) {
+          uint8_t buffer_bit = (merge_block.bytes_accessed >> i) & 0b1;
+          uint8_t combined_bit = (combined_mask >> i) & 0b1;
+          if (buffer_bit + combined_bit == 2) {
+            set_accessed(&bytes_accessed_bitmask, b.first, b.second);
+            break;
+          }
+        }
+    }
+    auto blocks = get_blockboundaries_from_mask(bytes_accessed_bitmask);
     buffer_cache.merge_block.pop_front();
     if (blocks.size() == 0) {
       continue;
