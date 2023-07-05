@@ -1,14 +1,21 @@
 #!/bin/bash
 
-benchmarks=("tanvir", "ipc1_spec", "ipc1_server", "ipc1_client")
+benchmarks=("tanvir" "ipc1_spec" "ipc1_server" "ipc1_client")
 
 for b in ${benchmarks[@]}
 do
 	echo "Accumulating ${b}"
-	python ~/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi MPKI
-	python ~/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi IPC
-	python ~/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL
+    cd ./${b}
+	python ~/Workspace/Simulators/ChampSim/aggregation_scripts/ipc_data.py ./ multi MPKI
+	python ~/Workspace/Simulators/ChampSim/aggregation_scripts/ipc_data.py ./ multi IPC
+	python ~/Workspace/Simulators/ChampSim/aggregation_scripts/ipc_data.py ./ multi PARTIAL
+    cd ..
 
 	echo "Plotting ${b}"
-	plotgen -i mpki.tsv --palette bright --add-column AVG --apply-func add --apply-icolumns : 
+    
+    plotgen --debug -i ./${b}/mpki.tsv --drop-nan --palette bright --add-column AVG --apply-func add --apply-icolumns :-1 --normalise-to-row $((2**15)) --apply-func sub 1 --apply-icolumns : --x-type category --y-tick-format ',.2%' --plot bar --file ./raw_data/mpki_relative_${b}.tsv -o ./graphs/mpki_relative_${b}.html
+    plotgen --debug -i ./${b}/ipc.tsv --drop-nan --palette bright --add-column AVG --apply-func add --apply-icolumns :-1 --normalise-to-row $((2**15)) --apply-func sub 1 --apply-icolumns : --x-type category --y-tick-format ',.2%' --plot bar --file ./raw_data/ipc_relative_${b}.tsv -o ./graphs/ipc_relative_${b}.html
+    plotgen --debug -i ./${b}/partial.tsv --drop-nan --apply-func div 100 --apply-icolumns : --palette bright --x-type category --y-tick-format ',.2%' --plot bar --file ./raw_data/partial_relative_${b}.tsv -o ./graphs/partial_relative_${b}.html
 done
+
+echo "DONE"
