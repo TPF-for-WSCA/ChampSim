@@ -17,7 +17,7 @@ binaries=("champsim_data_16k" "champsim_data_32k" "champsim_data_64k" "champsim_
 for binary in ${binaries[@]}
 do
     python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/cloud --nosub --intel --output_dir /cluster/work/romankb/results/full_analysis_v3_bounded_access_repl/crc2_cloud/sizes_${binary}/ >> ~/pyrunner_crc2_cloud_${binary}.log
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/spec --nosub --intel --output_dir /cluster/work/romankb/results/full_analysis_v3_bounded_access_repl/crc2_spec/sizes_${binary}/ >> ~/pyrunner_crc2_spec_${binary}.log
+    # python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/spec --nosub --intel --output_dir /cluster/work/romankb/results/full_analysis_v3_bounded_access_repl/crc2_spec/sizes_${binary}/ >> ~/pyrunner_crc2_spec_${binary}.log # WE GOT SPEC IN DPC3
 done
 
 for job in `jobs -p`
