@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH -c16
 #SBATCH --mem-per-cpu=8G
-#SBATCH --time=01-12:00:00
+#SBATCH --time=02-12:00:00
 #SBATCH --mail-user=romankb@ntnu.no
 #SBATCH --mail-type=ALL
 #SBATCH -e /cluster/work/romankb/slurm-default-sizes-%j.err
@@ -16,7 +16,7 @@ module load Python/3.9.6-GCCcore-11.2.0
 binaries=("champsim_data_16k" "champsim_data_32k" "champsim_data_64k" "champsim_data_128k" "champsim_vcl_buffer_64_f_data" "champsim_vcl_buffer_64_lru_data" "champsim_vcl_buffer_64_lru_2w_data" "champsim_vcl_buffer_64_lru_4w_data" ""champsim_vcl_buffer_64_lru_8w_data"" "champsim_vcl_buffer_64d_data" "champsim_vcl_buffer_128_f_data" "champsim_vcl_buffer_128_lru_data" "champsim_vcl_buffer_128_lru_2w_data" "champsim_vcl_buffer_128_lru_4w_data" ""champsim_vcl_buffer_128_lru_8w_data"" "champsim_vcl_buffer_128d_data" "champsim_simple_vcl_buffer_64_lru_8w")
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/dpc3/champsim-traces/speccpu  --intel --nosub --output_dir /cluster/work/romankb/results/full_analysis_v2/dpc3/sizes_${binary}/ >> ~/pyrunner_dpc3_${binary}.log
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/dpc3/champsim-traces/speccpu  --intel --nosub --output_dir /cluster/work/romankb/results/full_analysis_v3_bounded_access_repl/dpc3/sizes_${binary}/ >> ~/pyrunner_dpc3_${binary}.log
 done
 
 for job in `jobs -p`
