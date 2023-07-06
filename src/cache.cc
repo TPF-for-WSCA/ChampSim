@@ -568,9 +568,6 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
       is_hole = !is_hole;
       continue;
     }
-    if (size == 0) {
-      std::cout << "This is an ARM trace how do we see size 0?" << std::endl;
-    }
     if (i == 0) {
       first_accessed = block.first;
     }
