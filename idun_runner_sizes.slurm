@@ -14,7 +14,9 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-inst
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
 #binaries=("champsim4k" "champsim8k" "champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim256k")
-binaries=("champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim_vcl_buffer_64_f" "champsim_vcl_buffer_64_lru_2w" "champsim_vcl_buffer_64_lru_4w" "champsim_vcl_buffer_64_lru_8w" "champsim_vcl_buffer_64d" "champsim_vcl_buffer_128_f" "champsim_vcl_buffer_128_lru_2w" "champsim_vcl_buffer_128_lru_4w" "champsim_vcl_buffer_128_lru_8w" "champsim_vcl_buffer_128d" "champsim_simple_vcl_buffer_64_lru_8w" "champsim_simple_vcl_buffer_64_lru_8w")
+binaries=("champsim_vcl_buffer_64d_data_no_history" "champsim_vcl_buffer_64d_data_partial_h" "champsim_vcl_buffer_64d_no_history" "champsim_vcl_buffer_64d_partial_h" "champsim_vcl_buffer_64_f_data_no_history" "champsim_vcl_buffer_64_f_data_partial_h" "champsim_vcl_buffer_64_f_no_history" "champsim_vcl_buffer_64_f_partial_h" "champsim_vcl_buffer_64_lru_8w_no_history" "champsim_vcl_buffer_64_lru_8w_partial_h" "champsim_vcl_buffer_64_lru_8w_data_no_history" "champsim_vcl_buffer_64_lru_8w_data_partial_h")
+
+#binaries=("champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim_vcl_buffer_64_f" "champsim_vcl_buffer_64_lru_2w" "champsim_vcl_buffer_64_lru_4w" "champsim_vcl_buffer_64_lru_8w" "champsim_vcl_buffer_64d" "champsim_vcl_buffer_128_f" "champsim_vcl_buffer_128_lru_2w" "champsim_vcl_buffer_128_lru_4w" "champsim_vcl_buffer_128_lru_8w" "champsim_vcl_buffer_128d" "champsim_simple_vcl_buffer_64_lru_8w" "champsim_simple_vcl_buffer_64_lru_8w")
 #binaries=("champsim32k" "champsim64k" "champsim_simple_vcl_buffer_64_lru_8w")
 for binary in ${binaries[@]}
 do

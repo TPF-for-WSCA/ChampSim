@@ -1,6 +1,7 @@
 #!/bin/bash
 
-benchmarks=("tanvir" "ipc1_spec" "ipc1_server" "ipc1_client")
+#benchmarks=("tanvir" "ipc1_spec" "ipc1_server" "ipc1_client")
+benchmarks=("crc2_spec" "crc2_cloud")
 pg_dir=""
 
 if [ -z ${plotgen_dir+x} ]; then pg_dir=""; else pg_dir=$plotgen_dir; fi
