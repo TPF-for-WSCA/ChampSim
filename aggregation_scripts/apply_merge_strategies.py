@@ -288,8 +288,8 @@ def apply_way_analysis(
         local_target_size = target_size - overhead
         bucket_sizes, _ = create_uniform_buckets_of_size(i)
         total_size = sum(bucket_sizes)
-        if total_size > local_target_size:
-            break
+        # if total_size > local_target_size:
+        #     break
         if abs(local_target_size - sum(bucket_sizes)) < error:
             error = abs(local_target_size - sum(bucket_sizes))
             selected_waysizes = bucket_sizes
