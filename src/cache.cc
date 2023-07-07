@@ -33,6 +33,13 @@ uint8_t get_lru_offset(LruModifier lru_modifier)
   return lru_modifier;
 }
 
+bool is_default_lru(LruModifier lru_modifier)
+{
+  if (lru_modifier == DEFAULT or (lru_modifier > 10 and lru_modifier % 10 == 1))
+    return true;
+  return false;
+}
+
 void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper)
 {
   if (upper > 63) {
@@ -1343,7 +1350,7 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
     begin_way++;
     begin_of_subset++;
   }
-  if (lru_modifier > 0) {
+  if (is_default_lru(lru_modifier)) {
     uint8_t num_way_bound = get_lru_offset(lru_modifier);
     uint32_t end_way = begin_way;
     int count_sizes = 0;

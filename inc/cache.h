@@ -49,21 +49,26 @@ enum LruModifier {
   BOUND2 = 2,
   BOUND3 = 3,
   BOUND4 = 4,
+  LRU1DEFAULT = 21,
   LRU1BOUND2 = 20,
   LRU1BOUND3 = 30,
   LRU1BOUND4 = 40,
+  LRU2DEFAULT = 201,
   LRU2BOUND2 = 200,
   LRU2BOUND3 = 300,
   LRU2BOUND4 = 400,
+  LRU3DEFAULT = 2001,
   LRU3BOUND2 = 2000,
   LRU3BOUND3 = 3000,
   LRU3BOUND4 = 4000,
+  LRU4DEFAULT = 20001,
   LRU4BOUND2 = 20000,
   LRU4BOUND3 = 30000,
   LRU4BOUND4 = 40000
 };
 enum BufferOrganisation { FULLY_ASSOCIATIVE = 0, DIRECT_MAPPED = 1, SET2_ASSOCIATIVE = 2, SET4_ASSOCIATIVE = 4, SET8_ASSOCIATIVE = 8 };
 
+bool is_default_lru(LruModifier);
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
 {
 
@@ -200,11 +205,11 @@ public:
   }
   CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t perfect_cache, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
         uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
-        unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method)
+        unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method, LruModifier lru_modifier)
       : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
         perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat),
         OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr),
-        virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref), count_method(method)
+        virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref), count_method(method), lru_modifier(lru_modifier)
   {
     if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
@@ -256,7 +261,7 @@ public:
                bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method,
                bool FIFO = false, BufferHistory history = BufferHistory::FULL)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
-              pref_act_mask, ll, pref, repl, method),
+              pref_act_mask, ll, pref, repl, method, lru_modifier),
         fifo(FIFO), underrun_bytes_histogram(64), overrun_bytes_histogram(64), newblock_bytes_histogram(64), mergeblock_bytes_histogram(64), history(history)
   {
     replacement_update_state = &BUFFER_CACHE::update_replacement_state;
@@ -306,7 +311,7 @@ public:
             uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll,
             pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, CountBlockMethod method, BufferHistory history)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
-              pref_act_mask, ll, pref, repl, method),
+              pref_act_mask, ll, pref, repl, method, lru_modifier),
         aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation),
         buffer_cache(BUFFER_CACHE(
             (v1 + "_buffer"), freq_scale, fill_level, (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? 1 : buffer_sets / buffer_organisation,
