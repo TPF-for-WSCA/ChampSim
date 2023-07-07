@@ -6,6 +6,19 @@
 
 void CACHE::initialize_replacement() {}
 
+uint8_t CACHE::get_insert_pos(LruModifier lru_modifier)
+{
+  if (lru_modifier >= 10000)
+    return NUM_WAY - 4;
+  else if (lru_modifier >= 1000)
+    return NUM_WAY - 3;
+  else if (lru_modifier >= 100)
+    return NUM_WAY - 2;
+  else if (lru_modifier >= 10)
+    return NUM_WAY - 1;
+  return 0;
+}
+
 // find replacement victim
 uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 {
@@ -20,16 +33,18 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
   if (hit && type == WRITEBACK)
     return;
 
-  if (type == FILL && lru_modifier > 10) {
+  if (type == FILL && lru_modifier >= 10) {
     auto begin = std::next(block.begin(), set * NUM_WAY);
     auto end = std::next(begin, lru_subset.second);
     begin = std::next(begin, lru_subset.first);
-    uint32_t second_lru = NUM_WAY - 3;
-    std::for_each(begin, end, [second_lru](BLOCK& x) {
-      if (x.lru == second_lru) {
+    uint32_t lru_pos = get_insert_pos(lru_modifier);
+    uint32_t waycount = NUM_WAY;
+    std::for_each(begin, end, [lru_pos, waycount](BLOCK& x) {
+      if (x.lru <= lru_pos && x.lru - 1 < waycount) {
         x.lru++;
       }
     });
+    std::next(begin, way)->lru = lru_pos;
   } else {
     auto begin = std::next(block.begin(), set * NUM_WAY);
     auto end = std::next(begin, NUM_WAY);

@@ -22,7 +22,13 @@ extern uint8_t knob_stall_on_miss;
 
 uint8_t get_lru_offset(LruModifier lru_modifier)
 {
-  if (lru_modifier > 10)
+  if (lru_modifier >= 10000)
+    return lru_modifier / 10000;
+  else if (lru_modifier >= 1000)
+    return lru_modifier / 1000;
+  else if (lru_modifier >= 100)
+    return lru_modifier / 100;
+  else if (lru_modifier >= 10)
     return lru_modifier / 10;
   return lru_modifier;
 }

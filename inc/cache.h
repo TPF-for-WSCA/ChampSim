@@ -43,7 +43,25 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev
 
 enum class CountBlockMethod { EVICTION, SUM_ACCESSES };
 enum class BufferHistory { NONE, PARTIAL, FULL };
-enum LruModifier { DEFAULT = 0, PRECISE = 1, BOUND2 = 2, BOUND3 = 3, BOUND4 = 4, LRU2BOUND2 = 20, LRU2BOUND3 = 30, LRU2BOUND4 = 40 };
+enum LruModifier {
+  DEFAULT = 0,
+  PRECISE = 1,
+  BOUND2 = 2,
+  BOUND3 = 3,
+  BOUND4 = 4,
+  LRU1BOUND2 = 20,
+  LRU1BOUND3 = 30,
+  LRU1BOUND4 = 40,
+  LRU2BOUND2 = 200,
+  LRU2BOUND3 = 300,
+  LRU2BOUND4 = 400,
+  LRU3BOUND2 = 2000,
+  LRU3BOUND3 = 3000,
+  LRU3BOUND4 = 4000,
+  LRU4BOUND2 = 20000,
+  LRU4BOUND3 = 30000,
+  LRU4BOUND4 = 40000
+};
 enum BufferOrganisation { FULLY_ASSOCIATIVE = 0, DIRECT_MAPPED = 1, SET2_ASSOCIATIVE = 2, SET4_ASSOCIATIVE = 4, SET8_ASSOCIATIVE = 8 };
 
 class CACHE : public champsim::operable, public MemoryRequestConsumer, public MemoryRequestProducer
@@ -59,6 +77,7 @@ private:
 protected:
   uint64_t* way_hits;
   BLOCK* prev_access = NULL;
+  uint8_t get_insert_pos(LruModifier lru_modifier);
 
 public:
   LruModifier lru_modifier = LruModifier::DEFAULT;

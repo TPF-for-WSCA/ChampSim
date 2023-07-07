@@ -21,8 +21,8 @@
                 "-traces",
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
                 // "/home/robrunne/OneDrive/Research/datasets/ipc1/client_001.champsimtrace.xz"
-                // "/home/robrunne/OneDrive/Research/datasets/crc2/cloud9_phase0_core0.trace.xz"
-                "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/crc2/classification_phase0_core0.trace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",
