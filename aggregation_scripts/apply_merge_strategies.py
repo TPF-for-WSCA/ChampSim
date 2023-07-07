@@ -271,7 +271,7 @@ def create_uniform_buckets_of_size(num_buckets):
 
 
 def apply_way_analysis(
-    workload_name, tracefile_path, num_buffer_entries=64, num_sets=64
+    workload_name, tracefile_path, num_buffer_entries=128, num_sets=64
 ):
     for mask in get_mask_from_tracefile(tracefile_path):
         trimmed_mask, first_byte = trim_mask(mask)
