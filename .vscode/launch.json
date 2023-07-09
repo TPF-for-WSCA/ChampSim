@@ -44,9 +44,9 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "-warmup_instructions",
-                "250000000",
+                "2500000",
                 "-simulation_instructions",
-                "750000000",
+                "7500000",
                 "-result_dir",
                 "~/Downloads/results/vcl_clang/",
                 // "-ptrace",
