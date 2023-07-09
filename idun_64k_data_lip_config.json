@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim_data_32k",
+  "executable_name": "bin/champsim_lip__data_64k",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
@@ -40,7 +40,7 @@
     "ways": 8
   },
   "L1I": {
-    "sets": 32,
+    "sets": 64,
     "ways": 16,
     "rq_size": 64,
     "wq_size": 64,
@@ -53,7 +53,8 @@
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD",
     "prefetcher": "no_instr",
-    "counting_block_method": "SUM_ACCESSES"
+    "counting_block_method": "SUM_ACCESSES",
+    "lru_modifier": "LRU1DEFAULT"
   },
   "L1D": {
     "sets": 64,

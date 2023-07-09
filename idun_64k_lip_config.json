@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim_data_64k",
+  "executable_name": "bin/champsim_lip_64k",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
@@ -57,6 +57,7 @@
     "lru_modifier": "LRU1DEFAULT"
   },
   "L1D": {
+    "perfect": true,
     "sets": 64,
     "ways": 12,
     "rq_size": 64,

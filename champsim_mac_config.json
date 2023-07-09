@@ -54,7 +54,7 @@
     "prefetch_activate": "LOAD",
     "prefetcher": "no_instr",
     "counting_block_method": "EVICTION",
-    "lru_modifier": "LRU4DEFAULT"
+    "lru_modifier": "DEFAULT"
   },
   "L1D": {
     "sets": 64,
