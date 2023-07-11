@@ -18,8 +18,8 @@ binaries=("champsim_vcl_buffer_64d_data_no_history" "champsim_vcl_buffer_64d_dat
 for binary in ${binaries[@]}
 do
     # python /cluster/home/romankb/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/spec --nosub --output_dir /cluster/work/romankb/results/full_analysis_v3_bounded_access_repl/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec_${binary}.log  # We got spec in dpc3
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/server --nosub --output_dir /cluster/work/romankb/results/full_analysis_v3_bounded_access_repl/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server_${binary}.log
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/client --nosub --output_dir /cluster/work/romankb/results/full_analysis_v3_bounded_access_repl/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client_${binary}.log
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/server --nosub --output_dir /cluster/work/romankb/results/full_analysis_v4_realistic128/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server_${binary}.log
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 100000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/client --nosub --output_dir /cluster/work/romankb/results/full_analysis_v4_realistic128/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client_${binary}.log
 done
 
 for job in `jobs -p`
