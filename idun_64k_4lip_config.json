@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim64k",
+  "executable_name": "bin/champsim_4lip_64k",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
@@ -54,7 +54,7 @@
     "prefetch_activate": "LOAD",
     "prefetcher": "no_instr",
     "counting_block_method": "SUM_ACCESSES",
-    "lru_modifier": "LRU1DEFAULT"
+    "lru_modifier": "LRU4DEFAULT"
   },
   "L1D": {
     "perfect": true,

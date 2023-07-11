@@ -692,7 +692,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
                                  handle_pkt.type == PREFETCH, evicting_address, handle_pkt.pf_metadata);
 
   // update replacement policy
-  impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, handle_pkt.type, 0);
+  impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, FILL, 0);
 
   // COLLECT STATS
   sim_miss[handle_pkt.cpu][handle_pkt.type]++;
