@@ -33,14 +33,16 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
   if (hit && type == WRITEBACK)
     return;
 
-  if (type == FILL && lru_modifier >= 10) {
+  uint32_t lru_pos = get_insert_pos(lru_modifier);
+  if (hit)
+    lru_pos = 0;
+  if (type == FILL && lru_modifier >= 10 && not is_default_lru(lru_modifier)) {
     auto begin = std::next(block.begin(), set * NUM_WAY);
     auto end = std::next(begin, lru_subset.second);
     begin = std::next(begin, lru_subset.first);
-    uint32_t lru_pos = get_insert_pos(lru_modifier);
     uint32_t waycount = NUM_WAY;
     std::for_each(begin, end, [lru_pos, waycount](BLOCK& x) {
-      if (x.lru <= lru_pos && x.lru - 1 < waycount) {
+      if (lru_pos >= x.lru && x.lru - 1 < waycount) {
         x.lru++;
       }
     });
@@ -50,13 +52,18 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
     auto end = std::next(begin, NUM_WAY);
     uint32_t hit_lru = std::next(begin, way)->lru;
     auto num_ways = NUM_WAY;
-    std::for_each(begin, end, [hit_lru, num_ways](BLOCK& x) {
-      if (x.lru == num_ways)
+    std::for_each(begin, end, [hit_lru, num_ways, lru_pos](BLOCK& x) {
+      if (x.lru >= num_ways)
         return;
-      if (x.lru <= hit_lru)
+      if (x.lru <= hit_lru and not lru_pos)
         x.lru++;
+      else if (lru_pos and x.lru >= lru_pos)
+        x.lru++; // shift upwards if we insert at not mru
     });
-    std::next(begin, way)->lru = 0; // promote to the MRU position
+    if (hit)
+      std::next(begin, way)->lru = 0; // promote to the MRU position
+    else
+      std::next(begin, way)->lru = lru_pos;
   }
 }
 

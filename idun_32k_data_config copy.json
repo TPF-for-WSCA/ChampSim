@@ -1,13 +1,13 @@
 {
-  "executable_name": "bin/champsim",
+  "executable_name": "bin/champsim_data_32k",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
   "num_cores": 1,
-  "CFLAGS": "-Wall -g -O0 -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-  "CXXFLAGS": "-Wall -g -O0 -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+  "CFLAGS": "-Wall -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include",
+  "CXXFLAGS": "-Wall -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include",
   "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
-  "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib",
+  "LDFLAGS": "-L/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib",
   "ooo_cpu": [
     {
       "frequency": 4000,
@@ -54,7 +54,7 @@
     "prefetch_activate": "LOAD",
     "prefetcher": "no_instr",
     "counting_block_method": "SUM_ACCESSES",
-    "lru_modifier": "LRU4DEFAULT"
+    "lru_modifier": "LRU1DEFAULT"
   },
   "L1D": {
     "sets": 64,
@@ -69,7 +69,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "no",
+    "prefetcher": "next_line",
     "counting_block_method": "SUM_ACCESSES"
   },
   "L2C": {
