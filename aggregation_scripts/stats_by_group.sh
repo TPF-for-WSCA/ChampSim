@@ -1,6 +1,6 @@
 #!/bin/bash
 
-benchmarks=("tanvir")
+benchmarks=("tanvir" "ipc1_server" "ipc1_client")
 #benchmarks=("tanvir" "ipc1_spec" "ipc1_server" "ipc1_client")
 #benchmarks=("crc2_spec" "crc2_cloud")
 pg_dir=""
