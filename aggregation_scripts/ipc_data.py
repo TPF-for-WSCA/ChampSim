@@ -120,7 +120,7 @@ def mutliple_sizes_run(out_dir=None):
             )
             continue
         matches = matches.groups()
-        lip_matches = matches.groups()
+        lip_matches = lip_matches.groups()
         name = ""
         if lip_matches:
             name = f"lip@{lip_matches[0]} "
