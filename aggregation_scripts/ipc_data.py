@@ -120,10 +120,9 @@ def mutliple_sizes_run(out_dir=None):
             )
             continue
         matches = matches.groups()
-        lip_matches = lip_matches.groups()
         name = ""
         if lip_matches:
-            name = f"lip@{lip_matches[0]} "
+            name = f"lip@{lip_matches.groups()[0]} "
         if matches[1]:
             factor = 1024 if matches[1] == "k" else 1024 * 1024
             size_bytes = int(matches[0]) * factor
