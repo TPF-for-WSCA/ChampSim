@@ -112,6 +112,7 @@ def mutliple_sizes_run(out_dir=None):
     for subdir in os.listdir(out_dir):
         if not os.path.isdir(os.path.join(out_dir, subdir)):
             continue
+        lip_matches = re.search(r"(\d*)lip", subdir)
         matches = re.search(r"(\d+)([km])+", subdir)
         if not matches:
             ipc_by_cachesize_and_workload[subdir] = single_run(
@@ -119,16 +120,19 @@ def mutliple_sizes_run(out_dir=None):
             )
             continue
         matches = matches.groups()
+        lip_matches = matches.groups()
+        name = ""
+        if lip_matches:
+            name = f"lip@{lip_matches[0]} "
         if matches[1]:
             factor = 1024 if matches[1] == "k" else 1024 * 1024
             size_bytes = int(matches[0]) * factor
-            ipc_by_cachesize_and_workload[size_bytes] = single_run(
-                f"{out_dir}/{subdir}"
-            )
+            name += f"{size_bytes}"
         else:
-            ipc_by_cachesize_and_workload[subdir] = single_run(
-                f"{out_dir}/{subdir}"
-            )
+            name = subdir
+        ipc_by_cachesize_and_workload[name] = single_run(
+            f"{out_dir}/{subdir}"
+        )
     return ipc_by_cachesize_and_workload
 
 
