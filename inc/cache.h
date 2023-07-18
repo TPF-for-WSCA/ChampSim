@@ -233,7 +233,7 @@ public:
 class VCL_CACHE; // forward declaration so we can pass parent VCL cache to the Buffer Cache
 class BUFFER_CACHE : public CACHE
 {
-private:
+protected:
   void insert_merge(BLOCK b);
   bool fifo;
   template <typename U>
@@ -297,7 +297,7 @@ public:
 class VCL_CACHE : public CACHE
 {
 
-private:
+protected:
   bool aligned = false; // should the blocks be aligned to the way size?
   uint8_t* way_sizes;
   uint32_t buffer_sets = 0;
@@ -371,8 +371,40 @@ private:
   uint32_t current_overlap;
 };
 
-// class AMOEBA_CACHE : public VCL_CACHE
-// {
-// };
+class AMOEBA_CACHE : public CACHE
+{
+public:
+  typedef std::vector<BLOCK> SET;
+  std::vector<SET> storage_array;
+  std::vector<uint16_t> freespace_per_set;
+  // TODO: reuse some functions from VCL as template functions
+  AMOEBA_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, uint32_t buffer_sets,
+               bool buffer_fifo, bool aligned, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read,
+               uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll,
+               pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, CountBlockMethod method, BufferHistory history)
+      : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
+              pref_act_mask, ll, pref, repl, method, lru_modifier)
+  {
+    // TODO: If buffer -> our buffer, else: Default Amoeba Cache predictor (probably separate class)
+  }
+
+  // we cant pass ways around, we always need to pass the block ref due to the variability of the cache
+  BLOCK* get_block(PACKET& packet, uint32_t set);
+  // set and tag should stay relatively constant, we can store offsets as given.
+  virtual int add_rq(PACKET* packet) override;
+  virtual int add_wq(PACKET* packet) override;
+  virtual int add_pq(PACKET* packet) override;
+
+  virtual void operate_writes() override;
+
+  virtual void handle_fill() override;
+  virtual void handle_read() override;
+
+  virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt) override;
+  virtual bool filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block);
+
+  uint32_t lru_victim(BLOCK* current_set, uint8_t min_size);
+  uint8_t hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size);
+};
 
 #endif

@@ -2039,3 +2039,14 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
   prev_access = &fill_block;
   return true;
 }
+
+BLOCK* AMOEBA_CACHE::get_block(PACKET& packet, uint32_t set)
+{
+  for (BLOCK& b : storage_array[set]) {
+
+    if (get_tag(packet.address) == get_tag(b.address) || get_tag(packet.v_address) == get_tag(b.v_address)) {
+      return &b;
+    }
+  }
+  return NULL;
+}

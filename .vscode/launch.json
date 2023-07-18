@@ -44,20 +44,20 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "-warmup_instructions",
-                "2500000",
+                "22500000",
                 "-simulation_instructions",
-                "7500000",
+                "76500000",
                 "-result_dir",
                 "~/Downloads/results/vcl_clang/",
-                // "-ptrace",
+                "-ptrace",
                 // "-cloudsuite",
                 // "-intel",
                 // "-stallonmiss",
                 "-traces",
-                // "/Users/robrunne/Workspace/traces/tanvir/clang/clang.gz",
+                "/Users/robrunne/Workspace/traces/tanvir/clang/clang.gz",
                 // "/Users/robrunne/Workspace/traces/ipc1/client_001.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/spec_gcc_001.champsimtrace.xz"
-                "/Users/robrunne/Workspace/traces/ipc1/client_001.champsimtrace.xz"
+                // "/Users/robrunne/Workspace/traces/ipc1/client_001.champsimtrace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/crc2/astar_163B.trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
             ],

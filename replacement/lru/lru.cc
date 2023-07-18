@@ -40,9 +40,12 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
     auto begin = std::next(block.begin(), set * NUM_WAY);
     auto end = std::next(begin, lru_subset.second);
     begin = std::next(begin, lru_subset.first);
+    auto current_address = std::next(begin, way)->address;
     uint32_t waycount = NUM_WAY;
-    std::for_each(begin, end, [lru_pos, waycount](BLOCK& x) {
-      if (lru_pos >= x.lru && x.lru - 1 < waycount) {
+    std::for_each(begin, end, [lru_pos, waycount, current_address](BLOCK& x) {
+      if (x.address == current_address) // Ours should not go to least significant immediately
+        return;
+      if (lru_pos >= x.lru && x.lru - 1 < waycount) { // if we insert multiple we do not want to increase beyond max
         x.lru++;
       }
     });
