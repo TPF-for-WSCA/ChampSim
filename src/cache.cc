@@ -1447,14 +1447,15 @@ void VCL_CACHE::operate_buffer_evictions()
       if (last_way > NUM_WAY)
         last_way = NUM_WAY;
       lru_subset = SUBSET(first_way, last_way);
+
+      if (block_start + way_sizes[way] > 64) {
+        block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
+      }
+      min_start = block_start + way_sizes[way];
+      filllike_miss(set, way, block_start, merge_block);
+      if (min_start >= 64)
+        break; // There is no block left that could be outside as we went until the end
     }
-    if (block_start + way_sizes[way] > 64) {
-      block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
-    }
-    min_start = block_start + way_sizes[way];
-    filllike_miss(set, way, block_start, merge_block);
-    if (min_start >= 64)
-      break; // There is no block left that could be outside as we went until the end
   }
   if (!buffer_cache.merge_block.empty()) {
     std::cout << "did not empty buffer" << std::endl;
@@ -1956,7 +1957,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
   if (fill_block.valid && fill_block.accesses == 0) {
     USELESS_CACHELINE++;
   } else if (fill_block.valid) {
-    }
+  }
   TOTAL_CACHELINES++;
   // if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
   //   record_cacheline_stats(handle_pkt.cpu, fill_block);
