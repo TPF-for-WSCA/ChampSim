@@ -2448,5 +2448,10 @@ void AMOEBA_CACHE::update_replacement_state(uint32_t set, uint32_t replaced_lru,
   inserted->lru = 0; // promote to the MRU position
   inserted->max_time = 0;
 }
-uint32_t AMOEBA_CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type) {}
-void AMOEBA_CACHE::replacement_final_stats() {}
+
+// we use the index as the iterator is a const iterator and we want to remove this block (possibly write back)
+uint32_t AMOEBA_CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const SET* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+{
+  auto b = std::max_element(current_set->begin(), current_set->end(), lru_comparator<BLOCK, BLOCK>());
+  return std::distance(current_set->begin(), b);
+}
