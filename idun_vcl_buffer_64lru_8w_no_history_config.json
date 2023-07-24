@@ -1,6 +1,7 @@
 {
   "executable_name": "bin/champsim_vcl_buffer_64_lru_8w_no_history",
   "block_size": 64,
+  "bucket_size": 100,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
   "num_cores": 1,

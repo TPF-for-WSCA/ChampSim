@@ -1431,30 +1431,30 @@ void VCL_CACHE::operate_buffer_evictions()
       if (way == NUM_WAY) {
         way = lru_victim(&block.data()[set * NUM_WAY], block_size);
         assert(way < NUM_WAY);
-      } else {
-        if (block_start + way_sizes[way] > 64) {
-          block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
-        }
-        uint8_t first_way = 0;
-        for (int i = way; i < NUM_WAY; i++) {
-          if (way_sizes[i] < block_size)
-            continue;
-          first_way = i;
-          break;
-        }
-        uint8_t last_way = first_way + get_lru_offset(lru_modifier);
-        if (last_way > NUM_WAY)
-          last_way = NUM_WAY;
-        lru_subset = SUBSET(first_way, last_way);
       }
+
       if (block_start + way_sizes[way] > 64) {
         block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
       }
-      min_start = block_start + way_sizes[way];
-      filllike_miss(set, way, block_start, merge_block);
-      if (min_start >= 64)
-        break; // There is no block left that could be outside as we went until the end
+      uint8_t first_way = 0;
+      for (int i = way; i < NUM_WAY; i++) {
+        if (way_sizes[i] < block_size)
+          continue;
+        first_way = i;
+        break;
+      }
+      uint8_t last_way = first_way + get_lru_offset(lru_modifier);
+      if (last_way > NUM_WAY)
+        last_way = NUM_WAY;
+      lru_subset = SUBSET(first_way, last_way);
     }
+    if (block_start + way_sizes[way] > 64) {
+      block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
+    }
+    min_start = block_start + way_sizes[way];
+    filllike_miss(set, way, block_start, merge_block);
+    if (min_start >= 64)
+      break; // There is no block left that could be outside as we went until the end
   }
   if (!buffer_cache.merge_block.empty()) {
     std::cout << "did not empty buffer" << std::endl;
@@ -1955,7 +1955,8 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
   BLOCK& fill_block = block[set * NUM_WAY + way];
   if (fill_block.valid && fill_block.accesses == 0) {
     USELESS_CACHELINE++;
-  }
+  } else if (fill_block.valid) {
+    }
   TOTAL_CACHELINES++;
   // if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
   //   record_cacheline_stats(handle_pkt.cpu, fill_block);

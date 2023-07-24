@@ -123,7 +123,8 @@ public:
            roi_miss[NUM_CPUS][NUM_TYPES] = {}, roi_partial_miss[NUM_CPUS][NUM_TYPES] = {}, holecount_hist[NUM_CPUS][BLOCK_SIZE] = {},
            holesize_hist[NUM_CPUS][BLOCK_SIZE] = {}, cl_bytesaccessed_hist[NUM_CPUS][BLOCK_SIZE + 1] = {},
            cl_bytesaccessed_hist_accesses[NUM_CPUS][BLOCK_SIZE + 1] = {}, blsize_hist[NUM_CPUS][BLOCK_SIZE] = {},
-           blsize_hist_accesses[NUM_CPUS][BLOCK_SIZE] = {}, blsize_ignore_holes_hist[NUM_CPUS][BLOCK_SIZE] = {};
+           blsize_hist_accesses[NUM_CPUS][BLOCK_SIZE] = {}, blsize_ignore_holes_hist[NUM_CPUS][BLOCK_SIZE] = {},
+           accesses_before_eviction[NUM_CPUS][BUCKETS] = {};
 
   uint64_t RQ_ACCESS = 0, RQ_MERGED = 0, RQ_FULL = 0, RQ_TO_CACHE = 0, PQ_ACCESS = 0, PQ_MERGED = 0, PQ_FULL = 0, PQ_TO_CACHE = 0, WQ_ACCESS = 0, WQ_MERGED = 0,
            WQ_FULL = 0, WQ_FORWARD = 0, WQ_TO_CACHE = 0, USELESS_CACHELINE = 0, TOTAL_CACHELINES = 0;
