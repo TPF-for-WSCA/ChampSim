@@ -1200,7 +1200,7 @@ void BUFFER_CACHE::update_duration()
   }
 }
 
-bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
+bool BUFFER_CACHE::fill_miss(PACKET& packet, CACHE& parent)
 {
 
   ooo_cpu[packet.cpu]->stall_on_miss = 0;
@@ -1577,7 +1577,8 @@ uint8_t VCL_CACHE::hit_check(uint32_t& set, uint32_t& way, uint64_t& address, ui
   return NULL;
 }*/
 
-std::vector<uint32_t> VCL_CACHE::get_way(uint32_t tag, uint32_t set)
+// In default caches, the length would always be 1, but in AMOEBA and VCL it can increase thus the vector
+std::vector<uint32_t> CACHE::get_way(uint32_t tag, uint32_t set)
 {
   auto begin = std::next(block.begin(), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
@@ -2050,3 +2051,402 @@ BLOCK* AMOEBA_CACHE::get_block(PACKET& packet, uint32_t set)
   }
   return NULL;
 }
+
+int AMOEBA_CACHE::add_rq(PACKET* packet)
+{
+  // NOTE: Copy of add_rq without duplicate check
+  assert(packet->address != 0);
+  RQ_ACCESS++;
+
+  DP(if (warmup_complete[packet->cpu]) {
+    std::cout << "[" << NAME << "_RQ] " << __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << (packet->address >> OFFSET_BITS);
+    std::cout << " full_addr: " << packet->address << " v_address: " << packet->v_address << std::dec << " type: " << +packet->type
+              << " occupancy: " << RQ.occupancy();
+  })
+
+  // check for the latest writebacks in the write queue
+  champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(
+      WQ.begin(), WQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, match_offset_bits ? 0 : (OFFSET_BITS)));
+
+  if (found_wq != WQ.end()) {
+
+    DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_WQ" << std::endl;)
+
+    packet->data = found_wq->data;
+    for (auto ret : packet->to_return)
+      ret->return_data(packet);
+
+    WQ_FORWARD++;
+    return -1;
+  }
+  // check occupancy
+  if (RQ.full()) {
+    RQ_FULL++;
+
+    DP(if (warmup_complete[packet->cpu]) std::cout << " FULL" << std::endl;)
+
+    return -2; // cannot handle this request
+  }
+
+  // if there is no duplicate, add it to RQ
+  assert(packet->size < 64);
+  if (warmup_complete[cpu])
+    RQ.push_back(*packet);
+  else
+    RQ.push_back_ready(*packet);
+
+  DP(if (warmup_complete[packet->cpu]) std::cout << " ADDED" << std::endl;)
+
+  RQ_TO_CACHE++;
+  return RQ.occupancy();
+}
+int AMOEBA_CACHE::add_wq(PACKET* packet)
+{
+  WQ_ACCESS++;
+
+  DP(if (warmup_complete[packet->cpu]) {
+    std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << (packet->address >> OFFSET_BITS);
+    std::cout << " full_addr: " << packet->address << " v_address: " << packet->v_address << std::dec << " type: " << +packet->type
+              << " occupancy: " << RQ.occupancy();
+  })
+
+  // check for duplicates in the write queue
+  champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(
+      WQ.begin(), WQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, match_offset_bits ? 0 : (OFFSET_BITS)));
+
+  if (found_wq != WQ.end()) {
+
+    DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED" << std::endl;)
+
+    WQ_MERGED++;
+    return 0; // merged index
+  }
+
+  // Check for room in the queue
+  if (WQ.full()) {
+    DP(if (warmup_complete[packet->cpu]) std::cout << " FULL" << std::endl;)
+
+    ++WQ_FULL;
+    return -2;
+  }
+
+  // if there is no duplicate, add it to the write queue
+  if (warmup_complete[cpu])
+    WQ.push_back(*packet);
+  else
+    WQ.push_back_ready(*packet);
+
+  DP(if (warmup_complete[packet->cpu]) std::cout << " ADDED" << std::endl;)
+
+  WQ_TO_CACHE++;
+  WQ_ACCESS++;
+
+  return WQ.occupancy();
+}
+int AMOEBA_CACHE::add_pq(PACKET* packet)
+{
+  assert(packet->address != 0);
+  PQ_ACCESS++;
+
+  DP(if (warmup_complete[packet->cpu]) {
+    std::cout << "[" << NAME << "_WQ] " << __func__ << " instr_id: " << packet->instr_id << " address: " << std::hex << (packet->address >> OFFSET_BITS);
+    std::cout << " full_addr: " << packet->address << " v_address: " << packet->v_address << std::dec << " type: " << +packet->type
+              << " occupancy: " << RQ.occupancy();
+  })
+
+  // check for the latest wirtebacks in the write queue
+  champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(
+      WQ.begin(), WQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, match_offset_bits ? 0 : (OFFSET_BITS)));
+
+  if (found_wq != WQ.end()) {
+    DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_WQ" << std::endl;)
+
+    packet->data = found_wq->data;
+    for (auto ret : packet->to_return)
+      ret->return_data(packet);
+
+    WQ_FORWARD++;
+    return -1;
+  }
+
+  // check for duplicates in the PQ
+  auto found = std::find_if(PQ.begin(), PQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, (OFFSET_BITS)));
+  if (found != PQ.end()) {
+    DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_PQ" << std::endl;)
+
+    found->fill_level = std::min(found->fill_level, packet->fill_level);
+    packet_dep_merge(found->to_return, packet->to_return);
+
+    PQ_MERGED++;
+    return 0;
+  }
+
+  // check occupancy
+  if (PQ.full()) {
+    DP(if (warmup_complete[packet->cpu]) std::cout << " FULL" << std::endl;)
+
+    PQ_FULL++;
+    return -2; // cannot handle this request
+  }
+
+  // if there is no duplicate, add it to PQ
+  if (warmup_complete[cpu])
+    PQ.push_back(*packet);
+  else
+    PQ.push_back_ready(*packet);
+
+  DP(if (warmup_complete[packet->cpu]) std::cout << " ADDED" << std::endl;)
+
+  PQ_TO_CACHE++;
+  return PQ.occupancy();
+}
+void AMOEBA_CACHE::operate_writes()
+{
+
+  // TODO: If we have any other mechanisms, we might also need to operate them here
+  if (buffer)
+    operate_buffer_evictions();
+  CACHE::operate_writes();
+}
+void AMOEBA_CACHE::operate_buffer_evictions()
+{ // TODO: Update to match amoeba or our predictor
+  while (!buffer_cache.merge_block.empty()) {
+    BLOCK& merge_block = buffer_cache.merge_block.front();
+    uint32_t set = get_set(merge_block.address); // set of the VCL cache, not the buffer
+    auto set_begin = std::next(std::begin(block), set * NUM_WAY);
+    auto set_end = std::next(set_begin, NUM_WAY);
+    uint64_t bytes_accessed_bitmask = merge_block.bytes_accessed;
+    if (buffer_cache.history == BufferHistory::PARTIAL) {
+      uint64_t combined_mask = merge_block.bytes_accessed | merge_block.prev_present;
+      auto partialblocks = get_blockboundaries_from_mask(combined_mask);
+      for (auto b : partialblocks)
+        for (uint8_t i = b.first; i < b.second + 1; i++) {
+          uint8_t buffer_bit = (merge_block.bytes_accessed >> i) & 0b1;
+          uint8_t combined_bit = (combined_mask >> i) & 0b1;
+          if (buffer_bit + combined_bit == 2) {
+            set_accessed(&bytes_accessed_bitmask, b.first, b.second);
+            break;
+          }
+        }
+    }
+    auto blocks = get_blockboundaries_from_mask(bytes_accessed_bitmask);
+    buffer_cache.merge_block.pop_front();
+    if (blocks.size() == 0) {
+      continue;
+    }
+    uint8_t min_start = 0;
+    for (int i = 0; i < blocks.size(); i++) {
+      if (i % 2 != 0) {
+        continue; // Hole, not accessed. // or: already in cache
+      }
+      if (min_start > blocks[i].second)
+        continue; // already in cache: the previous block already contains that block
+      uint8_t block_start = std::max(min_start, blocks[i].first);
+      size_t block_size = blocks[i].second - block_start + 1;
+      auto first_inv = std::find_if_not(set_begin, set_end, is_valid_size<BLOCK>(block_size));
+      uint32_t way = std::distance(set_begin, first_inv);
+      if (way == NUM_WAY) {
+        way = lru_victim(&block.data()[set * NUM_WAY], block_size);
+        assert(way < NUM_WAY);
+      } else {
+        if (block_start + way_sizes[way] > 64) { // TODO: fix this is not VCL
+          block_start = 64 - way_sizes[way];     // possible duplicate - can't prevent that TODO: track duplicates here
+        }
+        uint8_t first_way = 0;
+        for (int i = way; i < NUM_WAY; i++) {
+          if (way_sizes[i] < block_size)
+            continue;
+          first_way = i;
+          break;
+        }
+        uint8_t last_way = first_way + get_lru_offset(lru_modifier);
+        if (last_way > NUM_WAY)
+          last_way = NUM_WAY;
+        lru_subset = SUBSET(first_way, last_way);
+      }
+      if (block_start + way_sizes[way] > 64) {
+        block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
+      }
+      min_start = block_start + way_sizes[way];
+      filllike_miss(set, way, block_start, merge_block);
+      if (min_start >= 64)
+        break; // There is no block left that could be outside as we went until the end
+    }
+  }
+  if (!buffer_cache.merge_block.empty()) {
+    std::cout << "did not empty buffer" << std::endl;
+  }
+}
+void AMOEBA_CACHE::handle_fill()
+{
+  // TODO: this should make use of the predictor // only receive the bytes that are required
+  while (writes_available_this_cycle > 0) {
+    auto fill_mshr = MSHR.begin();
+    if (fill_mshr == std::end(MSHR) || fill_mshr->event_cycle > current_cycle)
+      return;
+    if ((fill_mshr->address % BLOCK_SIZE) + fill_mshr->size > 64) {
+      fill_mshr->size = 64 - fill_mshr->address % BLOCK_SIZE;
+    }
+    // VCL Impl: Immediately insert into buffer, search for address if evicted buffer entry has been used
+    // find victim
+    // no buffer impl: insert in invalid big enough block (any way)
+
+    uint32_t set = get_set(fill_mshr->address);
+    uint8_t num_blocks_to_write = 1;
+
+    uint64_t orig_addr = fill_mshr->address;
+    uint64_t orig_vaddr = fill_mshr->v_address;
+    uint64_t orig_size = fill_mshr->size;
+
+    if (buffer) {
+      if (!buffer_cache.fill_miss(*fill_mshr, *this))
+        return;
+      goto inserted;
+    }
+    while (num_blocks_to_write > 0) {
+      // TODO: If buffer go to buffer and insert whatever is in the buffer
+      auto set_begin = std::next(std::begin(block), set * NUM_WAY);
+      auto set_end = std::next(set_begin, NUM_WAY);
+      auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
+      uint32_t way = std::distance(set_begin, first_inv);
+      // if aligned, we might have to write two blocks
+
+      if (way == NUM_WAY) {
+        way = lru_victim(&block.data()[set * NUM_WAY], 8); // NOTE: THIS IS THE BUFFERLESS IMPLEMENTATION // TODO: CHANGE SIZE ACCORDING TO WAY SIZES
+        // TODO: RECORD STATISTICS IF ANY
+      }
+      uint8_t last_way = way + get_lru_offset(lru_modifier);
+      if (last_way > NUM_WAY)
+        last_way = NUM_WAY;
+      lru_subset = SUBSET(way, last_way);
+
+      bool success = filllike_miss(set, way, *fill_mshr);
+      if (!success)
+        return;
+
+      uint8_t original_offset = std::min((uint8_t)(BLOCK_SIZE - way_sizes[way]), (uint8_t)(fill_mshr->v_address % BLOCK_SIZE));
+      uint8_t aligned_offset = (original_offset - original_offset % way_sizes[way]);
+      if (!aligned && way_sizes[way] < fill_mshr->size) {
+        num_blocks_to_write++;
+        fill_mshr->address = fill_mshr->address + way_sizes[way];
+        fill_mshr->v_address = fill_mshr->v_address + way_sizes[way];
+        fill_mshr->size = fill_mshr->size - way_sizes[way];
+      } else if (aligned && aligned_offset + way_sizes[way] < (fill_mshr->v_address % BLOCK_SIZE) + fill_mshr->size) {
+        assert((fill_mshr->v_address % BLOCK_SIZE) + fill_mshr->size <= 64);
+        num_blocks_to_write++;
+        int8_t diff = aligned_offset + way_sizes[way] - fill_mshr->v_address % BLOCK_SIZE;
+        fill_mshr->address += diff;
+        fill_mshr->v_address += diff;
+        fill_mshr->size = fill_mshr->size - diff;
+      }
+
+      num_blocks_to_write--;
+    }
+
+  inserted:
+    // restore mshr entry
+    fill_mshr->address = orig_addr;
+    fill_mshr->v_address = orig_vaddr;
+    fill_mshr->size = orig_size;
+    // data must already be copied in from above serviced
+    for (auto ret : fill_mshr->to_return)
+      ret->return_data(&(*fill_mshr));
+    MSHR.erase(fill_mshr);
+    writes_available_this_cycle--;
+  }
+}
+void AMOEBA_CACHE::handle_read()
+{
+  while (reads_available_this_cycle > 0) {
+
+    if (!RQ.has_ready())
+      return;
+
+    // handle the oldest entry
+    PACKET& handle_pkt = RQ.front();
+
+    // A (hopefully temporary) hack to know whether to send the evicted paddr or
+    // vaddr to the prefetcher
+    ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
+
+    BLOCK* b = NULL;
+    if (buffer)
+      b = buffer_cache.probe_buffer(handle_pkt);
+    if (buffer && !b)
+      b = buffer_cache.probe_merge(handle_pkt);
+
+    // HIT IN BUFFER/MERGE REGISTER / always use that first
+    if (b) {
+      // statistics in the buffer
+      RQ.pop_front();
+      reads_available_this_cycle--;
+      handle_pkt.data = b->data;
+      for (auto ret : handle_pkt.to_return)
+        ret->return_data(&handle_pkt);
+      continue;
+    }
+
+    uint32_t set = get_set(handle_pkt.address);
+    b = get_block(handle_pkt, set);
+
+    // HIT IN VCL CACHE
+    if (b != NULL) {
+      // std::cout << "hit in SET: " << std::setw(3) << set << ", way: " << std::setw(3) << way << std::endl;
+      readlike_hit(set, way, handle_pkt);
+      uint64_t newoffset = hit_check(set, way, handle_pkt.address, handle_pkt.size);
+      if (!newoffset) {
+        RQ.pop_front();
+        reads_available_this_cycle--;
+        continue;
+      }
+      if (newoffset > 63) {
+        assert(0);
+      }
+      assert(handle_pkt.size > 0 && handle_pkt.size < 64);
+      uint64_t diff = (newoffset - handle_pkt.v_address % BLOCK_SIZE);
+      handle_pkt.size = handle_pkt.size - diff;
+      uint64_t mask = ~(BLOCK_SIZE - 1);
+      handle_pkt.v_address = (handle_pkt.v_address & mask) + newoffset;
+      handle_pkt.address = (handle_pkt.address & mask) + newoffset; // offset matches: all 64 byte aligned
+      // not done reading this thing just yet
+      continue;
+    }
+
+    // MISS
+    bool success = readlike_miss(handle_pkt);
+    RQ.pop_front();
+    if (!success)
+      return; // buffer full = try next cycle
+
+    // remove this entry from RQ
+    if (knob_stall_on_miss) {
+      reads_available_this_cycle = 0;
+      ooo_cpu[handle_pkt.cpu]->stall_on_miss = 1;
+    } else
+      reads_available_this_cycle--;
+  }
+}
+bool AMOEBA_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
+{
+  // TODO:
+}
+bool AMOEBA_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block)
+{
+  // TODO:
+}
+
+void AMOEBA_CACHE::initialize_replacement() {}
+
+void AMOEBA_CACHE::update_replacement_state(uint32_t set, uint32_t replaced_lru, BLOCK* inserted)
+{
+  auto begin = storage_array[set].begin();
+  auto end = storage_array[set].end();
+  std::for_each(begin, end, [replaced_lru](BLOCK& x) {
+    if (x.lru <= replaced_lru)
+      x.lru++;
+  });
+  inserted->lru = 0; // promote to the MRU position
+  inserted->max_time = 0;
+}
+uint32_t AMOEBA_CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type) {}
+void AMOEBA_CACHE::replacement_final_stats() {}

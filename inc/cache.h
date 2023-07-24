@@ -148,6 +148,7 @@ public:
   uint32_t get_tag(uint64_t address);
   uint32_t get_set(uint64_t address);
   virtual uint32_t get_way(PACKET& packet, uint32_t set);
+  virtual std::vector<uint32_t> get_way(uint32_t tag, uint32_t set);
 
   // int invalidate_entry(uint64_t inval_addr);  // NOTE: As of this commit no-one used this function - needs to be adjusted to use a PACKET instead of a
   // uint64_t to support vcl cache
@@ -291,7 +292,7 @@ public:
   /// @brief Insert a serviced read from lower level. If an entry is evicted, it is entered into the merge register
   /// @param packet The packet to be inserting
   /// @return Returns true if successful and false if not. Reasons for being not successful could be full merge register;
-  bool fill_miss(PACKET& packet, VCL_CACHE& parent);
+  bool fill_miss(PACKET& packet, CACHE& parent);
 };
 
 class VCL_CACHE : public CACHE
@@ -374,16 +375,18 @@ private:
 class AMOEBA_CACHE : public CACHE
 {
 public:
+  BUFFER_CACHE buffer_cache;
   typedef std::vector<BLOCK> SET;
   std::vector<SET> storage_array;
   std::vector<uint16_t> freespace_per_set;
   // TODO: reuse some functions from VCL as template functions
-  AMOEBA_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, uint32_t buffer_sets,
-               bool buffer_fifo, bool aligned, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read,
-               uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll,
-               pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, CountBlockMethod method, BufferHistory history)
+  AMOEBA_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, bool buffer, uint32_t buffer_sets, bool buffer_fifo, bool aligned,
+               uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write,
+               std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref,
+               repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, CountBlockMethod method, BufferHistory history)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
-              pref_act_mask, ll, pref, repl, method, lru_modifier)
+              pref_act_mask, ll, pref, repl, method, lru_modifier),
+        freespace_per_set(v2, 512) // TODO: set size needs to be calculated depending on number of ways and block size
   {
     // TODO: If buffer -> our buffer, else: Default Amoeba Cache predictor (probably separate class)
   }
@@ -397,14 +400,24 @@ public:
 
   virtual void operate_writes() override;
 
+  void operate_buffer_evictions();
+
   virtual void handle_fill() override;
   virtual void handle_read() override;
 
+  virtual void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt) override;
   virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt) override;
   virtual bool filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block);
 
   uint32_t lru_victim(BLOCK* current_set, uint8_t min_size);
   uint8_t hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size);
+
+  void initialize_replacement();
+
+  void update_replacement_state(uint32_t set, uint32_t replaced_lru, BLOCK* inserted);
+  // returns the index in the current set
+  uint32_t find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
+  void replacement_final_stats();
 };
 
 #endif
