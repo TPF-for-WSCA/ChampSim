@@ -168,7 +168,7 @@ public:
   void record_cacheline_stats(uint32_t cpu, BLOCK& handle_block);
   virtual void record_overlap(void){};
 
-  void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
+  virtual void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
   virtual bool readlike_miss(PACKET& handle_pkt);
   virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt);
 
@@ -377,6 +377,7 @@ class AMOEBA_CACHE : public CACHE
 public:
   BUFFER_CACHE buffer_cache;
   typedef std::vector<BLOCK> SET;
+  BLOCK perfect_cache_block;
   std::vector<SET> storage_array;
   std::vector<uint16_t> freespace_per_set;
   // TODO: reuse some functions from VCL as template functions
@@ -389,6 +390,9 @@ public:
         freespace_per_set(v2, 512) // TODO: set size needs to be calculated depending on number of ways and block size
   {
     // TODO: If buffer -> our buffer, else: Default Amoeba Cache predictor (probably separate class)
+    if (perfect_cache) {
+      perfect_cache_block = BLOCK();
+    }
   }
 
   // we cant pass ways around, we always need to pass the block ref due to the variability of the cache
@@ -405,7 +409,7 @@ public:
   virtual void handle_fill() override;
   virtual void handle_read() override;
 
-  virtual void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt) override;
+  virtual void readlike_hit(std::size_t set, BLOCK& b, PACKET& handle_pkt);
   virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt) override;
   virtual bool filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block);
 

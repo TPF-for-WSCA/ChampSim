@@ -2389,10 +2389,10 @@ void AMOEBA_CACHE::handle_read()
     uint32_t set = get_set(handle_pkt.address);
     b = get_block(handle_pkt, set);
 
-    // HIT IN VCL CACHE
+    // HIT IN AMOEBA CACHE
     if (b != NULL) {
       // std::cout << "hit in SET: " << std::setw(3) << set << ", way: " << std::setw(3) << way << std::endl;
-      readlike_hit(set, way, handle_pkt);
+      readlike_hit(set, &b, handle_pkt);
       uint64_t newoffset = hit_check(set, way, handle_pkt.address, handle_pkt.size);
       if (!newoffset) {
         RQ.pop_front();
@@ -2426,6 +2426,50 @@ void AMOEBA_CACHE::handle_read()
       reads_available_this_cycle--;
   }
 }
+
+void AMOEBA_CACHE::readlike_hit(std::size_t set, BLOCK& b, PACKET& handle_pkt)
+{
+  DP(if (warmup_complete[handle_pkt.cpu]) {
+    std::cout << "[" << NAME << "] " << __func__ << " hit";
+    std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
+    std::cout << " full_addr: " << handle_pkt.address;
+    std::cout << " full_v_addr: " << handle_pkt.v_address << std::dec;
+    std::cout << " type: " << +handle_pkt.type;
+    std::cout << " cycle: " << current_cycle << std::endl;
+  });
+
+  BLOCK& hit_block = b;
+  if (perfect_cache)
+    hit_block = perfect_cache_block; // we attribute everything to the first way to ensure no out-of-bounds
+
+  record_cacheline_accesses(handle_pkt, hit_block, *prev_access);
+  handle_pkt.data = hit_block.data;
+
+  // update prefetcher on load instruction
+  if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
+    cpu = handle_pkt.cpu;
+    uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+    handle_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
+  }
+
+  // update replacement policy
+  update_replacement_state(set, hit_block.lru, &hit_block);
+
+  // COLLECT STATS
+  sim_hit[handle_pkt.cpu][handle_pkt.type]++;
+  sim_access[handle_pkt.cpu][handle_pkt.type]++;
+
+  for (auto ret : handle_pkt.to_return)
+    ret->return_data(&handle_pkt);
+
+  // update prefetch stats and reset prefetch bit
+  if (hit_block.prefetch) {
+    pf_useful++;
+    hit_block.prefetch = 0;
+  }
+  prev_access = &hit_block;
+}
+
 bool AMOEBA_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
 {
   // TODO:
@@ -2446,7 +2490,6 @@ void AMOEBA_CACHE::update_replacement_state(uint32_t set, uint32_t replaced_lru,
       x.lru++;
   });
   inserted->lru = 0; // promote to the MRU position
-  inserted->max_time = 0;
 }
 
 // we use the index as the iterator is a const iterator and we want to remove this block (possibly write back)
