@@ -41,6 +41,7 @@ define_log_fmtstr = '#define LOG2_{{names[{name}]}} lg2({{names[{name}]}})\n'
 
 const_names = {
     'block_size': 'BLOCK_SIZE',
+    'bucket_size': 'BUCKET_SIZE',
     'page_size': 'PAGE_SIZE',
     'heartbeat_frequency': 'STAT_PRINTING_PERIOD',
     'num_cores': 'NUM_CPUS',
@@ -65,7 +66,7 @@ const_names = {
 # Begin default core model definition
 ###
 
-default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1, 'DIB': {}, 'L1I': {}, 'L1D': {}, 'L2C': {}, 'ITLB': {}, 'DTLB': {}, 'STLB': {}, 'LLC': {}, 'physical_memory': {}, 'virtual_memory': {}}
+default_root = { 'executable_name': 'bin/champsim', 'block_size': 64, 'bucket_size': 100, 'page_size': 4096, 'heartbeat_frequency': 10000000, 'num_cores': 1, 'DIB': {}, 'L1I': {}, 'L1D': {}, 'L2C': {}, 'ITLB': {}, 'DTLB': {}, 'STLB': {}, 'LLC': {}, 'physical_memory': {}, 'virtual_memory': {}}
 
 # Read the config file
 if len(sys.argv) >= 2:
@@ -679,6 +680,7 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write('#include "util.h"\n')
     wfp.write(define_fmtstr.format(name='block_size').format(names=const_names, config=config_file))
     wfp.write(define_log_fmtstr.format(name='block_size').format(names=const_names, config=config_file))
+    wfp.write(define_fmtstr.format(name='bucket_size').format(names=const_names, config=config_file))
     wfp.write(define_fmtstr.format(name='page_size').format(names=const_names, config=config_file))
     wfp.write(define_log_fmtstr.format(name='page_size').format(names=const_names, config=config_file))
     wfp.write(define_fmtstr.format(name='heartbeat_frequency').format(names=const_names, config=config_file))
