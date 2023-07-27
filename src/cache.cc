@@ -2043,6 +2043,14 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
   return true;
 }
 
+void AMOEBA_LOCALITY_PREDICTOR::register_access(uint32_t idx, uint32_t offset)
+{
+  if (type == REGION_TAG) {
+    idx = idx >> lg_region_size;
+    idx &= bitmask(lg_num_entries);
+  }
+}
+
 BLOCK* AMOEBA_CACHE::get_block(PACKET& packet, uint32_t set)
 {
   for (BLOCK& b : storage_array[set]) {

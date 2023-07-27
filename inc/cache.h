@@ -373,6 +373,34 @@ private:
   uint32_t current_overlap;
 };
 
+enum INDEX_TYPE { PC, REGION_TAG };
+
+class AMOEBA_LOCALITY_PREDICTOR
+{
+public:
+  typedef std::vector<bool> ENTRY;
+  std::vector<ENTRY> predictor_table;
+  std::string name;
+  INDEX_TYPE type;
+  uint32_t lg_region_size;
+  uint32_t lg_num_entries;
+  AMOEBA_LOCALITY_PREDICTOR(std::string name, uint32_t num_entries, uint32_t entry_size, INDEX_TYPE type)
+      : name(name), type(type), lg_region_size(entry_size), lg_num_entries(lg2(num_entries))
+  {
+    assert(num_entries && num_entries & (num_entries - 1) == 0); // check that num_entries is non-zero power of 2
+    predictor_table.resize(num_entries);
+    for (auto elem : predictor_table) {
+      elem.resize(entry_size);
+    }
+  }
+
+  /// @brief Registers an access to an existing entry or replaces an entry
+  /// @param idx Either address or PC depending on the configuration of the predictor
+  /// @param offset offset within the accessed region
+  void register_access(uint32_t idx, uint32_t offset);
+  ENTRY get_prediction(uint32_t idx);
+};
+
 class AMOEBA_CACHE : public CACHE
 {
 public:
@@ -388,6 +416,11 @@ public:
                repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, CountBlockMethod method, BufferHistory history)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl, method, lru_modifier),
+        buffer_cache(BUFFER_CACHE(
+            (v1 + "_buffer"), freq_scale, fill_level, (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? 1 : buffer_sets / buffer_organisation,
+            (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : buffer_organisation, 0, std::min(buffer_sets, v5),
+            std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read, max_write / 2, offset_bits, false, true, false, 0,
+            ll, pref_t::CPU_REDIRECT_pprefetcherDno_instr_, repl_t::rreplacementDlru, method, buffer_fifo, history)),
         freespace_per_set(v2, 512) // TODO: set size needs to be calculated depending on number of ways and block size
   {
     // TODO: If buffer -> our buffer, else: Default Amoeba Cache predictor (probably separate class)
