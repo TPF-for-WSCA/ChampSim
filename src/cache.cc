@@ -1,6 +1,7 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <iterator>
@@ -38,6 +39,18 @@ bool is_default_lru(LruModifier lru_modifier)
   if (lru_modifier == DEFAULT or (lru_modifier > 10 and lru_modifier % 10 == 1))
     return true;
   return false;
+}
+
+bool check_address_in_block_range(uint64_t address, BLOCK& b, uint64_t block_size)
+{
+  uint8_t access_offset = address % block_size;
+  // if the address lies between start and end, we are overlapping
+  return b.offset <= access_offset && access_offset < b.offset + b.size;
+}
+
+bool check_overlapping(uint64_t begin_addr, uint64_t end_addr, BLOCK& b, uint64_t block_size)
+{
+  return check_address_in_block_range(begin_addr, b, block_size) || check_address_in_block_range(end_addr, b, block_size);
 }
 
 void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper)
@@ -2043,23 +2056,57 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
   return true;
 }
 
-void AMOEBA_LOCALITY_PREDICTOR::register_access(uint32_t idx, uint32_t offset)
+void AMOEBA_LOCALITY_PREDICTOR::register_access(uint32_t idx, uint32_t offset = 0)
 {
+  assert((offset && type == PC) || type == REGION_TAG);
+  uint64_t tag;
   if (type == REGION_TAG) {
-    idx = idx >> lg_region_size;
-    idx &= bitmask(lg_num_entries);
+    offset = idx % region_size;
+    tag = idx >> lg_region_size;
+    idx = tag & bitmask(lg_num_entries);
+  } else {
+    // TODO: How to calculate offset for pc based?
+    assert(false);
+    tag = idx;                           // we compare the entire PC for this one
+    idx = idx & bitmask(lg_num_entries); // to index we just get the lowest n bits
+  }
+  auto entry = &predictor_table[idx];
+  if (entry->tag == tag) {
+    entry->entries[offset] = true;
+  } else {
+    // we just replace it for now
+    std::fill(entry->entries.begin(), entry->entries.end(), false);
+    entry->entries[offset] = true;
   }
 }
 
-BLOCK* AMOEBA_CACHE::get_block(PACKET& packet, uint32_t set)
+AMOEBA_LOCALITY_PREDICTOR::entry_t AMOEBA_LOCALITY_PREDICTOR::get_prediction(uint32_t idx)
 {
-  for (BLOCK& b : storage_array[set]) {
+  uint64_t tag;
+  if (type == REGION_TAG) {
+    tag = idx >> lg_region_size;
+    idx = tag & bitmask(lg_num_entries);
+  } else {
+    tag = idx;
+    idx = idx & bitmask(lg_num_entries);
+  }
+  auto entry = &predictor_table[idx];
+  if (entry->tag == tag) {
+    return *entry;
+  } else {
+    return default_prediction;
+  }
+}
 
-    if (get_tag(packet.address) == get_tag(b.address) || get_tag(packet.v_address) == get_tag(b.v_address)) {
-      return &b;
+std::vector<BLOCK*> AMOEBA_CACHE::get_block(PACKET& packet, uint32_t set)
+{
+  std::vector<BLOCK*> candidates;
+  for (BLOCK& b : storage_array[set]) {
+    if (get_tag(packet.address) == get_tag(b.address)) {
+      candidates.push_back(&b);
     }
   }
-  return NULL;
+  return candidates;
 }
 
 int AMOEBA_CACHE::add_rq(PACKET* packet)
@@ -2110,6 +2157,7 @@ int AMOEBA_CACHE::add_rq(PACKET* packet)
   RQ_TO_CACHE++;
   return RQ.occupancy();
 }
+
 int AMOEBA_CACHE::add_wq(PACKET* packet)
 {
   WQ_ACCESS++;
@@ -2212,12 +2260,12 @@ int AMOEBA_CACHE::add_pq(PACKET* packet)
 }
 void AMOEBA_CACHE::operate_writes()
 {
-
   // TODO: If we have any other mechanisms, we might also need to operate them here
   if (buffer)
     operate_buffer_evictions();
   CACHE::operate_writes();
 }
+
 void AMOEBA_CACHE::operate_buffer_evictions()
 { // TODO: Update to match amoeba or our predictor
   while (!buffer_cache.merge_block.empty()) {
@@ -2253,7 +2301,25 @@ void AMOEBA_CACHE::operate_buffer_evictions()
         continue; // already in cache: the previous block already contains that block
       uint8_t block_start = std::max(min_start, blocks[i].first);
       size_t block_size = blocks[i].second - block_start + 1;
-      auto first_inv = std::find_if_not(set_begin, set_end, is_valid_size<BLOCK>(block_size));
+      while (freespace_per_set[set] < block_size) {
+        auto eviction_candidate = find_victim(merge_block.cpu, merge_block.instr_id, &storage_array[set], merge_block.ip, merge_block.address, FILL);
+        // We are overly optimistically assuming that the entire size is available directly - normally we would need to keep position in mind
+        freespace_per_set[set] += eviction_candidate->size; // TODO: add overhead size back (Tag (=), Valid (=1 bit) and OFFSET BITS (= 6bits))
+        // TODO: move eviction logic up here
+        storage_array[set].erase(eviction_candidate);
+      }
+      BLOCK new_b(merge_block);
+      new_b.offset = block_start;
+      new_b.size = block_size;
+      new_b.valid = true;
+      new_b.tag = get_tag(merge_block.address);
+      new_b.bytes_accessed = 0;
+      new_b.time_present = 0;
+      std::fill(std::begin(new_b.accesses_per_bytes), std::begin(new_b.accesses_per_bytes) + 64, 0);
+      storage_array[set].push_back(new_b);
+      update_replacement_state(set, &(storage_array[set].back()));
+
+      first_inv = std::find_if_not(set_begin, set_end, is_valid_size<BLOCK>(block_size));
       uint32_t way = std::distance(set_begin, first_inv);
       if (way == NUM_WAY) {
         way = lru_victim(&block.data()[set * NUM_WAY], block_size);
@@ -2480,31 +2546,30 @@ void AMOEBA_CACHE::readlike_hit(std::size_t set, BLOCK& b, PACKET& handle_pkt)
   prev_access = &hit_block;
 }
 
-bool AMOEBA_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
+bool AMOEBA_CACHE::filllike_miss(std::size_t set, std::size_t size, PACKET& handle_pkt)
 {
   // TODO:
 }
-bool AMOEBA_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block)
+bool AMOEBA_CACHE::filllike_miss(std::size_t set, std::size_t size, size_t offset, BLOCK& handle_block)
 {
   // TODO:
 }
 
 void AMOEBA_CACHE::initialize_replacement() {}
 
-void AMOEBA_CACHE::update_replacement_state(uint32_t set, uint32_t replaced_lru, BLOCK* inserted)
+void AMOEBA_CACHE::update_replacement_state(uint32_t set, BLOCK* inserted)
 {
   auto begin = storage_array[set].begin();
   auto end = storage_array[set].end();
-  std::for_each(begin, end, [replaced_lru](BLOCK& x) {
-    if (x.lru <= replaced_lru)
-      x.lru++;
-  });
+  std::for_each(
+      begin, end, (BLOCK & x) { x.lru++; });
   inserted->lru = 0; // promote to the MRU position
 }
 
 // we use the index as the iterator is a const iterator and we want to remove this block (possibly write back)
-uint32_t AMOEBA_CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const SET* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+AMOEBA_CACHE::SET::const_iterator AMOEBA_CACHE::find_victim(uint32_t cpu, uint64_t instr_id, const SET* current_set, uint64_t ip, uint64_t full_addr,
+                                                            uint32_t type)
 {
-  auto b = std::max_element(current_set->begin(), current_set->end(), lru_comparator<BLOCK, BLOCK>());
-  return std::distance(current_set->begin(), b);
+  AMOEBA_CACHE::SET::const_iterator b = std::max_element(current_set->begin(), current_set->end(), lru_comparator<BLOCK, BLOCK>());
+  return b;
 }

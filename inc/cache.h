@@ -378,27 +378,41 @@ enum INDEX_TYPE { PC, REGION_TAG };
 class AMOEBA_LOCALITY_PREDICTOR
 {
 public:
-  typedef std::vector<bool> ENTRY;
-  std::vector<ENTRY> predictor_table;
+  typedef struct ENTRY {
+    std::vector<bool> entries;
+    uint64_t tag;
+  } entry_t;
+  std::vector<entry_t> predictor_table;
+  entry_t default_prediction;
   std::string name;
   INDEX_TYPE type;
   uint32_t lg_region_size;
+  uint32_t region_size;
   uint32_t lg_num_entries;
+
+  /// @brief A simple predictor that can be either indexed with PC or Address Tags
+  /// @param name The name of the predictor for logs and similar
+  /// @param num_entries The number of entries in the predictor table
+  /// @param entry_size The size in bits per single entry
+  /// @param type The index type can either be
   AMOEBA_LOCALITY_PREDICTOR(std::string name, uint32_t num_entries, uint32_t entry_size, INDEX_TYPE type)
-      : name(name), type(type), lg_region_size(entry_size), lg_num_entries(lg2(num_entries))
+      : name(name), type(type), lg_region_size(lg2(entry_size)), lg_num_entries(lg2(num_entries)), region_size(num_entries)
   {
     assert(num_entries && num_entries & (num_entries - 1) == 0); // check that num_entries is non-zero power of 2
     predictor_table.resize(num_entries);
     for (auto elem : predictor_table) {
-      elem.resize(entry_size);
+      elem.entries.resize(entry_size);
     }
+    default_prediction.entries.resize(entry_size);
+    std::fill(default_prediction.entries.begin(), default_prediction.entries.end(),
+              true); // fetch all if unknown - other option: only fetch requested word if unknown.
   }
 
   /// @brief Registers an access to an existing entry or replaces an entry
   /// @param idx Either address or PC depending on the configuration of the predictor
-  /// @param offset offset within the accessed region
-  void register_access(uint32_t idx, uint32_t offset);
-  ENTRY get_prediction(uint32_t idx);
+  /// @param offset offset within the accessed region (default 0, needs to be set if type is PC)
+  void register_access(uint32_t idx, uint32_t offset = 0);
+  entry_t get_prediction(uint32_t idx);
 };
 
 class AMOEBA_CACHE : public CACHE
@@ -430,7 +444,7 @@ public:
   }
 
   // we cant pass ways around, we always need to pass the block ref due to the variability of the cache
-  BLOCK* get_block(PACKET& packet, uint32_t set);
+  std::vector<BLOCK*> get_block(PACKET& packet, uint32_t set);
   // set and tag should stay relatively constant, we can store offsets as given.
   virtual int add_rq(PACKET* packet) override;
   virtual int add_wq(PACKET* packet) override;
@@ -452,9 +466,9 @@ public:
 
   void initialize_replacement();
 
-  void update_replacement_state(uint32_t set, uint32_t replaced_lru, BLOCK* inserted);
+  void update_replacement_state(uint32_t set, BLOCK* inserted);
   // returns the index in the current set
-  uint32_t find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const SET* current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
+  SET::const_iterator find_victim(uint32_t cpu, uint64_t instr_id, const SET* current_set, uint64_t ip, uint64_t full_addr, uint32_t type);
 };
 
 #endif

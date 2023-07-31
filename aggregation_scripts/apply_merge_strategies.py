@@ -386,6 +386,8 @@ def main(args):
                 )
                 print_starting_offsets(trace_directory, workload)
                 continue
+            elif args.action == "percentage_unused":
+                pass
             else:
                 exit(-1)
 
