@@ -16,12 +16,12 @@ module load Python/3.9.6-GCCcore-11.2.0
 #binaries=("champsim4k" "champsim8k" "champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim256k")
 #binaries=("champsim_vcl_buffer_64d_data_no_history" "champsim_vcl_buffer_64d_data_partial_h" "champsim_vcl_buffer_64d_no_history" "champsim_vcl_buffer_64d_partial_h" "champsim_vcl_buffer_64_f_data_no_history" "champsim_vcl_buffer_64_f_data_partial_h" "champsim_vcl_buffer_64_f_no_history" "champsim_vcl_buffer_64_f_partial_h" "champsim_vcl_buffer_64_lru_8w_no_history" "champsim_vcl_buffer_64_lru_8w_partial_h" "champsim_vcl_buffer_64_lru_8w_data_no_history" "champsim_vcl_buffer_64_lru_8w_data_partial_h")
 
-binaries=("champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim_vcl_buffer_64_f" "champsim_vcl_buffer_64_lru_2w" "champsim_vcl_buffer_64_lru_4w" "champsim_vcl_buffer_64_lru_8w" "champsim_vcl_buffer_64d" "champsim_vcl_buffer_128_f" "champsim_vcl_buffer_128_lru_2w" "champsim_vcl_buffer_128_lru_4w" "champsim_vcl_buffer_128_lru_8w" "champsim_vcl_buffer_128d" "champsim_simple_vcl_buffer_64_lru_8w" "champsim_vcl_buffer_64_3lip_d" "champsim_vcl_buffer_64_4lip_d" "champsim_vcl_buffer_64_lip_d" "champsim_vcl_buffer_64_3lip__f" "champsim_vcl_buffer_64_4lip__f" "champsim_vcl_buffer_64_lip__f" "champsim_vcl_buffer_64_3lip__lru_8w" "champsim_vcl_buffer_64_4lip__lru_8w" "champsim_vcl_buffer_64_lip__lru_8w" "champsim_3lip_32k" "champsim_2lip_32k" "champsim_4lip_32k" "champsim_lip_32k" "champsim_2lip_64k" "champsim_3lip_64k" "champsim_4lip_64k" "champsim_lip_64k")
+binaries=("champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim_vcl_buffer_64d" "champsim_vcl_buffer_64_lru_2w" "champsim_vcl_buffer_64_lru_4w" "champsim_vcl_buffer_64_lru_8w" "champsim_vcl_buffer_64_3lip_d" "champsim_vcl_buffer_64_4lip_d" "champsim_vcl_buffer_64_lip_d" "champsim_vcl_buffer_64_2lip_d" "champsim_vcl_buffer_64_3lip__lru_8w" "champsim_vcl_buffer_64_4lip__lru_8w" "champsim_vcl_buffer_64_lip__lru_8w" "champsim_vcl_buffer_64_2lip__lru_8w")
 #binaries=("champsim32k" "champsim64k" "champsim_simple_vcl_buffer_64_lru_8w")
 
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 90000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --trace_format p --traces_directory /cluster/work/romankb/dataset/tanvir --output_dir /cluster/work/romankb/results/full_analysis_v7_lipimpact_on_default/tanvir/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
+    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 90000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --trace_format p --traces_directory /cluster/work/romankb/dataset/tanvir --output_dir /cluster/work/romankb/results/full_analysis_v8/tanvir/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
 done
 
 for job in `jobs -p`
