@@ -82,7 +82,6 @@ def extract_frontend_stalls_percentage(path):
     with open(path) as f:
         logs = f.readlines()
     stallcycles_regex = re.compile("CPU 0 FRONTEND STALLED CYCLES:\s+(\d+)")
-    regex = re.compile("CPU 0 cumulative IPC\: (\d*\.?\d+)")
     totalcycles_regex = re.compile(
         "CPU 0 cummulative IPC: \d*\.?\d+ instructions: \d+ cycles: (\d+)"
     )
@@ -96,6 +95,8 @@ def extract_frontend_stalls_percentage(path):
             stall_cycles = stallcycles_matches.groups()[0]
         if totalcycles_matches:
             total_cycles = totalcycles_matches.groups()[0]
+        if stall_cycles >= 0 and total_cycles >= 0:
+            break
     if total_cycles < 0 or stall_cycles < 0:
         print("ERROR: DID NOT EXTRACT STALL PERCENTAGE")
         return float("NaN")
