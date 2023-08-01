@@ -23,6 +23,7 @@ do
 	python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./ multi MPKI
 	python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./ multi IPC
 	python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./ multi PARTIAL
+    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./ multi FRONTEND_STALLS
     cd ..
 
 	echo "Plotting ${b}"

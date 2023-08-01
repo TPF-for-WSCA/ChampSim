@@ -12,6 +12,7 @@ class STATS(Enum):
     PARTIAL = 3
     BUFFER_DURATION = 4
     USELESS = 5
+    FRONTEND_STALLS = 6
 
 
 type = STATS.IPC
@@ -76,6 +77,31 @@ def extract_l1i_mpki(path):
             return matches.groups()[0]
 
 
+def extract_frontend_stalls_percentage(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    stallcycles_regex = re.compile("CPU 0 FRONTEND STALLED CYCLES:\s+(\d+)")
+    regex = re.compile("CPU 0 cumulative IPC\: (\d*\.?\d+)")
+    totalcycles_regex = re.compile(
+        "CPU 0 cummulative IPC: \d*\.?\d+ instructions: \d+ cycles: (\d+)"
+    )
+    logs.reverse()
+    total_cycles = -1
+    stall_cycles = -1
+    for line in logs:
+        stallcycles_matches = stallcycles_regex.match(line)
+        totalcycles_matches = totalcycles_regex.match(line)
+        if stallcycles_matches:
+            stall_cycles = stallcycles_matches.groups()[0]
+        if totalcycles_matches:
+            total_cycles = totalcycles_matches.groups()[0]
+    if total_cycles < 0 or stall_cycles < 0:
+        print("ERROR: DID NOT EXTRACT STALL PERCENTAGE")
+        return float("NaN")
+    return float(stall_cycles) / float(total_cycles)
+
+
 def single_run(path):
     stat_by_workload = {}
     for workload in os.listdir(path):
@@ -96,6 +122,12 @@ def single_run(path):
                 )
             elif type == STATS.USELESS:
                 stat_by_workload[workload] = extrace_useless_percentage(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.FRONTEND_STALLS:
+                stat_by_workload[
+                    workload
+                ] = extract_frontend_stalls_percentage(
                     f"{path}/{workload}/{logfile}"
                 )
             else:
@@ -129,9 +161,7 @@ def mutliple_sizes_run(out_dir=None):
             name += f"{size_bytes}"
         else:
             name = subdir
-        ipc_by_cachesize_and_workload[name] = single_run(
-            f"{out_dir}/{subdir}"
-        )
+        ipc_by_cachesize_and_workload[name] = single_run(f"{out_dir}/{subdir}")
     return ipc_by_cachesize_and_workload
 
 
@@ -145,6 +175,8 @@ def write_tsv(data, out_path=None):
         filename = "avg_buffer"
     elif type == STATS.USELESS:
         filename = "useless"
+    elif type == STATS.FRONTEND_STALLS:
+        filename = "frontend_stalls"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
@@ -190,6 +222,8 @@ elif sys.argv[3] == "BUFFER_DURATION":
     type = STATS.BUFFER_DURATION
 elif sys.argv[3] == "USELESS_LINES":
     type = STATS.USELESS
+elif sys.argv[3] == "FRONTEND_STALLS":
+    type = STATS.FRONTEND_STALLS
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
 if sys.argv[2] == "single":
