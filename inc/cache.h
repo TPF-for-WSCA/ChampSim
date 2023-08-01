@@ -372,8 +372,4 @@ private:
   uint32_t current_overlap;
 };
 
-// class AMOEBA_CACHE : public VCL_CACHE
-// {
-// };
-
 #endif
