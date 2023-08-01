@@ -417,11 +417,16 @@ public:
 
 class AMOEBA_CACHE : public CACHE
 {
+private:
+  uint8_t overhead_per_block = 132;
+
 public:
   BUFFER_CACHE buffer_cache;
   typedef std::vector<BLOCK> SET;
   BLOCK perfect_cache_block;
+  AMOEBA_LOCALITY_PREDICTOR predictor;
   std::vector<SET> storage_array;
+  INDEX_TYPE type;
   std::vector<uint16_t> freespace_per_set;
   // TODO: reuse some functions from VCL as template functions
   AMOEBA_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, bool buffer, uint32_t buffer_sets, bool buffer_fifo, bool aligned,
@@ -441,6 +446,7 @@ public:
     if (perfect_cache) {
       perfect_cache_block = BLOCK();
     }
+    type = INDEX_TYPE::REGION_TAG; // TODO: MAKE CONFIGURABLE
   }
 
   // we cant pass ways around, we always need to pass the block ref due to the variability of the cache
@@ -465,7 +471,7 @@ public:
   uint8_t hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size);
 
   void initialize_replacement();
-
+  bool evict_candidate(std::vector<BLOCK>::const_iterator candidate, uint32_t set);
   void update_replacement_state(uint32_t set, BLOCK* inserted);
   // returns the index in the current set
   SET::const_iterator find_victim(uint32_t cpu, uint64_t instr_id, const SET* current_set, uint64_t ip, uint64_t full_addr, uint32_t type);

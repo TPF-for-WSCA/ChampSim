@@ -34,6 +34,8 @@ uint8_t get_lru_offset(LruModifier lru_modifier)
   return lru_modifier;
 }
 
+std::pair<uint8_t, uint8_t> extend_access_to_full_width(std::vector<bool> mask, uint64_t access_offset) {}
+
 bool is_default_lru(LruModifier lru_modifier)
 {
   if (lru_modifier == DEFAULT or (lru_modifier > 10 and lru_modifier % 10 == 1))
@@ -2303,48 +2305,13 @@ void AMOEBA_CACHE::operate_buffer_evictions()
       size_t block_size = blocks[i].second - block_start + 1;
       while (freespace_per_set[set] < block_size) {
         auto eviction_candidate = find_victim(merge_block.cpu, merge_block.instr_id, &storage_array[set], merge_block.ip, merge_block.address, FILL);
+        if (!evict_candidate(eviction_candidate, set))
+          return;
         // We are overly optimistically assuming that the entire size is available directly - normally we would need to keep position in mind
-        freespace_per_set[set] += eviction_candidate->size; // TODO: add overhead size back (Tag (=), Valid (=1 bit) and OFFSET BITS (= 6bits))
-        // TODO: move eviction logic up here
-        storage_array[set].erase(eviction_candidate);
       }
-      BLOCK new_b(merge_block);
-      new_b.offset = block_start;
-      new_b.size = block_size;
-      new_b.valid = true;
-      new_b.tag = get_tag(merge_block.address);
-      new_b.bytes_accessed = 0;
-      new_b.time_present = 0;
-      std::fill(std::begin(new_b.accesses_per_bytes), std::begin(new_b.accesses_per_bytes) + 64, 0);
-      storage_array[set].push_back(new_b);
-      update_replacement_state(set, &(storage_array[set].back()));
 
-      first_inv = std::find_if_not(set_begin, set_end, is_valid_size<BLOCK>(block_size));
-      uint32_t way = std::distance(set_begin, first_inv);
-      if (way == NUM_WAY) {
-        way = lru_victim(&block.data()[set * NUM_WAY], block_size);
-        assert(way < NUM_WAY);
-      } else {
-        if (block_start + way_sizes[way] > 64) { // TODO: fix this is not VCL
-          block_start = 64 - way_sizes[way];     // possible duplicate - can't prevent that TODO: track duplicates here
-        }
-        uint8_t first_way = 0;
-        for (int i = way; i < NUM_WAY; i++) {
-          if (way_sizes[i] < block_size)
-            continue;
-          first_way = i;
-          break;
-        }
-        uint8_t last_way = first_way + get_lru_offset(lru_modifier);
-        if (last_way > NUM_WAY)
-          last_way = NUM_WAY;
-        lru_subset = SUBSET(first_way, last_way);
-      }
-      if (block_start + way_sizes[way] > 64) {
-        block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
-      }
-      min_start = block_start + way_sizes[way];
-      filllike_miss(set, way, block_start, merge_block);
+      min_start = block_start + block_size;
+      filllike_miss(set, block_size, block_start, merge_block);
       if (min_start >= 64)
         break; // There is no block left that could be outside as we went until the end
     }
@@ -2353,9 +2320,10 @@ void AMOEBA_CACHE::operate_buffer_evictions()
     std::cout << "did not empty buffer" << std::endl;
   }
 }
+
 void AMOEBA_CACHE::handle_fill()
 {
-  // TODO: this should make use of the predictor // only receive the bytes that are required
+  // TODO: this should make use of the predictor // only receive the bytes that are required // only deduct writes by bytes
   while (writes_available_this_cycle > 0) {
     auto fill_mshr = MSHR.begin();
     if (fill_mshr == std::end(MSHR) || fill_mshr->event_cycle > current_cycle)
@@ -2368,6 +2336,14 @@ void AMOEBA_CACHE::handle_fill()
     // no buffer impl: insert in invalid big enough block (any way)
 
     uint32_t set = get_set(fill_mshr->address);
+    AMOEBA_LOCALITY_PREDICTOR::entry_t prediction;
+    if (type == INDEX_TYPE::REGION_TAG) {
+      prediction = predictor.get_prediction(fill_mshr->address);
+    } else if (type == INDEX_TYPE::PC) {
+      prediction = predictor.get_prediction(fill_mshr->ip);
+    } else {
+      assert(0);
+    }
     uint8_t num_blocks_to_write = 1;
 
     uint64_t orig_addr = fill_mshr->address;
@@ -2379,6 +2355,7 @@ void AMOEBA_CACHE::handle_fill()
         return;
       goto inserted;
     }
+
     while (num_blocks_to_write > 0) {
       // TODO: If buffer go to buffer and insert whatever is in the buffer
       auto set_begin = std::next(std::begin(block), set * NUM_WAY);
@@ -2546,13 +2523,49 @@ void AMOEBA_CACHE::readlike_hit(std::size_t set, BLOCK& b, PACKET& handle_pkt)
   prev_access = &hit_block;
 }
 
-bool AMOEBA_CACHE::filllike_miss(std::size_t set, std::size_t size, PACKET& handle_pkt)
+bool AMOEBA_CACHE::evict_candidate(std::vector<BLOCK>::const_iterator candidate, uint32_t set)
+{
+  if (candidate->dirty) {
+    // TODO: Writeback
+    PACKET writeback_packet;
+
+    writeback_packet.fill_level = lower_level->fill_level;
+    writeback_packet.cpu = candidate->cpu;
+    writeback_packet.address = candidate->address;
+    writeback_packet.data = candidate->data;
+    writeback_packet.instr_id = candidate->instr_id;
+    writeback_packet.ip = 0;
+    writeback_packet.type = WRITEBACK;
+
+    auto result = lower_level->add_wq(&writeback_packet);
+    if (result == -2)
+      return false;
+  }
+  freespace_per_set[set] += (candidate->size + overhead_per_block); // TODO: add overhead size back (Tag (=), Valid (=1 bit) and OFFSET BITS (= 6bits))
+  storage_array[set].erase(eviction_candidate);
+
+  return true;
+}
+
+bool AMOEBA_CACHE::filllike_miss(std::size_t set, std::size_t size, PACKET& handle_pkt) // if used with a predictor
 {
   // TODO:
 }
-bool AMOEBA_CACHE::filllike_miss(std::size_t set, std::size_t size, size_t offset, BLOCK& handle_block)
+bool AMOEBA_CACHE::filllike_miss(std::size_t set, std::size_t size, size_t offset, BLOCK& handle_block) // if used with our buffer
 {
-  // TODO:
+
+  BLOCK new_b(handle_block);
+  new_b.offset = block_start;
+  new_b.size = block_size;
+  new_b.valid = true;
+  new_b.tag = get_tag(handle_block.address);
+  new_b.bytes_accessed = 0;
+  new_b.time_present = 0;
+  std::fill(std::begin(new_b.accesses_per_bytes), std::begin(new_b.accesses_per_bytes) + 64, 0);
+  storage_array[set].push_back(new_b);
+  update_replacement_state(set, &(storage_array[set].back()));
+
+  freespace_per_set[set] -= (block_size + overhead_per_block);
 }
 
 void AMOEBA_CACHE::initialize_replacement() {}
