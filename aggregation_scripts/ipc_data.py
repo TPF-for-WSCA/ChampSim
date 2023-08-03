@@ -53,7 +53,7 @@ def extract_l1i_detail_partial_misses(path):
     with open(path) as f:
         logs = f.readlines()
     merges_regex = re.compile(
-        "cpu0_L1I_buffer PARTIAL MISSES UNDERRUNS:\s+(\d+)\s+OVERRUNS:\s+(\d+)\s+MERGES:\s+(\d+)\s+NEW BLOCKS:\s+(\d+)\s*"
+        "cpu0_L1I_buffer PARTIAL MISSES\tUNDERRUNS:\s+(\d+)\tOVERRUNS:\s+(\d+)\tMERGES:\s+(\d+)\tNEW BLOCKS:\s+(\d+)"
     )
 
     logs.reverse()
