@@ -238,13 +238,14 @@ def write_tsv(data, out_path=None):
         for csize, values in data.items():
             outfile.write(f"{csize}")
             for header in headers:
+                val = data[csize].get(header)
                 if type == STATS.PARTIAL_MISSES:
+                    if val == None:
+                        val = [0, 0, 0, 0]
                     for i in range(0, 4):
-                        outfile.write(
-                            f"\t{data[csize].get(header, [0,0,0,0])[i]}"
-                        )
+                        outfile.write(f"\t{val[i]}")
                 else:
-                    outfile.write(f"\t{data[csize].get(header, None)}")
+                    outfile.write(f"\t{val}")
             outfile.write("\n")
 
 
