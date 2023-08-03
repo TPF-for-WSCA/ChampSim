@@ -232,7 +232,7 @@ def write_tsv(data, out_path=None):
                 count += 3
             headers.append(workload)
         if type == STATS.PARTIAL_MISSES:
-            for i in range(count / 4):
+            for i in range(int(count / 4)):
                 outfile.write("\tUNDERRUNS\tOVERRUNS\tMERGES\tNEW BLOCKS")
         outfile.write("\n")
         for csize, values in data.items():
