@@ -223,14 +223,28 @@ def write_tsv(data, out_path=None):
                 abs_max = len(values)
                 max_csize = csize
         headers = []
+        count = 0
         for workload, _ in data[max_csize].items():
             outfile.write(f"\t{workload}")
+            count += 1
+            if type == STATS.PARTIAL_MISSES:
+                outfile.write("\t\t\t")
+                count += 3
             headers.append(workload)
+        if type == STATS.PARTIAL_MISSES:
+            for i in range(count / 4):
+                outfile.write("\tUNDERRUNS\tOVERRUNS\tMERGES\tNEW BLOCKS")
         outfile.write("\n")
         for csize, values in data.items():
             outfile.write(f"{csize}")
             for header in headers:
-                outfile.write(f"\t{data[csize].get(header, None)}")
+                if type == STATS.PARTIAL_MISSES:
+                    for i in range(0, 4):
+                        outfile.write(
+                            f"\t{data[csize].get(header, [0,0,0,0])[i]}"
+                        )
+                else:
+                    outfile.write(f"\t{data[csize].get(header, None)}")
             outfile.write("\n")
 
 
