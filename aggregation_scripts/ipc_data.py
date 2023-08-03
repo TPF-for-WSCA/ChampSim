@@ -13,6 +13,7 @@ class STATS(Enum):
     BUFFER_DURATION = 4
     USELESS = 5
     FRONTEND_STALLS = 6
+    PARTIAL_MISSES = 7
 
 
 type = STATS.IPC
@@ -45,6 +46,29 @@ def extract_l1i_partial(path):
         if matches:
             return matches.groups()[1]
     return 0
+
+
+def extract_l1i_detail_partial_misses(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    merges_regex = re.compile(
+        "cpu0_L1I_buffer PARTIAL MISSES UNDERRUNS:\s+(\d+)\s+OVERRUNS:\s+(\d+)\s+MERGES:\s+(\d+)\s+NEW BLOCKS:\s+(\d+)\s*"
+    )
+
+    logs.reverse()
+    merges = (0,)
+    for line in logs:
+        merges = merges_regex.match(line)
+        if merges:
+            merges = (
+                int(merges.groups()[0]),
+                int(merges.groups()[1]),
+                int(merges.groups()[2]),
+                int(merges.groups()[3]),
+            )
+            break
+    return merges
 
 
 def extrace_useless_percentage(path):
@@ -131,6 +155,10 @@ def single_run(path):
                 ] = extract_frontend_stalls_percentage(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.PARTIAL_MISSES:
+                stat_by_workload[workload] = extract_l1i_detail_partial_misses(
+                    f"{path}/{workload}/{logfile}"
+                )
             else:
                 stat_by_workload[workload] = extract_ipc(
                     f"{path}/{workload}/{logfile}"
@@ -178,6 +206,8 @@ def write_tsv(data, out_path=None):
         filename = "useless"
     elif type == STATS.FRONTEND_STALLS:
         filename = "frontend_stalls"
+    elif type == STATS.PARTIAL_MISSES:
+        filename = "partial_misses"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
@@ -225,6 +255,8 @@ elif sys.argv[3] == "USELESS_LINES":
     type = STATS.USELESS
 elif sys.argv[3] == "FRONTEND_STALLS":
     type = STATS.FRONTEND_STALLS
+elif sys.argv[3] == "PARTIAL_MISSES":
+    type = STATS.PARTIAL_MISSES
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
 if sys.argv[2] == "single":

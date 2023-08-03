@@ -1694,9 +1694,9 @@ void VCL_CACHE::handle_read()
 
     // MISS
     bool success = readlike_miss(handle_pkt);
-    RQ.pop_front();
     if (!success)
       return; // buffer full = try next cycle
+    RQ.pop_front();
 
     // remove this entry from RQ
     if (knob_stall_on_miss) {
