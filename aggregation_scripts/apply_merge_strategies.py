@@ -289,8 +289,12 @@ def apply_way_analysis(
     error = target_size
     selected_waysizes = []
     local_overhead = 0
+    overhead = 0
     for i in range(8, 64):
-        overhead = math.ceil((6 * i) / 8)  # 6 bits per tag
+        if arm:
+            overhead = math.ceil((4 * i) / 8)  # 6 bits per tag
+        else:
+            overhead = math.ceil((6 * i) / 8)  # 6 bits per tag
         local_target_size = target_size - overhead
         bucket_sizes, _ = create_uniform_buckets_of_size(i)
         total_size = sum(bucket_sizes)
