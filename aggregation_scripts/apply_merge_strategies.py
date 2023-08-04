@@ -226,6 +226,7 @@ def create_uniform_buckets_of_size(num_buckets):
         counter = 4
     for idx, percentage in enumerate(normalised_histogram):
         if arm and (idx + 1) % 4 != 0:
+            assert percentage == 0
             continue
         if percentage > target:
             split = int(percentage / target)
