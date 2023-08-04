@@ -94,9 +94,8 @@ def get_perfect_predictor_file(base_path, trace_dir):
 
 def main(args):
     global warmup_instructions, evaluation_instructions
-    if args.instr:
-        warmup_instructions = args.warmup
-        evaluation_instructions = args.eval
+    warmup_instructions = args.warmup
+    evaluation_instructions = args.eval
     traces_directory = args.traces_directory[0]
     workloads = os.listdir(traces_directory)
     trace_files = []
