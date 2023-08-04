@@ -346,7 +346,7 @@ def main(args):
         arm = True
     for workload in os.listdir(trace_directory):
         global BLOCK_SIZES_HISTOGRAM  # We need t reset it for every workload
-        BLOCK_SIZES_HISTOGRAM = defaultdict(lambda: [0 for i in range(64)])
+        # BLOCK_SIZES_HISTOGRAM = defaultdict(lambda: [0 for i in range(64)]) # we do not reset it so we have in the end the average of all workloads
         if not os.path.isdir(os.path.join(trace_directory, workload)):
             continue
         if (
