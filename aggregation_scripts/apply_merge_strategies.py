@@ -271,14 +271,17 @@ def create_uniform_buckets_of_size(num_buckets):
 
 
 def apply_way_analysis(
-    workload_name, tracefile_path, num_buffer_entries=128, num_sets=64
+    workload_name, tracefile_path, num_buffer_entries=64, num_sets=64
 ):
     for mask in get_mask_from_tracefile(tracefile_path):
         trimmed_mask, first_byte = trim_mask(mask)
         merge_single_mask(first_byte, trimmed_mask, only_chosen=True)
 
-    # 64 B per entry + 8B counters per entry + 128B merge registers overall (merge registers might be optimised away)
-    buffer_bytes_per_set = (num_buffer_entries * (64 + 8) + 128) / num_sets
+    # 64 b (arm: 16) per entry + 6b (arm: 4) offsets per entry + 128B merge registers overall (merge registers might be optimised away)
+    if not arm:
+        buffer_bytes_per_set = (num_buffer_entries * (64 + 6) + 128) / num_sets
+    else:
+        buffer_bytes_per_set = (num_buffer_entries * (16 + 4) + 128) / num_sets
     target_size = 512 - buffer_bytes_per_set
     error = target_size
     selected_waysizes = []
