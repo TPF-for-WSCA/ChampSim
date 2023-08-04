@@ -17,7 +17,7 @@ binaries=("champsim_data_16k" "champsim_data_32k" "champsim_data_64k" "champsim_
 #binaries=("champsim_data_16k" "champsim_data_32k" "champsim_data_64k" "champsim_data_128k" "champsim_vcl_buffer_64_f_data" "champsim_vcl_buffer_64_lru_data" "champsim_vcl_buffer_64_lru_2w_data" "champsim_vcl_buffer_64_lru_4w_data" ""champsim_vcl_buffer_64_lru_8w_data"" "champsim_vcl_buffer_64d_data" "champsim_vcl_buffer_128_f_data" "champsim_vcl_buffer_128_lru_data" "champsim_vcl_buffer_128_lru_2w_data" "champsim_vcl_buffer_128_lru_4w_data" ""champsim_vcl_buffer_128_lru_8w_data"" "champsim_vcl_buffer_128d_data" "champsim_simple_vcl_buffer_64_lru_8w")
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --instructions 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/dpc3/champsim-traces/speccpu  --intel --nosub --output_dir /cluster/work/romankb/results/full_analysis_v8/dpc3/sizes_${binary}/ >> ~/pyrunner_dpc3_${binary}.log
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 200000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/dpc3/champsim-traces/speccpu  --intel --nosub --output_dir /cluster/work/romankb/results/full_analysis_v9/dpc3/sizes_${binary}/ >> ~/pyrunner_dpc3_${binary}.log
 done
 
 for job in `jobs -p`

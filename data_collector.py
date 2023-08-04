@@ -12,7 +12,8 @@ import sys
 
 executable = "/cluster/work/romankb/dynamorio/build/clients/bin64/drcachesim"
 
-experiment_instructions = 90000000
+warmup_instructions = 1000000
+evaluation_instructions = 10000000
 
 
 class Color(Enum):
@@ -32,14 +33,12 @@ def run_experiment(
     output_dir,
     vcl_perfect_predictor=None,
 ):
-    warmup_instr = int(experiment_instructions / 4)
-    sim_instructions = experiment_instructions - warmup_instr
     cmd = [
         executable,
         "-warmup_instructions",
-        str(warmup_instr),
+        str(warmup_instructions),
         "-simulation_instructions",
-        str(sim_instructions),
+        str(evaluation_instructions),
         "-result_dir",
         output_dir,
     ]
@@ -94,9 +93,10 @@ def get_perfect_predictor_file(base_path, trace_dir):
 
 
 def main(args):
-    global experiment_instructions
+    global warmup_instructions, evaluation_instructions
     if args.instr:
-        experiment_instructions = args.instr
+        warmup_instructions = args.warmup
+        evaluation_instructions = args.eval
     traces_directory = args.traces_directory[0]
     workloads = os.listdir(traces_directory)
     trace_files = []
@@ -191,10 +191,16 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--instructions",
-        dest="instr",
+        "--warmup",
+        dest="warmup",
         type=int,
-        help=f"Optional: Number of instructions to simulate. Default is {experiment_instructions}",
+        help=f"Optional: Number of instructions to warmup. Default is {warmup_instructions}",
+    )
+    parser.add_argument(
+        "--evaluation",
+        dest="eval",
+        type=int,
+        help=f"Optional: Number of instructions to simulate. Default is {evaluation_instructions}",
     )
 
     parser.add_argument(
