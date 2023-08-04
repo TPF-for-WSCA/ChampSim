@@ -231,7 +231,7 @@ def create_uniform_buckets_of_size(num_buckets):
         else:
             value = percentage
         if value == 0:
-            if counter < 64:
+            if counter < 64 and counter == 1:
                 counter += increment
             continue
         single_val = value
