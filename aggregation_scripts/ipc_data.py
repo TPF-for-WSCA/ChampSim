@@ -283,4 +283,4 @@ elif sys.argv[2] == "multibench":
 else:
     data = mutliple_sizes_run()
 
-write_tsv(data)
+write_tsv(data, sys.argv[1])
