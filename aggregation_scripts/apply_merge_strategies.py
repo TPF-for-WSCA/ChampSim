@@ -282,9 +282,13 @@ def apply_way_analysis(
 
     # 64 b (arm: 16) per entry + 6b counter per entry (only for non-directmapped required) + 128B merge registers overall (merge registers might be optimised away)
     if not arm:
-        buffer_bytes_per_set = (num_buffer_entries * 8 + 128) / num_sets
+        buffer_bytes_per_set = (
+            num_buffer_entries + num_buffer_entries * 8 + 128
+        ) / num_sets
     else:
-        buffer_bytes_per_set = (num_buffer_entries * 2 + 128) / num_sets
+        buffer_bytes_per_set = (
+            num_buffer_entries + num_buffer_entries * 2 + 128
+        ) / num_sets
     target_size = 512 - buffer_bytes_per_set
     error = target_size
     selected_waysizes = []
