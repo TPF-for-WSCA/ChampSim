@@ -547,7 +547,7 @@ void CACHE::record_remainder_cachelines(uint32_t cpu)
     for (BLOCK b : vc->buffer_cache.block) {
       if (!b.valid)
         continue;
-      record_cacheline_stats(cpu, b);
+      vc->buffer_cache.record_cacheline_stats(cpu, b);
     }
   }
 }
@@ -1883,6 +1883,9 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   if (fill_block.valid && fill_block.accesses == 0) {
     USELESS_CACHELINE++;
   }
+  if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
+    record_cacheline_stats(handle_block.cpu, fill_block);
+  }
   TOTAL_CACHELINES++;
   bool evicting_dirty = (lower_level != NULL) && fill_block.dirty;
   uint64_t evicting_address = 0;
@@ -1959,9 +1962,9 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
   } else if (fill_block.valid) {
   }
   TOTAL_CACHELINES++;
-  // if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
-  //   record_cacheline_stats(handle_pkt.cpu, fill_block);
-  // }
+  if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
+    record_cacheline_stats(handle_pkt.cpu, fill_block);
+  }
 
   bool evicting_dirty = !bypass && (lower_level != NULL) && fill_block.dirty;
   uint64_t evicting_address = 0;
