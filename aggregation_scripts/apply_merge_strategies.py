@@ -390,10 +390,12 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
     )
 
     ax1.axhline(y=average_storage_efficiency, color="gray")
+
+    label = f"{average_storage_efficiency*100):3.2f}%"
     ax1.text(
         0.1,
         average_storage_efficiency,
-        average_storage_efficiency,
+        label,
         fontsize=5,
         va="bottom",
         ha="left",
@@ -401,10 +403,11 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
         color="gray",
     )
     ax1.axhline(y=max_efficiency, color="red")
+    label = f"{max_efficiency*100):3.2f}%"
     ax1.text(
         0.1,
-        average_storage_efficiency,
-        average_storage_efficiency,
+        max_efficiency,
+        label,
         fontsize=5,
         va="bottom",
         ha="left",
@@ -412,10 +415,11 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
         color="red",
     )
     ax1.axhline(y=min_efficiency, color="green")
+    label = f"{min_efficiency*100):3.2f}%"
     ax1.text(
         0.1,
-        average_storage_efficiency,
-        average_storage_efficiency,
+        min_efficiency,
+        label,
         fontsize=5,
         va="bottom",
         ha="left",
