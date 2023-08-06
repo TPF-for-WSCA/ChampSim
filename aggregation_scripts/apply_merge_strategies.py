@@ -391,14 +391,44 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
         )
 
     ax1.axhline(y=average_storage_efficiency, color="gray")
-    ax1.axhline(y=max_efficiency, color="red")
-    ax1.axhline(y=min_efficiency, color="green")
-
-    plt.savefig(
-        os.path.join(
-            tracedirectory_path, f"{workload_name}_storage_efficiency.pgf"
-        )
+    ax1.text(
+        0.1,
+        average_storage_efficiency,
+        average_storage_efficiency,
+        fontsize=5,
+        va="bottom",
+        ha="left",
+        fontstyle="italic",
+        color="gray",
     )
+    ax1.axhline(y=max_efficiency, color="red")
+    ax1.text(
+        0.1,
+        average_storage_efficiency,
+        average_storage_efficiency,
+        fontsize=5,
+        va="bottom",
+        ha="left",
+        fontstyle="italic",
+        color="red",
+    )
+    ax1.axhline(y=min_efficiency, color="green")
+    ax1.text(
+        0.1,
+        average_storage_efficiency,
+        average_storage_efficiency,
+        fontsize=5,
+        va="bottom",
+        ha="left",
+        fontstyle="italic",
+        color="green",
+    )
+
+    # plt.savefig(
+    #     os.path.join(
+    #         tracedirectory_path, f"{workload_name}_storage_efficiency.pgf"
+    #     )
+    # )
     plt.savefig(
         os.path.join(
             tracedirectory_path, f"{workload_name}_storage_efficiency.pdf"
