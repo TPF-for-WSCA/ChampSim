@@ -354,6 +354,7 @@ def apply_storage_efficiency_analysis(
     total_cache_size = max_num_blocks * cacheline_size
     if vcl_config:
         total_cache_size = sum(vcl_config) * 64
+        max_num_blocks = len(vcl_config) * 64
     storage_efficiency_timeseries = []
     max_efficiency = 0.0
     min_efficiency = 1.0
@@ -362,7 +363,7 @@ def apply_storage_efficiency_analysis(
         single_line_useful_bytes = mask.count(True)
         useful_bytes += single_line_useful_bytes
         useful_insertions.append(single_line_useful_bytes)
-        if count < 512:
+        if count < max_num_blocks:
             continue
         removed_useful = useful_insertions.pop(0)
         useful_bytes -= removed_useful
