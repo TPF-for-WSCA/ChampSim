@@ -339,7 +339,9 @@ def apply_offset_bucket_analysis(worklad_name, tracefile_path):
             prev_bit = bit
 
 
-def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
+def apply_storage_efficiency_analysis(
+    workload_name, tracedirectory_path, vcl_config=None
+):
     # assuming 32k cache with S = 64
     tracefile_path = os.path.join(
         tracedirectory_path, "cpu0_L1I_cl_access_masks.bin"
@@ -350,6 +352,8 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
     useful_insertions = []
     useful_bytes = 0
     total_cache_size = max_num_blocks * cacheline_size
+    if vcl_config:
+        total_cache_size = sum(vcl_config) * 64
     storage_efficiency_timeseries = []
     max_efficiency = 0.0
     min_efficiency = 1.0
@@ -512,6 +516,7 @@ def main(args):
                 apply_storage_efficiency_analysis(
                     workload,
                     os.path.join(trace_directory, workload),
+                    args.vcl_config,
                 )
                 continue
             else:
@@ -611,5 +616,10 @@ if __name__ == "__main__":
         default=1,
         help=f"Available strategies:\n\tIdx:\tStrategy Name:\n{strategies_list}",
     )
+
+    parser.add_argument(
+        "--vcl-configuration", dest="vcl_config", type=int, nargs="*"
+    )
+
     args = parser.parse_args()
     main(args)
