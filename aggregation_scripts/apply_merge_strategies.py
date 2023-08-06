@@ -378,6 +378,12 @@ def apply_storage_efficiency_analysis(
             storage_efficiency_timeseries.append(efficiency)
         if len(storage_efficiency_timeseries) > 10000000:
             break
+    if len(storage_efficiency_timeseries) == 0:
+        print(
+            f"WARNING: STORAGE EFFICIENCY TIME SERIES IS EMPTY AFTE RCONSUMING ENTIRE FILE @{workload_name}/@{vcl_config}",
+            file=sys.stderr,
+        )
+        return
     average_storage_efficiency = sum(storage_efficiency_timeseries) / len(
         storage_efficiency_timeseries
     )
