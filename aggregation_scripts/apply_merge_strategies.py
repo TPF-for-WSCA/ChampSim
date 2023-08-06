@@ -352,6 +352,8 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
     useful_bytes = 0
     total_cache_size = max_num_blocks * cacheline_size
     storage_efficiency_timeseries = []
+    max_efficiency = 0.0
+    min_efficiency = 1.0
     for mask in get_mask_from_tracefile(tracefile_path):
         count += 1
         single_line_useful_bytes = mask.count(True)
@@ -361,9 +363,15 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
             continue
         removed_useful = useful_insertions.pop(0)
         useful_bytes -= removed_useful
-        storage_efficiency_timeseries.append(
-            float(useful_bytes) / float(total_cache_size)
-        )
+        assert useful_bytes <= total_cache_size
+
+        efficiency = float(useful_bytes) / float(total_cache_size)
+        if efficiency > max_efficiency:
+            max_efficiency = efficiency
+        if efficiency < min_efficiency:
+            min_efficiency = efficiency
+        if count % 10000:
+            storage_efficiency_timeseries.append()
     average_storage_efficiency = sum(storage_efficiency_timeseries) / len(
         storage_efficiency_timeseries
     )
@@ -386,6 +394,8 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
         )
 
     ax1.axhline(y=average_storage_efficiency, color="gray", linestyle=":")
+    ax1.axhline(y=max_efficiency, color="red", linestyle="--")
+    ax1.axhline(y=min_efficiency, color="green", linestyle="--")
 
     plt.savefig(
         os.path.join(
