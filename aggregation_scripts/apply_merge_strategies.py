@@ -432,9 +432,13 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
     #         tracedirectory_path, f"{workload_name}_storage_efficiency.pgf"
     #     )
     # )
+    tracedirectory_path = tracedirectory_path.rsplit("/", 1)[0]
+
     plt.savefig(
         os.path.join(
-            tracedirectory_path, f"{workload_name}_storage_efficiency.pdf"
+            tracedirectory_path,
+            "graphs",
+            f"{workload_name}_storage_efficiency.pdf",
         )
     )
     plt.close()
