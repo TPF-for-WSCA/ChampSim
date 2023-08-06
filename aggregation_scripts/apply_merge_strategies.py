@@ -376,7 +376,7 @@ def apply_storage_efficiency_analysis(
             min_efficiency = efficiency
         if count % 100000:
             storage_efficiency_timeseries.append(efficiency)
-        if len(storage_efficiency_timeseries) > 10000000:
+        if len(storage_efficiency_timeseries) > 1000000000:
             break
     if len(storage_efficiency_timeseries) == 0:
         print(
