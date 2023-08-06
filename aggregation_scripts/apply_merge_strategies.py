@@ -371,7 +371,7 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
         if efficiency < min_efficiency:
             min_efficiency = efficiency
         if count % 10000:
-            storage_efficiency_timeseries.append()
+            storage_efficiency_timeseries.append(efficiency)
     average_storage_efficiency = sum(storage_efficiency_timeseries) / len(
         storage_efficiency_timeseries
     )
