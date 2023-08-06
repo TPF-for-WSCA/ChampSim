@@ -384,11 +384,10 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
     ax1.set_xlabel("Evictions")
     ax1.set_ylabel("Storage Efficiency")
 
-    for key, value in enumerate(storage_efficiency_timeseries):
-        ax1.plot(
-            key,
-            value,
-        )
+    ax1.plot(
+        range(1, len(storage_efficiency_timeseries) + 1),
+        storage_efficiency_timeseries,
+    )
 
     ax1.axhline(y=average_storage_efficiency, color="gray")
     ax1.text(
