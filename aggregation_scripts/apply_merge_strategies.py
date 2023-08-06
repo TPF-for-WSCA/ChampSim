@@ -438,6 +438,7 @@ def apply_storage_efficiency_analysis(
     #     )
     # )
     tracedirectory_path = tracedirectory_path.rsplit("/", 1)[0]
+    os.makedirs(os.path.join(tracedirectory_path, "graphs"), exist_ok=True)
 
     plt.savefig(
         os.path.join(
