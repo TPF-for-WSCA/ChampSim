@@ -1,11 +1,15 @@
 import argparse
 import csv
 import math
+import matplotlib
 import os
 import struct
 import sys
 import traceback
 
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 from argparse import RawTextHelpFormatter
 from collections import defaultdict
 from collections.abc import MutableMapping
@@ -336,6 +340,66 @@ def apply_offset_bucket_analysis(worklad_name, tracefile_path):
             prev_bit = bit
 
 
+def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
+    # assuming 32k cache with S = 64
+    tracefile_path = os.path.join(
+        tracedirectory_path, "cpu0_L1I_cl_access_masks.bin"
+    )
+    count = 0
+    max_num_blocks = 512
+    cacheline_size = 64
+    useful_insertions = []
+    useful_bytes = 0
+    total_cache_size = max_num_blocks * cacheline_size
+    storage_efficiency_timeseries = []
+    for mask in get_mask_from_tracefile(tracefile_path):
+        count += 1
+        single_line_useful_bytes = mask.count(True)
+        useful_bytes += single_line_useful_bytes
+        useful_insertions.append(single_line_useful_bytes)
+        if count < 512:
+            continue
+        removed_useful = useful_insertions.pop(0)
+        useful_bytes -= removed_useful
+        storage_efficiency_timeseries.append(
+            float(useful_bytes) / float(total_cache_size)
+        )
+    average_storage_efficiency = sum(storage_efficiency_timeseries) / len(
+        storage_efficiency_timeseries
+    )
+
+    fig, ax1 = plt.subplots()
+
+    ax1.set_title("Storage Efficiency over Time")
+    ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+    ax1.xaxis.set_major_formatter(
+        mtick.FuncFormatter(lambda x, _: f"{int(x/1024)}KB")
+    )
+
+    ax1.xlabel("Evictions")
+    ax1.ylabel("Storage Efficiency")
+
+    for key, value in enumerate(storage_efficiency_timeseries):
+        ax1.plot(
+            key,
+            value,
+        )
+
+    ax1.axhline(y=average_storage_efficiency, color="gray", linestyle=":")
+
+    plt.savefig(
+        os.path.join(
+            tracedirectory_path, f"{workload_name}_storage_efficiency.pgf"
+        )
+    )
+    plt.savefig(
+        os.path.join(
+            tracedirectory_path, f"{workload_name}_storage_efficiency.pdf"
+        )
+    )
+    plt.close()
+
+
 def print_starting_offsets(trace_directory, workload):
     result_file_path = os.path.join(
         trace_directory, workload, "cpu0_L1I_cl_block_starts.tsv"
@@ -400,6 +464,11 @@ def main(args):
                 )
                 print_starting_offsets(trace_directory, workload)
                 continue
+            elif args.action == "storage_efficiency":
+                apply_storage_efficiency_analysis(
+                    workload,
+                    os.path.join(trace_directory, workload),
+                )
             else:
                 exit(-1)
 
@@ -477,7 +546,12 @@ if __name__ == "__main__":
         "action",
         type=str,
         default="merge_strategy",
-        choices=["merge_strategy", "optimal_way", "starting_offsets"],
+        choices=[
+            "merge_strategy",
+            "optimal_way",
+            "starting_offsets",
+            "storage_efficiency",
+        ],
     )
 
     parser.add_argument(
