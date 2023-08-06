@@ -7,7 +7,6 @@ import struct
 import sys
 import traceback
 
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from argparse import RawTextHelpFormatter
@@ -372,7 +371,7 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
             min_efficiency = efficiency
         if count % 1000000:
             storage_efficiency_timeseries.append(efficiency)
-        if len(storage_efficiency_timeseries) > 100000:
+        if len(storage_efficiency_timeseries) > 100:
             break
     average_storage_efficiency = sum(storage_efficiency_timeseries) / len(
         storage_efficiency_timeseries
@@ -382,10 +381,6 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
 
     ax1.set_title("Storage Efficiency over Time")
     ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
-    ax1.xaxis.set_major_formatter(
-        mtick.FuncFormatter(lambda x, _: f"{int(x/1024)}KB")
-    )
-
     ax1.set_xlabel("Evictions")
     ax1.set_ylabel("Storage Efficiency")
 
@@ -395,9 +390,9 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
             value,
         )
 
-    ax1.axhline(y=average_storage_efficiency, color="gray", linestyle=":")
-    ax1.axhline(y=max_efficiency, color="red", linestyle="--")
-    ax1.axhline(y=min_efficiency, color="green", linestyle="--")
+    ax1.axhline(y=average_storage_efficiency, color="gray")
+    ax1.axhline(y=max_efficiency, color="red")
+    ax1.axhline(y=min_efficiency, color="green")
 
     plt.savefig(
         os.path.join(
