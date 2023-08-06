@@ -376,8 +376,8 @@ def apply_storage_efficiency_analysis(workload_name, tracedirectory_path):
         mtick.FuncFormatter(lambda x, _: f"{int(x/1024)}KB")
     )
 
-    ax1.xlabel("Evictions")
-    ax1.ylabel("Storage Efficiency")
+    ax1.set_xlabel("Evictions")
+    ax1.set_ylabel("Storage Efficiency")
 
     for key, value in enumerate(storage_efficiency_timeseries):
         ax1.plot(
@@ -469,6 +469,7 @@ def main(args):
                     workload,
                     os.path.join(trace_directory, workload),
                 )
+                continue
             else:
                 exit(-1)
 
