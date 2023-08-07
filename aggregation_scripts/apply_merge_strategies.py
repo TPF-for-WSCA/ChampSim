@@ -280,9 +280,13 @@ def create_uniform_buckets_of_size(num_buckets):
 def apply_way_analysis(
     workload_name, tracefile_path, num_buffer_entries=64, num_sets=64
 ):
+    count = 0
     for mask in get_mask_from_tracefile(tracefile_path):
         trimmed_mask, first_byte = trim_mask(mask)
         merge_single_mask(first_byte, trimmed_mask, only_chosen=True)
+        count += 1
+        if count > 100000:
+            break  # debug solution
 
     # 64 b (arm: 16) per entry + 6b counter per entry (only for non-directmapped required) + 128B merge registers overall (merge registers might be optimised away)
     if not arm:
