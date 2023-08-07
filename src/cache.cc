@@ -1925,7 +1925,8 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   fill_block.tag = get_tag(handle_block.address);
   fill_block.instr_id = handle_block.instr_id;
   fill_block.offset = std::min((uint8_t)(64 - fill_block.size), (uint8_t)offset);
-  fill_block.accesses = 0;
+  uint64_t size_mask = (1ULL << way_sizes[way]) - 1;
+  fill_block.accesses = ((handle_block.accesses >> fill_block.offset) & size_mask) << fill_block.offset;
   fill_block.last_modified_access = 0;
   fill_block.time_present = 0;
   auto endidx = 64 - fill_block.offset - fill_block.size;
