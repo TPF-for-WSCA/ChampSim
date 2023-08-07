@@ -388,7 +388,9 @@ def apply_storage_efficiency_analysis(
         storage_efficiency_timeseries
     )
 
+    cm = 1 / 2.54
     fig, ax1 = plt.subplots()
+    fig.set_size_inches(9 * cm, 4 * cm)
 
     ax1.set_title("Storage Efficiency over Time")
     ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
