@@ -17,3 +17,5 @@ export filename=num_cl_with_block_size.tsv; export output_name='block_sizes_accu
 
 
 
+
+~/plotgen/plotgen -i ./**/sizes_champsim32k/**/cpu0_L1I_num_cl_with_block_size.tsv --no-columns --join index --column-names --filename --apply-func cumsum --apply-columns : --normalise-function max --normalise-icolumns : --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.*' --add-function mean --add-row AVG --print --file ./raw_data/accumulated_all_applications.tsv -o ./graphs/accumulated_all_applications.html --width 900 --height 200 -o ./graphs/accumulated_all_applications.pdf 

@@ -2,6 +2,7 @@ import argparse
 import csv
 import math
 import matplotlib
+import numpy as np
 import os
 import struct
 import sys
@@ -456,6 +457,7 @@ def apply_storage_efficiency_analysis(
         )
     )
     plt.close()
+    return storage_efficiency_timeseries
 
 
 def print_starting_offsets(trace_directory, workload):
@@ -480,6 +482,7 @@ def main(args):
     CHOSEN_STRATEGY = args.strategy
     if args.architecture == "arm":
         arm = True
+    data_per_workload = {}
     for workload in os.listdir(trace_directory):
         global BLOCK_SIZES_HISTOGRAM  # We need t reset it for every workload
         # BLOCK_SIZES_HISTOGRAM = defaultdict(lambda: [0 for i in range(64)]) # we do not reset it so we have in the end the average of all workloads
@@ -523,7 +526,9 @@ def main(args):
                 print_starting_offsets(trace_directory, workload)
                 continue
             elif args.action == "storage_efficiency":
-                apply_storage_efficiency_analysis(
+                data_per_workload[
+                    workload
+                ] = apply_storage_efficiency_analysis(
                     workload,
                     os.path.join(trace_directory, workload),
                     args.vcl_config,
@@ -585,6 +590,15 @@ def main(args):
             print(f"Unknown exception occured {ex}, {traceback.print_exc()}")
             continue  # Ignore this workload / log written to stderr
 
+    if args.action == "storage_efficiency":
+        graphs_dir = os.path.join(trace_directory, "graphs")
+        os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
+        fig, ax1 = plt.subplots()
+        ax1.set_title("Space Efficiency")
+        ax1.set_ylabel("Useful Bytes in \% of Cache Capacity")
+        ax1.violinplot(data_per_workload.values())
+        set_axis_style(ax1, data_per_workload.keys())
+        exit(0)
     way_file_path = result_file_path = os.path.join(
         trace_directory, f"{strategies[CHOSEN_STRATEGY]}_way_sizes.tsv"
     )
