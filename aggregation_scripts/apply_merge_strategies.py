@@ -227,7 +227,7 @@ def create_uniform_buckets_of_size(num_buckets):
     increment = 1
     if arm:
         increment = 4
-        counter = 4
+        counter = 0
     for idx, percentage in enumerate(normalised_histogram):
         if arm and (idx + 1) % 4 != 0:
             assert percentage == 0
@@ -256,6 +256,7 @@ def create_uniform_buckets_of_size(num_buckets):
                 sumup += single_val
                 bucket_idx += 1
                 value += single_val
+                inc_counter = False
                 continue
             elif (
                 comp_value > (target * bucket_idx) and diff_without < diff_with
@@ -264,7 +265,6 @@ def create_uniform_buckets_of_size(num_buckets):
                 bucket_percentages.append(sumup - prev_bucket)
                 prev_bucket = sumup
                 bucket_idx += 1
-            inc_counter = False
             sumup += single_val
             value += single_val
         if counter < 64:  # dont increase if we already hit the ceiling
@@ -589,6 +589,11 @@ def main(args):
         except Exception as ex:
             print(f"Unknown exception occured {ex}, {traceback.print_exc()}")
             continue  # Ignore this workload / log written to stderr
+
+    def set_axis_style(ax, labels):
+        ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels)
+        ax.set_xlim(0.25, len(labels) + 0.75)
+        ax.set_xlabel("Sample name")
 
     if args.action == "storage_efficiency":
         graphs_dir = os.path.join(trace_directory, "graphs")
