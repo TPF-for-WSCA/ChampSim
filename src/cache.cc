@@ -1913,7 +1913,10 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   if (fill_block.prefetch)
     pf_useless++;
 
-  fill_block.bytes_accessed = 0;
+  fill_block.offset = std::min((uint8_t)(64 - fill_block.size), (uint8_t)offset);
+  uint64_t size_mask = (1ULL << way_sizes[way]) - 1;
+  fill_block.bytes_accessed = ((handle_block.bytes_accessed >> fill_block.offset) & size_mask) << fill_block.offset;
+
   memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
   fill_block.valid = true;
   fill_block.prefetch = false; // prefetches would go into the buffer and on merge be useless
@@ -1924,9 +1927,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   fill_block.cpu = handle_block.cpu;
   fill_block.tag = get_tag(handle_block.address);
   fill_block.instr_id = handle_block.instr_id;
-  fill_block.offset = std::min((uint8_t)(64 - fill_block.size), (uint8_t)offset);
-  uint64_t size_mask = (1ULL << way_sizes[way]) - 1;
-  fill_block.accesses = ((handle_block.accesses >> fill_block.offset) & size_mask) << fill_block.offset;
+  fill_block.accesses = 0;
   fill_block.last_modified_access = 0;
   fill_block.time_present = 0;
   auto endidx = 64 - fill_block.offset - fill_block.size;
