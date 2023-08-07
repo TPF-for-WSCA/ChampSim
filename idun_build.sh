@@ -1,6 +1,6 @@
 #!/bin/bash
 
-build_configs=("idun_32k_8_way_data_config.json" "idun_vcl_buffer_64d_data_config.json")
+build_configs=("idun_32k_8_way_data_config.json" "idun_vcl_buffer_64d_data_config.json" "idun_vcl_buffer_64d_data_small_ways_config.json")
 
 #build_configs=("idun_vcl_buffer_64d_max_way_config.json")
 #build_configs=("idun_vcl_buffer_64d_data_no_history_config.json" "idun_vcl_buffer_64d_data_partial_historyconfig.json" "idun_vcl_buffer_64d_no_history_config.json" "idun_vcl_buffer_64d_partial_history_config.json" "idun_vcl_buffer_64f_data_no_history_config.json" "idun_vcl_buffer_64f_data_partial_history_config.json" "idun_vcl_buffer_64f_no_history_config.json" "idun_vcl_buffer_64f_partial_history_config.json" "idun_vcl_buffer_64lru_8w_no_history_config.json" "idun_vcl_buffer_64lru_8w_partial_history_config.json" "idun_vcl_buffer_64lru_data_8w_no_history_config.json" "idun_vcl_buffer_64lru_data_8w_partial_history_config.json")
