@@ -17,12 +17,12 @@ do
     echo "Handling ${benchmark}"
     for config in ${baseline_configs[@]}
     do
-        echo "  Handling ${config}"
+        echo "\tHandling ${config}"
     	python ${chroot}/ChampSim/aggregation_scripts/apply_merge_strategies.py ./${benchmark}/${config} storage_efficiency arm 
     done
     for config in ${vcl_configs[@]}
     do
-        echo "  Handling ${config}"
+        echo "\tHandling ${config}"
     	python ${chroot}/ChampSim/aggregation_scripts/apply_merge_strategies.py ./${benchmark}/${config} storage_efficiency arm --vcl-configuration 4 8 12 16 16 16 20 28 36 44 48 64 64 64
     done
 done
