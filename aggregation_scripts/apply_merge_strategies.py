@@ -515,7 +515,7 @@ def main(args):
                     os.path.join(
                         trace_directory,
                         workload,
-                        "cpu0_L1I_cl_access_masks.bin",
+                        "cpu0_L1I_cl_access_masks.bin",  # TODO: Switch to precalculated relative
                     ),
                 )
             elif args.action == "starting_offsets":
