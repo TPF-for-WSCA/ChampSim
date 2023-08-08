@@ -380,7 +380,8 @@ def apply_storage_efficiency_analysis(
         if efficiency < min_efficiency:
             min_efficiency = efficiency
 
-        storage_efficiency_timeseries.append(efficiency)
+        if count % 100 == 0:
+            storage_efficiency_timeseries.append(efficiency)
         if len(storage_efficiency_timeseries) > 100000000000:
             break
     if len(storage_efficiency_timeseries) == 0:
