@@ -302,6 +302,5 @@ else:
 
 if type == STATS.PARTIAL_MISSES:
     write_partial_misses(data, sys.argv[1])
-    exit(0)
-
-write_tsv(data, sys.argv[1])
+else:
+    write_tsv(data, sys.argv[1])
