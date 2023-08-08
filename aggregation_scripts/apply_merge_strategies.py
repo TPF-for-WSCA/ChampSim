@@ -183,6 +183,7 @@ def get_mask_from_tracefile(tracefile_path, sample_distance=1, start_offset=0):
         while True:
             line = tracefile.read(8)
             if not line:
+                print(f"Handled {tracefile.tell()/8} cachelines")
                 break
             intline = struct.unpack("ii", line)
             array_line = int_t_to_boolean_list(intline)
