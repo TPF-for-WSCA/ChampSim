@@ -193,6 +193,23 @@ def mutliple_sizes_run(out_dir=None):
         ipc_by_cachesize_and_workload[name] = single_run(f"{out_dir}/{subdir}")
     return ipc_by_cachesize_and_workload
 
+def write_partial_misses(data, out_path="./"):
+    base_filename = "frontend_stalls_"
+    partial_miss_causes=["UNDERRUNS", "OVERRUNS", "MERGES", "NEW BLOCKS"]
+    for csize, values in data.items():
+        filename = base_filename + str(csize)
+        filename += ".tsv"
+        file_path = os.path.join(out_path, filename)
+        with open(file_path, "w+") as outfile:
+            for workload, _ in data[csize].items():
+                outfile.write(f"\t{workload}")
+            outfile.write("\n")
+            for idx, partial_miss_cause in enumerate(partial_miss_causes):
+                outfile.write(f"{partial_miss_cause}")
+                for workload, val in data[csize].items():
+                    outfile.write(f"\t{val[idx]}")
+                outfile.write("\n")
+            
 
 def write_tsv(data, out_path=None):
     filename = "ipc"
@@ -227,9 +244,6 @@ def write_tsv(data, out_path=None):
         for workload, _ in data[max_csize].items():
             outfile.write(f"\t{workload}")
             count += 1
-            if type == STATS.PARTIAL_MISSES:
-                outfile.write("\t\t\t")
-                count += 3
             headers.append(workload)
         outfile.write("\n")
         if type == STATS.PARTIAL_MISSES:
@@ -282,5 +296,9 @@ elif sys.argv[2] == "multibench":
     exit(0)
 else:
     data = mutliple_sizes_run()
+
+if type == STATS.PARTIAL_MISSES:
+    write_partial_misses(data, sys.argv[1])
+    exit(0)
 
 write_tsv(data, sys.argv[1])
