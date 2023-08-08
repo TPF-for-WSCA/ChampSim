@@ -189,7 +189,7 @@ def get_mask_from_tracefile(tracefile_path, sample_distance=1):
                 print(f"Decoding of line {line} failed", file=sys.stderr)
                 break
             if sample_distance > 1:
-                tracefile.seek(sample_distance * 8, 1)
+                tracefile.seek(sample_distance - 1 * 8, 1)
             yield array_line
 
 
@@ -365,7 +365,7 @@ def apply_storage_efficiency_analysis(
     storage_efficiency_timeseries = []
     max_efficiency = 0.0
     min_efficiency = 1.0
-    for mask in get_mask_from_tracefile(tracefile_path, 10000):
+    for mask in get_mask_from_tracefile(tracefile_path, 100):
         count += 1
         single_line_useful_bytes = mask.count(True)
         useful_bytes += single_line_useful_bytes
