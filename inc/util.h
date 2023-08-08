@@ -26,7 +26,7 @@ struct is_valid_size {
   is_valid_size(size_t S) { size = S; };
   bool operator()(const argument_type& test)
   {
-    if (size < test.size && !test.valid)
+    if (size <= test.size && !test.valid)
       return false; // it fits and it is not valid
     return true;
   }
