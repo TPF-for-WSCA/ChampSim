@@ -378,6 +378,8 @@ def apply_storage_efficiency_analysis(
         useful_bytes -= removed_useful
         assert useful_bytes <= total_cache_size
 
+        if useful_bytes == 0:
+            print("warn: useless line...")
         efficiency = float(useful_bytes) / float(total_cache_size)
         if efficiency > max_efficiency:
             max_efficiency = efficiency
@@ -385,7 +387,7 @@ def apply_storage_efficiency_analysis(
             min_efficiency = efficiency
 
         storage_efficiency_timeseries.append(efficiency)
-        if len(storage_efficiency_timeseries) > 1000:
+        if len(storage_efficiency_timeseries) > 100000:
             break
     if len(storage_efficiency_timeseries) == 0:
         print(
@@ -542,6 +544,9 @@ def main(args):
                 if not results:
                     continue
                 label = workload.split(".")[0]
+                if not label:
+                    print("label is none")
+                    continue
                 data_per_workload[label] = results
                 continue
             else:
