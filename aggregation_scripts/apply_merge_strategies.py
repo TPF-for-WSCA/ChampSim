@@ -541,7 +541,8 @@ def main(args):
                 )
                 if not results:
                     continue
-                data_per_workload[workload] = results
+                label = workload.split(".")[0]
+                data_per_workload[label] = results
                 continue
             else:
                 exit(-1)
