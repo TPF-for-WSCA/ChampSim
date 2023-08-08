@@ -174,7 +174,7 @@ def mutliple_sizes_run(out_dir=None):
         if not os.path.isdir(os.path.join(out_dir, subdir)):
             continue
         lip_matches = re.search(r"(\d*)lip", subdir)
-        matches = re.search(r"(\d+)([km])+", subdir)
+        matches = re.search(r"(\d+)([km])+$", subdir)
         if not matches:
             ipc_by_cachesize_and_workload[subdir] = single_run(
                 f"{out_dir}/{subdir}"
@@ -193,9 +193,10 @@ def mutliple_sizes_run(out_dir=None):
         ipc_by_cachesize_and_workload[name] = single_run(f"{out_dir}/{subdir}")
     return ipc_by_cachesize_and_workload
 
+
 def write_partial_misses(data, out_path="./"):
     base_filename = "partial_misses_"
-    partial_miss_causes=["UNDERRUNS", "OVERRUNS", "MERGES", "NEW BLOCKS"]
+    partial_miss_causes = ["UNDERRUNS", "OVERRUNS", "MERGES", "NEW BLOCKS"]
     for csize, values in data.items():
         filename = base_filename + str(csize)
         filename += ".tsv"
@@ -213,6 +214,7 @@ def write_partial_misses(data, out_path="./"):
                 outfile.write("\n")
             outfile.flush()
     return
+
 
 def write_tsv(data, out_path=None):
     filename = "ipc"
