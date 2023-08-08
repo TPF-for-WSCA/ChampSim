@@ -194,7 +194,7 @@ def mutliple_sizes_run(out_dir=None):
     return ipc_by_cachesize_and_workload
 
 def write_partial_misses(data, out_path="./"):
-    base_filename = "frontend_stalls_"
+    base_filename = "partial_misses_"
     partial_miss_causes=["UNDERRUNS", "OVERRUNS", "MERGES", "NEW BLOCKS"]
     for csize, values in data.items():
         filename = base_filename + str(csize)
