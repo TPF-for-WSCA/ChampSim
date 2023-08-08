@@ -380,9 +380,9 @@ def apply_storage_efficiency_analysis(
         if efficiency < min_efficiency:
             min_efficiency = efficiency
 
-        # f count % 10000 == 0:
-        storage_efficiency_timeseries.append(efficiency)
-        if len(storage_efficiency_timeseries) > 10000:
+        if count % 10000 == 0:
+            storage_efficiency_timeseries.append(efficiency)
+        if len(storage_efficiency_timeseries) > 10000000:
             break
     if len(storage_efficiency_timeseries) == 0:
         print(
@@ -596,7 +596,9 @@ def main(args):
             continue  # Ignore this workload / log written to stderr
 
     def set_axis_style(ax, labels):
-        ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels)
+        ax.set_xticks(
+            np.arange(1, len(labels) + 1), labels=labels, rotation=90
+        )
         ax.set_xlim(0.25, len(labels) + 0.75)
         ax.set_xlabel("Sample name")
 
