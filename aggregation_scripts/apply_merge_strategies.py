@@ -177,8 +177,9 @@ def count_overlap_alignment(block, offset, strategy):
     TOTAL_LINES_CROSSING_BY_BOUNDARY_BY_STRATEGY[strategy][32][0] += 1
 
 
-def get_mask_from_tracefile(tracefile_path, sample_distance=1):
+def get_mask_from_tracefile(tracefile_path, sample_distance=1, start_offset=0):
     with open(tracefile_path, "rb") as tracefile:
+        tracefile.seek(start_offset, 0)
         while True:
             line = tracefile.read(8)
             if not line:
@@ -365,7 +366,7 @@ def apply_storage_efficiency_analysis(
     storage_efficiency_timeseries = []
     max_efficiency = 0.0
     min_efficiency = 1.0
-    for mask in get_mask_from_tracefile(tracefile_path, 100):
+    for mask in get_mask_from_tracefile(tracefile_path, 1000, 8000000):
         count += 1
         single_line_useful_bytes = mask.count(True)
         useful_bytes += single_line_useful_bytes
@@ -383,7 +384,7 @@ def apply_storage_efficiency_analysis(
             min_efficiency = efficiency
 
         storage_efficiency_timeseries.append(efficiency)
-        if len(storage_efficiency_timeseries) > 10000000:
+        if len(storage_efficiency_timeseries) > 1000000:
             break
     if len(storage_efficiency_timeseries) == 0:
         print(
