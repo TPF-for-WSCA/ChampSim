@@ -608,6 +608,14 @@ def main(args):
         ax1.set_ylabel("Useful Bytes in \% of Cache Capacity")
         ax1.violinplot(data_per_workload.values())
         set_axis_style(ax1, data_per_workload.keys())
+
+        plt.savefig(
+            os.path.join(
+                graphs_dir,
+                f"combined_storage_efficiency.pdf",
+            )
+        )
+        plt.close()
         exit(0)
     way_file_path = result_file_path = os.path.join(
         trace_directory, f"{strategies[CHOSEN_STRATEGY]}_way_sizes.tsv"
