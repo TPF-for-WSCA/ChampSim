@@ -211,6 +211,7 @@ def write_partial_misses(data, out_path="./"):
                 for workload, val in data[csize].items():
                     outfile.write(f"\t{val[idx]}")
                 outfile.write("\n")
+            outfile.flush()
     return
 
 def write_tsv(data, out_path=None):
