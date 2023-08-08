@@ -367,7 +367,7 @@ def apply_storage_efficiency_analysis(
     storage_efficiency_timeseries = []
     max_efficiency = 0.0
     min_efficiency = 1.0
-    for mask in get_mask_from_tracefile(tracefile_path, 1000, 8000000):
+    for mask in get_mask_from_tracefile(tracefile_path, 100, 8000000):
         count += 1
         single_line_useful_bytes = mask.count(True)
         useful_bytes += single_line_useful_bytes
@@ -534,13 +534,14 @@ def main(args):
                 print_starting_offsets(trace_directory, workload)
                 continue
             elif args.action == "storage_efficiency":
-                data_per_workload[
-                    workload
-                ] = apply_storage_efficiency_analysis(
+                results = apply_storage_efficiency_analysis(
                     workload,
                     os.path.join(trace_directory, workload),
                     args.vcl_config,
                 )
+                if not results:
+                    continue
+                data_per_workload[workload] = results
                 continue
             else:
                 exit(-1)
