@@ -9,7 +9,8 @@
 #SBATCH --mail-type=ALL
 #SBATCH -e /cluster/home/romankb/storage-efficicency-%j.err
 #SBATCH -o /cluster/home/romankb/storage-efficicency-%j.out
-
+module load Boost/1.77.0-GCC-11.2.0
+module load Python/3.9.6-GCCcore-11.2.0
 benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
 baseline_configs=("sizes_champsim_data_32k" "sizes_champsim_data_64k")
 vcl_configs=("sizes_champsim_vcl_buffer_64d_data")
