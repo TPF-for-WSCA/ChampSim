@@ -38,4 +38,7 @@ do
     ${pg_dir}plotgen --debug -i ./${b}/sizes_champsim_data_32k/**/cpu0_L1I_num_cl_with_block_size_accesses_scaled.tsv --column-names --filename --apply-func cumsum --apply-columns : --normalise-function max --normalise-icolumns : --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*' --join index --add-function mean --add-column AVG --print --x-master-title "Useful Bytes in Cacheline" --y-master-title "% of Cachelines" --y-tick-format ',.2%' --legend-hide --palette bright --y-title-standoff 135 --file ./raw_data/accumulated_all_applications_${b}.tsv --width 1350 --height 300 -o ./graphs/accumulated_all_applications_${b}.html ./graphs/accumulated_all_applications_${b}.pdf 
 done
 
+${pg_dir}plotgen --debug -i ./**/**/**/cpu0_L1I_num_cl_with_block_size.tsv --column-names --filename --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*' --join index --transpose --add-function sum --add-column "TOTAL CACHELINES" --print --y-master-title "#Cachelines" --palette bright --y-title-standoff 135 --file ./raw_data/cacheline_count.tsv --width 1350 --height 300 -o ./graphs/cacheline_count.html ./graphs/cacheline_count.pdf 
+
+
 echo "DONE"
