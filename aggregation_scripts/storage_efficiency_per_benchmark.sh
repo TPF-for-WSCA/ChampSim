@@ -7,8 +7,8 @@
 #SBATCH --time=12:00:00
 #SBATCH --mail-user=romankb@ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH -e ~/storage-efficicency-%j.err
-#SBATCH -o ~/storage-efficicency-%j.out
+#SBATCH -e /cluster/home/romankb/storage-efficicency-%j.err
+#SBATCH -o /cluster/home/romankb/storage-efficicency-%j.out
 
 benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
 baseline_configs=("sizes_champsim_data_32k" "sizes_champsim_data_64k")
