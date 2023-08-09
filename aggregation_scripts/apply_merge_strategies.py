@@ -202,6 +202,8 @@ def get_uint64_t_from_tracefile(
         tracefile.seek(start_offset, 0)
         while True:
             line = tracefile.read(8)
+            if not line:
+                break
             uint64_t = struct.unpack("Q", line)
             if sample_distance > 1:
                 tracefile.seek(sample_distance - 1 * 8, 1)
