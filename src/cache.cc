@@ -1,6 +1,7 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <bitset>
 #include <cmath>
 #include <cstdlib>
 #include <iterator>
@@ -490,6 +491,12 @@ void CACHE::write_buffers_to_disk()
     result_path /= filename;
     cl_accessmask_file = std::ofstream(result_path.c_str(), std::ios::binary | std::ios::out);
   }
+  if (!cl_accessed_bytes_file.is_open()) {
+    std::filesystem::path result_path = result_dir;
+    string filename = this->NAME + "_c_bytes_used.bin";
+    result_path /= filename;
+    cl_accessed_bytes_file = std::ofstream(result_path.c_str(), std::ios::binary | std::ios::out);
+  }
   if (!cl_num_accesses_to_complete_profile_file.is_open()) {
     std::filesystem::path result_path = result_dir;
     string filename = this->NAME + "_cl_num_accesses_to_full_coverage.bin";
@@ -511,6 +518,9 @@ void CACHE::write_buffers_to_disk()
   for (auto& mask : cl_accessmask_buffer) {
     cl_accessmask_file.write(reinterpret_cast<char*>(&mask), sizeof(uint64_t));
   }
+  for (auto& accessed_bytes : used_bytes_in_cache) {
+    cl_accessed_bytes_file.write(reinterpret_cast<char*>(&accessed_bytes), sizeof(uint64_t));
+  }
   for (auto& access_count : cl_num_accesses_to_complete_profile_buffer) {
     cl_num_accesses_to_complete_profile_file.write(reinterpret_cast<char*>(&access_count), sizeof(uint64_t));
   }
@@ -521,9 +531,11 @@ void CACHE::write_buffers_to_disk()
     cl_num_invalid_blocks_in_cache.write(reinterpret_cast<char*>(&num_blocks), sizeof(uint32_t));
   }
   cl_accessmask_file.flush();
+  cl_accessed_bytes_file.flush();
   cl_num_blocks_in_cache.flush();
   cl_num_invalid_blocks_in_cache.flush();
   cl_accessmask_buffer.clear();
+  used_bytes_in_cache.clear();
   cl_num_accesses_to_complete_profile_buffer.clear();
   cl_blocks_in_cache_buffer.clear();
   cl_invalid_blocks_in_cache_buffer.clear();
@@ -709,6 +721,19 @@ void CACHE::operate()
   operate_reads();
 
   record_overlap();
+
+  // ONLY DO THIS ANALYSIS FOR WHAT WE NEED
+  if (0 == this->NAME.compare(this->NAME.length() - 3, 3, "L1I"))
+    if (current_cycle % 100000 == 0 && warmup_complete[0]) {
+      uint64_t total_used_bytes = 0;
+      for (auto& b : block) {
+        total_used_bytes += std::bitset<64>(b.bytes_accessed).count();
+      }
+      used_bytes_in_cache.push_back(total_used_bytes);
+      if (used_bytes_in_cache.size() > WRITE_BUFFER_SIZE) {
+        write_buffers_to_disk();
+      }
+    }
 
   impl_prefetcher_cycle_operate();
 }

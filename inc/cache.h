@@ -18,7 +18,7 @@
 
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
-#define WRITE_BUFFER_SIZE 10
+#define WRITE_BUFFER_SIZE 100000
 
 typedef unsigned long ulong;
 typedef std::pair<uint8_t, uint8_t> SUBSET;
@@ -74,6 +74,7 @@ class CACHE : public champsim::operable, public MemoryRequestConsumer, public Me
 
 private:
   std::ofstream cl_accessmask_file;
+  std::ofstream cl_accessed_bytes_file;
   std::ofstream cl_num_blocks_in_cache;
   std::ofstream cl_num_invalid_blocks_in_cache;
   std::ofstream cl_num_accesses_to_complete_profile_file;
@@ -94,6 +95,7 @@ public:
   uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
   std::vector<uint64_t> cl_accessmask_buffer;
+  std::vector<uint64_t> used_bytes_in_cache;
   std::vector<uint64_t> cl_blocks_in_cache_buffer;
   std::vector<uint32_t> cl_invalid_blocks_in_cache_buffer;
   std::vector<uint64_t> cl_accesses_percentage_of_presence_covered;
