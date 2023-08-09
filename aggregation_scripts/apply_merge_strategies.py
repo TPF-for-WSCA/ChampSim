@@ -195,6 +195,19 @@ def get_mask_from_tracefile(tracefile_path, sample_distance=1, start_offset=0):
             yield array_line
 
 
+def get_uint64_t_from_tracefile(
+    tracefile_path, sample_distance=1, start_offset=0
+):
+    with open(tracefile_path, "rb") as tracefile:
+        tracefile.seek(start_offset, 0)
+        while True:
+            line = tracefile.read(8)
+            uint64_t = struct.unpack("Q", line)
+            if sample_distance > 1:
+                tracefile.seek(sample_distance - 1 * 8, 1)
+            yield uint64_t
+
+
 def merge_single_mask(first_byte, trimmed_mask, only_chosen=False):
     local_strategies = (
         [strategies[CHOSEN_STRATEGY]] if only_chosen else strategies
@@ -353,7 +366,7 @@ def apply_storage_efficiency_analysis(
 ):
     # assuming 32k cache with S = 64
     tracefile_path = os.path.join(
-        tracedirectory_path, "cpu0_L1I_cl_access_masks.bin"
+        tracedirectory_path, "cpu0_L1I_c_bytes_used.bin"
     )
     count = 0
     max_num_blocks = 512
@@ -367,19 +380,11 @@ def apply_storage_efficiency_analysis(
     storage_efficiency_timeseries = []
     max_efficiency = 0.0
     min_efficiency = 1.0
-    for mask in get_mask_from_tracefile(tracefile_path, 100, 8000000):
-        count += 1
-        single_line_useful_bytes = mask.count(True)
-        useful_bytes += single_line_useful_bytes
-        useful_insertions.append(single_line_useful_bytes)
-        if count < max_num_blocks:
-            continue
-        removed_useful = useful_insertions.pop(0)
-        useful_bytes -= removed_useful
+    for useful_bytes in get_uint64_t_from_tracefile(tracefile_path):
         assert useful_bytes <= total_cache_size
 
         if useful_bytes == 0:
-            print("warn: useless line...")
+            print("all useless...")
         efficiency = float(useful_bytes) / float(total_cache_size)
         if efficiency > max_efficiency:
             max_efficiency = efficiency
@@ -387,7 +392,7 @@ def apply_storage_efficiency_analysis(
             min_efficiency = efficiency
 
         storage_efficiency_timeseries.append(efficiency)
-        if len(storage_efficiency_timeseries) > 1000:
+        if len(storage_efficiency_timeseries) > 1000:  # debug mode
             break
     if len(storage_efficiency_timeseries) == 0:
         print(
