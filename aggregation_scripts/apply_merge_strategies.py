@@ -410,9 +410,8 @@ def apply_storage_efficiency_analysis(
     fig, ax1 = plt.subplots()
     fig.set_size_inches(9 * cm, 4 * cm)
 
-    ax1.set_title("Storage Efficiency over Time")
+    ax1.set_title(f"{workload_name.split('.')[0]}")
     ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
-    ax1.set_xlabel("Evictions")
     ax1.set_ylabel("Storage Efficiency")
 
     ax1.plot(
@@ -620,13 +619,17 @@ def main(args):
         ax.set_xlabel("Sample name")
 
     if args.action == "storage_efficiency":
+        cm = 1 / 2.54
+
         graphs_dir = os.path.join(trace_directory, "graphs")
         os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
         fig, ax1 = plt.subplots()
         ax1.set_title("Space Efficiency")
         ax1.set_ylabel("Useful Bytes in \% of Cache Capacity")
+        ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
         ax1.violinplot(data_per_workload.values())
         set_axis_style(ax1, data_per_workload.keys())
+        fig.set_size_inches(9 * cm, 4 * cm)
 
         plt.savefig(
             os.path.join(

@@ -724,7 +724,7 @@ void CACHE::operate()
 
   // ONLY DO THIS ANALYSIS FOR WHAT WE NEED
   if (0 == this->NAME.compare(this->NAME.length() - 3, 3, "L1I"))
-    if (current_cycle % 100000 == 0 && warmup_complete[0]) {
+    if (current_cycle % 100000 < 100 && warmup_complete[0]) {
       uint64_t total_used_bytes = 0;
       for (auto& b : block) {
         total_used_bytes += std::bitset<64>(b.bytes_accessed).count();
