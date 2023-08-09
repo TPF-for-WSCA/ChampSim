@@ -370,6 +370,8 @@ def apply_storage_efficiency_analysis(
     tracefile_path = os.path.join(
         tracedirectory_path, "cpu0_L1I_c_bytes_used.bin"
     )
+    matplotlib.rcParams.update({"font.size": 12})
+
     count = 0
     max_num_blocks = 512
     cacheline_size = 64
