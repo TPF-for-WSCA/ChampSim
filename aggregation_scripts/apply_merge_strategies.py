@@ -414,7 +414,7 @@ def apply_storage_efficiency_analysis(
 
     ax1.set_title(f"{workload_name.split('.')[0]}")
     ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
-    ax1.set_ylabel("Storage Efficiency")
+    ax1.set_ylabel("Space Efficiency")
     fig.subplots_adjust(bottom=0.2)
     ax1.plot(
         range(1, len(storage_efficiency_timeseries) + 1),
@@ -618,7 +618,6 @@ def main(args):
             np.arange(1, len(labels) + 1), labels=labels, rotation=90
         )
         ax.set_xlim(0.25, len(labels) + 0.75)
-        ax.set_xlabel("Sample name")
 
     if args.action == "storage_efficiency":
         cm = 1 / 2.54
@@ -626,7 +625,7 @@ def main(args):
         graphs_dir = os.path.join(trace_directory, "graphs")
         os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
         fig, ax1 = plt.subplots()
-        fig.subplots_adjust(bottom=0.2)
+        fig.subplots_adjust(bottom=0.3)
         ax1.set_title("Space Efficiency")
         ax1.set_ylabel("Useful Bytes in % of Cache Capacity")
         ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
