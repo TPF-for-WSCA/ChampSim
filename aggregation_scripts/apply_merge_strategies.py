@@ -621,7 +621,10 @@ def main(args):
 
     if args.action == "storage_efficiency":
         cm = 1 / 2.54
-
+        avg = []
+        for values in data_per_workload.values():
+            avg.append(sum(values) / len(values))
+        data_per_workload["AVG"] = avg
         graphs_dir = os.path.join(trace_directory, "graphs")
         os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
         fig, ax1 = plt.subplots()
