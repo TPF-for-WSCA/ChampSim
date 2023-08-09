@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/champsim_data_32k_8way",
+    "executable_name": "bin/champsim_data_32k",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
