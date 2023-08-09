@@ -634,7 +634,7 @@ def main(args):
         ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
         ax1.violinplot(data_per_workload.values(), showmeans=True, widths=0.9)
         set_axis_style(ax1, data_per_workload.keys())
-        fig.set_size_inches(9 * cm, 4 * cm)
+        fig.set_size_inches(18 * cm, 8 * cm)
 
         plt.savefig(
             os.path.join(
