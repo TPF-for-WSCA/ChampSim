@@ -628,7 +628,7 @@ def main(args):
         graphs_dir = os.path.join(trace_directory, "graphs")
         os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
         fig, ax1 = plt.subplots()
-        fig.subplots_adjust(bottom=0.3)
+        fig.subplots_adjust(bottom=0.43)
         ax1.set_title("Space Efficiency")
         ax1.set_ylabel("Useful Bytes in % of Cache Capacity")
         ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
