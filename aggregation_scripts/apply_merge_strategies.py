@@ -205,7 +205,7 @@ def get_uint64_t_from_tracefile(
             uint64_t = struct.unpack("Q", line)
             if sample_distance > 1:
                 tracefile.seek(sample_distance - 1 * 8, 1)
-            yield uint64_t
+            yield uint64_t[0]
 
 
 def merge_single_mask(first_byte, trimmed_mask, only_chosen=False):
