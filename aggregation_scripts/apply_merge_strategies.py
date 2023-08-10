@@ -372,7 +372,7 @@ def apply_storage_efficiency_analysis(
     tracefile_path = os.path.join(
         tracedirectory_path, "cpu0_L1I_c_bytes_used.bin"
     )
-    plt.rcParams.update({"font.size": 4})
+    plt.rcParams.update({"font.size": 10})
 
     count = 0
     max_num_blocks = 512
@@ -632,8 +632,7 @@ def main(args):
         graphs_dir = os.path.join(trace_directory, "graphs")
         os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
         fig, ax1 = plt.subplots()
-        fig.subplots_adjust(bottom=0.43)
-        ax1.set_ylabel("Useful Bytes in % of Cache Capacity")
+        ax1.set_ylabel("Storage Efficiency")
         ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
         ax1.violinplot(data_per_workload.values(), showmeans=True, widths=0.9)
         set_axis_style(ax1, data_per_workload.keys())
