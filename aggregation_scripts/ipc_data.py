@@ -117,9 +117,9 @@ def extract_frontend_stalls_percentage(path):
         stallcycles_matches = stallcycles_regex.match(line)
         totalcycles_matches = totalcycles_regex.match(line)
         if stallcycles_matches:
-            stall_cycles = stallcycles_matches.groups()[0]
+            stall_cycles = int(stallcycles_matches.groups()[0])
         if totalcycles_matches:
-            total_cycles = totalcycles_matches.groups()[0]
+            total_cycles = int(totalcycles_matches.groups()[0])
     if total_cycles < 0 or stall_cycles < 0:
         print("ERROR: DID NOT EXTRACT STALL PERCENTAGE")
         return float("NaN")
