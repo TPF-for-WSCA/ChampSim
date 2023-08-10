@@ -9,7 +9,7 @@ void CACHE::initialize_replacement() {}
 uint8_t CACHE::get_insert_pos(LruModifier lru_modifier)
 {
   if (lru_modifier >= 100000)
-    return active_inserts;
+    return NUM_WAY - active_inserts;
   if (lru_modifier >= 10000)
     return NUM_WAY - 4;
   else if (lru_modifier >= 1000)
