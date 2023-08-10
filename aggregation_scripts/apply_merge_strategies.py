@@ -624,11 +624,24 @@ def main(args):
 
     if args.action == "storage_efficiency":
         data_per_workload = dict(sorted(data_per_workload.items()))
+        groups = set(
+            [label.split("_")[0] for label in data_per_workload.keys()]
+        )
+
+        
+        sep ='/'
+        for idx, group in enumerate(groups):
+            avg = []
+            for key, value in data_per_workload.items():
+                if key.startswith(group):
+                    avg.append(sum(value) / len(value))
+            data_per_workload[f"{group.upper()} AVG"] = avg
+            if idx > 1:
+                break
+            data_per_workload[sep] = None
+            sep += sep
+
         cm = 1 / 2.54
-        avg = []
-        for values in data_per_workload.values():
-            avg.append(sum(values) / len(values))
-        data_per_workload["AVG"] = avg
         graphs_dir = os.path.join(trace_directory, "graphs")
         os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
         fig, ax1 = plt.subplots()
