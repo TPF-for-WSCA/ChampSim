@@ -629,17 +629,12 @@ def main(args):
         )
 
         
-        sep ='/'
-        for idx, group in enumerate(groups):
+        for idx, group in enumerate(sorted(groups)):
             avg = []
             for key, value in data_per_workload.items():
                 if key.startswith(group):
                     avg.append(sum(value) / len(value))
             data_per_workload[f"{group.upper()} AVG"] = avg
-            if idx > 1:
-                break
-            data_per_workload[sep] = None
-            sep += sep
 
         cm = 1 / 2.54
         graphs_dir = os.path.join(trace_directory, "graphs")
