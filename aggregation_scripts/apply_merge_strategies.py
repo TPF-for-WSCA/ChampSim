@@ -656,9 +656,9 @@ def main(args):
             data_per_workload[f"{group.upper()} AVG"] = avg
 
             axes[idx].violinplot(
-                data_per_workload.values(), showmeans=True, widths=0.9
+                data_per_benchmark.values(), showmeans=True, widths=0.9
             )
-            set_axis_style(axes[idx], data_per_workload.keys())
+            set_axis_style(axes[idx], data_per_benchmark.keys())
 
         plt.savefig(
             os.path.join(
