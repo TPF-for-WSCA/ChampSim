@@ -31,25 +31,6 @@ for file in files_to_plot:
             continue
         ax.plot(x, data, marker="+", markevery=(6, 8), label=workload)
 
-    ncol = 4
-    if file == "accumulated_all_applications_ipc1_spec.tsv":
-        ncol = 3
-    if file != "accumulated_all_applications_ipc1_server.tsv":
-        fig.subplots_adjust(top=0.8)
-        ax.legend(
-            loc="upper center",
-            bbox_to_anchor=(0.5, 1.3),
-            ncol=ncol,
-            fancybox=True,
-        )
-    else:
-        fig.subplots_adjust(top=0.6)
-        ax.legend(
-            loc="upper center",
-            bbox_to_anchor=(0.5, 1.86),
-            ncol=ncol,
-            fancybox=True,
-        )
     ax.set_ylabel("Accumulated Number of Cachelines")
     ax.set_xlabel("Useful Bytes in Cacheline")
     ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
