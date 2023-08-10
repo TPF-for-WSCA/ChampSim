@@ -638,10 +638,10 @@ def main(args):
         divider = make_axes_locatable(ax1)
         graphs_dir = os.path.join(trace_directory, "graphs")
         os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
-        ax2 = divider.append_axes("right", size="100%", pad=0.05)
+        ax2 = divider.append_axes("right", size="68%", pad=0.05)
         ax2.yaxis.set_tick_params(labelleft=False)
         fig.add_axes(ax2)
-        ax3 = divider.append_axes("right", size="100%", pad=0.05)
+        ax3 = divider.append_axes("right", size="22%", pad=0.05)
         ax3.yaxis.set_tick_params(labelleft=False)
         fig.add_axes(ax3)
         axes = [ax1, ax2, ax3]
@@ -653,7 +653,7 @@ def main(args):
                 if key.startswith(group):
                     data_per_benchmark[key] = value
                     avg.append(sum(value) / len(value))
-            data_per_workload[f"{group.upper()} AVG"] = avg
+            data_per_benchmark[f"{group.upper()} AVG"] = avg
 
             axes[idx].violinplot(
                 data_per_benchmark.values(), showmeans=True, widths=0.9
