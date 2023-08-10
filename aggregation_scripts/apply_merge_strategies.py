@@ -630,7 +630,7 @@ def main(args):
         from mpl_toolkits.axes_grid1 import make_axes_locatable
 
         cm = 1 / 2.54
-        fig = plt.figure(18 * cm, 8 * cm)
+        fig = plt.figure(figsize=(18 * cm, 8 * cm))
         fig.subplots_adjust(bottom=0.39)
         ax1 = fig.add_subplot(1, 1, 1)
         ax1.set_ylabel("Storage Efficiency")
