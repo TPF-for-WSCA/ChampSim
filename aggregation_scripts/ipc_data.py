@@ -101,30 +101,29 @@ def extract_l1i_mpki(path):
             return matches.groups()[0]
 
 
-def extract_frontend_stalls_pki(path):
+def extract_frontend_stalls_percentage(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
     stallcycles_regex = re.compile("CPU 0 FRONTEND STALLED CYCLES:\s+(\d+)")
-    totalinstructions_regex = re.compile(
-        "CPU 0 cumulative IPC: \d*\.?\d+ instructions: (\d+) cycles: \d+"
+    regex = re.compile("CPU 0 cumulative IPC\: (\d*\.?\d+)")
+    totalcycles_regex = re.compile(
+        "CPU 0 cummulative IPC: \d*\.?\d+ instructions: \d+ cycles: (\d+)"
     )
     logs.reverse()
-    total_instructions = -1
+    total_cycles = -1
     stall_cycles = -1
     for line in logs:
         stallcycles_matches = stallcycles_regex.match(line)
-        totalinstruction_matches = totalinstructions_regex.match(line)
+        totalcycles_matches = totalcycles_regex.match(line)
         if stallcycles_matches:
-            stall_cycles = float(stallcycles_matches.groups()[0])
-        if totalinstruction_matches:
-            total_instructions = float(totalinstruction_matches.groups()[0])
-        if stall_cycles >= 0 and total_instructions >= 0:
-            break
-    if total_instructions < 0 or stall_cycles < 0:
+            stall_cycles = stallcycles_matches.groups()[0]
+        if totalcycles_matches:
+            total_cycles = totalcycles_matches.groups()[0]
+    if total_cycles < 0 or stall_cycles < 0:
         print("ERROR: DID NOT EXTRACT STALL PERCENTAGE")
         return float("NaN")
-    return (stall_cycles / total_instructions) * 1000
+    return float(stall_cycles) / float(total_cycles)
 
 
 def single_run(path):
@@ -150,7 +149,9 @@ def single_run(path):
                     f"{path}/{workload}/{logfile}"
                 )
             elif type == STATS.FRONTEND_STALLS:
-                stat_by_workload[workload] = extract_frontend_stalls_pki(
+                stat_by_workload[
+                    workload
+                ] = extract_frontend_stalls_percentage(
                     f"{path}/{workload}/{logfile}"
                 )
             elif type == STATS.PARTIAL_MISSES:
