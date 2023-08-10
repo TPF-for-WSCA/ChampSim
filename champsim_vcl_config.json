@@ -75,7 +75,7 @@
         "max_write": 2,
         "prefetch_as_load": false,
         "virtual_prefetch": false,
-        "lru_modifier": "LRU4BOUND4",
+        "lru_modifier": "LRUadaptiveBOUND4",
         "prefetch_activate": "LOAD",
         "prefetcher": "no_instr",
         "counting_block_method": "SUM_ACCESSES"
