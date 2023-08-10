@@ -425,9 +425,10 @@ def apply_storage_efficiency_analysis(
 
     ax1.axhline(y=average_storage_efficiency, color="#C85200")
 
+    x = -40
     label = f"{(average_storage_efficiency*100):3.2f}%"
     ax1.text(
-        -10,
+        x,
         average_storage_efficiency,
         label,
         fontsize=5,
@@ -439,7 +440,7 @@ def apply_storage_efficiency_analysis(
     ax1.axhline(y=max_efficiency, color="#898989")
     label = f"{(max_efficiency*100):3.2f}%"
     ax1.text(
-        -10,
+        x,
         max_efficiency,
         label,
         fontsize=5,
@@ -451,7 +452,7 @@ def apply_storage_efficiency_analysis(
     ax1.axhline(y=min_efficiency, color="#A2C8EC")
     label = f"{(min_efficiency*100):3.2f}%"
     ax1.text(
-        -10,
+        x,
         min_efficiency,
         label,
         fontsize=5,
