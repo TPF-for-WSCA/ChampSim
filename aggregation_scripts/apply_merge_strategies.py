@@ -15,6 +15,8 @@ from collections import defaultdict
 from collections.abc import MutableMapping
 from functools import partial
 
+plt.style.use("tableau-colorblind10")
+
 # Statistics
 
 CHOSEN_STRATEGY = 1
@@ -410,18 +412,18 @@ def apply_storage_efficiency_analysis(
 
     cm = 1 / 2.54
     fig, ax1 = plt.subplots()
-    fig.set_size_inches(9 * cm, 4 * cm)
+    fig.set_size_inches(18 * cm, 8 * cm)
 
     ax1.set_title(f"{workload_name.split('.')[0]}")
     ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
-    ax1.set_ylabel("Space Efficiency")
+    ax1.set_ylabel("Storage Efficiency")
     fig.subplots_adjust(bottom=0.2)
     ax1.plot(
         range(1, len(storage_efficiency_timeseries) + 1),
         storage_efficiency_timeseries,
     )
 
-    ax1.axhline(y=average_storage_efficiency, color="gray")
+    ax1.axhline(y=average_storage_efficiency, color="#C85200")
 
     label = f"{(average_storage_efficiency*100):3.2f}%"
     ax1.text(
@@ -432,9 +434,9 @@ def apply_storage_efficiency_analysis(
         va="bottom",
         ha="left",
         fontstyle="italic",
-        color="gray",
+        color="#C85200",
     )
-    ax1.axhline(y=max_efficiency, color="red")
+    ax1.axhline(y=max_efficiency, color="#898989")
     label = f"{(max_efficiency*100):3.2f}%"
     ax1.text(
         0.1,
@@ -444,9 +446,9 @@ def apply_storage_efficiency_analysis(
         va="bottom",
         ha="left",
         fontstyle="italic",
-        color="red",
+        color="#898989",
     )
-    ax1.axhline(y=min_efficiency, color="green")
+    ax1.axhline(y=min_efficiency, color="#A2C8EC")
     label = f"{(min_efficiency*100):3.2f}%"
     ax1.text(
         0.1,
@@ -456,7 +458,7 @@ def apply_storage_efficiency_analysis(
         va="bottom",
         ha="left",
         fontstyle="italic",
-        color="green",
+        color="#A2C8EC",
     )
 
     # plt.savefig(
@@ -629,7 +631,6 @@ def main(args):
         os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
         fig, ax1 = plt.subplots()
         fig.subplots_adjust(bottom=0.43)
-        ax1.set_title("Space Efficiency")
         ax1.set_ylabel("Useful Bytes in % of Cache Capacity")
         ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
         ax1.violinplot(data_per_workload.values(), showmeans=True, widths=0.9)
