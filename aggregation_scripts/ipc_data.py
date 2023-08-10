@@ -108,7 +108,7 @@ def extract_frontend_stalls_percentage(path):
     stallcycles_regex = re.compile("CPU 0 FRONTEND STALLED CYCLES:\s+(\d+)")
     regex = re.compile("CPU 0 cumulative IPC\: (\d*\.?\d+)")
     totalcycles_regex = re.compile(
-        "CPU 0 cummulative IPC: \d*\.?\d+ instructions: \d+ cycles: (\d+)"
+        "CPU 0 cummulative IPC: \d*\.?\d+ instructions: \d+\s+cycles: (\d+)"
     )
     logs.reverse()
     total_cycles = -1
