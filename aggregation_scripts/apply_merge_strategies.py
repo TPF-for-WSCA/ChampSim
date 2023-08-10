@@ -627,25 +627,38 @@ def main(args):
         groups = set(
             [label.split("_")[0] for label in data_per_workload.keys()]
         )
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-        
+        cm = 1 / 2.54
+        fig = plt.figure(18 * cm, 8 * cm)
+        fig.subplots_adjust(bottom=0.39)
+        ax1 = fig.add_subplot(1, 1, 1)
+        ax1.set_ylabel("Storage Efficiency")
+        ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+        divider = make_axes_locatable(ax1)
+        graphs_dir = os.path.join(trace_directory, "graphs")
+        os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
+        ax2 = divider.append_axes("right", size="100%", pad=0.05)
+        ax2.yaxis.set_tick_params(labelleft=False)
+        fig.add_axes(ax2)
+        ax3 = divider.append_axes("right", size="100%", pad=0.05)
+        ax3.yaxis.set_tick_params(labelleft=False)
+        fig.add_axes(ax3)
+        axes = [ax1, ax2, ax3]
+
         for idx, group in enumerate(sorted(groups)):
             avg = []
+            data_per_benchmark = {}
             for key, value in data_per_workload.items():
                 if key.startswith(group):
+                    data_per_benchmark[key] = value
                     avg.append(sum(value) / len(value))
             data_per_workload[f"{group.upper()} AVG"] = avg
 
-        cm = 1 / 2.54
-        graphs_dir = os.path.join(trace_directory, "graphs")
-        os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
-        fig, ax1 = plt.subplots()
-        fig.subplots_adjust(bottom=0.39)
-        ax1.set_ylabel("Storage Efficiency")
-        ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
-        ax1.violinplot(data_per_workload.values(), showmeans=True, widths=0.9)
-        set_axis_style(ax1, data_per_workload.keys())
-        fig.set_size_inches(18 * cm, 8 * cm)
+            axes[idx].violinplot(
+                data_per_workload.values(), showmeans=True, widths=0.9
+            )
+            set_axis_style(axes[idx], data_per_workload.keys())
 
         plt.savefig(
             os.path.join(
