@@ -623,6 +623,7 @@ def main(args):
         ax.set_xlim(0.25, len(labels) + 0.75)
 
     if args.action == "storage_efficiency":
+        data_per_workload = dict(sorted(data_per_workload))
         cm = 1 / 2.54
         avg = []
         for values in data_per_workload.values():
