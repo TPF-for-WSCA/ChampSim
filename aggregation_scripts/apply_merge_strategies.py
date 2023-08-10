@@ -641,7 +641,7 @@ def main(args):
         ax2 = divider.append_axes("right", size="679%", pad=0.05)
         ax2.yaxis.set_tick_params(labelleft=False)
         fig.add_axes(ax2)
-        ax3 = divider.append_axes("right", size="222%", pad=0.05)
+        ax3 = divider.append_axes("right", size="151%", pad=0.05)
         ax3.yaxis.set_tick_params(labelleft=False)
         fig.add_axes(ax3)
         axes = [ax1, ax2, ax3]
