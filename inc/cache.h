@@ -65,7 +65,7 @@ enum LruModifier {
   LRU4BOUND2 = 20000,
   LRU4BOUND3 = 30000,
   LRU4BOUND4 = 40000,
-  LRUadaptiveBOUND4 = 40001
+  LRUadaptiveBOUND4 = 400000,
 };
 enum BufferOrganisation { FULLY_ASSOCIATIVE = 0, DIRECT_MAPPED = 1, SET2_ASSOCIATIVE = 2, SET4_ASSOCIATIVE = 4, SET8_ASSOCIATIVE = 8 };
 
@@ -85,6 +85,7 @@ protected:
   uint64_t* way_hits;
   BLOCK* prev_access = NULL;
   uint8_t get_insert_pos(LruModifier lru_modifier);
+  uint8_t active_inserts = 1;
 
 public:
   LruModifier lru_modifier = LruModifier::DEFAULT;

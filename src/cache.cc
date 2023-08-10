@@ -1443,6 +1443,7 @@ void VCL_CACHE::operate_buffer_evictions()
       continue;
     }
     uint8_t min_start = 0;
+    active_inserts = blocks.size() / 2 + 1;
     for (int i = 0; i < blocks.size(); i++) {
       if (i % 2 != 0) {
         continue; // Hole, not accessed. // or: already in cache
@@ -1481,6 +1482,7 @@ void VCL_CACHE::operate_buffer_evictions()
       if (min_start >= 64)
         break; // There is no block left that could be outside as we went until the end
     }
+    active_inserts = 1; // reset to default just in case
   }
   if (!buffer_cache.merge_block.empty()) {
     std::cout << "did not empty buffer" << std::endl;
