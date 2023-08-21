@@ -47,6 +47,15 @@ struct cloudsuite_instr {
   unsigned char asid[2] = {std::numeric_limits<unsigned char>::max(), std::numeric_limits<unsigned char>::max()};
 };
 
+struct dynamorio_instr {
+  unsigned short type;
+  unsigned short size;
+  union {
+    uintptr_t addr;
+    unsigned char length[sizeof(uintptr_t)];
+  };
+} __attribute__((__packed__));
+
 struct pt_instr {
   uint64_t pc = 0;
   uint8_t size = 0;

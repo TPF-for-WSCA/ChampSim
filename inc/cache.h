@@ -84,7 +84,7 @@ private:
 protected:
   uint64_t* way_hits;
   BLOCK* prev_access = NULL;
-  uint8_t get_insert_pos(LruModifier lru_modifier);
+  uint8_t get_insert_pos(LruModifier lru_modifier, uint32_t set);
   uint8_t active_inserts = 1;
 
 public:
