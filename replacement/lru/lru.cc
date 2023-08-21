@@ -15,28 +15,32 @@ uint8_t CACHE::get_insert_pos(LruModifier lru_modifier, uint32_t set)
   for (; begin < end; begin++) {
     avail_lru_positions.insert(begin->lru);
   }
-  auto end = avail_lru_positions.rbegin();
+  auto highest_lru = avail_lru_positions.rbegin();
   if (lru_modifier >= 100000) {
     if (avail_lru_positions.size() < active_inserts)
       return 0;
-    return (end + active_inserts)->lru;
-  }
-  if (lru_modifier >= 10000) {
+    std::advance(highest_lru, active_inserts);
+    return *highest_lru;
+  } else if (lru_modifier >= 10000) {
     if (avail_lru_positions.size() < 4)
       return 0;
-    return (end + 4)->lru;
+    std::advance(highest_lru, 4);
+    return *highest_lru;
   } else if (lru_modifier >= 1000) {
     if (avail_lru_positions.size() < 3)
       return 0;
-    return (end + 3)->lru;
+    std::advance(highest_lru, 3);
+    return *highest_lru;
   } else if (lru_modifier >= 100) {
     if (avail_lru_positions.size() < 2)
       return 0;
-    return (end + 2)->lru;
+    std::advance(highest_lru, 2);
+    return *highest_lru;
   } else if (lru_modifier >= 10) {
     if (avail_lru_positions.size() < 1)
       return 0;
-    return (end + 1)->lru;
+    std::advance(highest_lru, 1);
+    return *highest_lru;
   }
   return 0;
 }
