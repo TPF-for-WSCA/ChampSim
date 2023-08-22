@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/champsim_vcl_buffer_64d_data",
+    "executable_name": "bin/champsim_vcl_buffer_64d_data_wide",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
@@ -71,7 +71,7 @@
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD",
         "prefetcher": "no_instr",
-        "lru_modifier": "LRU2BOUND4",
+        "lru_modifier": "LRU2BOUND6",
         "counting_block_method": "SUM_ACCESSES"
     },
     "L1D": {
