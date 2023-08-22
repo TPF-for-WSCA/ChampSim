@@ -15,7 +15,7 @@ module load Python/3.9.6-GCCcore-11.2.0
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
-binaries=("champsim_data_32k" "champsim_data_64k" "champsim_vcl_buffer_64d_data" "champsim_vcl_buffer_64_lru_8w" "champsim_vcl_buffer_64_3lip__lru_8w" "champsim_vcl_buffer_64_lip__lru_8w" "champsim_vcl_buffer_64_4lip__lru_8w")
+binaries=("champsim_data_32k" "champsim_data_64k" "champsim_vcl_buffer_64d_data" "champsim_vcl_buffer_64d_data_wide" "champsim_vcl_buffer_64_lip_d_data" "champsim_vcl_buffer_64_3lip_d_data" "champsim_vcl_buffer_64_4lip_d_data")
 #binaries=("champsim_vcl_buffer_64d_data_small")
 
 
