@@ -323,11 +323,11 @@ public:
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl, method, lru_modifier),
         aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation),
-        buffer_cache(BUFFER_CACHE(
-            (v1 + "_buffer"), freq_scale, fill_level, (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? 1 : buffer_sets / buffer_organisation,
-            (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : buffer_organisation, 0, std::min(buffer_sets, v5),
-            std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read, max_write / 2, offset_bits, false, true, false, 0,
-            ll, pref_t::CPU_REDIRECT_pprefetcherDno_instr_, repl_t::rreplacementDlru, method, buffer_fifo, history))
+        buffer_cache(BUFFER_CACHE((v1 + "_buffer"), freq_scale, fill_level,
+                                  (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? 1 : buffer_sets / buffer_organisation,
+                                  (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : buffer_organisation, 0,
+                                  std::min(buffer_sets, v5), std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read,
+                                  max_write / 2, offset_bits, false, true, false, 0, ll, pref, repl_t::rreplacementDlru, method, buffer_fifo, history))
   {
     CACHE::buffer = buffer;
     for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {

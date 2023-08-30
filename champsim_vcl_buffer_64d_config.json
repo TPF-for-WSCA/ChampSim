@@ -78,7 +78,7 @@
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD",
     "lru_modifier": "LRU4BOUND4",
-    "prefetcher": "no_instr",
+    "prefetcher": "fdip",
     "counting_block_method": "SUM_ACCESSES"
   },
   "L1D": {
