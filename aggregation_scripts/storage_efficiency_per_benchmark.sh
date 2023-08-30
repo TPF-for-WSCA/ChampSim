@@ -11,8 +11,8 @@
 #SBATCH -o /cluster/home/romankb/storage-efficicency-%j.out
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
-benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
-baseline_configs=("sizes_champsim_data_32k" "sizes_champsim_data_64k" "google_whiskey" "google_merced" "google_delta" "google_charlie")
+benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "google_whiskey" "google_merced" "google_delta" "google_charlie")
+baseline_configs=("sizes_champsim_data_32k" "sizes_champsim_data_64k")
 vcl_configs=("sizes_champsim_vcl_buffer_64d_data")
 
 chroot=""
