@@ -16,14 +16,14 @@
                 "~/Downloads/results/vcl_clang/",
                 // "-ptrace",
                 // "-cloudsuite",
-                "-intel",
+                //"-intel",
                 // "-stallonmiss",
                 "-traces",
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
-                // "/home/robrunne/OneDrive/Research/datasets/ipc1/client_001.champsimtrace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/ipc1/client_001.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
-                "/home/robrunne/Downloads/tmp/champsim_traces/whiskey/1748052322638680856.267686.champsim.gz"
+                //"/home/robrunne/Downloads/tmp/champsim_traces/whiskey/champsim-1748052322638680856.267686.memtrace.gz"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",

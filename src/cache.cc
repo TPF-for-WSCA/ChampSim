@@ -1247,8 +1247,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
     return false;
   }
   if (fill_block.valid && fill_block.accesses == 0) {
-    USELESS_CACHELINE++;
-    assert(0);
+    USELESS_CACHELINE++; // prefetched lines can do that
   }
   TOTAL_CACHELINES++;
   (this->*replacement_update_state)(packet.cpu, set, way, packet.address, packet.ip, 0, packet.type, 0);
