@@ -119,6 +119,8 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev
   }
 }
 
+// TODO: MOVE TO MAIN CACHE IF HIT OF PREFETCH IN FILTER BUFFER (ggf. only if predicted reuse)
+
 void CACHE::handle_fill()
 {
 
@@ -127,18 +129,50 @@ void CACHE::handle_fill()
     if (fill_mshr == std::end(MSHR) || fill_mshr->event_cycle > current_cycle)
       return;
 
+    PACKET& fill_packet = (*fill_mshr);
+    if (filter_inserts) {
+      FILTER_BUFFER.push_front((*fill_mshr));
+      writes_available_this_cycle--;
+      MSHR.erase(fill_mshr);
+      if (FILTER_BUFFER.size() > filter_buffer_size) {
+        fill_packet = MSHR.back();
+        if (fill_packet.type == PREFETCH) // TODO: CHANGE TO FETCH IF ACCESSED IN THE MEANTIME
+          continue;                       // useless prefetch
+      }
+    }
+
     // VCL Impl: Immediately insert into buffer, search for address if evicted buffer entry has been used
     // find victim
-    uint32_t set = get_set(fill_mshr->address);
+    uint32_t set = get_set(fill_packet.address);
 
     auto set_begin = std::next(std::begin(block), set * NUM_WAY);
     auto set_end = std::next(set_begin, NUM_WAY);
     auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
     uint32_t way = std::distance(set_begin, first_inv);
     if (way == NUM_WAY) {
-      way = impl_replacement_find_victim(fill_mshr->cpu, fill_mshr->instr_id, set, &block.data()[set * NUM_WAY], fill_mshr->ip, fill_mshr->address,
-                                         fill_mshr->type);
+      way = impl_replacement_find_victim(fill_packet.cpu, fill_packet.instr_id, set, &block.data()[set * NUM_WAY], fill_packet.ip, fill_packet.address,
+                                         fill_packet.type);
       // TODO: RECORD STATISTICS IF ANY
+    }
+
+    BLOCK& victim = block[set * NUM_WAY + way];
+
+    if (filter_inserts && victim.valid) { // INSERT ALWAYS IF NO REPLACEMENT CANDIDATE
+      uint64_t contender_base = (fill_packet.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
+      uint64_t victim_base = (victim.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
+      uint8_t count = HRPT.find(contender_base)->second;
+      CSHR_ENTRY entry;
+      entry.contender_base_addr = contender_base;
+      entry.victim_base_addr = victim_base;
+      entry.contender_count = count;
+      CSHR.push_front(entry);
+      if (CSHR.size() > filter_buffer_size) {
+        auto updateit = HRPT.find(CSHR.back().contender_base_addr);
+        updateit->second = CSHR.back().contender_count; // we don't know if it was updated, but we don't care at this point
+      }
+      if (count < INSERT_OFFSET) {
+        continue;
+      }
     }
 
     bool success = filllike_miss(set, way, *fill_mshr);
@@ -147,14 +181,16 @@ void CACHE::handle_fill()
 
     if (way != NUM_WAY) {
       // update processed packets
-      fill_mshr->data = block[set * NUM_WAY + way].data;
+      fill_packet.data = block[set * NUM_WAY + way].data;
 
-      for (auto ret : fill_mshr->to_return)
+      for (auto ret : fill_packet.to_return)
         ret->return_data(&(*fill_mshr));
     }
 
-    MSHR.erase(fill_mshr);
-    writes_available_this_cycle--;
+    if (not filter_inserts) {
+      MSHR.erase(fill_mshr);
+      writes_available_this_cycle--;
+    }
   }
 }
 
@@ -223,6 +259,8 @@ void CACHE::handle_read()
     // handle the oldest entry
     PACKET& handle_pkt = RQ.front();
 
+    // TODO: Search CSHR for hit and update count
+
     // A (hopefully temporary) hack to know whether to send the evicted paddr or
     // vaddr to the prefetcher
     ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
@@ -261,6 +299,16 @@ void CACHE::handle_prefetch()
 
     // handle the oldest entry
     PACKET& handle_pkt = PQ.front();
+    if (filter_inserts || filter_prefetches) {
+      FILTER_BUFFER.push_front(handle_pkt);
+      if (FILTER_BUFFER.size() > filter_buffer_size) {
+        handle_pkt = FILTER_BUFFER.back();
+        FILTER_BUFFER.pop_back();
+        // TODO: Insert should be decided earlier?
+        // TODO: ths prefetch was useless?
+        continue;
+      }
+    }
 
     uint32_t set = get_set(handle_pkt.address);
     uint32_t way = get_way(handle_pkt, set);
