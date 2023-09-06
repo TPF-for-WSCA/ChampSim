@@ -18,8 +18,8 @@ binaries=("champsim_data_32k" "champsim_data_64k" "champsim_data_128k" "champsim
 
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 1000000 --evaluation 10000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/cloud --nosub --output_dir /cluster/work/romankb/results/full_analysis_v11/crc2_cloud/sizes_${binary}/ >> ~/pyrunner_crc2_cloud_${binary}.log &
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 1000000 --evaluation 10000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/spec --nosub --output_dir /cluster/work/romankb/results/full_analysis_v11/crc2_spec/sizes_${binary}/ >> ~/pyrunner_crc2_spec_${binary}.log # WE GOT SPEC IN DPC3
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 1000000 --evaluation 10000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/cloud --nosub --output_dir /cluster/work/romankb/results/full_analysis_v13/crc2_cloud/sizes_${binary}/ >> ~/pyrunner_crc2_cloud_${binary}.log &
+    # python /cluster/home/romankb/ChampSim/data_collector.py --warmup 1000000 --evaluation 10000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/crc2/spec --nosub --output_dir /cluster/work/romankb/results/full_analysis_v11/crc2_spec/sizes_${binary}/ >> ~/pyrunner_crc2_spec_${binary}.log # WE GOT SPEC IN DPC3
 done
 
 for job in `jobs -p`

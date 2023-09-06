@@ -91,6 +91,7 @@ protected:
   BLOCK* prev_access = NULL;
   uint8_t get_insert_pos(LruModifier lru_modifier, uint32_t set);
   uint8_t active_inserts = 1;
+  bool filter_inserts;
 
 public:
   LruModifier lru_modifier = LruModifier::DEFAULT;
@@ -195,7 +196,7 @@ public:
   // constructor
   CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t perfect_cache, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
         uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
-        unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl)
+        unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, bool filter_inserts)
       : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
         perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat),
         OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr),
@@ -215,7 +216,7 @@ public:
   }
   CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t perfect_cache, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8,
         uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
-        unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method, LruModifier lru_modifier)
+        unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method, LruModifier lru_modifier, bool filter_inserts)
       : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
         perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat),
         OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr),
@@ -271,7 +272,7 @@ public:
                bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method,
                bool FIFO = false, BufferHistory history = BufferHistory::FULL)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
-              pref_act_mask, ll, pref, repl, method, lru_modifier),
+              pref_act_mask, ll, pref, repl, method, lru_modifier, true),
         fifo(FIFO), underrun_bytes_histogram(64), overrun_bytes_histogram(64), newblock_bytes_histogram(64), mergeblock_bytes_histogram(64), history(history)
   {
     replacement_update_state = &BUFFER_CACHE::update_replacement_state;
@@ -319,9 +320,10 @@ public:
   VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, uint32_t buffer_sets,
             bool buffer_fifo, bool aligned, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read,
             uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll,
-            pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, CountBlockMethod method, BufferHistory history)
+            pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, CountBlockMethod method, BufferHistory history,
+            bool filter_inserts)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
-              pref_act_mask, ll, pref, repl, method, lru_modifier),
+              pref_act_mask, ll, pref, repl, method, lru_modifier, filter_inserts),
         aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation),
         buffer_cache(BUFFER_CACHE((v1 + "_buffer"), freq_scale, fill_level,
                                   (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? 1 : buffer_sets / buffer_organisation,
