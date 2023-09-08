@@ -135,9 +135,12 @@ void CACHE::handle_fill()
       writes_available_this_cycle--;
       MSHR.erase(fill_mshr);
       if (FILTER_BUFFER.size() > filter_buffer_size) {
-        fill_packet = MSHR.back();
+        fill_packet = FILTER_BUFFER.back();
+        FILTER_BUFFER.pop_back();
         if (fill_packet.type == PREFETCH) // TODO: CHANGE TO FETCH IF ACCESSED IN THE MEANTIME
           continue;                       // useless prefetch
+      } else {
+        continue; // we are not inserting into the cache, nothing is evicted from the FILTER BUFFER
       }
     }
 
@@ -157,25 +160,11 @@ void CACHE::handle_fill()
 
     BLOCK& victim = block[set * NUM_WAY + way];
 
-    if (filter_inserts && victim.valid) { // INSERT ALWAYS IF NO REPLACEMENT CANDIDATE
-      uint64_t contender_base = (fill_packet.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
-      uint64_t victim_base = (victim.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
-      uint8_t count = HRPT.find(contender_base)->second;
-      CSHR_ENTRY entry;
-      entry.contender_base_addr = contender_base;
-      entry.victim_base_addr = victim_base;
-      entry.contender_count = count;
-      CSHR.push_front(entry);
-      if (CSHR.size() > filter_buffer_size) {
-        auto updateit = HRPT.find(CSHR.back().contender_base_addr);
-        updateit->second = CSHR.back().contender_count; // we don't know if it was updated, but we don't care at this point
-      }
-      if (count < INSERT_OFFSET) {
-        continue;
-      }
+    if (way != NUM_WAY && victim.valid && conditional_insert_from_filter(fill_packet, victim)) { // INSERT ALWAYS IF NO REPLACEMENT CANDIDATE
+      continue;                                                                                  // don't insert if not over threshold
     }
 
-    bool success = filllike_miss(set, way, *fill_mshr);
+    bool success = filllike_miss(set, way, fill_packet);
     if (!success)
       return;
 
@@ -184,7 +173,7 @@ void CACHE::handle_fill()
       fill_packet.data = block[set * NUM_WAY + way].data;
 
       for (auto ret : fill_packet.to_return)
-        ret->return_data(&(*fill_mshr));
+        ret->return_data(&fill_packet);
     }
 
     if (not filter_inserts) {
@@ -249,6 +238,68 @@ void CACHE::handle_writeback()
   }
 }
 
+bool CACHE::conditional_insert_from_filter(PACKET& packet, BLOCK& victim)
+{
+  if (filter_inserts) {
+    uint64_t contender_base = (packet.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
+    uint64_t victim_base = (victim.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
+    uint8_t count = HRPT[contender_base];
+    CSHR_ENTRY entry;
+    entry.contender_base_addr = contender_base;
+    entry.victim_base_addr = victim_base;
+    entry.contender_count = count;
+    CSHR.push_front(entry);
+    if (CSHR.size() > filter_buffer_size) {
+      HRPT[CSHR.back().contender_base_addr] = CSHR.back().contender_count;
+      CSHR.pop_back();
+    }
+    if (count < CSHR_INSERT_OFFSET) {
+      return true; // don't insert, but that is the victim from the filter, so the original thing got inserted.
+    }
+  }
+  return false;
+}
+
+void CACHE::update_cshr(uint64_t accessed_address)
+{
+  const uint64_t base_address = (accessed_address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
+  auto is_contender = [base_address](CSHR_ENTRY entry) {
+    return entry.contender_base_addr == base_address;
+  };
+  auto is_victim = [base_address](CSHR_ENTRY entry) {
+    return entry.victim_base_addr == base_address;
+  };
+  auto contender_it = std::find_if(CSHR.begin(), CSHR.end(), is_contender);
+  auto victim_it = std::find_if(CSHR.begin(), CSHR.end(), is_victim);
+  if (contender_it != CSHR.end() && victim_it != CSHR.end()) {
+    std::cerr << "SHOUOLD ONLY BE PRESENT IN A SINGLE CSHR ENTRY" << endl;
+  }
+  uint8_t count = HRPT[base_address]; // if not in there, initialized to 0 - we should probably set default value differently
+  if (contender_it != CSHR.end()) {
+    count = ++contender_it->contender_count;
+    if (count > CSHR_MAX_COUNT)
+      count == CSHR_MAX_COUNT;
+    CSHR.erase(contender_it);
+  }
+  if (victim_it != CSHR.end()) {
+    count = --victim_it->contender_count;
+    if (count > CSHR_MAX_COUNT)
+      count = 0;
+    CSHR.erase(victim_it);
+  }
+  HRPT[base_address] = count;
+}
+
+std::deque<PACKET>::iterator CACHE::probe_filter_buffer(uint64_t access_address)
+{
+  access_address = (access_address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
+  auto filter_buffer_lookup = [access_address](PACKET& p) {
+    uint64_t comp_address = (p.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
+    return comp_address == access_address;
+  };
+  return std::find_if(FILTER_BUFFER.begin(), FILTER_BUFFER.end(), filter_buffer_lookup);
+}
+
 void CACHE::handle_read()
 {
   while (reads_available_this_cycle > 0) {
@@ -260,6 +311,7 @@ void CACHE::handle_read()
     PACKET& handle_pkt = RQ.front();
 
     // TODO: Search CSHR for hit and update count
+    update_cshr(handle_pkt.address);
 
     // A (hopefully temporary) hack to know whether to send the evicted paddr or
     // vaddr to the prefetcher
@@ -268,10 +320,13 @@ void CACHE::handle_read()
     uint32_t set = get_set(handle_pkt.address);
     uint32_t way = get_way(handle_pkt, set);
 
+    auto filter_buffer_hit = probe_filter_buffer(handle_pkt.address);
     if (way < NUM_WAY || perfect_cache) // HIT
     {
       way_hits[way]++;
       readlike_hit(set, way, handle_pkt);
+    } else if (filter_buffer_hit != FILTER_BUFFER.end()) {
+      readlike_hit(*filter_buffer_hit, handle_pkt);
     } else {
       bool success = readlike_miss(handle_pkt);
 
@@ -304,9 +359,9 @@ void CACHE::handle_prefetch()
       if (FILTER_BUFFER.size() > filter_buffer_size) {
         handle_pkt = FILTER_BUFFER.back();
         FILTER_BUFFER.pop_back();
-        // TODO: Insert should be decided earlier?
-        // TODO: ths prefetch was useless?
-        continue;
+        uint64_t contender_addr = (handle_pkt.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
+        if (HRPT[])
+          continue;
       }
     }
 
@@ -369,6 +424,27 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
     hit_block.prefetch = 0;
   }
   prev_access = &hit_block;
+}
+
+void CACHE::readlike_hit(PACKET& buffer_hit, PACKET& handle_pkt)
+{
+  handle_pkt.data = buffer_hit.data;
+  if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
+    cpu = handle_pkt.cpu;
+    uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+    handle_pkt.pf_metadata = impl_prefetcher_cache_operate(pf_base_addr, handle_pkt.ip, 1, handle_pkt.type, handle_pkt.pf_metadata);
+  }
+
+  // COLLECT STATS
+  sim_hit[handle_pkt.cpu][handle_pkt.type]++;
+  sim_access[handle_pkt.cpu][handle_pkt.type]++;
+
+  for (auto ret : handle_pkt.to_return)
+    ret->return_data(&handle_pkt);
+  if (buffer_hit.type == PREFETCH) {
+    pf_useful++;
+    buffer_hit.type = LOAD;
+  }
 }
 
 bool CACHE::readlike_miss(PACKET& handle_pkt)
@@ -1288,6 +1364,11 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   }
 
   BLOCK& fill_block = block[set * NUM_WAY + way];
+
+  if (way != NUM_WAY && fill_block.valid && parent.conditional_insert_from_filter(packet, fill_block)) {
+    return true;
+  }
+
   if (fill_block.old_bytes_accessed > fill_block.bytes_accessed) {
     assert(0);
   }
@@ -1463,6 +1544,7 @@ void VCL_CACHE::operate_writes()
   CACHE::operate_writes();
 }
 
+// TODO: handle filter buffer
 void VCL_CACHE::operate_buffer_evictions()
 {
   while (!buffer_cache.merge_block.empty()) {
@@ -1506,9 +1588,11 @@ void VCL_CACHE::operate_buffer_evictions()
         assert(way < NUM_WAY);
       }
 
-      if (block_start + way_sizes[way] > 64) {
-        block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
-      }
+      if ()
+
+        if (block_start + way_sizes[way] > 64) {
+          block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
+        }
       uint8_t first_way = 0;
       for (int i = way; i < NUM_WAY; i++) {
         if (way_sizes[i] < block_size)
@@ -1549,18 +1633,35 @@ void VCL_CACHE::handle_fill()
     // find victim
     // no buffer impl: insert in invalid big enough block (any way)
 
-    uint32_t set = get_set(fill_mshr->address);
+    PACKET& fill_packet = (*fill_mshr);
+
+    if (filter_inserts) {
+      FILTER_BUFFER.push_front(fill_packet);
+      writes_available_this_cycle--;
+      MSHR.erase(fill_mshr);
+      if (FILTER_BUFFER.size() > filter_buffer_size) {
+        fill_packet = FILTER_BUFFER.back();
+        FILTER_BUFFER.pop_back();
+        if (fill_packet.type == PREFETCH)
+          continue;
+      } else {
+        continue;
+      }
+    }
+
+    uint32_t set = get_set(fill_packet.address);
     uint8_t num_blocks_to_write = 1;
 
-    uint64_t orig_addr = fill_mshr->address;
-    uint64_t orig_vaddr = fill_mshr->v_address;
-    uint64_t orig_size = fill_mshr->size;
+    uint64_t orig_addr = fill_packet.address;
+    uint64_t orig_vaddr = fill_packet.v_address;
+    uint64_t orig_size = fill_packet.size;
 
     if (buffer) {
       if (!buffer_cache.fill_miss(*fill_mshr, *this))
         return;
       goto inserted;
     }
+
     while (num_blocks_to_write > 0) {
       // TODO: If buffer go to buffer and insert whatever is in the buffer
       auto set_begin = std::next(std::begin(block), set * NUM_WAY);
@@ -1573,6 +1674,9 @@ void VCL_CACHE::handle_fill()
         way = lru_victim(&block.data()[set * NUM_WAY], 8); // NOTE: THIS IS THE BUFFERLESS IMPLEMENTATION // TODO: CHANGE SIZE ACCORDING TO WAY SIZES
         // TODO: RECORD STATISTICS IF ANY
       }
+      if (way != NUM_WAY && conditional_insert_from_filter(fill_packet, block[set * NUM_WAY + way])) {
+        continue;
+      }
       uint8_t last_way = way + get_lru_offset(lru_modifier);
       if (last_way > NUM_WAY)
         last_way = NUM_WAY;
@@ -1582,15 +1686,15 @@ void VCL_CACHE::handle_fill()
       if (!success)
         return;
 
-      uint8_t original_offset = std::min((uint8_t)(BLOCK_SIZE - way_sizes[way]), (uint8_t)(fill_mshr->v_address % BLOCK_SIZE));
+      uint8_t original_offset = std::min((uint8_t)(BLOCK_SIZE - way_sizes[way]), (uint8_t)(fill_packet.v_address % BLOCK_SIZE));
       uint8_t aligned_offset = (original_offset - original_offset % way_sizes[way]);
-      if (!aligned && way_sizes[way] < fill_mshr->size) {
+      if (!aligned && way_sizes[way] < fill_packet.size) {
         num_blocks_to_write++;
-        fill_mshr->address = fill_mshr->address + way_sizes[way];
-        fill_mshr->v_address = fill_mshr->v_address + way_sizes[way];
-        fill_mshr->size = fill_mshr->size - way_sizes[way];
-      } else if (aligned && aligned_offset + way_sizes[way] < (fill_mshr->v_address % BLOCK_SIZE) + fill_mshr->size) {
-        assert((fill_mshr->v_address % BLOCK_SIZE) + fill_mshr->size <= 64);
+        fill_packet.address = fill_packet.address + way_sizes[way];
+        fill_packet.v_address = fill_packet.v_address + way_sizes[way];
+        fill_packet.size = fill_packet.size - way_sizes[way];
+      } else if (aligned && aligned_offset + way_sizes[way] < (fill_packet.v_address % BLOCK_SIZE) + fill_packet.size) {
+        assert((fill_packet.v_address % BLOCK_SIZE) + fill_packet.size <= 64);
         num_blocks_to_write++;
         int8_t diff = aligned_offset + way_sizes[way] - fill_mshr->v_address % BLOCK_SIZE;
         fill_mshr->address += diff;
@@ -1717,13 +1821,12 @@ void VCL_CACHE::handle_read()
 
     // handle the oldest entry
     PACKET& handle_pkt = RQ.front();
+    update_cshr(handle_pkt.address);
 
     // A (hopefully temporary) hack to know whether to send the evicted paddr or
     // vaddr to the prefetcher
     ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
 
-    uint32_t set = get_set(handle_pkt.address);
-    uint32_t way = get_way(handle_pkt, set);
     BLOCK* b = NULL;
     if (buffer)
       b = buffer_cache.probe_buffer(handle_pkt);
@@ -1740,6 +1843,9 @@ void VCL_CACHE::handle_read()
         ret->return_data(&handle_pkt);
       continue;
     }
+
+    uint32_t set = get_set(handle_pkt.address);
+    uint32_t way = get_way(handle_pkt, set);
 
     // HIT IN VCL CACHE
     if (way < NUM_WAY) {
@@ -1763,6 +1869,14 @@ void VCL_CACHE::handle_read()
       handle_pkt.v_address = (handle_pkt.v_address & mask) + newoffset;
       handle_pkt.address = (handle_pkt.address & mask) + newoffset; // offset matches: all 64 byte aligned
       // not done reading this thing just yet
+      continue;
+    }
+
+    auto filter_buffer_hit = probe_filter_buffer(handle_pkt.address);
+    if (filter_buffer_hit != FILTER_BUFFER.end()) {
+      readlike_hit(*filter_buffer_hit, handle_pkt);
+      RQ.pop_front();
+      reads_available_this_cycle--;
       continue;
     }
 

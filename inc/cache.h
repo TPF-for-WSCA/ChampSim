@@ -18,7 +18,8 @@
 
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
-#define INSERT_OFFSET 3
+#define CSHR_INSERT_OFFSET 3
+#define CSHR_MAX_COUNT 8
 #define WRITE_BUFFER_SIZE 100000
 
 typedef unsigned long ulong;
@@ -73,6 +74,7 @@ enum LruModifier {
   LRU4BOUND6 = 60000,
   LRUadaptiveBOUND4 = 400000,
 };
+
 enum BufferOrganisation { FULLY_ASSOCIATIVE = 0, DIRECT_MAPPED = 1, SET2_ASSOCIATIVE = 2, SET4_ASSOCIATIVE = 4, SET8_ASSOCIATIVE = 8 };
 typedef struct cshr_entry_t {
   uint64_t victim_base_addr;
@@ -97,14 +99,17 @@ protected:
   BLOCK* prev_access = NULL;
   uint8_t get_insert_pos(LruModifier lru_modifier, uint32_t set);
   uint8_t active_inserts = 1;
+  std::deque<PACKET> FILTER_BUFFER;
+  std::deque<CSHR_ENTRY> CSHR;
+  std::map<uint64_t, uint8_t> HRPT;
+
+public:
   bool filter_inserts;
   bool filter_prefetches;
   size_t filter_buffer_size;
   std::deque<PACKET> FILTER_BUFFER;
   std::deque<CSHR_ENTRY> CSHR;
   std::map<uint64_t, uint8_t> HRPT;
-
-public:
   LruModifier lru_modifier = LruModifier::DEFAULT;
   SUBSET lru_subset{0, 0};
   bool buffer = false;
@@ -158,6 +163,9 @@ public:
   virtual int add_rq(PACKET* packet) override;
   virtual int add_wq(PACKET* packet) override;
   virtual int add_pq(PACKET* packet) override;
+  void update_cshr(uint64_t accessed_address);
+  std::deque<PACKET>::iterator probe_filter_buffer(uint64_t access_address);
+  bool conditional_insert_from_filter(PACKET& packet, BLOCK& victim);
 
   void return_data(PACKET* packet) override;
   virtual void operate() override;
@@ -189,6 +197,7 @@ public:
   void record_cacheline_stats(uint32_t cpu, BLOCK& handle_block);
   virtual void record_overlap(void){};
 
+  void readlike_hit(PACKET& buffer_hit, PACKET& handle_pkt);
   void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
   virtual bool readlike_miss(PACKET& handle_pkt);
   virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt);
