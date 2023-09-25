@@ -183,7 +183,7 @@ def mutliple_sizes_run(out_dir=None):
         name = ""
         if lip_matches:
             name = f"lip@{lip_matches.groups()[0]} "
-        if matches[1]:
+        if matches[1] and not "fdip" in subdir:
             factor = 1024 if matches[1] == "k" else 1024 * 1024
             size_bytes = int(matches[0]) * factor
             name += f"{size_bytes}"

@@ -360,7 +360,7 @@ void CACHE::handle_prefetch()
         handle_pkt = FILTER_BUFFER.back();
         FILTER_BUFFER.pop_back();
         uint64_t contender_addr = (handle_pkt.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
-        if (HRPT[])
+        if (HRPT[contender_addr] > )
           continue;
       }
     }
