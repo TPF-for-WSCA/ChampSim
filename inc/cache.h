@@ -99,9 +99,6 @@ protected:
   BLOCK* prev_access = NULL;
   uint8_t get_insert_pos(LruModifier lru_modifier, uint32_t set);
   uint8_t active_inserts = 1;
-  std::deque<PACKET> FILTER_BUFFER;
-  std::deque<CSHR_ENTRY> CSHR;
-  std::map<uint64_t, uint8_t> HRPT;
 
 public:
   bool filter_inserts;

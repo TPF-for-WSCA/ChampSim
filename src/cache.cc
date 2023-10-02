@@ -360,8 +360,8 @@ void CACHE::handle_prefetch()
         handle_pkt = FILTER_BUFFER.back();
         FILTER_BUFFER.pop_back();
         uint64_t contender_addr = (handle_pkt.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
-        if (HRPT[contender_addr] > )
-          continue;
+        // if (HRPT[contender_addr] >)
+        //   continue;
       }
     }
 
@@ -1588,11 +1588,9 @@ void VCL_CACHE::operate_buffer_evictions()
         assert(way < NUM_WAY);
       }
 
-      if ()
-
-        if (block_start + way_sizes[way] > 64) {
-          block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
-        }
+      if (block_start + way_sizes[way] > 64) {
+        block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
+      }
       uint8_t first_way = 0;
       for (int i = way; i < NUM_WAY; i++) {
         if (way_sizes[i] < block_size)
