@@ -308,6 +308,7 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
   }
 }
 
+// TODO: Do we need to fix that to fetch_width instead of entire FTQ size?
 void O3_CPU::translate_fetch()
 {
   if (IFETCH_BUFFER.empty())

@@ -160,6 +160,7 @@ void CACHE::handle_fill()
 
     BLOCK& victim = block[set * NUM_WAY + way];
 
+    // FILTERED INSERT
     if (way != NUM_WAY && victim.valid && conditional_insert_from_filter(fill_packet, victim)) { // INSERT ALWAYS IF NO REPLACEMENT CANDIDATE
       continue;                                                                                  // don't insert if not over threshold
     }
