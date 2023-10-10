@@ -19,7 +19,7 @@
 // virtual address space prefetching
 #define VA_PREFETCH_TRANSLATION_LATENCY 2
 #define CSHR_INSERT_OFFSET 3
-#define CSHR_MAX_COUNT 8
+#define CSHR_MAX_COUNT 64
 #define WRITE_BUFFER_SIZE 100000
 
 typedef unsigned long ulong;
@@ -162,6 +162,8 @@ public:
   virtual int add_pq(PACKET* packet) override;
   void update_cshr(uint64_t accessed_address);
   std::deque<PACKET>::iterator probe_filter_buffer(uint64_t access_address);
+
+  inline uint8_t get_count_from_hrpt(uint64_t addr);
   bool conditional_insert_from_filter(PACKET& packet, BLOCK& victim);
 
   void return_data(PACKET* packet) override;

@@ -53,7 +53,7 @@
         "prefetch_activate": "LOAD,PREFETCH",
         "prefetcher": "fdip",
         "counting_block_method": "SUM_ACCESSES",
-        "filter_insers": false,
+        "filter_inserts": false,
         "filter_prefetches": false
     },
     "L1D": {

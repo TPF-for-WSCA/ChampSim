@@ -53,7 +53,7 @@
                 // "-ptrace",
                 // "-cloudsuite",
                 // "-intel",
-                // "-stallonmiss",
+                //"-stallonmiss",
                 "-traces",
                 // "/Users/robrunne/Workspace/traces/tanvir/clang/clang.gz",
                 // "/Users/robrunne/Workspace/traces/ipc1/client_001.champsimtrace.xz"
