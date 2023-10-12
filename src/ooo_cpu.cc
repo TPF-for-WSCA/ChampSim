@@ -256,13 +256,15 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   // Ensure no overlapping instructions
   bool overlap = false;
   ooo_model_instr overhang_instr = arch_instr;
-  if ((arch_instr.ip % BLOCK_SIZE) + arch_instr.size > 64) {
+  if ((arch_instr.ip % BLOCK_SIZE) + arch_instr.size > BLOCK_SIZE) {
     arch_instr.size = BLOCK_SIZE - (arch_instr.ip % BLOCK_SIZE);
+    overhang_instr.instr_id = ++instr_unique_id;
     overhang_instr.ip += arch_instr.size;
     overhang_instr.instruction_pa += arch_instr.size;
     overhang_instr.size -= arch_instr.size;
     assert(overhang_instr.size > 0);
     arch_instr.is_branch = 0; // we only predict a branch once - once it is fully fetched
+    overlap = true;
   }
 
   // Add to IFETCH_BUFFER
