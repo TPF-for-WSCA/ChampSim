@@ -1207,13 +1207,13 @@ void CACHE::return_data(PACKET* packet)
 
 uint32_t CACHE::get_occupancy(uint8_t queue_type, uint64_t address)
 {
-  if (queue_type == 0)
+  if (queue_type == MISSHR)
     return std::count_if(MSHR.begin(), MSHR.end(), is_valid<PACKET>());
-  else if (queue_type == 1)
+  else if (queue_type == RQUEUE)
     return RQ.occupancy();
-  else if (queue_type == 2)
+  else if (queue_type == WQUEUE)
     return WQ.occupancy();
-  else if (queue_type == 3)
+  else if (queue_type == PQUEUE)
     return PQ.occupancy();
 
   return 0;

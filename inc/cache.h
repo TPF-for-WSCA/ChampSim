@@ -22,6 +22,12 @@
 #define CSHR_MAX_COUNT 64
 #define WRITE_BUFFER_SIZE 100000
 
+// QUEUE Types
+#define MISSHR 0
+#define RQUEUE 1
+#define WQUEUE 2
+#define PQUEUE 3
+
 typedef unsigned long ulong;
 typedef std::pair<uint8_t, uint8_t> SUBSET;
 

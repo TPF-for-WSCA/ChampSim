@@ -321,6 +321,7 @@ void O3_CPU::translate_fetch()
   uint64_t find_addr = itlb_req_begin->ip;
   auto itlb_req_end = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(),
                                    [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE); });
+  // auto end = std::min(IFETCH_BUFFER.end(), std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH));
   if (itlb_req_end != IFETCH_BUFFER.end() || itlb_req_begin == IFETCH_BUFFER.begin()) {
     do_translate_fetch(itlb_req_begin, itlb_req_end);
   }
