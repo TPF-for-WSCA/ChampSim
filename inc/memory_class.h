@@ -27,6 +27,11 @@ public:
            old_bytes_accessed = 0;
   uint32_t accesses_per_bytes[64] = {0}, time_present = 0;
 
+  // Last byte of likely non-returning branches set to true
+  // TODO: If block ending does not end at block-ending branch: probe BTB for next block ending branch
+  // On average: 4 probes until we find branch, not guaranteed to be non-returning branch
+  bool block_ending_branches[64] = {false};
+
   // replacement state
   uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
   uint32_t max_time = 0;

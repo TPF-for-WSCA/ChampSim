@@ -1581,6 +1581,7 @@ void VCL_CACHE::operate_buffer_evictions()
     auto set_begin = std::next(std::begin(block), set * NUM_WAY);
     auto set_end = std::next(set_begin, NUM_WAY);
     uint64_t bytes_accessed_bitmask = merge_block.bytes_accessed;
+    // TODO: extend regions to non-returning branches
     if (buffer_cache.history == BufferHistory::PARTIAL) {
       uint64_t combined_mask = merge_block.bytes_accessed | merge_block.prev_present;
       auto partialblocks = get_blockboundaries_from_mask(combined_mask);
@@ -1609,6 +1610,7 @@ void VCL_CACHE::operate_buffer_evictions()
         continue; // already in cache: the previous block already contains that block
       uint8_t block_start = std::max(min_start, blocks[i].first);
       size_t block_size = blocks[i].second - block_start + 1;
+      uint8_t block_end = block_start + block_size - 1;
       auto first_inv = std::find_if_not(set_begin, set_end, is_valid_size<BLOCK>(block_size));
       uint32_t way = std::distance(set_begin, first_inv);
       if (way == NUM_WAY) {
@@ -1767,21 +1769,6 @@ uint8_t VCL_CACHE::hit_check(uint32_t& set, uint32_t& way, uint64_t& address, ui
   return -1;
 }
 
-/*BLOCK* VCL_CACHE::probe_buffer(PACKET& packet, uint32_t set)
-{
-  uint32_t idx = set >> lg2(NUM_SET / buffer_sets);
-  if (organisation == BufferOrganisation::DIRECT_MAPPED) {
-    return &buffer_cache[idx];
-  }
-  // Fully associative
-  for (BLOCK& b : block) {
-    if (b.tag == get_tag(packet.address)) {
-      return &b;
-    }
-  }
-  return NULL;
-}*/
-
 std::vector<uint32_t> VCL_CACHE::get_way(uint32_t tag, uint32_t set)
 {
   auto begin = std::next(block.begin(), set * NUM_WAY);
@@ -1866,6 +1853,9 @@ void VCL_CACHE::handle_read()
       RQ.pop_front();
       reads_available_this_cycle--;
       handle_pkt.data = b->data;
+      if (BLOCK_ENDING_BRANCH(handle_pkt.branch_type)) {
+        b->block_ending_branches[(handle_pkt.address % BLOCK_SIZE) + handle_pkt.size - 1] = true;
+      }
       for (auto ret : handle_pkt.to_return)
         ret->return_data(&handle_pkt);
       continue;

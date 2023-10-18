@@ -309,11 +309,13 @@ for cpu in cores:
         cpu['btb_name'] = 'b' + fname.translate(fname_translation_table)
         cpu['btb_initialize'] = 'btb_' + cpu['btb_name'] + '_initialize'
         cpu['btb_update'] = 'btb_' + cpu['btb_name'] + '_update'
+        cpu['btb_ending_branch'] = 'btb_' + cpu['btb_name'] + '_is_block_ending_branch'
         cpu['btb_predict'] = 'btb_' + cpu['btb_name'] + '_predict'
 
         opts = ''
         opts += ' -Dinitialize_btb=' + cpu['btb_initialize']
         opts += ' -Dupdate_btb=' + cpu['btb_update']
+        opts += ' -Dis_block_ending_branch=' +cpu['btb_ending_branch']
         opts += ' -Dbtb_prediction=' + cpu['btb_predict']
         libfilenames['btb_' + cpu['btb_name'] + '.a'] = (fname, opts)
 
@@ -475,6 +477,7 @@ bpred_predicts     = {(c['bpred_name'], c['bpred_predict']) for c in cores}
 btb_names          = {c['btb_name'] for c in cores}
 btb_inits          = {(c['btb_name'], c['btb_initialize']) for c in cores}
 btb_updates        = {(c['btb_name'], c['btb_update']) for c in cores}
+btb_ending_branch  = {(c['btb_name'], c['btb_ending_branch']) for c in cores}
 btb_predicts       = {(c['btb_name'], c['btb_predict']) for c in cores}
 ipref_names        = {c['iprefetcher_name'] for c in cores}
 ipref_inits        = {(c['iprefetcher_name'], c['iprefetcher_initialize']) for c in cores}
@@ -516,6 +519,13 @@ with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     wfp.write('\n'.join('void {1}();'.format(*b) for b in btb_inits))
     wfp.write('\nvoid impl_btb_initialize()\n{\n    ')
     wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}();'.format(*b) for b in btb_inits))
+    wfp.write('\n    throw std::invalid_argument("Branch target buffer module not found");')
+    wfp.write('\n}\n')
+    wfp.write('\n')
+
+    wfp.write('\n'.join('bool {1}(uint64_t);'.format(*b) for b in btb_ending_branch))
+    wfp.write('\nbool impl_is_block_ending_branch(uint64_t ip)\n{\n    ')
+    wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}(ip);'.format(*b) for b in btb_ending_branch))
     wfp.write('\n    throw std::invalid_argument("Branch target buffer module not found");')
     wfp.write('\n}\n')
     wfp.write('\n')

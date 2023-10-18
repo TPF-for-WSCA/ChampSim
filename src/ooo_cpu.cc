@@ -289,6 +289,7 @@ void O3_CPU::check_dib()
 
 void O3_CPU::do_check_dib(ooo_model_instr& instr)
 {
+  return; // disable dib
   // Check DIB to see if we recently fetched this line
   auto dib_set_begin = std::next(DIB.begin(), ((instr.ip >> lg2(dib_window)) % dib_set) * dib_way);
   auto dib_set_end = std::next(dib_set_begin, dib_way);
@@ -374,12 +375,18 @@ void O3_CPU::fetch_instruction()
 
   // fetch cache lines that were part of a translated page but not the cache
   // line that initiated the translation
-  auto l1i_req_begin =
-      std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return x.translated == COMPLETED && !x.fetched; });
+  auto l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) {
+    // NOTE: Just broken up for debugging purposes
+    if ((x.translated == COMPLETED) && (x.fetched == 0))
+      return true;
+    else
+      return false;
+  });
   uint64_t find_addr = l1i_req_begin->instruction_pa;
-  auto l1i_req_end = std::find_if(l1i_req_begin, IFETCH_BUFFER.end(),
+  auto end = std::min(IFETCH_BUFFER.end(), std::next(l1i_req_begin, FETCH_WIDTH + 1)); // Collapsing queue design?
+  auto l1i_req_end = std::find_if(l1i_req_begin, end,
                                   [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_BLOCK_SIZE) != (x.instruction_pa >> LOG2_BLOCK_SIZE); });
-  if (l1i_req_end != IFETCH_BUFFER.end() || l1i_req_begin == IFETCH_BUFFER.begin()) {
+  if (l1i_req_end < end || l1i_req_begin == IFETCH_BUFFER.begin()) { // collapsing FTQ?
 
     do_fetch_instruction(l1i_req_begin, l1i_req_end);
   }
@@ -398,6 +405,7 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
     fetch_packet.v_address = begin->ip;
     fetch_packet.instr_id = begin->instr_id;
     fetch_packet.ip = begin->ip;
+    fetch_packet.branch_type = begin->branch_type;
     if (((begin->ip + begin->size - 1) >> LOG2_BLOCK_SIZE) > (begin->ip >> LOG2_BLOCK_SIZE)) {
       fetch_packet.size = BLOCK_SIZE - (fetch_packet.ip % BLOCK_SIZE);
     } else {
@@ -428,6 +436,7 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
 void O3_CPU::promote_to_decode()
 {
   unsigned available_fetch_bandwidth = FETCH_WIDTH;
+  auto instr = IFETCH_BUFFER.front();
   if (IFETCH_BUFFER.front().fetched != COMPLETED) {
     frontend_stall_cycles++;
   }

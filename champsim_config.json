@@ -31,7 +31,7 @@
         "schedule_latency": 0,
         "execute_latency": 0,
         "branch_predictor": "perceptron",
-        "btb": "basic_btb"
+        "btb": "extended_basic_btb"
     }],
     "DIB": {
         "window_size": 16,
