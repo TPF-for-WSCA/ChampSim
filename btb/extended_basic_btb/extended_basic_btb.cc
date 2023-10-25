@@ -17,10 +17,9 @@
 #define BASIC_BTB_BRANCH_TABLE 131072
 
 struct BRANCH_TABLE_ENTRY {
-  uint64_t pc;
   uint8_t branch_type;
   uint8_t size;
-  uint8_t FW_BW;
+  uint8_t BW;
 };
 
 struct BASIC_BTB_ENTRY {
@@ -31,7 +30,7 @@ struct BASIC_BTB_ENTRY {
   uint64_t lru;
 };
 
-BRANCH_TABLE_ENTRY branch_table[NUM_CPUS][BASIC_BTB_BRANCH_TABLE];
+std::map<uint64_t, BRANCH_TABLE_ENTRY> branch_table;
 BASIC_BTB_ENTRY basic_btb[NUM_CPUS][BASIC_BTB_SETS][BASIC_BTB_WAYS];
 uint64_t basic_btb_lru_counter[NUM_CPUS];
 
@@ -225,18 +224,8 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
 bool O3_CPU::is_block_ending_branch(uint64_t ip)
 {
   ip = ip >> 2;
-  auto ras_ip_end = std::end(basic_btb_ras_ip[cpu]);
-  auto ras_hit = std::find_if(std::begin(basic_btb_ras_ip[cpu]), ras_ip_end, [ip](const uint64_t addr) { return addr >> 2 == ip; });
-  if (ras_hit != ras_ip_end)
-    return true;
-
-  auto indirect_ip_end = std::end(basic_btb_indirect_ip[cpu]);
-  auto indirect_hit = std::find_if(std::begin(basic_btb_indirect_ip[cpu]), indirect_ip_end, [ip](const uint64_t addr) { return addr >> 2 == ip; });
-  if (indirect_hit != indirect_ip_end)
-    return true;
-
-  auto btb_entry = basic_btb_find_entry(cpu, ip);
-  if (btb_entry != NULL && BLOCK_ENDING_BRANCH(btb_entry->branch_type)) {
+  auto BTE = branch_table.find(ip);
+  if (BTE != branch_table.end() && BLOCK_ENDING_BRANCH(BTE->second.branch_type)) {
     return true;
   }
   return false;
@@ -244,6 +233,7 @@ bool O3_CPU::is_block_ending_branch(uint64_t ip)
 
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
+  branch_table[(ip >> 2)] = {branch_type, 4, (taken < ip) ? true : false};
   // updates for indirect branches
   if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
     basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)] = branch_target;

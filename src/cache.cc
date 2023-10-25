@@ -1585,7 +1585,10 @@ void VCL_CACHE::operate_buffer_evictions()
     if (buffer_cache.history == BufferHistory::PARTIAL) {
       uint64_t combined_mask = merge_block.bytes_accessed | merge_block.prev_present;
       auto partialblocks = get_blockboundaries_from_mask(combined_mask);
-      for (auto b : partialblocks)
+      for (uint8_t j = 0; j < partialblocks.size(); j++) {
+        if (j % 2 == 0)
+          continue;
+        auto b = partialblocks[j];
         for (uint8_t i = b.first; i < b.second + 1; i++) {
           uint8_t buffer_bit = (merge_block.bytes_accessed >> i) & 0b1;
           uint8_t combined_bit = (combined_mask >> i) & 0b1;
@@ -1594,6 +1597,7 @@ void VCL_CACHE::operate_buffer_evictions()
             break;
           }
         }
+      }
     }
     auto blocks = get_blockboundaries_from_mask(bytes_accessed_bitmask);
     buffer_cache.merge_block.pop_front();
