@@ -965,22 +965,20 @@ int CACHE::add_rq(PACKET* packet)
   }
 
   // check for duplicates in the read queue
-  if (0 != this->NAME.compare(this->NAME.length() - 3, 3, "L1I")) {
 
-    auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, OFFSET_BITS));
-    if (found_rq != RQ.end()) {
+  auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, 0));
+  if (found_rq != RQ.end()) {
 
-      DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_RQ" << std::endl;)
+    DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_RQ" << std::endl;)
 
-      packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
-      packet_dep_merge(found_rq->sq_index_depend_on_me, packet->sq_index_depend_on_me);
-      packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
-      packet_dep_merge(found_rq->to_return, packet->to_return);
+    packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
+    packet_dep_merge(found_rq->sq_index_depend_on_me, packet->sq_index_depend_on_me);
+    packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
+    packet_dep_merge(found_rq->to_return, packet->to_return);
 
-      RQ_MERGED++;
+    RQ_MERGED++;
 
-      return 0; // merged index
-    }
+    return 0; // merged index
   }
 
   // check occupancy

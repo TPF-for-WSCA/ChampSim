@@ -382,12 +382,17 @@ void O3_CPU::fetch_instruction()
     else
       return false;
   });
+
   uint64_t find_addr = l1i_req_begin->instruction_pa;
   auto end = std::min(IFETCH_BUFFER.end(), std::next(l1i_req_begin, FETCH_WIDTH + 1)); // Collapsing queue design?
-  auto l1i_req_end = std::find_if(l1i_req_begin, end,
-                                  [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_BLOCK_SIZE) != (x.instruction_pa >> LOG2_BLOCK_SIZE); });
+  auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr](const ooo_model_instr& x) {
+    bool is_adjacent =
+        find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa; // we compare first with ourselves. of course same address access is included
+    bool is_same_block = find_addr >> LOG2_BLOCK_SIZE == x.instruction_pa >> LOG2_BLOCK_SIZE;
+    find_addr = x.instruction_pa;
+    return not(is_adjacent && is_same_block);
+  });
   if (l1i_req_end < end || l1i_req_begin == IFETCH_BUFFER.begin()) { // collapsing FTQ?
-
     do_fetch_instruction(l1i_req_begin, l1i_req_end);
   }
 }
@@ -395,36 +400,34 @@ void O3_CPU::fetch_instruction()
 void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
 {
   // add it to the L1-I's read queue
-  std::vector<ooo_model_instr> new_cl_fetch;
+  PACKET fetch_packet;
+  fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
+  fetch_packet.cpu = cpu;
+  fetch_packet.address = begin->instruction_pa;
+  fetch_packet.data = begin->instruction_pa;
+  fetch_packet.v_address = begin->ip;
+  fetch_packet.instr_id = begin->instr_id;
+  fetch_packet.ip = begin->ip;
+  fetch_packet.branch_type = begin->branch_type;
+  fetch_packet.size = begin->size;
+  fetch_packet.type = LOAD;
+  fetch_packet.asid[0] = 0;
+  fetch_packet.asid[1] = 0;
+  fetch_packet.to_return = {&L1I_bus};
   for (; begin != end; ++begin) {
-    PACKET fetch_packet;
-    fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
-    fetch_packet.cpu = cpu;
-    fetch_packet.address = begin->instruction_pa;
-    fetch_packet.data = begin->instruction_pa;
-    fetch_packet.v_address = begin->ip;
-    fetch_packet.instr_id = begin->instr_id;
-    fetch_packet.ip = begin->ip;
-    fetch_packet.branch_type = begin->branch_type;
-    if (((begin->ip + begin->size - 1) >> LOG2_BLOCK_SIZE) > (begin->ip >> LOG2_BLOCK_SIZE)) {
-      fetch_packet.size = BLOCK_SIZE - (fetch_packet.ip % BLOCK_SIZE);
-    } else {
-      fetch_packet.size = begin->size;
-    }
-    fetch_packet.type = LOAD;
-    fetch_packet.asid[0] = 0;
-    fetch_packet.asid[1] = 0;
-    fetch_packet.to_return = {&L1I_bus};
     fetch_packet.instr_depend_on_me.push_back(begin);
+    if (fetch_packet.address == begin->instruction_pa)
+      continue;
+    fetch_packet.size += begin->size;
+  }
 
-    // std::cout << "fetch: " << std::setw(16) << fetch_packet.ip << ", size: " << std::setw(3) << fetch_packet.size << std::endl;
-    int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
+  // std::cout << "fetch: " << std::setw(16) << fetch_packet.ip << ", size: " << std::setw(3) << fetch_packet.size << std::endl;
+  int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
 
-    if (rq_index != -2) {
-      // mark all instructions from this cache line as having been fetched
-      for (auto dep_it : fetch_packet.instr_depend_on_me) {
-        dep_it->fetched = INFLIGHT;
-      }
+  if (rq_index != -2) {
+    // mark all instructions from this cache line as having been fetched
+    for (auto dep_it : fetch_packet.instr_depend_on_me) {
+      dep_it->fetched = INFLIGHT;
     }
   }
 
