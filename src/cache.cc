@@ -120,6 +120,7 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev
 }
 
 // TODO: MOVE TO MAIN CACHE IF HIT OF PREFETCH IN FILTER BUFFER (ggf. only if predicted reuse)
+void CACHE::handle_packet_insert_from_buffer(std::deque<PACKET>::iterator pkt) {}
 
 void CACHE::handle_fill()
 {
@@ -132,7 +133,15 @@ void CACHE::handle_fill()
     PACKET& fill_packet = (*fill_mshr);
     PACKET& insertion_candidate = fill_packet;
     bool insert_in_cycle = true;
-    if (filter_inserts) {
+
+    if (filter_prefetches && fill_packet.type == PREFETCH) {
+      PREFETCH_BUFFER.push_front(fill_packet);
+      MSHR.erase(fill_mshr);
+      if (PREFETCH_BUFFER.size() > filter_buffer_size) {
+        PREFETCH_BUFFER.pop_back();
+      }
+      continue;
+    } else if (filter_inserts) {
       FILTER_BUFFER.push_front((*fill_mshr));
       if (FILTER_BUFFER.size() > filter_buffer_size) {
         insertion_candidate = FILTER_BUFFER.back();
@@ -304,14 +313,15 @@ void CACHE::update_cshr(uint64_t accessed_address)
   HRPT[base_address] = count;
 }
 
-std::deque<PACKET>::iterator CACHE::probe_filter_buffer(uint64_t access_address)
+std::deque<PACKET>::iterator CACHE::probe_filter_buffer(uint64_t access_address, uint8_t type)
 {
+  auto buffer = (type == PREFETCH_BUFFER_QUEUE) ? PREFETCH_BUFFER : FILTER_BUFFER_QUEUE;
   access_address = (access_address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
   auto filter_buffer_lookup = [access_address](PACKET& p) {
     uint64_t comp_address = (p.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
     return comp_address == access_address;
   };
-  auto block = std::find_if(FILTER_BUFFER.begin(), FILTER_BUFFER.end(), filter_buffer_lookup);
+  auto block = std::find_if(buffer.begin(), buffer.end(), filter_buffer_lookup);
   if (block->type == PREFETCH) {
     // TODO: INSERT
     // FOR NOW: We set it to be fetched = will be inserted based on the HRT value
@@ -380,16 +390,6 @@ void CACHE::handle_prefetch()
 
     // handle the oldest entry
     PACKET& handle_pkt = PQ.front();
-    if (filter_prefetches) {
-      FILTER_BUFFER.push_front(handle_pkt);
-      if (FILTER_BUFFER.size() > filter_buffer_size) {
-        handle_pkt = FILTER_BUFFER.back();
-        FILTER_BUFFER.pop_back();
-        uint64_t contender_addr = (handle_pkt.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
-        // if (HRPT[contender_addr] >)
-        //   continue;
-      }
-    }
 
     // TODO: if handle_pkt comes from the filter buffer check if we should insert
     uint32_t set = get_set(handle_pkt.address);
@@ -1665,7 +1665,14 @@ void VCL_CACHE::handle_fill()
 
     PACKET& fill_packet = (*fill_mshr);
 
-    if (filter_inserts && not buffer) { // otherwise this is handled by the buffer cache
+    if (filter_prefetches && fill_packet.type == PREFETCH) {
+      PREFETCH_BUFFER.push_front(fill_packet);
+      MSHR.erase(fill_mshr);
+      if (PREFETCH_BUFFER.size() > filter_buffer_size) {
+        PREFETCH_BUFFER.pop_back();
+      }
+      continue;
+    } else if (filter_inserts && not buffer) { // otherwise this is handled by the buffer cache
       FILTER_BUFFER.push_front(fill_packet);
       writes_available_this_cycle--;
       MSHR.erase(fill_mshr);
