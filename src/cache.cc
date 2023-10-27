@@ -120,7 +120,23 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev
 }
 
 // TODO: MOVE TO MAIN CACHE IF HIT OF PREFETCH IN FILTER BUFFER (ggf. only if predicted reuse)
-void CACHE::handle_packet_insert_from_buffer(std::deque<PACKET>::iterator pkt) {}
+void CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
+{
+  uint32_t set = get_set(pkt.address);
+  auto set_begin = std::next(std::begin(block), set * NUM_WAY);
+  auto set_end = std::next(set_begin, NUM_WAY);
+  auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
+  uint32_t way = std::distance(set_begin, first_inv);
+  if (way == NUM_WAY) {
+    way = impl_replacement_find_victim(pkt.cpu, pkt.instr_id, set, &block.data()[set * NUM_WAY], pkt.ip, pkt.address,
+                                       LOAD); // this is a load as it was accessed in the prefetch buffer
+  }
+
+  BLOCK& victim = block[set * NUM_WAY + way];
+  bool success = filllike_miss(set, way, pkt);
+  if (!success)
+    return;
+}
 
 void CACHE::handle_fill()
 {
@@ -137,7 +153,7 @@ void CACHE::handle_fill()
     if (filter_prefetches && fill_packet.type == PREFETCH) {
       PREFETCH_BUFFER.push_front(fill_packet);
       MSHR.erase(fill_mshr);
-      if (PREFETCH_BUFFER.size() > filter_buffer_size) {
+      if (PREFETCH_BUFFER.size() > prefetch_buffer_size) {
         PREFETCH_BUFFER.pop_back();
       }
       continue;
@@ -313,21 +329,16 @@ void CACHE::update_cshr(uint64_t accessed_address)
   HRPT[base_address] = count;
 }
 
-std::deque<PACKET>::iterator CACHE::probe_filter_buffer(uint64_t access_address, uint8_t type)
+std::deque<PACKET>::iterator CACHE::probe_filter_buffer(uint64_t access_address, int type)
 {
-  auto buffer = (type == PREFETCH_BUFFER_QUEUE) ? PREFETCH_BUFFER : FILTER_BUFFER_QUEUE;
+  std::deque<PACKET>& buffer = (type == PREFETCH_BUFFER_QUEUE) ? PREFETCH_BUFFER : FILTER_BUFFER;
   access_address = (access_address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
   auto filter_buffer_lookup = [access_address](PACKET& p) {
     uint64_t comp_address = (p.address >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE;
     return comp_address == access_address;
   };
-  auto block = std::find_if(buffer.begin(), buffer.end(), filter_buffer_lookup);
-  if (block->type == PREFETCH) {
-    // TODO: INSERT
-    // FOR NOW: We set it to be fetched = will be inserted based on the HRT value
-    block->type = LOAD;
-  }
-  return block;
+  auto hit_block = std::find_if(buffer.begin(), buffer.end(), filter_buffer_lookup);
+  return hit_block;
 }
 
 void CACHE::handle_read()
@@ -340,10 +351,10 @@ void CACHE::handle_read()
     // handle the oldest entry
     PACKET& handle_pkt = RQ.front();
 
-    if (filter_inserts || filter_prefetches) {
+    if (filter_inserts) {
       update_cshr(handle_pkt.address);
 
-      auto filter_buffer_hit = probe_filter_buffer(handle_pkt.address);
+      auto filter_buffer_hit = probe_filter_buffer(handle_pkt.address, FILTER_BUFFER_QUEUE);
       if (filter_buffer_hit != FILTER_BUFFER.end()) {
         readlike_hit(*filter_buffer_hit, handle_pkt);
         // remove this entry from RQ
@@ -352,17 +363,24 @@ void CACHE::handle_read()
         continue; // handled this packet
       }
     }
+
     // A (hopefully temporary) hack to know whether to send the evicted paddr or
     // vaddr to the prefetcher
     ever_seen_data |= (handle_pkt.v_address != handle_pkt.ip);
 
     uint32_t set = get_set(handle_pkt.address);
     uint32_t way = get_way(handle_pkt, set);
+    auto prefetch_buffer_hit = probe_filter_buffer(handle_pkt.address, PREFETCH_BUFFER_QUEUE);
 
     if (way < NUM_WAY || perfect_cache) // HIT
     {
       way_hits[way]++;
       readlike_hit(set, way, handle_pkt);
+    } else if (filter_prefetches && prefetch_buffer_hit != PREFETCH_BUFFER.end()) { // miss check if in prefetch buffer
+      PACKET p = *prefetch_buffer_hit;
+      PREFETCH_BUFFER.erase(prefetch_buffer_hit);
+      readlike_hit(p, handle_pkt);
+      handle_packet_insert_from_buffer(p);
     } else {
       bool success = readlike_miss(handle_pkt);
 
@@ -455,7 +473,6 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
 
 void CACHE::readlike_hit(PACKET& buffer_hit, PACKET& handle_pkt)
 {
-  handle_pkt.data = buffer_hit.data;
   if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
     cpu = handle_pkt.cpu;
     uint64_t pf_base_addr = (virtual_prefetch ? handle_pkt.v_address : handle_pkt.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
@@ -471,7 +488,6 @@ void CACHE::readlike_hit(PACKET& buffer_hit, PACKET& handle_pkt)
     ret->return_data(&handle_pkt);
   if (buffer_hit.type == PREFETCH) {
     pf_useful++;
-    buffer_hit.type = LOAD;
   }
 }
 
@@ -1898,7 +1914,7 @@ void VCL_CACHE::handle_read()
       continue;
     }
 
-    auto filter_buffer_hit = probe_filter_buffer(handle_pkt.address);
+    auto filter_buffer_hit = probe_filter_buffer(handle_pkt.address, FILTER_BUFFER_QUEUE);
     if (filter_buffer_hit != FILTER_BUFFER.end()) {
       readlike_hit(*filter_buffer_hit, handle_pkt);
       RQ.pop_front();

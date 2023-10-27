@@ -110,7 +110,7 @@ protected:
   BLOCK* prev_access = NULL;
   uint8_t get_insert_pos(LruModifier lru_modifier, uint32_t set);
   uint8_t active_inserts = 1;
-  void handle_packet_insert_from_buffer(std::deque<PACKET>::iterator pkt); // MIGHT NEED A VCL version
+  virtual void handle_packet_insert_from_buffer(PACKET& pkt); // MIGHT NEED A VCL version
 
 public:
   bool filter_inserts;
@@ -171,11 +171,12 @@ public:
   uint64_t total_miss_latency = 0;
 
   // functions
+  bool probe_cache(PACKET& pkt);
   virtual int add_rq(PACKET* packet) override;
   virtual int add_wq(PACKET* packet) override;
   virtual int add_pq(PACKET* packet) override;
   void update_cshr(uint64_t accessed_address);
-  std::deque<PACKET>::iterator probe_filter_buffer(uint64_t access_address, uint8_t type);
+  std::deque<PACKET>::iterator probe_filter_buffer(uint64_t access_address, int type);
 
   inline uint8_t get_count_from_hrpt(uint64_t addr);
   bool conditional_insert_from_filter(PACKET& packet, BLOCK& victim);
@@ -309,7 +310,7 @@ public:
                bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method,
                bool FIFO = false, BufferHistory history = BufferHistory::FULL)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
-              pref_act_mask, ll, pref, repl, method, lru_modifier, false, true, 64), // filter buffer might be set by VCL parent
+              pref_act_mask, ll, pref, repl, method, lru_modifier, false, true, 0, 64), // filter buffer might be set by VCL parent
         fifo(FIFO), underrun_bytes_histogram(64), overrun_bytes_histogram(64), newblock_bytes_histogram(64), mergeblock_bytes_histogram(64), history(history)
   {
     replacement_update_state = &BUFFER_CACHE::update_replacement_state;
@@ -351,6 +352,9 @@ private:
   uint32_t buffer_sets = 0;
   uint32_t buffer_ways = 0;
   BufferOrganisation organisation;
+
+protected:
+  virtual void handle_packet_insert_from_buffer(PACKET& pkt) override;
 
 public:
   BUFFER_CACHE buffer_cache;

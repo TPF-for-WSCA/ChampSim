@@ -14,7 +14,8 @@
             "type": "shell",
             "command": "make",
             "args": [
-                "all"
+                "all",
+                "-j"
             ],
             "dependsOn": "config.sh Debug Create"
         },
@@ -36,6 +37,9 @@
             "label": "remake",
             "type": "shell",
             "command": "make",
+            "args": [
+                "-j"
+            ],
             "dependsOn": "configure build",
             "options": {
                 "env": {
@@ -48,6 +52,9 @@
             "label": "make DebugBuild",
             "type": "shell",
             "command": "make",
+            "args": [
+                "-j"
+            ],
             "options": {
                 "env": {
                     "XED_INCLUDE_DIRS": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
@@ -57,7 +64,7 @@
         },
         {
             "label": "bin/champsim",
-            "command": "make bin/champsim -f /home/robrunne/Workspace/Simulators/ChampSim/Makefile",
+            "command": "make -j bin/champsim -f /home/robrunne/Workspace/Simulators/ChampSim/Makefile",
             "type": "shell",
             "options": {
                 "cwd": "/home/robrunne/Workspace/Simulators/ChampSim"
