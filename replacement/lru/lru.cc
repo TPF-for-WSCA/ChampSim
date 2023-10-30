@@ -7,44 +7,6 @@
 
 void CACHE::initialize_replacement() {}
 
-// uint8_t CACHE::get_insert_pos(LruModifier lru_modifier, uint32_t set)
-// {
-//   std::set<uint32_t> avail_lru_positions;
-//   auto begin = std::next(block.begin(), set * NUM_WAY);
-//   auto end = std::next(begin, NUM_WAY);
-//   for (; begin < end; begin++) {
-//     avail_lru_positions.insert(begin->lru);
-//   }
-//   auto highest_lru = avail_lru_positions.rbegin();
-//   if (lru_modifier >= 100000) {
-//     if (avail_lru_positions.size() < active_inserts)
-//       return 0;
-//     std::advance(highest_lru, active_inserts);
-//     return *highest_lru;
-//   } else if (lru_modifier >= 10000) {
-//     if (avail_lru_positions.size() < 4)
-//       return 0;
-//     std::advance(highest_lru, 4);
-//     return *highest_lru;
-//   } else if (lru_modifier >= 1000) {
-//     if (avail_lru_positions.size() < 3)
-//       return 0;
-//     std::advance(highest_lru, 3);
-//     return *highest_lru;
-//   } else if (lru_modifier >= 100) {
-//     if (avail_lru_positions.size() < 2)
-//       return 0;
-//     std::advance(highest_lru, 2);
-//     return *highest_lru;
-//   } else if (lru_modifier >= 10) {
-//     if (avail_lru_positions.size() < 1)
-//       return 0;
-//     std::advance(highest_lru, 1);
-//     return *highest_lru;
-//   }
-//   return 0;
-// }
-
 uint8_t CACHE::get_insert_pos(LruModifier lru_modifier, uint32_t set)
 {
   if (lru_modifier >= 100000)
@@ -58,6 +20,26 @@ uint8_t CACHE::get_insert_pos(LruModifier lru_modifier, uint32_t set)
   else if (lru_modifier >= 10)
     return NUM_WAY - 1;
   return 0;
+}
+
+uint8_t CACHE::get_lru_offset(LruModifier lru_modifier)
+{
+  if (lru_modifier >= 10000)
+    return lru_modifier / 10000;
+  else if (lru_modifier >= 1000)
+    return lru_modifier / 1000;
+  else if (lru_modifier >= 100)
+    return lru_modifier / 100;
+  else if (lru_modifier >= 10)
+    return lru_modifier / 10;
+  return lru_modifier;
+}
+
+bool CACHE::is_default_lru(LruModifier lru_modifier)
+{
+  if (lru_modifier == DEFAULT or (lru_modifier > 10 and lru_modifier % 10 == 1))
+    return true;
+  return false;
 }
 
 // find replacement victim

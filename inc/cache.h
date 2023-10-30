@@ -67,23 +67,31 @@ enum LruModifier {
   LRU1BOUND2 = 20,
   LRU1BOUND3 = 30,
   LRU1BOUND4 = 40,
+  LRU1BOUND5 = 50,
   LRU1BOUND6 = 60,
   LRU2DEFAULT = 201,
   LRU2BOUND2 = 200,
   LRU2BOUND3 = 300,
   LRU2BOUND4 = 400,
+  LRU2BOUND5 = 500,
   LRU2BOUND6 = 600,
   LRU3DEFAULT = 2001,
   LRU3BOUND2 = 2000,
   LRU3BOUND3 = 3000,
   LRU3BOUND4 = 4000,
+  LRU3BOUND5 = 5000,
   LRU3BOUND6 = 6000,
   LRU4DEFAULT = 20001,
   LRU4BOUND2 = 20000,
   LRU4BOUND3 = 30000,
   LRU4BOUND4 = 40000,
+  LRU4BOUND5 = 50000,
   LRU4BOUND6 = 60000,
+  LRUadaptivePRECISE = 100000,
+  LRUadaptiveBOUND2 = 200000,
+  LRUadaptiveBOUND3 = 300000,
   LRUadaptiveBOUND4 = 400000,
+  LRUadaptiveBOUND5 = 500000,
 };
 
 enum BufferOrganisation { FULLY_ASSOCIATIVE = 0, DIRECT_MAPPED = 1, SET2_ASSOCIATIVE = 2, SET4_ASSOCIATIVE = 4, SET8_ASSOCIATIVE = 8 };
@@ -108,6 +116,8 @@ private:
 protected:
   uint64_t* way_hits;
   BLOCK* prev_access = NULL;
+  bool is_default_lru(LruModifier lru_modifier);
+  uint8_t get_lru_offset(LruModifier lru_modifier);
   uint8_t get_insert_pos(LruModifier lru_modifier, uint32_t set);
   uint8_t active_inserts = 1;
   virtual void handle_packet_insert_from_buffer(PACKET& pkt); // MIGHT NEED A VCL version
@@ -296,6 +306,7 @@ private:
   std::vector<uint32_t> overrun_bytes_histogram;
   std::vector<uint32_t> newblock_bytes_histogram;
   std::vector<uint32_t> mergeblock_bytes_histogram;
+  uint64_t partial_without_hit = 0;
 
 public:
   buffer_t<BLOCK> merge_block{MAX_WRITE};

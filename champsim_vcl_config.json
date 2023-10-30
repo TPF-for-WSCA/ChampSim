@@ -3,7 +3,7 @@
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
-    "heartbeat_frequency": 10000000,
+    "heartbeat_frequency": 1000000,
     "num_cores": 1,
     "CFLAGS": "-Wall -g -O3 -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
     "CXXFLAGS": "-Wall -g -O3 -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
@@ -11,7 +11,7 @@
     "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib",
     "ooo_cpu": [{
         "frequency": 4000,
-        "ifetch_buffer_size": 6,
+        "ifetch_buffer_size": 128,
         "decode_buffer_size": 32,
         "dispatch_buffer_size": 32,
         "rob_size": 352,
@@ -24,13 +24,13 @@
         "lq_width": 2,
         "sq_width": 2,
         "retire_width": 5,
-        "mispredict_penalty": 1,
+        "mispredict_penalty": 5,
         "scheduler_size": 128,
-        "decode_latency": 1,
+        "decode_latency": 2,
         "dispatch_latency": 1,
-        "schedule_latency": 0,
+        "schedule_latency": 4,
         "execute_latency": 0,
-        "branch_predictor": "bimodal",
+        "branch_predictor": "perceptron",
         "btb": "extended_basic_btb"
     }],
     "DIB": {
@@ -76,11 +76,12 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "lru_modifier": "LRUadaptiveBOUND4",
-        "prefetch_activate": "LOAD",
-        "prefetcher": "no_instr",
+        "prefetch_activate": "LOAD,PREFETCH",
+        "prefetcher": "fdip",
         "counting_block_method": "SUM_ACCESSES",
         "filter_inserts": false,
-        "filter_prefetches": false
+        "filter_prefetches": true,
+        "prefetch_buffer_size": 64
     },
     "L1D": {
         "perfect": true,
@@ -96,7 +97,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "next_line",
+        "prefetcher": "no",
         "counting_block_method": "SUM_ACCESSES"
     },
     "L2C": {

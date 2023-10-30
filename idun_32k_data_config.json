@@ -11,7 +11,7 @@
     "LDFLAGS": "-L/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib",
     "ooo_cpu": [{
         "frequency": 4000,
-        "ifetch_buffer_size": 6,
+        "ifetch_buffer_size": 128,
         "decode_buffer_size": 32,
         "dispatch_buffer_size": 32,
         "rob_size": 352,
@@ -24,14 +24,14 @@
         "lq_width": 2,
         "sq_width": 2,
         "retire_width": 5,
-        "mispredict_penalty": 1,
+        "mispredict_penalty": 5,
         "scheduler_size": 128,
-        "decode_latency": 1,
+        "decode_latency": 2,
         "dispatch_latency": 1,
-        "schedule_latency": 0,
+        "schedule_latency": 4,
         "execute_latency": 0,
-        "branch_predictor": "bimodal",
-        "btb": "basic_btb"
+        "branch_predictor": "perceptron",
+        "btb": "extended_basic_btb"
     }],
     "DIB": {
         "window_size": 16,

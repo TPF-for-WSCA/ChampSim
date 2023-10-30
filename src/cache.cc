@@ -21,26 +21,6 @@ extern VirtualMemory vmem;
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t knob_stall_on_miss;
 
-uint8_t get_lru_offset(LruModifier lru_modifier)
-{
-  if (lru_modifier >= 10000)
-    return lru_modifier / 10000;
-  else if (lru_modifier >= 1000)
-    return lru_modifier / 1000;
-  else if (lru_modifier >= 100)
-    return lru_modifier / 100;
-  else if (lru_modifier >= 10)
-    return lru_modifier / 10;
-  return lru_modifier;
-}
-
-bool is_default_lru(LruModifier lru_modifier)
-{
-  if (lru_modifier == DEFAULT or (lru_modifier > 10 and lru_modifier % 10 == 1))
-    return true;
-  return false;
-}
-
 void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper)
 {
   if (upper > 63) {
@@ -1379,6 +1359,7 @@ void BUFFER_CACHE::print_private_stats()
   for (int i = 1; i < 65; i++) {
     std::cout << i << ":\t" << +newblock_bytes_histogram[i - 1] << std::endl;
   }
+  std::cout << "PARTIAL WITHOUT HIT ON INSERT: " << std::setw(10) << partial_without_hit << std::endl;
 }
 
 void BUFFER_CACHE::record_duration(BLOCK& block) { duration_in_buffer[block.time_present] += 1; }
@@ -1505,7 +1486,8 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
     parent.num_blocks_in_cache--; // we just invalidated all blocks of that tag
     fill_block.old_bytes_accessed = fill_block.bytes_accessed;
   } else if (packet.partial) {
-    std::cout << "Partial without hit in cache" << std::endl;
+    // std::cout << "Partial without hit in cache" << std::endl;
+    partial_without_hit++;
   }
   ////
   fill_block.valid = true;
@@ -1663,6 +1645,14 @@ void VCL_CACHE::operate_buffer_evictions()
   }
   if (!buffer_cache.merge_block.empty()) {
     std::cout << "did not empty buffer" << std::endl;
+  }
+}
+
+void VCL_CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
+{
+  if (buffer) {
+    if (!buffer_cache.fill_miss(pkt, *this))
+      return;
   }
 }
 
@@ -1888,6 +1878,7 @@ void VCL_CACHE::handle_read()
 
     uint32_t set = get_set(handle_pkt.address);
     uint32_t way = get_way(handle_pkt, set);
+    auto prefetch_buffer_hit = probe_filter_buffer(handle_pkt.address, PREFETCH_BUFFER_QUEUE);
 
     // HIT IN VCL CACHE
     if (way < NUM_WAY) {
@@ -1912,6 +1903,11 @@ void VCL_CACHE::handle_read()
       handle_pkt.address = (handle_pkt.address & mask) + newoffset; // offset matches: all 64 byte aligned
       // not done reading this thing just yet
       continue;
+    } else if (filter_prefetches && prefetch_buffer_hit != PREFETCH_BUFFER.end()) {
+      PACKET p = *prefetch_buffer_hit;
+      PREFETCH_BUFFER.erase(prefetch_buffer_hit);
+      readlike_hit(p, handle_pkt);
+      handle_packet_insert_from_buffer(p);
     }
 
     auto filter_buffer_hit = probe_filter_buffer(handle_pkt.address, FILTER_BUFFER_QUEUE);
