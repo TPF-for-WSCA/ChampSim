@@ -2,7 +2,7 @@
 #SBATCH --job-name="build_experiment_binaries"
 #SBATCH --account=share-ie-idi
 #SBATCH --nodes=1
-#SBATCH -c1
+#SBATCH -c16
 #SBATCH --mem-per-cpu=2G
 #SBATCH --time=00-02:30:00
 #SBATCH --mail-user=romankb@ntnu.no
