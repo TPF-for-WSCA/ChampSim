@@ -1,6 +1,6 @@
 #!/bin/bash
 
-configurations_arm=("sizes_champsim_data_32k" "sizes_champsim_data_64k")
+configurations_arm=("sizes_champsim32k" "sizes_champsim_data_64k")
 
 #configurations_x86=("sizes_champsim32k" "sizes_champsim64k")
 pg_dir=""
