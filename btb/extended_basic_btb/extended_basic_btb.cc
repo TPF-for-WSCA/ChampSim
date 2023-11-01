@@ -215,7 +215,8 @@ bool O3_CPU::is_block_ending_branch(uint64_t ip)
 {
   ip = ip >> 2;
   auto BTE = branch_table.find(ip);
-  if (BTE != branch_table.end() && BLOCK_ENDING_BRANCH(BTE->second.branch_type)) {
+  // if end - not a branch thus continuing to next entry
+  if (BTE == branch_table.end() || (BTE->second.BW && !BLOCK_ENDING_BRANCH(BTE->second.branch_type))) {
     return true;
   }
   return false;
@@ -223,7 +224,7 @@ bool O3_CPU::is_block_ending_branch(uint64_t ip)
 
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
-  branch_table[(ip >> 2)] = {branch_type, 4, (taken < ip) ? true : false};
+  branch_table[(ip >> 2)] = {branch_type, 4, (branch_target < ip) ? true : false};
   // updates for indirect branches
   if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
     basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)] = branch_target;

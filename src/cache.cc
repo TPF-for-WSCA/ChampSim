@@ -1610,7 +1610,15 @@ void VCL_CACHE::operate_buffer_evictions()
         continue; // already in cache: the previous block already contains that block
       uint8_t block_start = std::max(min_start, blocks[i].first);
       size_t block_size = blocks[i].second - block_start + 1;
-      uint8_t block_end = block_start + block_size - 1;
+      uint64_t ip = merge_block.v_address + block_start;
+      while (block_start + block_size < BLOCK_SIZE && ooo_cpu[merge_block.cpu]->impl_is_block_ending_branch(ip)) {
+        ip += 4;
+        block_size += 4;
+      }
+      if (block_size + block_start > BLOCK_SIZE) {
+        block_size = BLOCK_SIZE - block_start;
+      }
+      uint8_t block_end = block_start + block_size;
       auto first_inv = std::find_if_not(set_begin, set_end, is_valid_size<BLOCK>(block_size));
       uint32_t way = std::distance(set_begin, first_inv);
       if (way == NUM_WAY) {

@@ -14,6 +14,14 @@ for build_script in ${build_configs[@]}
 do
     echo "Building ${build_script}"
     ~/ChampSim/config.sh ~/ChampSim/${build_script}
-    make -j
+    make -j &
 done
 cd $old_dir
+
+
+for job in `jobs -p`
+do
+    echo $job
+    wait $job
+done
+
