@@ -2,7 +2,7 @@
 #SBATCH --job-name="build_experiment_binaries"
 #SBATCH --account=nn4650k
 #SBATCH --nodes=1
-#SBATCH -c8
+#SBATCH -c1
 #SBATCH --mem-per-cpu=8G
 #SBATCH --time=00-00:30:00
 #SBATCH --mail-user=romankb@ntnu.no
