@@ -641,7 +641,7 @@ void CACHE::write_buffers_to_disk()
   }
   if (!cl_accessed_bytes_file.is_open()) {
     std::filesystem::path result_path = result_dir;
-    string filename = this->NAME + "_c_bytes_used.bin";
+    string filename = this->NAME + "_cl_bytes_used.bin";
     result_path /= filename;
     cl_accessed_bytes_file = std::ofstream(result_path.c_str(), std::ios::binary | std::ios::out);
   }
