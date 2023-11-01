@@ -8,7 +8,7 @@ build_configs=("idun_32k_config.json" "idun_32k_fdip_config.json" "idun_32k_fdip
 #build_configs+=("idun_32k_3lip_config.json" "idun_32k_2lip_config.json" "idun_32k_4lip_config.json" "idun_32k_data_2lip_config.json" "idun_32k_data_3lip_config.json" "idun_32k_data_4lip_config.json" "idun_32k_data_lip_config.json" "idun_32k_lip_config.json" "idun_64k_2lip_config.json" "idun_64k_3lip_config.json" "idun_64k_4lip_config.json" "idun_64k_data_2lip_config.json" "idun_64k_data_3lip_config.json" "idun_64k_data_4lip_config.json" "idun_64k_data_lip_config.json" "idun_64k_lip_config.json" "idun_vcl_buffer_64d_3lip_config.json" "idun_vcl_buffer_64d_4lip_config.json" "idun_vcl_buffer_64d_data_3lip_config.json" "idun_vcl_buffer_64d_data_4lip_config.json" "idun_vcl_buffer_64d_data_lip_config.json" "idun_vcl_buffer_64d_lip_config.json" "idun_vcl_buffer_64f_3lip_config.json" "idun_vcl_buffer_64f_4lip_config.json" "idun_vcl_buffer_64f_data_3lip_config.json" "idun_vcl_buffer_64f_data_4lip_config.json" "idun_vcl_buffer_64f_data_lip_config.json" "idun_vcl_buffer_64f_lip_config.json" "idun_vcl_buffer_64lru_8w_3lip_config.json" "idun_vcl_buffer_64lru_8w_4lip_config.json" "idun_vcl_buffer_64lru_8w_lip_config.json" "idun_vcl_buffer_64lru_data_8w_3lip_config.json" "idun_vcl_buffer_64lru_data_8w_4lip_config.json" "idun_vcl_buffer_64lru_data_8w_lip_config.json" "idun_vcl_buffer_64d_lru_data_config.json")
 #build_configs=("idun_vcl_buffer_128lru_8w_config.json" "idun_vcl_buffer_128lru_8w_data_config.json") 
 #build_configs=("idun_32k_data_config.json" "idun_64k_data_config.json" "idun_128k_data_config.json" "idun_vcl_buffer_64d_data_config.json")
-old_dir=pwd
+old_dir=$(pwd)
 cd ~/ChampSim/
 for build_script in ${build_configs[@]}
 do
