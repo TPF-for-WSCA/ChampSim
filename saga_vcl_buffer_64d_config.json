@@ -81,7 +81,6 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "L1D": {
-    "perfect": false,
     "sets": 64,
     "ways": 12,
     "rq_size": 64,

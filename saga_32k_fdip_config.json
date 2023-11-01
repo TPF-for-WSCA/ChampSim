@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim32k",
+  "executable_name": "bin/champsim32k_fdip",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -52,11 +52,15 @@
     "max_write": 2,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
-    "prefetch_activate": "LOAD",
-    "prefetcher": "no_instr",
+    "prefetch_activate": "LOAD,PREFETCH",
+    "prefetcher": "fdip",
+    "filter_inserts": false,
+    "filter_prefetches": true,
+    "prefetch_buffer_size": 16,
     "counting_block_method": "SUM_ACCESSES"
   },
   "L1D": {
+    "perfect": false,
     "sets": 64,
     "ways": 12,
     "rq_size": 64,
