@@ -1530,7 +1530,7 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
   if (!is_default_lru(lru_modifier)) {
     uint8_t num_way_bound = get_lru_offset(lru_modifier);
     uint32_t end_way = begin_way;
-    int count_sizes = 1;
+    int count_sizes = 0;
     int prev_size = way_sizes[end_way];
     while (end_way < NUM_WAY && count_sizes < num_way_bound) {
       if (prev_size != way_sizes[end_way]) {
@@ -1542,7 +1542,7 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
     endofset = current_set + end_way;
     lru_subset = SUBSET(begin_way, end_way);
   } else {
-    lru_subset = SUBSET(0, 0);
+    lru_subset = SUBSET(begin_way, NUM_WAY - 1);
   }
 
   if (begin_of_subset->size < min_size) {
