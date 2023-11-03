@@ -375,13 +375,17 @@ void O3_CPU::fetch_instruction()
 
   // fetch cache lines that were part of a translated page but not the cache
   // line that initiated the translation
-  auto l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) {
+  auto l1i_req_begin = IFETCH_BUFFER.end();
+  l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) {
     // NOTE: Just broken up for debugging purposes
     if ((x.translated == COMPLETED) && (x.fetched == 0))
       return true;
     else
       return false;
   });
+
+  if (l1i_req_begin == IFETCH_BUFFER.end())
+    return; // are we interpreting end pointer here?
 
   if (l1i_req_begin->instr_id == 52200547) {
     std::cout << "region of interest " << (int)l1i_req_begin->fetched << std::endl;
