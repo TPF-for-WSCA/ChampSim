@@ -383,6 +383,14 @@ void O3_CPU::fetch_instruction()
       return false;
   });
 
+  if (l1i_req_begin->instr_id == 52200547) {
+    std::cout << "region of interest " << (int)l1i_req_begin->fetched << std::endl;
+    for (auto it = IFETCH_BUFFER.begin(); it != IFETCH_BUFFER.end(); it++) {
+      std::cout << it->instr_id << std::endl;
+    }
+    printf("hello\n");
+  }
+
   uint64_t find_addr = l1i_req_begin->instruction_pa;
   auto end = std::min(IFETCH_BUFFER.end(), std::next(l1i_req_begin, FETCH_WIDTH + 1)); // Collapsing queue design?
   auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr](const ooo_model_instr& x) {
@@ -1072,6 +1080,9 @@ void O3_CPU::handle_memory_return()
 
   while (available_fetch_bandwidth > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty()) {
     PACKET& l1i_entry = L1I_bus.PROCESSED.front();
+    if (l1i_entry.instr_id == 52200547) {
+      printf("region of interest started...\n");
+    }
 
     // this is the L1I cache, so instructions are now fully fetched, so mark
     // them as such
@@ -1195,6 +1206,12 @@ void O3_CPU::retire_rob()
 void CacheBus::return_data(PACKET* packet)
 {
   if (packet->type != PREFETCH) {
+    float occupied = (100.0 * (float)PROCESSED.occupancy()) / (float)PROCESSED.size();
+    if (occupied > 50) {
+      std::cerr << "PROCESSED Occupancy: " << occupied << "%" << std::endl;
+      std::cerr << "FRONT instr_id: " << PROCESSED.front().instr_id << std::endl;
+      std::cerr << "FRONT event_cycle: " << PROCESSED.front().event_cycle << std::endl;
+    }
     PROCESSED.push_back(*packet);
   }
 }
