@@ -319,6 +319,9 @@ void O3_CPU::translate_fetch()
 
   // scan through IFETCH_BUFFER to find instructions that need to be translated
   auto itlb_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return !x.translated; });
+  if (itlb_req_begin == IFETCH_BUFFER.end()) {
+    return;
+  }
   uint64_t find_addr = itlb_req_begin->ip;
   auto itlb_req_end = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(),
                                    [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE); });
@@ -384,8 +387,9 @@ void O3_CPU::fetch_instruction()
       return false;
   });
 
-  if (l1i_req_begin == IFETCH_BUFFER.end())
-    return; // are we interpreting end pointer here?
+  if (l1i_req_begin == IFETCH_BUFFER.end()) {
+    return; // we did not find one that is translated and not yet fetched
+  }
 
   uint64_t find_addr = l1i_req_begin->instruction_pa;
   auto end = std::min(IFETCH_BUFFER.end(), std::next(l1i_req_begin, FETCH_WIDTH + 1)); // Collapsing queue design?
