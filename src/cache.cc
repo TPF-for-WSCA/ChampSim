@@ -112,7 +112,6 @@ void CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
                                        LOAD); // this is a load as it was accessed in the prefetch buffer
   }
 
-  BLOCK& victim = block[set * NUM_WAY + way];
   bool success = filllike_miss(set, way, pkt);
   if (!success)
     return;
@@ -568,7 +567,7 @@ void CACHE::record_block_insert_removal(int set, int way, uint64_t address, bool
   uint64_t old_tag = repl_block.address >> OFFSET_BITS;
   if (!repl_block.valid)
     oldtag_present = true; // unvalid block is "always" present
-  for (int i = 0; i < NUM_WAY; i++) {
+  for (uint32_t i = 0; i < NUM_WAY; i++) {
     if (i == way) {
       continue;
     }
@@ -1327,6 +1326,7 @@ BLOCK* __attribute__((optimize("O0"))) BUFFER_CACHE::probe_merge(PACKET& packet)
       return &(*it);
     }
   }
+  return NULL;
 }
 
 void BUFFER_CACHE::print_private_stats()
@@ -1407,7 +1407,6 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   if (fill_block.valid && fill_block.old_bytes_accessed > 0 && warmup_complete[packet.cpu]) {
     // Record over/under/new/combined
     uint8_t curr_bp = 0;
-    uint8_t prev_new_byte = 0;
     uint8_t prev_old_byte = 0;
     bool overrun_active = false;
     bool new_block_active = false;
@@ -1415,6 +1414,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
     while (curr_bp < 64) {
       uint8_t new_byte = (fill_block.bytes_accessed >> curr_bp) & 0b1;
       uint8_t old_byte = (fill_block.old_bytes_accessed >> curr_bp) & 0b1;
+      // overrun detection
       if (new_byte == 1 && old_byte == 0) {
         new_byte_count++;
         if (prev_old_byte == 1) {
@@ -1427,6 +1427,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
       } else if (new_byte_count > 0) {
         // anything to clean up?
         if (new_block_active && old_byte == 0) {
+          // bookkeeping
           newblock++;
           newblock_bytes_histogram[new_byte_count]++;
         } else if (new_block_active && old_byte == 1) {
@@ -1445,7 +1446,6 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
 
         new_byte_count = 0;
       }
-      prev_new_byte = new_byte;
       prev_old_byte = old_byte;
       curr_bp++;
     }
@@ -1603,7 +1603,7 @@ void VCL_CACHE::operate_buffer_evictions()
     }
     uint8_t min_start = 0;
     active_inserts = blocks.size() / 2 + 1;
-    for (int i = 0; i < blocks.size(); i++) {
+    for (size_t i = 0; i < blocks.size(); i++) {
       if (i % 2 != 0) {
         continue; // Hole, not accessed. // or: already in cache
       }
@@ -1619,7 +1619,6 @@ void VCL_CACHE::operate_buffer_evictions()
       if (block_size + block_start > BLOCK_SIZE) {
         block_size = BLOCK_SIZE - block_start;
       }
-      uint8_t block_end = block_start + block_size;
       auto first_inv = std::find_if_not(set_begin, set_end, is_valid_size<BLOCK>(block_size));
       uint32_t way = std::distance(set_begin, first_inv);
       if (way == NUM_WAY) {
@@ -1631,7 +1630,7 @@ void VCL_CACHE::operate_buffer_evictions()
         block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
       }
       uint8_t first_way = 0;
-      for (int i = way; i < NUM_WAY; i++) {
+      for (uint32_t i = way; i < NUM_WAY; i++) {
         if (way_sizes[i] < block_size)
           continue;
         first_way = i;
@@ -2123,7 +2122,6 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   }
   TOTAL_CACHELINES++;
   bool evicting_dirty = (lower_level != NULL) && fill_block.dirty;
-  uint64_t evicting_address = 0;
   if (evicting_dirty) {
     PACKET writeback_packet;
 
@@ -2139,11 +2137,6 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
     if (result == -2)
       return false;
   }
-
-  if (ever_seen_data)
-    evicting_address = fill_block.address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
-  else
-    evicting_address = fill_block.v_address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
 
   if (fill_block.prefetch)
     pf_useless++;
