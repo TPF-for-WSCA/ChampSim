@@ -7,8 +7,8 @@
 #define MAX_PFETCHQ_ENTRIES 128
 #define MAX_RECENT_PFETCH 32
 
-std::deque<uint64_t> prefetch_queue;    // Storage: 64-bits * 48 (queue size) = 384 bytes
-std::deque<uint64_t> recent_prefetches; // Storage: 64-bits * 10 (queue size) = 80 bytes
+std::deque<std::pair<uint64_t, uint64_t>> prefetch_queue; // Storage: 64-bits * 48 (queue size) = 384 bytes
+std::deque<uint64_t> recent_prefetches;                   // Storage: 64-bits * 10 (queue size) = 80 bytes
 
 void O3_CPU::prefetcher_initialize() {}
 
@@ -18,11 +18,11 @@ void O3_CPU::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_
   if (block_addr == 0)
     return;
 
-  std::deque<uint64_t>::iterator it = std::find(prefetch_queue.begin(), prefetch_queue.end(), block_addr);
+  auto it = std::find_if(prefetch_queue.begin(), prefetch_queue.end(), [block_addr](std::pair<uint64_t, uint64_t> x) { return block_addr == x.first; });
   if (it == prefetch_queue.end()) {
     std::deque<uint64_t>::iterator it1 = std::find(recent_prefetches.begin(), recent_prefetches.end(), block_addr);
     if (it1 == recent_prefetches.end()) {
-      prefetch_queue.push_back(block_addr);
+      prefetch_queue.push_back({block_addr, ip});
     }
   }
 }
@@ -39,16 +39,21 @@ uint32_t O3_CPU::prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, ui
 
 void O3_CPU::prefetcher_cycle_operate()
 {
-  if (prefetch_queue.size()) {
+  while (prefetch_queue.size()) {
 #define L1I (static_cast<CACHE*>(L1I_bus.lower_level))
     if (L1I->get_occupancy(0, 0) < L1I->MSHR_SIZE >> 1) {
-      prefetch_code_line(prefetch_queue.front());
-      recent_prefetches.push_back(prefetch_queue.front());
+      if (L1I->hit_test(prefetch_queue.front().first)) {
+        prefetch_queue.pop_front();
+        continue;
+      }
+      prefetch_code_line(prefetch_queue.front().second);
+      recent_prefetches.push_back(prefetch_queue.front().second);
       if (recent_prefetches.size() > MAX_RECENT_PFETCH) {
         recent_prefetches.pop_front();
       }
       prefetch_queue.pop_front();
     }
+    return;
   }
 }
 

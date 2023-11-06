@@ -48,6 +48,22 @@ struct eq_addr {
 };
 
 template <typename T>
+struct eq_v_addr {
+  using argument_type = T;
+  const decltype(argument_type::v_address) val;
+  const std::size_t shamt = 0;
+
+  explicit eq_v_addr(decltype(argument_type::v_address) val) : val(val) {}
+  eq_v_addr(decltype(argument_type::v_address) val, std::size_t shamt) : val(val), shamt(shamt) {}
+
+  bool operator()(const argument_type& test)
+  {
+    is_valid<argument_type> validtest;
+    return validtest(test) && (test.v_address >> shamt) == (val >> shamt);
+  }
+};
+
+template <typename T>
 struct eq_vcl_addr {
   using argument_type = T;
   const decltype(argument_type::address) val;

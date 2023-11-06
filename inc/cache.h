@@ -31,7 +31,7 @@
 #define WQUEUE 2
 #define PQUEUE 3
 
-#define BLOCK_ENDING_BRANCH(bt) (bt == BRANCH_DIRECT_CALL || bt == BRANCH_RETURN)
+#define BLOCK_ENDING_BRANCH(bt) (bt == BRANCH_DIRECT_CALL || bt == BRANCH_RETURN || bt == BRANCH_INDIRECT_CALL)
 
 typedef unsigned long ulong;
 typedef std::pair<uint8_t, uint8_t> SUBSET;
@@ -125,6 +125,7 @@ protected:
 public:
   bool filter_inserts;
   bool filter_prefetches;
+  virtual bool hit_test(uint64_t addr);
   size_t filter_buffer_size;
   size_t prefetch_buffer_size;
   std::deque<PACKET> FILTER_BUFFER;
@@ -201,6 +202,8 @@ public:
 
   uint32_t get_tag(uint64_t address);
   uint32_t get_set(uint64_t address);
+  virtual uint32_t get_vway(uint64_t vaddr, uint32_t set);
+  virtual uint32_t get_way(uint64_t addr, uint32_t set);
   virtual uint32_t get_way(PACKET& packet, uint32_t set);
 
   // int invalidate_entry(uint64_t inval_addr);  // NOTE: As of this commit no-one used this function - needs to be adjusted to use a PACKET instead of a
@@ -401,6 +404,8 @@ public:
     overlap_bytes_history.reserve(WRITE_BUFFER_SIZE);
     current_overlap = 0;
   }
+  virtual bool hit_test(uint64_t addr) override;
+
   virtual int add_rq(PACKET* packet) override;
   virtual int add_wq(PACKET* packet) override;
   virtual int add_pq(PACKET* packet) override;
@@ -426,7 +431,7 @@ public:
   /// @param tag The tag to look up
   /// @param set The set that we search for the tag
   /// @return Vector of way indexes
-  std::vector<uint32_t> get_way(uint32_t tag, uint32_t set);
+  std::vector<uint32_t> get_way(uint32_t tag, uint32_t set, bool is_virtual = false);
   BLOCK* probe_buffer(PACKET& packet, uint32_t set);
   void handle_fill_from_buffer(BLOCK& b, uint32_t set);
 

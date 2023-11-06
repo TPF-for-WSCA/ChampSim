@@ -320,6 +320,13 @@ std::deque<PACKET>::iterator CACHE::probe_filter_buffer(uint64_t access_address,
   return hit_block;
 }
 
+bool CACHE::hit_test(uint64_t addr)
+{
+  auto set = get_set(addr);
+  auto way = get_vway(addr, set);
+  return way < NUM_WAY;
+}
+
 void CACHE::handle_read()
 {
   while (reads_available_this_cycle > 0) {
@@ -914,12 +921,21 @@ void CACHE::operate_reads()
 uint32_t CACHE::get_tag(uint64_t address) { return ((address >> OFFSET_BITS)); }
 uint32_t CACHE::get_set(uint64_t address) { return ((address >> OFFSET_BITS) & bitmask(lg2(NUM_SET))); }
 
-uint32_t CACHE::get_way(PACKET& packet, uint32_t set)
+uint32_t CACHE::get_vway(uint64_t vaddr, uint32_t set)
 {
   auto begin = std::next(block.begin(), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
-  return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(packet.address, OFFSET_BITS)));
+  return std::distance(begin, std::find_if(begin, end, eq_v_addr<BLOCK>(vaddr, OFFSET_BITS)));
 }
+
+uint32_t CACHE::get_way(uint64_t addr, uint32_t set)
+{
+  auto begin = std::next(block.begin(), set * NUM_WAY);
+  auto end = std::next(begin, NUM_WAY);
+  return std::distance(begin, std::find_if(begin, end, eq_addr<BLOCK>(addr, OFFSET_BITS)));
+}
+
+uint32_t CACHE::get_way(PACKET& packet, uint32_t set) { return get_way(packet.address, set); }
 // NOTE: As of this commit no-one used this function - needs to be adjusted to use a PACKET instead of a
 // uint64_t to support vcl cache
 // int CACHE::invalidate_entry(uint64_t inval_addr)
@@ -1612,7 +1628,8 @@ void VCL_CACHE::operate_buffer_evictions()
       uint8_t block_start = std::max(min_start, blocks[i].first);
       size_t block_size = blocks[i].second - block_start + 1;
       uint64_t ip = merge_block.v_address + block_start;
-      while (extend_blocks_to_branch && block_start + block_size < BLOCK_SIZE && ooo_cpu[merge_block.cpu]->impl_is_block_ending_branch(ip)) {
+      while (warmup_complete[merge_block.cpu] && extend_blocks_to_branch && block_start + block_size < BLOCK_SIZE
+             && ooo_cpu[merge_block.cpu]->impl_is_block_ending_branch(ip)) {
         ip += 4;
         block_size += 4;
       }
@@ -1792,7 +1809,7 @@ uint8_t VCL_CACHE::hit_check(uint32_t& set, uint32_t& way, uint64_t& address, ui
   return -1;
 }
 
-std::vector<uint32_t> VCL_CACHE::get_way(uint32_t tag, uint32_t set)
+std::vector<uint32_t> VCL_CACHE::get_way(uint32_t tag, uint32_t set, bool is_virtual)
 {
   auto begin = std::next(block.begin(), set * NUM_WAY);
   auto end = std::next(begin, NUM_WAY);
@@ -1802,9 +1819,12 @@ std::vector<uint32_t> VCL_CACHE::get_way(uint32_t tag, uint32_t set)
 
   uint32_t way = 0;
   while (begin < end) {
+    auto curr_tag = get_tag(begin->address);
+    if (is_virtual)
+      curr_tag = get_tag(begin->v_address);
     if (!begin->valid)
       goto next;
-    if (get_tag(begin->address) != tag)
+    if (curr_tag != tag)
       goto next;
     // hit: tag matched
     ways.push_back(way);
@@ -1846,6 +1866,23 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
   if (found_tag)
     packet.partial = true;
   return NUM_WAY; // we did not find a way
+}
+
+bool VCL_CACHE::hit_test(uint64_t addr)
+{
+  if (buffer && buffer_cache.hit_test(addr)) {
+    return true;
+  }
+  auto set = get_set(addr);
+  auto way = get_way(get_tag(addr), set, true);
+  auto offset = addr % BLOCK_SIZE;
+  for (auto w : way) {
+    BLOCK& b = block[set * NUM_WAY + w];
+    if (b.offset <= offset && offset < b.offset + b.size) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void VCL_CACHE::handle_read()
