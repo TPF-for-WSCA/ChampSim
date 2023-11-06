@@ -551,7 +551,7 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
   return true;
 }
 
-void CACHE::record_block_insert_removal(int set, int way, uint64_t address, bool warmup_completed)
+void CACHE::record_block_insert_removal(int set, uint32_t way, uint64_t address, bool warmup_completed)
 {
   BLOCK& repl_block = block[set * NUM_WAY + way];
   if (!repl_block.valid) {
@@ -1612,7 +1612,7 @@ void VCL_CACHE::operate_buffer_evictions()
       uint8_t block_start = std::max(min_start, blocks[i].first);
       size_t block_size = blocks[i].second - block_start + 1;
       uint64_t ip = merge_block.v_address + block_start;
-      while (block_start + block_size < BLOCK_SIZE && ooo_cpu[merge_block.cpu]->impl_is_block_ending_branch(ip)) {
+      while (extend_blocks_to_branch && block_start + block_size < BLOCK_SIZE && ooo_cpu[merge_block.cpu]->impl_is_block_ending_branch(ip)) {
         ip += 4;
         block_size += 4;
       }
