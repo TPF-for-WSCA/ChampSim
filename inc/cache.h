@@ -359,6 +359,8 @@ class VCL_CACHE : public CACHE
 
 private:
   bool aligned = false; // should the blocks be aligned to the way size?
+  bool extend_blocks_to_branch;
+
   uint8_t* way_sizes;
   uint32_t buffer_sets = 0;
   uint32_t buffer_ways = 0;
@@ -373,10 +375,10 @@ public:
             bool buffer_fifo, bool aligned, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read,
             uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll,
             pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, CountBlockMethod method, BufferHistory history,
-            bool filter_inserts, bool filter_prefetches, size_t filter_buffer_size, size_t prefetch_buffer_size)
+            bool filter_inserts, bool filter_prefetches, size_t filter_buffer_size, size_t prefetch_buffer_size, bool extend_blocks_to_branch)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl, method, lru_modifier, filter_inserts, filter_prefetches, filter_buffer_size, prefetch_buffer_size),
-        aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation),
+        aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation), extend_blocks_to_branch(extend_blocks_to_branch),
         buffer_cache(BUFFER_CACHE((v1 + "_buffer"), freq_scale, fill_level,
                                   (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? 1 : buffer_sets / buffer_organisation,
                                   (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : buffer_organisation, 0,
