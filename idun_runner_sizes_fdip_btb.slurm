@@ -16,7 +16,7 @@ module load Python/3.9.6-GCCcore-11.2.0
 #binaries=("champsim4k" "champsim8k" "champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim256k")
 #binaries=("champsim_vcl_buffer_64d_data_no_history" "champsim_vcl_buffer_64d_data_partial_h" "champsim_vcl_buffer_64d_no_history" "champsim_vcl_buffer_64d_partial_h" "champsim_vcl_buffer_64_f_data_no_history" "champsim_vcl_buffer_64_f_data_partial_h" "champsim_vcl_buffer_64_f_no_history" "champsim_vcl_buffer_64_f_partial_h" "champsim_vcl_buffer_64_lru_8w_no_history" "champsim_vcl_buffer_64_lru_8w_partial_h" "champsim_vcl_buffer_64_lru_8w_data_no_history" "champsim_vcl_buffer_64_lru_8w_data_partial_h")
 
-binaries=("champsim32k" "champsim64k" "champsim32k_fdip_btb2048" "champsim32k_fdip_btb8192" "champsim_vcl_buffer_fdip_64d" "champsim_vcl_buffer_fdip_btb2048_64d" "champsim_vcl_buffer_fdip_btb8192_64d" "champsim_vcl_buffer_64d") 
+binaries=("champsim32k" "champsim64k" "champsim32k_fdip_btb2048" "champsim32k_fdip_btb8192" "champsim_vcl_buffer_fdip_64d" "champsim_vcl_buffer_fdip_btb2048_64d" "champsim_vcl_buffer_fdip_btb8192_64d" "champsim_vcl_buffer_fdip_extend_64d") 
 #binaries=("champsim32k" "champsim64k" "champsim_simple_vcl_buffer_64_lru_8w")
 
 for binary in ${binaries[@]}
