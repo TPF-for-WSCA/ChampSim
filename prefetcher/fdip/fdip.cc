@@ -31,7 +31,7 @@ void O3_CPU::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_
 uint32_t O3_CPU::prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit, uint32_t metadata_in)
 {
 #define L1I (static_cast<CACHE*>(L1I_bus.lower_level))
-  if ((cache_hit == 0) && (L1I->get_occupancy(0, 0) < L1I->MSHR_SIZE - L1I->MAX_READ)) {
+  if ((cache_hit == 0) && (L1I->get_occupancy(0, 0) < L1I->MSHR_SIZE >> 1)) {
     uint64_t pf_addr = v_addr + (1 << LOG2_BLOCK_SIZE);
     prefetch_code_line(pf_addr);
   }
@@ -42,13 +42,16 @@ void O3_CPU::prefetcher_cycle_operate()
 {
   while (prefetch_queue.size()) {
 #define L1I (static_cast<CACHE*>(L1I_bus.lower_level))
-    if (L1I->get_occupancy(0, 0) < L1I->MSHR_SIZE - L1I->MAX_READ) {
-      if (L1I->hit_test(std::get<0>(prefetch_queue.front()), std::get<2>(prefetch_queue.front()))) {
+    if (L1I->get_occupancy(0, 0) < L1I->MSHR_SIZE >> 1) {
+      auto it = std::find(recent_prefetches.begin(), recent_prefetches.end(), ((std::get<1>(prefetch_queue.front()) >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE));
+      if (L1I->hit_test(std::get<1>(prefetch_queue.front()), std::get<2>(prefetch_queue.front()))) {
         prefetch_queue.pop_front();
         continue;
       }
-      prefetch_code_line(std::get<0>(prefetch_queue.front()));
-      recent_prefetches.push_back(std::get<0>(prefetch_queue.front()));
+      if (it == recent_prefetches.end()) {
+        prefetch_code_line(std::get<0>(prefetch_queue.front()));
+        recent_prefetches.push_back(std::get<0>(prefetch_queue.front()));
+      }
       if (recent_prefetches.size() > MAX_RECENT_PFETCH) {
         recent_prefetches.pop_front();
       }
