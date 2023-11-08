@@ -564,7 +564,7 @@ void CACHE::record_block_insert_removal(int set, uint32_t way, uint64_t address,
   BLOCK& repl_block = block[set * NUM_WAY + way];
   if (!repl_block.valid) {
     num_invalid_blocks_in_cache--;
-  } else if (warmup_complete) {
+  } else if (warmup_completed) {
     uint8_t covered_percentage = std::floor(100.0 * repl_block.last_modified_access / repl_block.accesses);
     cl_accesses_percentage_of_presence_covered[covered_percentage - 1]++;
     cl_num_accesses_to_complete_profile_buffer.push_back(repl_block.last_modified_access);
@@ -627,7 +627,7 @@ void CACHE::record_block_insert_removal(int set, uint32_t way, uint64_t address,
     std::cout << "FOUND " << addresses.size() << " DISTINCT VALID CACHELINES" << std::endl;
     assert(0);
   }
-  if (warmup_complete) {
+  if (warmup_completed) {
     cl_blocks_in_cache_buffer.push_back(num_blocks_in_cache);
     cl_invalid_blocks_in_cache_buffer.push_back(num_invalid_blocks_in_cache);
   }
@@ -1709,6 +1709,7 @@ void VCL_CACHE::handle_fill()
       MSHR.erase(fill_mshr);
       if (PREFETCH_BUFFER.size() > filter_buffer_size) {
         PREFETCH_BUFFER.pop_back();
+        pf_useless++;
       }
       continue;
     } else if (filter_inserts && not buffer) { // otherwise this is handled by the buffer cache
@@ -1969,6 +1970,7 @@ void VCL_CACHE::handle_read()
     } else if (filter_prefetches && prefetch_buffer_hit != PREFETCH_BUFFER.end()) {
       PACKET p = *prefetch_buffer_hit;
       PREFETCH_BUFFER.erase(prefetch_buffer_hit);
+      pf_useful++;
       readlike_hit(p, handle_pkt);
       handle_packet_insert_from_buffer(p);
     }
