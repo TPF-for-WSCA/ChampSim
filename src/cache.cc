@@ -1878,7 +1878,9 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
 
 bool VCL_CACHE::hit_test(uint64_t addr, uint8_t size)
 {
-  assert(size > 0);
+  if (size == 0) {
+    std::cerr << "GOT A 0 BYTE INSTRUCTION" << std::endl;
+  }
   if (buffer && buffer_cache.hit_test(addr, size)) {
     return true;
   }
