@@ -125,7 +125,7 @@ protected:
 public:
   bool filter_inserts;
   bool filter_prefetches;
-  virtual bool hit_test(uint64_t addr);
+  virtual bool hit_test(uint64_t addr, uint8_t size);
   size_t filter_buffer_size;
   size_t prefetch_buffer_size;
   std::deque<PACKET> FILTER_BUFFER;
@@ -404,7 +404,7 @@ public:
     overlap_bytes_history.reserve(WRITE_BUFFER_SIZE);
     current_overlap = 0;
   }
-  virtual bool hit_test(uint64_t addr) override;
+  virtual bool hit_test(uint64_t addr, uint8_t size) override;
 
   virtual int add_rq(PACKET* packet) override;
   virtual int add_wq(PACKET* packet) override;

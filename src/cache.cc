@@ -320,7 +320,7 @@ std::deque<PACKET>::iterator CACHE::probe_filter_buffer(uint64_t access_address,
   return hit_block;
 }
 
-bool CACHE::hit_test(uint64_t addr)
+bool CACHE::hit_test(uint64_t addr, uint8_t size)
 {
   auto set = get_set(addr);
   auto way = get_vway(addr, set);
@@ -1876,17 +1876,25 @@ uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
   return NUM_WAY; // we did not find a way
 }
 
-bool VCL_CACHE::hit_test(uint64_t addr)
+bool VCL_CACHE::hit_test(uint64_t addr, uint8_t size)
 {
-  if (buffer && buffer_cache.hit_test(addr)) {
+  assert(size > 0);
+  if (buffer && buffer_cache.hit_test(addr, size)) {
     return true;
+  }
+  if (buffer) {
+    uint32_t tag = get_tag(addr);
+    for (auto it = buffer_cache.merge_block.begin(); it != buffer_cache.merge_block.end(); it++) {
+      if (tag == get_tag(it->v_address))
+        return true;
+    }
   }
   auto set = get_set(addr);
   auto way = get_way(get_tag(addr), set, true);
   auto offset = addr % BLOCK_SIZE;
   for (auto w : way) {
     BLOCK& b = block[set * NUM_WAY + w];
-    if (b.offset <= offset && offset < b.offset + b.size) {
+    if (b.offset <= offset && offset < b.offset + b.size && offset + size - 1 < b.offset + b.size) {
       return true;
     }
   }

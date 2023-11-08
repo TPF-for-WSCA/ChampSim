@@ -556,9 +556,9 @@ with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     #wfp.write('\n}\n')
     wfp.write('\n')
 
-    wfp.write('\n'.join('void {1}(uint64_t, uint8_t, uint64_t);'.format(*i) for i in ipref_branch_ops))
-    wfp.write('\nvoid impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)\n{\n    ')
-    wfp.write('\n    '.join('if (ipref_type == ipref_t::{}) return {}(ip, branch_type, branch_target);'.format(*i) for i in ipref_branch_ops))
+    wfp.write('\n'.join('void {1}(uint64_t, uint8_t, uint64_t, uint8_t);'.format(*i) for i in ipref_branch_ops))
+    wfp.write('\nvoid impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target, uint8_t size = 4)\n{\n    ')
+    wfp.write('\n    '.join('if (ipref_type == ipref_t::{}) return {}(ip, branch_type, branch_target, size);'.format(*i) for i in ipref_branch_ops))
     wfp.write('\n    throw std::invalid_argument("Instruction prefetcher module not found");')
     wfp.write('\n}\n')
     wfp.write('\n')

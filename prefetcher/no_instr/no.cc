@@ -2,7 +2,7 @@
 
 void O3_CPU::prefetcher_initialize() {}
 
-void O3_CPU::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) {}
+void O3_CPU::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target, uint8_t size) {}
 
 uint32_t O3_CPU::prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit, uint32_t metadata_in) { return metadata_in; }
 
