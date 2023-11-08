@@ -16,14 +16,14 @@ module load Python/3.9.6-GCCcore-11.2.0
 #binaries=("champsim4k" "champsim8k" "champsim16k" "champsim32k" "champsim64k" "champsim128k" "champsim256k")
 #binaries=("champsim_vcl_buffer_64d_data_no_history" "champsim_vcl_buffer_64d_data_partial_h" "champsim_vcl_buffer_64d_no_history" "champsim_vcl_buffer_64d_partial_h" "champsim_vcl_buffer_64_f_data_no_history" "champsim_vcl_buffer_64_f_data_partial_h" "champsim_vcl_buffer_64_f_no_history" "champsim_vcl_buffer_64_f_partial_h" "champsim_vcl_buffer_64_lru_8w_no_history" "champsim_vcl_buffer_64_lru_8w_partial_h" "champsim_vcl_buffer_64_lru_8w_data_no_history" "champsim_vcl_buffer_64_lru_8w_data_partial_h")
 
-binaries=("champsim32k" "champsim64k" "champsim128k" "champsim32k_fdip_btb2048" "champsim32k_fdip_btb8192" "champsim_vcl_buffer_fdip_64d" "champsim_vcl_buffer_fdip_btb2048_64d" "champsim_vcl_buffer_fdip_btb8192_64d" "champsim_vcl_buffer_fdip_extend_64d") 
+binaries=("champsim32k" "champsim64k" "champsim128k" "champsim_vcl_buffer_fdip_64d" "champsim_vcl_buffer_fdip_btb2048_64d" "champsim_vcl_buffer_fdip_btb8192_64d" "champsim_vcl_buffer_fdip_extend_64d") 
 #binaries=("champsim32k" "champsim64k" "champsim_simple_vcl_buffer_64_lru_8w")
 
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/spec --nosub --output_dir /cluster/work/romankb/results/fdip_btb_analysis3/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec_${binary}.log & # We got spec in dpc3
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/server --nosub --output_dir /cluster/work/romankb/results/fdip_btb_analysis3/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server_${binary}.log &
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/client --nosub --output_dir /cluster/work/romankb/results/fdip_btb_analysis3/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client_${binary}.log &
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/spec --nosub --output_dir /cluster/work/romankb/results/fdip_btb_analysis4/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec_${binary}.log & # We got spec in dpc3
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/server --nosub --output_dir /cluster/work/romankb/results/fdip_btb_analysis4/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server_${binary}.log &
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/client --nosub --output_dir /cluster/work/romankb/results/fdip_btb_analysis4/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client_${binary}.log &
 done
 
 for job in `jobs -p`
