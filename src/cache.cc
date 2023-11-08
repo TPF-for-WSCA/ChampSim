@@ -506,6 +506,7 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
       mshr_entry->partial = true;
     }
 
+    // NOTE: HERE we introduce "not so bad misses" that still appear in the miss statistic, but are actually already served by the prefetch.
     if (mshr_entry->type == PREFETCH && handle_pkt.type != PREFETCH) {
       // Mark the prefetch as useful
       if (mshr_entry->pf_origin_level == fill_level)
@@ -1378,7 +1379,11 @@ void BUFFER_CACHE::print_private_stats()
   std::cout << "PARTIAL WITHOUT HIT ON INSERT: " << std::setw(10) << partial_without_hit << std::endl;
 }
 
-void BUFFER_CACHE::record_duration(BLOCK& block) { duration_in_buffer[block.time_present] += 1; }
+void BUFFER_CACHE::record_duration(BLOCK& block)
+{
+  if (warmup_complete[block.cpu])
+    duration_in_buffer[block.time_present] += 1;
+}
 void BUFFER_CACHE::update_duration()
 {
   for (BLOCK& b : block) {
@@ -1678,6 +1683,9 @@ void VCL_CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
   if (buffer) {
     if (!buffer_cache.fill_miss(pkt, *this))
       return;
+  } else {
+    // TODO: Insert into main predictor way/cache arrary
+    assert(0);
   }
 }
 
