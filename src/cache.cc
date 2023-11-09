@@ -117,6 +117,21 @@ void CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
     return;
 }
 
+void CACHE::insert_prefetch_buffer(PACKET& p)
+{
+  uint64_t block_addr = p.v_address >> OFFSET_BITS << OFFSET_BITS;
+  uint8_t offset = OFFSET_BITS;
+  auto it = std::find_if(PREFETCH_BUFFER.begin(), PREFETCH_BUFFER.end(),
+                         [block_addr, offset](const PACKET& x) { return (x.v_address >> offset << offset) == block_addr; });
+  if (it == PREFETCH_BUFFER.end()) {
+    PREFETCH_BUFFER.push_front(p);
+  }
+  if (PREFETCH_BUFFER.size() > prefetch_buffer_size) {
+    pf_useless++;
+    PREFETCH_BUFFER.pop_back();
+  }
+}
+
 void CACHE::handle_fill()
 {
 
@@ -130,11 +145,9 @@ void CACHE::handle_fill()
     bool insert_in_cycle = true;
 
     if (filter_prefetches && fill_packet.type == PREFETCH) {
-      PREFETCH_BUFFER.push_front(fill_packet);
+      insert_prefetch_buffer(fill_packet);
       MSHR.erase(fill_mshr);
-      if (PREFETCH_BUFFER.size() > prefetch_buffer_size) {
-        PREFETCH_BUFFER.pop_back();
-      }
+      writes_available_this_cycle--;
       continue;
     } else if (filter_inserts) {
       FILTER_BUFFER.push_front((*fill_mshr));
@@ -1705,12 +1718,9 @@ void VCL_CACHE::handle_fill()
     PACKET& fill_packet = (*fill_mshr);
 
     if (filter_prefetches && fill_packet.type == PREFETCH) {
-      PREFETCH_BUFFER.push_front(fill_packet);
+      insert_prefetch_buffer(fill_packet);
       MSHR.erase(fill_mshr);
-      if (PREFETCH_BUFFER.size() > filter_buffer_size) {
-        PREFETCH_BUFFER.pop_back();
-        pf_useless++;
-      }
+      writes_available_this_cycle--;
       continue;
     } else if (filter_inserts && not buffer) { // otherwise this is handled by the buffer cache
       FILTER_BUFFER.push_front(fill_packet);
