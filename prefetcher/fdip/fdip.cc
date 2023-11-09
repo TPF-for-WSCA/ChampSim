@@ -52,6 +52,7 @@ void O3_CPU::prefetcher_cycle_operate()
         prefetch_code_line(std::get<0>(prefetch_queue.front()));
         recent_prefetches.push_back(std::get<0>(prefetch_queue.front()));
       } else {
+        std::cout << "recent prefetch skip" << std::endl;
         continue;
       }
       if (recent_prefetches.size() > MAX_RECENT_PFETCH) {
