@@ -337,6 +337,9 @@ bool CACHE::hit_test(uint64_t addr, uint8_t size)
 {
   auto set = get_set(addr);
   auto way = get_vway(addr, set);
+  if (way == NUM_WAY) {
+    way = get_way(addr, set);
+  }
   return way < NUM_WAY;
 }
 
