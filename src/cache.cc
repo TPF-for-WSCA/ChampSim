@@ -146,9 +146,7 @@ void CACHE::handle_fill()
 
     if (filter_prefetches && fill_packet.type == PREFETCH) {
       insert_prefetch_buffer(fill_packet);
-      MSHR.erase(fill_mshr);
-      writes_available_this_cycle--;
-      continue;
+      goto inserted;
     } else if (filter_inserts) {
       FILTER_BUFFER.push_front((*fill_mshr));
       if (FILTER_BUFFER.size() > filter_buffer_size) {
@@ -199,6 +197,8 @@ void CACHE::handle_fill()
             ret->return_data(&insertion_candidate);
       }
     }
+
+  inserted:
 
     MSHR.erase(fill_mshr);
     writes_available_this_cycle--;
@@ -1717,31 +1717,26 @@ void VCL_CACHE::handle_fill()
 
     PACKET& fill_packet = (*fill_mshr);
 
-    if (filter_prefetches && fill_packet.type == PREFETCH) {
-      insert_prefetch_buffer(fill_packet);
-      MSHR.erase(fill_mshr);
-      writes_available_this_cycle--;
-      continue;
-    } else if (filter_inserts && not buffer) { // otherwise this is handled by the buffer cache
-      FILTER_BUFFER.push_front(fill_packet);
-      writes_available_this_cycle--;
-      MSHR.erase(fill_mshr);
-      if (FILTER_BUFFER.size() > filter_buffer_size) {
-        fill_packet = FILTER_BUFFER.back();
-        FILTER_BUFFER.pop_back();
-        if (fill_packet.type == PREFETCH)
-          continue;
-      } else {
-        continue;
-      }
-    }
-
     uint32_t set = get_set(fill_packet.address);
     uint8_t num_blocks_to_write = 1;
 
     uint64_t orig_addr = fill_packet.address;
     uint64_t orig_vaddr = fill_packet.v_address;
     uint64_t orig_size = fill_packet.size;
+    if (filter_prefetches && fill_packet.type == PREFETCH) {
+      insert_prefetch_buffer(fill_packet);
+      goto inserted_return_data;
+    } else if (filter_inserts && not buffer) { // otherwise this is handled by the buffer cache
+      FILTER_BUFFER.push_front(fill_packet);
+      if (FILTER_BUFFER.size() > filter_buffer_size) {
+        fill_packet = FILTER_BUFFER.back();
+        FILTER_BUFFER.pop_back();
+        if (fill_packet.type == PREFETCH)
+          goto inserted_return_data;
+      } else {
+        goto inserted_return_data;
+      }
+    }
 
     if (buffer) {
       if (!buffer_cache.fill_miss(*fill_mshr, *this))
@@ -1798,6 +1793,7 @@ void VCL_CACHE::handle_fill()
     fill_mshr->v_address = orig_vaddr;
     fill_mshr->size = orig_size;
     // data must already be copied in from above serviced
+  inserted_return_data:
     for (auto ret : fill_mshr->to_return)
       ret->return_data(&(*fill_mshr));
     MSHR.erase(fill_mshr);
