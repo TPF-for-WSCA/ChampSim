@@ -197,7 +197,11 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   }
 
   // add this instruction to the IFETCH_BUFFER
-
+  if (prev_was_branch and not arch_instr.is_branch) {
+    // call code prefetcher for every instruction (optimisation for vcl)
+    impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, arch_instr.ip + 4, arch_instr.size);
+    prev_was_branch = false;
+  }
   // handle branch prediction
   uint64_t predicted_branch_target = 0;
   if (arch_instr.is_branch) {
@@ -235,11 +239,12 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
     impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+    // call code prefetcher for every instruction (optimisation for vcl)
+    impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target, arch_instr.size);
+    prev_was_branch = true;
   }
 
   arch_instr.event_cycle = current_cycle;
-  // call code prefetcher for every instruction (optimisation for vcl)
-  impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target, arch_instr.size);
 
   // fast warmup eliminates register dependencies between instructions
   // branch predictor, cache contents, and prefetchers are still warmed up

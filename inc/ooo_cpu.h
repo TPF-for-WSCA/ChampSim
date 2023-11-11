@@ -38,6 +38,7 @@ private:
   size_t BTB_SETS;
   size_t BTB_WAYS;
   BASIC_BTB_ENTRY* basic_btb;
+  bool prev_was_branch = false;
 
 public:
   uint32_t cpu = 0;
