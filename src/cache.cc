@@ -335,12 +335,20 @@ std::deque<PACKET>::iterator CACHE::probe_filter_buffer(uint64_t access_address,
 
 bool CACHE::hit_test(uint64_t addr, uint8_t size)
 {
+  auto test_tag = get_tag(addr);
   auto set = get_set(addr);
   auto way = get_vway(addr, set);
   if (way == NUM_WAY) {
     way = get_way(addr, set);
     if (way < NUM_WAY) {
       std::cout << "oops this was a translated prefetch" << std::endl;
+    }
+  }
+  if (way == NUM_WAY) {
+    for (auto it = PREFETCH_BUFFER.begin(); it != PREFETCH_BUFFER.end(); it++) {
+      if (get_tag(it->v_address) == test_tag or get_tag(it->address) == test_tag) {
+        return true;
+      }
     }
   }
   return way < NUM_WAY;
@@ -1910,6 +1918,12 @@ bool VCL_CACHE::hit_test(uint64_t addr, uint8_t size)
   for (auto w : way) {
     BLOCK& b = block[set * NUM_WAY + w];
     if (b.offset <= offset && offset < b.offset + b.size && offset + size - 1 < b.offset + b.size) {
+      return true;
+    }
+  }
+  auto test_tag = get_tag(addr);
+  for (auto it = PREFETCH_BUFFER.begin(); it != PREFETCH_BUFFER.end(); it++) {
+    if (get_tag(it->v_address) == test_tag or get_tag(it->address) == test_tag) {
       return true;
     }
   }
