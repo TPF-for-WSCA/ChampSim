@@ -1582,9 +1582,9 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
     int prev_size = way_sizes[end_way];
     while (end_way < NUM_WAY && count_sizes < num_way_bound) {
       if (prev_size != way_sizes[end_way]) {
-        count_sizes++;
         prev_size = way_sizes[end_way];
       }
+      count_sizes++;
       end_way++;
     }
     endofset = current_set + end_way;
