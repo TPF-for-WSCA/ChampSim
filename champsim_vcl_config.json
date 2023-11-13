@@ -40,20 +40,22 @@
     },
     "L1I": {
         "sets": 64,
-        "ways": 13,
+        "ways": 16,
         "buffer": true,
         "buffer_size": 64,
         "buffer_organisation": "DIRECT_MAPPED",
         "way_sizes": [
             4,
+            4,
             8,
             8,
-            16,
+            12,
+            12,
             20,
-            28,
+            24,
             32,
             36,
-            36,
+            40,
             48,
             64,
             64,
@@ -73,9 +75,9 @@
         "filter_inserts": false,
         "filter_prefetches": true,
         "prefetch_buffer_size": 16,
-        "lru_modifier": "LRU2BOUND4",
+        "lru_modifier": "DEFAULT",
         "counting_block_method": "SUM_ACCESSES",
-        "extend_blocks_to_branch": true
+        "extend_blocks_to_branch": false
     },
     "L1D": {
         "perfect": false,
