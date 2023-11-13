@@ -228,7 +228,7 @@ public:
   void readlike_hit(PACKET& buffer_hit, PACKET& handle_pkt);
   void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
   virtual bool readlike_miss(PACKET& handle_pkt);
-  virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt);
+  virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, bool treat_like_hit = false);
 
   bool should_activate_prefetcher(int type);
 
@@ -422,7 +422,7 @@ public:
   // virtual void handle_prefetch() override;
   // virtual bool readlike_miss(PACKET& handle_pkt) override;
   void buffer_hit(BLOCK& b, PACKET& handle_pkt);
-  virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt) override;
+  virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, bool treat_like_hit = false) override;
   virtual bool filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block);
   virtual void handle_writeback() override;
   // virtual void return_data(PACKET* packet) override;
