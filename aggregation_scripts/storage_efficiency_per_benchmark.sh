@@ -25,17 +25,17 @@ do
     for config in ${baseline_configs[@]}
     do
         echo "\tHandling ${config}"
-        python ~/ChampSim/aggregation_scripts/apply_merge_strategies.py ./${benchmark}/${config} storage_efficiency arm &
+        python ~/ChampSim/aggregation_scripts/apply_merge_strategies.py ./${benchmark}/${config} storage_efficiency arm 
     done
     for config in ${vcl_18_configs[@]}
     do
         echo "\tHandling ${config}"
-        python ~/ChampSim/aggregation_scripts/apply_merge_strategies.py ./${benchmark}/${config} storage_efficiency arm --vcl-configuration 4 4 4 4 8 8 8 8 12 16 20 32 36 36 48 64 64 64 &
+        python ~/ChampSim/aggregation_scripts/apply_merge_strategies.py ./${benchmark}/${config} storage_efficiency arm --vcl-configuration 4 4 4 4 8 8 8 8 12 16 20 32 36 36 48 64 64 64 
     done
     for config in ${vcl_16_configs[@]}
     do
         echo "\tHandling ${config}"
-        python ~/ChampSim/aggregation_scripts/apply_merge_strategies.py ./${benchmark}/${config} storage_efficiency arm --vcl-configuration 4 4 8 8 12 12 20 24 32 36 40 48 64 64 64 &
+        python ~/ChampSim/aggregation_scripts/apply_merge_strategies.py ./${benchmark}/${config} storage_efficiency arm --vcl-configuration 4 4 8 8 12 12 20 24 32 36 40 48 64 64 64 
     done
 done
 

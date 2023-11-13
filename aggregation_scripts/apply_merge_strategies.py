@@ -398,8 +398,8 @@ def apply_storage_efficiency_analysis(
             min_efficiency = efficiency
 
         storage_efficiency_timeseries.append(efficiency)
-        if len(storage_efficiency_timeseries) > 1000:  # debug mode
-            break
+        # if len(storage_efficiency_timeseries) > 1000:  # debug mode
+        #     break
     if len(storage_efficiency_timeseries) == 0:
         print(
             f"WARNING: STORAGE EFFICIENCY TIME SERIES IS EMPTY AFTE RCONSUMING ENTIRE FILE @{workload_name}/@{vcl_config}",
