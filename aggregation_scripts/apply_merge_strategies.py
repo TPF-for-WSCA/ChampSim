@@ -370,7 +370,7 @@ def apply_storage_efficiency_analysis(
 ):
     # assuming 32k cache with S = 64
     tracefile_path = os.path.join(
-        tracedirectory_path, "cpu0_L1I_c_bytes_used.bin"
+        tracedirectory_path, "cpu0_L1I_cl_bytes_used.bin"
     )
     plt.rcParams.update({"font.size": 7})
 
