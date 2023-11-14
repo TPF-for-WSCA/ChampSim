@@ -94,7 +94,8 @@ enum LruModifier {
   LRUadaptiveBOUND5 = 500000,
 };
 
-enum BufferOrganisation { FULLY_ASSOCIATIVE = 0, DIRECT_MAPPED = 1, SET2_ASSOCIATIVE = 2, SET4_ASSOCIATIVE = 4, SET8_ASSOCIATIVE = 8 };
+enum BufferOrganisation { FULLY_ASSOCIATIVE = 0, DIRECT_MAPPED = 1, SET2_ASSOCIATIVE = 2, SET4_ASSOCIATIVE = 4, SET6_ASSOCIATIVE = 6, SET8_ASSOCIATIVE = 8 };
+enum CacheType { UBS, DISTILLATION };
 typedef struct cshr_entry_t {
   uint64_t victim_base_addr;
   uint64_t contender_base_addr;
@@ -369,6 +370,7 @@ private:
   uint32_t buffer_sets = 0;
   uint32_t buffer_ways = 0;
   BufferOrganisation organisation;
+  CacheType cache_type;
 
 protected:
   virtual void handle_packet_insert_from_buffer(PACKET& pkt) override;
@@ -379,7 +381,8 @@ public:
             bool buffer_fifo, bool aligned, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read,
             uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll,
             pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, CountBlockMethod method, BufferHistory history,
-            bool filter_inserts, bool filter_prefetches, size_t filter_buffer_size, size_t prefetch_buffer_size, bool extend_blocks_to_branch)
+            bool filter_inserts, bool filter_prefetches, size_t filter_buffer_size, size_t prefetch_buffer_size, bool extend_blocks_to_branch,
+            CacheType cache_type, uint8_t word_size)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl, method, lru_modifier, filter_inserts, filter_prefetches, filter_buffer_size, prefetch_buffer_size),
         aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation), extend_blocks_to_branch(extend_blocks_to_branch),
@@ -387,7 +390,8 @@ public:
                                   (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? 1 : buffer_sets / buffer_organisation,
                                   (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : buffer_organisation, 0,
                                   std::min(buffer_sets, v5), std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read,
-                                  max_write / 2, offset_bits, false, true, false, 0, ll, pref, repl_t::rreplacementDlru, method, buffer_fifo, history))
+                                  max_write / 2, offset_bits, false, true, false, 0, ll, pref, repl_t::rreplacementDlru, method, buffer_fifo, history),
+                     cache_type(cache_type))
   {
     CACHE::buffer = buffer;
     for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {

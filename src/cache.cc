@@ -1633,6 +1633,7 @@ void VCL_CACHE::operate_buffer_evictions()
     auto set_end = std::next(set_begin, NUM_WAY);
     uint64_t bytes_accessed_bitmask = merge_block.bytes_accessed;
     // TODO: extend regions to non-returning branches
+    // TODO: do we respect BufferHistory FULL_HISTORY?
     if (buffer_cache.history == BufferHistory::PARTIAL) {
       uint64_t combined_mask = merge_block.bytes_accessed | merge_block.prev_present;
       auto partialblocks = get_blockboundaries_from_mask(combined_mask);
@@ -1660,6 +1661,12 @@ void VCL_CACHE::operate_buffer_evictions()
     for (size_t i = 0; i < blocks.size(); i++) {
       if (i % 2 != 0) {
         continue; // Hole, not accessed. // or: already in cache
+      }
+      if (cache_type == CacheType::DISTILLATION) {
+        uint8_t block_start = blocks[i].first;
+        uint8_t block_end = blocks[i].second;
+        for (; block_start < block_end; block_start += word_size) {
+        }
       }
       if (min_start > blocks[i].second)
         continue; // already in cache: the previous block already contains that block
