@@ -335,12 +335,20 @@ std::deque<PACKET>::iterator CACHE::probe_filter_buffer(uint64_t access_address,
 
 bool CACHE::hit_test(uint64_t addr, uint8_t size)
 {
+  auto test_tag = get_tag(addr);
   auto set = get_set(addr);
   auto way = get_vway(addr, set);
   if (way == NUM_WAY) {
     way = get_way(addr, set);
     if (way < NUM_WAY) {
       std::cout << "oops this was a translated prefetch" << std::endl;
+    }
+  }
+  if (way == NUM_WAY) {
+    for (auto it = PREFETCH_BUFFER.begin(); it != PREFETCH_BUFFER.end(); it++) {
+      if (get_tag(it->v_address) == test_tag or get_tag(it->address) == test_tag) {
+        return true;
+      }
     }
   }
   return way < NUM_WAY;
@@ -787,7 +795,7 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
   blsize_ignore_holes_hist[cpu][last_accessed - first_accessed] += 1;
 }
 
-bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
+bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, bool treat_like_hit)
 {
   DP(if (warmup_complete[handle_pkt.cpu]) {
     std::cout << "[" << NAME << "] " << __func__ << " miss";
@@ -881,7 +889,10 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
   impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, FILL, 0);
 
   // COLLECT STATS
-  sim_miss[handle_pkt.cpu][handle_pkt.type]++;
+  if (treat_like_hit)
+    sim_hit[handle_pkt.cpu][handle_pkt.type]++;
+  else
+    sim_miss[handle_pkt.cpu][handle_pkt.type]++;
   sim_access[handle_pkt.cpu][handle_pkt.type]++;
   way_hits[way]++;
 
@@ -898,10 +909,13 @@ void CACHE::operate()
 
   // ONLY DO THIS ANALYSIS FOR WHAT WE NEED
   if (0 == this->NAME.compare(this->NAME.length() - 3, 3, "L1I"))
-    if (current_cycle % 100000 < 100 && warmup_complete[0]) {
+    if (current_cycle % 100000 == 0 && warmup_complete[0]) {
       uint64_t total_used_bytes = 0;
       for (auto& b : block) {
-        total_used_bytes += std::bitset<64>(b.bytes_accessed).count();
+        if (b.bytes_accessed == 0 or not b.valid)
+          continue;
+        size_t bitcount = std::bitset<64>(b.bytes_accessed).count();
+        total_used_bytes += bitcount;
       }
       used_bytes_in_cache.push_back(total_used_bytes);
       if (used_bytes_in_cache.size() > WRITE_BUFFER_SIZE) {
@@ -1574,8 +1588,8 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
     int prev_size = way_sizes[end_way];
     while (end_way < NUM_WAY && count_sizes < num_way_bound) {
       if (prev_size != way_sizes[end_way]) {
-        count_sizes++;
         prev_size = way_sizes[end_way];
+        count_sizes++;
       }
       end_way++;
     }
@@ -1913,6 +1927,12 @@ bool VCL_CACHE::hit_test(uint64_t addr, uint8_t size)
       return true;
     }
   }
+  auto test_tag = get_tag(addr);
+  for (auto it = PREFETCH_BUFFER.begin(); it != PREFETCH_BUFFER.end(); it++) {
+    if (get_tag(it->v_address) == test_tag or get_tag(it->address) == test_tag) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -2234,7 +2254,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   return true;
 }
 
-bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt)
+bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, bool treat_like_hit)
 {
   DP(if (warmup_complete[handle_pkt.cpu]) {
     std::cout << "[" << NAME << "] " << __func__ << " miss";
@@ -2337,7 +2357,10 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
   impl_replacement_update_state(handle_pkt.cpu, set, way, handle_pkt.address, handle_pkt.ip, 0, FILL, 0);
 
   // COLLECT STATS
-  sim_miss[handle_pkt.cpu][handle_pkt.type]++;
+  if (treat_like_hit)
+    sim_hit[handle_pkt.cpu][handle_pkt.type]++;
+  else
+    sim_miss[handle_pkt.cpu][handle_pkt.type]++;
   sim_access[handle_pkt.cpu][handle_pkt.type]++;
 
   prev_access = &fill_block;
