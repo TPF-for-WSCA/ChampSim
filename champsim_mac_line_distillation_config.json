@@ -1,14 +1,14 @@
 {
-  "executable_name": "bin/champsim_line_distillation",
+  "executable_name": "bin/champsim",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
   "num_cores": 1,
-  "CFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include",
-  "CXXFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include",
-  "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
-  "LDFLAGS": "-L/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib",
+  "CFLAGS": "-Wall -Wno-reorder -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
+  "CXXFLAGS": "-Wall -Wno-reorder -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
+  "LDLIBS": "-lxed -lz -lboost_system-mt -lboost_filesystem-mt -v",
+  "LDFLAGS": "-L/Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/lib -L/opt/local/lib/boost/lib",
   "ooo_cpu": [
     {
       "frequency": 4000,
@@ -60,17 +60,16 @@
     "max_write": 2,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
-    "prefetch_activate": "LOAD,PREFETCH",
+    "prefetch_activate": "LOAD",
     "prefetcher": "fdip",
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,
+    "counting_block_method": "EVICTION",
     "lru_modifier": "DEFAULT",
-    "counting_block_method": "SUM_ACCESSES",
     "insertion_method": "DISTILLATION",
     "word_size": 8
   },
   "L1D": {
-    "perfect": false,
     "sets": 64,
     "ways": 12,
     "rq_size": 64,
@@ -83,8 +82,8 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "next_line",
-    "counting_block_method": "SUM_ACCESSES"
+    "prefetcher": "no",
+    "counting_block_method": "EVICTION"
   },
   "L2C": {
     "sets": 1024,
@@ -100,7 +99,7 @@
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
     "prefetcher": "no",
-    "counting_block_method": "SUM_ACCESSES"
+    "counting_block_method": "EVICTION"
   },
   "ITLB": {
     "sets": 16,
@@ -113,7 +112,7 @@
     "max_read": 2,
     "max_write": 2,
     "prefetch_as_load": false,
-    "counting_block_method": "SUM_ACCESSES"
+    "counting_block_method": "EVICTION"
   },
   "DTLB": {
     "sets": 16,
@@ -126,7 +125,7 @@
     "max_read": 2,
     "max_write": 2,
     "prefetch_as_load": false,
-    "counting_block_method": "SUM_ACCESSES"
+    "counting_block_method": "EVICTION"
   },
   "STLB": {
     "sets": 128,
@@ -139,7 +138,7 @@
     "max_read": 1,
     "max_write": 1,
     "prefetch_as_load": false,
-    "counting_block_method": "SUM_ACCESSES"
+    "counting_block_method": "EVICTION"
   },
   "PTW": {
     "pscl5_set": 1,
@@ -154,7 +153,7 @@
     "ptw_mshr_size": 5,
     "ptw_max_read": 2,
     "ptw_max_write": 2,
-    "counting_block_method": "SUM_ACCESSES"
+    "counting_block_method": "EVICTION"
   },
   "LLC": {
     "frequency": 4000,
@@ -172,7 +171,7 @@
     "prefetch_activate": "LOAD,PREFETCH",
     "prefetcher": "no",
     "replacement": "lru",
-    "counting_block_method": "SUM_ACCESSES"
+    "counting_block_method": "EVICTION"
   },
   "physical_memory": {
     "frequency": 3200,

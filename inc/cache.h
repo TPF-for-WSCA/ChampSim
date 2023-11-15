@@ -371,6 +371,7 @@ private:
   uint32_t buffer_ways = 0;
   BufferOrganisation organisation;
   CacheType cache_type;
+  uint8_t word_size;
 
 protected:
   virtual void handle_packet_insert_from_buffer(PACKET& pkt) override;
@@ -390,8 +391,8 @@ public:
                                   (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? 1 : buffer_sets / buffer_organisation,
                                   (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : buffer_organisation, 0,
                                   std::min(buffer_sets, v5), std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read,
-                                  max_write / 2, offset_bits, false, true, false, 0, ll, pref, repl_t::rreplacementDlru, method, buffer_fifo, history),
-                     cache_type(cache_type))
+                                  max_write / 2, offset_bits, false, true, false, 0, ll, pref, repl_t::rreplacementDlru, method, buffer_fifo, history)),
+        cache_type(cache_type), word_size(word_size)
   {
     CACHE::buffer = buffer;
     for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {

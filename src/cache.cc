@@ -1663,10 +1663,18 @@ void VCL_CACHE::operate_buffer_evictions()
         continue; // Hole, not accessed. // or: already in cache
       }
       if (cache_type == CacheType::DISTILLATION) {
-        uint8_t block_start = blocks[i].first;
-        uint8_t block_end = blocks[i].second;
+        int block_start = blocks[i].first;
+        int block_end = blocks[i].second;
         for (; block_start < block_end; block_start += word_size) {
+          auto first_inv = std::find_if_not(set_begin, set_end, is_valid_size<BLOCK>(word_size));
+          uint32_t way = std::distance(set_begin, first_inv);
+          if (way == NUM_WAY) {
+            way = lru_victim(&block.data()[set * NUM_WAY], word_size);
+            assert(way < NUM_WAY);
+          }
+          filllike_miss(set, way, block_start, merge_block);
         }
+        continue;
       }
       if (min_start > blocks[i].second)
         continue; // already in cache: the previous block already contains that block
