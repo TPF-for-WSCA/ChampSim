@@ -94,7 +94,15 @@ enum LruModifier {
   LRUadaptiveBOUND5 = 500000,
 };
 
-enum BufferOrganisation { FULLY_ASSOCIATIVE = 0, DIRECT_MAPPED = 1, SET2_ASSOCIATIVE = 2, SET4_ASSOCIATIVE = 4, SET6_ASSOCIATIVE = 6, SET8_ASSOCIATIVE = 8 };
+enum BufferOrganisation {
+  FULLY_ASSOCIATIVE = 0,
+  DIRECT_MAPPED = 1,
+  SET2_ASSOCIATIVE = 2,
+  SET4_ASSOCIATIVE = 4,
+  SET6_ASSOCIATIVE = 6,
+  SET7_ASSOCIATIVE = 7,
+  SET8_ASSOCIATIVE = 8
+};
 enum CacheType { UBS, DISTILLATION };
 typedef struct cshr_entry_t {
   uint64_t victim_base_addr;
