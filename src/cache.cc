@@ -102,6 +102,7 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev
 // TODO: MOVE TO MAIN CACHE IF HIT OF PREFETCH IN FILTER BUFFER (ggf. only if predicted reuse)
 void CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
 {
+  pkt.type = LOAD;
   uint32_t set = get_set(pkt.address);
   auto set_begin = std::next(std::begin(block), set * NUM_WAY);
   auto set_end = std::next(set_begin, NUM_WAY);
@@ -392,6 +393,7 @@ void CACHE::handle_read()
     } else if (filter_prefetches && prefetch_buffer_hit != PREFETCH_BUFFER.end()) { // miss check if in prefetch buffer
       PACKET p = *prefetch_buffer_hit;
       PREFETCH_BUFFER.erase(prefetch_buffer_hit);
+      pf_useful++;
       readlike_hit(p, handle_pkt);
       handle_packet_insert_from_buffer(p);
     } else {
@@ -1728,6 +1730,7 @@ void VCL_CACHE::operate_buffer_evictions()
 
 void VCL_CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
 {
+  pkt.type = LOAD; // we only insert on hit -- this is no longer a prefetch in the buffer
   if (buffer) {
     if (!buffer_cache.fill_miss(pkt, *this))
       return;

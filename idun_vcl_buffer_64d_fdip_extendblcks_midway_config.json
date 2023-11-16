@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/champsim_vcl_buffer_fdip_extend_bigway_64d",
+    "executable_name": "bin/champsim_vcl_buffer_fdip_extend_midway_64d",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
@@ -40,18 +40,19 @@
     },
     "L1I": {
         "sets": 64,
-        "ways": 11,
+        "ways": 12,
         "buffer": true,
         "buffer_size": 64,
         "buffer_organisation": "DIRECT_MAPPED",
         "way_sizes": [
+            4,
             8,
             12,
             20,
             32,
             32,
             36,
-            40,
+            36,
             64,
             64,
             64,
