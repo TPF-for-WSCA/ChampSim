@@ -31,7 +31,7 @@
 #define WQUEUE 2
 #define PQUEUE 3
 
-#define BLOCK_ENDING_BRANCH(bt) (bt == BRANCH_DIRECT_CALL || bt == BRANCH_RETURN || bt == BRANCH_INDIRECT_CALL)
+#define BLOCK_ENDING_BRANCH(bt) (bt == BRANCH_DIRECT_CALL || bt == BRANCH_RETURN || bt == BRANCH_INDIRECT_CALL || bt == BRANCH_INDIRECT)
 
 typedef unsigned long ulong;
 typedef std::pair<uint8_t, uint8_t> SUBSET;

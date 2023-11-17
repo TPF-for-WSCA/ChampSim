@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim_vcl_buffer_fdip_16way_64d",
+  "executable_name": "bin/champsim_vcl_buffer_fdip_16way_extend_64d",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -58,7 +58,7 @@
       40,
       44,
       52,
-      60,
+      64,
       64,
       64
     ],
