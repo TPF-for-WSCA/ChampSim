@@ -7,7 +7,7 @@
 #define GHR_ON
 #define SPP_SANITY_CHECK
 
-//#define SPP_DEBUG_PRINT
+// #define SPP_DEBUG_PRINT
 #ifdef SPP_DEBUG_PRINT
 #define SPP_DP(x) x
 #else
@@ -99,8 +99,8 @@ public:
     }
   }
 
-  void update_pattern(uint32_t last_sig, int curr_delta), read_pattern(uint32_t curr_sig, int*prefetch_delta, uint32_t*confidence_q, uint32_t&lookahead_way,
-                                                                       uint32_t&lookahead_conf, uint32_t&pf_q_tail, uint32_t&depth);
+  void update_pattern(uint32_t last_sig, int curr_delta), read_pattern(uint32_t curr_sig, int* prefetch_delta, uint32_t* confidence_q, uint32_t& lookahead_way,
+                                                                       uint32_t& lookahead_conf, uint32_t& pf_q_tail, uint32_t& depth);
 };
 
 class PREFETCH_FILTER
@@ -129,7 +129,7 @@ class GLOBAL_REGISTER
 {
 public:
   // Global counters to calculate global prefetching accuracy
-  uint64_t pf_useful, pf_issued,
+  uint64_t pf_useful, pf_issued, pf_not_issued,
       global_accuracy; // Alpha value in Section III. Equation 3
 
   // Global History Register (GHR) entries
@@ -139,6 +139,7 @@ public:
 
   GLOBAL_REGISTER()
   {
+    pf_not_issued = 0;
     pf_useful = 0;
     pf_issued = 0;
     global_accuracy = 0;

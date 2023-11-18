@@ -267,7 +267,8 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
 
     cout << cache->NAME;
     cout << " PREFETCH  REQUESTED: " << setw(10) << cache->pf_requested << "  ISSUED: " << setw(10) << cache->pf_issued;
-    cout << "  USEFUL: " << setw(10) << cache->pf_useful << "  USELESS: " << setw(10) << cache->pf_useless << endl;
+    cout << "  USEFUL: " << setw(10) << cache->pf_useful << "  USELESS: " << setw(10) << cache->pf_useless << " NOT ISSUED: " << setw(10)
+         << cache->pf_not_issued << endl;
 
     cout << cache->NAME;
     cout << " EVICTIONS: " << setw(10) << cache->TOTAL_CACHELINES << "  USELESS: " << setw(10) << cache->USELESS_CACHELINE << endl;
@@ -607,6 +608,7 @@ void reset_cache_stats(uint32_t cpu, CACHE* cache)
   cache->pf_issued = 0;
   cache->pf_useful = 0;
   cache->pf_useless = 0;
+  cache->pf_not_issued = 0;
   cache->pf_fill = 0;
   cache->USELESS_CACHELINE = 0;
   cache->TOTAL_CACHELINES = 0;
