@@ -120,10 +120,10 @@ void CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
 
 void CACHE::insert_prefetch_buffer(PACKET& p)
 {
-  uint64_t block_addr = p.v_address >> OFFSET_BITS << OFFSET_BITS;
+  uint64_t block_addr = p.address >> OFFSET_BITS << OFFSET_BITS;
   uint8_t offset = OFFSET_BITS;
   auto it = std::find_if(PREFETCH_BUFFER.begin(), PREFETCH_BUFFER.end(),
-                         [block_addr, offset](const PACKET& x) { return (x.v_address >> offset << offset) == block_addr; });
+                         [block_addr, offset](const PACKET& x) { return (x.address >> offset << offset) == block_addr; });
   if (it == PREFETCH_BUFFER.end()) {
     PREFETCH_BUFFER.push_front(p);
   }

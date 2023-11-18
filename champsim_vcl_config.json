@@ -12,7 +12,7 @@
   "ooo_cpu": [
     {
       "frequency": 4000,
-      "ifetch_buffer_size": 128,
+      "ifetch_buffer_size": 1024,
       "decode_buffer_size": 32,
       "dispatch_buffer_size": 32,
       "rob_size": 352,
@@ -76,7 +76,7 @@
     "prefetcher": "fdip",
     "filter_inserts": false,
     "filter_prefetches": true,
-    "prefetch_buffer_size": 16,
+    "prefetch_buffer_size": 64,
     "lru_modifier": "DEFAULT",
     "counting_block_method": "SUM_ACCESSES",
     "extend_blocks_to_branch": true
