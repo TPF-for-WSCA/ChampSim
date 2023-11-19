@@ -120,10 +120,10 @@ void CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
 
 void CACHE::insert_prefetch_buffer(PACKET& p)
 {
-  uint64_t block_addr = p.v_address >> OFFSET_BITS << OFFSET_BITS;
+  uint64_t block_addr = p.address >> OFFSET_BITS << OFFSET_BITS;
   uint8_t offset = OFFSET_BITS;
   auto it = std::find_if(PREFETCH_BUFFER.begin(), PREFETCH_BUFFER.end(),
-                         [block_addr, offset](const PACKET& x) { return (x.v_address >> offset << offset) == block_addr; });
+                         [block_addr, offset](const PACKET& x) { return (x.address >> offset << offset) == block_addr; });
   if (it == PREFETCH_BUFFER.end()) {
     PREFETCH_BUFFER.push_front(p);
   }
@@ -1683,8 +1683,7 @@ void VCL_CACHE::operate_buffer_evictions()
       uint8_t block_start = std::max(min_start, blocks[i].first);
       size_t block_size = blocks[i].second - block_start + 1;
       uint64_t ip = merge_block.v_address + block_start;
-      while (warmup_complete[merge_block.cpu] && extend_blocks_to_branch && block_start + block_size < BLOCK_SIZE
-             && ooo_cpu[merge_block.cpu]->impl_is_block_ending_branch(ip)) {
+      while (extend_blocks_to_branch && block_start + block_size < BLOCK_SIZE && ooo_cpu[merge_block.cpu]->impl_is_block_ending_branch(ip)) {
         ip += 4;
         block_size += 4;
       }

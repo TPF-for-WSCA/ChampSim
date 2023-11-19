@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH -c16
 #SBATCH --mem-per-cpu=8G
-#SBATCH --time=00-03:00:00
+#SBATCH --time=00-04:00:00
 #SBATCH --mail-user=romankb@ntnu.no
 #SBATCH --mail-type=ALL
 #SBATCH -e /cluster/work/romankb/slurm-default-sizes-%j.err
@@ -21,9 +21,9 @@ binaries=("champsim32k" "champsim64k" "champsim_vcl_buffer_fdip_64d" "champsim_v
 
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/spec --nosub --output_dir /cluster/work/romankb/results/fdip_btb_analysis12/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec_${binary}.log & # We got spec in dpc3
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/server --nosub --output_dir /cluster/work/romankb/results/fdip_btb_analysis12/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server_${binary}.log &
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/client --nosub --output_dir /cluster/work/romankb/results/fdip_btb_analysis12/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client_${binary}.log &
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/spec --nosub --output_dir /cluster/work/romankb/results/fdip_btb_analysis15/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec_${binary}.log & # We got spec in dpc3
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/server --nosub --output_dir /cluster/work/romankb/results/fdip_btb_analysis15/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server_${binary}.log &
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/client --nosub --output_dir /cluster/work/romankb/results/fdip_btb_analysis15/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client_${binary}.log &
 done
 
 for job in `jobs -p`
