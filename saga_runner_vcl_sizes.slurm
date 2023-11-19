@@ -11,7 +11,7 @@
 #SBATCH -o /cluster/work/users/romankb/slurm-%j.out
 
 module load Boost/1.79.0-GCC-11.3.0
-module load Python/3.9.6-GCCcore-11.2.0
+module load Python/3.10.4-GCCcore-11.3.0
 binaries=("champsim_vcl_8" "champsim_vcl_12" "champsim_vcl_16")
 for binary in ${binaries[@]}
 do

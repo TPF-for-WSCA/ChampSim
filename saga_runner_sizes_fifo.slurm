@@ -11,7 +11,7 @@
 #SBATCH -o /cluster/work/users/romankb/slurm-%j.out
 
 module load Boost/1.79.0-GCC-11.3.0
-module load Python/3.9.6-GCCcore-11.2.0
+module load Python/3.10.4-GCCcore-11.3.0
 #binaries=("champsim32k" "champsim64k" "champsim_vcl_buffer_16" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d" "champsim128m")
 #binaries=("champsim32k" "champsim64k" "champsim_vcl_buffer_64d_max_way" "champsim_vcl_buffer_8_f" "champsim_vcl_buffer_16_f" "champsim_vcl_buffer_32_f" "champsim_vcl_buffer_64_f" "champsim_vcl_buffer_128_f")
 binaries=("champsim_vcl_buffer_64d_max_way")

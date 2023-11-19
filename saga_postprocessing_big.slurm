@@ -11,6 +11,6 @@
 #SBATCH -o /cluster/work/users/romankb/slurm-postproc-%j.out
 
 module load Boost/1.79.0-GCC-11.3.0
-module load Python/3.9.6-GCCcore-11.2.0
+module load Python/3.10.4-GCCcore-11.3.0
 python /cluster/home/romankb/workspace/ChampSim/aggregation_scripts/apply_merge_strategies.py /cluster/work/users/romankb/results/champsim_bigcache_fixed/ >> ~/pyaggregate_smallcache.log
 
