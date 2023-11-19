@@ -13,7 +13,7 @@
 echo "Remembered to adjust the number of ways in the config?"
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
-module load Boost/1.77.0-GCC-11.2.0
+module load Boost/1.79.0-GCC-11.3.0
 module load Python/3.9.6-GCCcore-11.2.0
 binaries=("champsim_perfect_predictor")
 for binary in ${binaries[@]}

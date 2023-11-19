@@ -10,5 +10,5 @@
 #SBATCH -e /cluster/work/users/romankb/slurm-build-%j.err
 #SBATCH -o /cluster/work/users/romankb/slurm-build-%j.out
 
-module load Boost/1.77.0-GCC-11.2.0
+module load Boost/1.79.0-GCC-11.3.0
 ~/workspace/ChampSim/saga_build.sh
