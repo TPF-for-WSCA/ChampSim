@@ -10,7 +10,7 @@
 #SBATCH -e /cluster/work/users/romankb/slurm-%j.err
 #SBATCH -o /cluster/work/users/romankb/slurm-%j.out
 
-module load Boost/1.77.0-GCC-11.2.0
-module load Python/3.9.6-GCCcore-11.2.0
+module load Boost/1.79.0-GCC-11.3.0
+module load Python/3.10.4-GCCcore-11.3.0
 python /cluster/home/romankb/workspace/ChampSim/data_collector.py --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/champsim --traces_directory /cluster/work/users/romankb/dataset/tanvir --output_dir /cluster/work/users/romankb/results/champsim_smallcache_fixed/ >> ~/pyrunner.log
 

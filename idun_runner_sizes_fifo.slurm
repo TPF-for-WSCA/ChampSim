@@ -11,8 +11,8 @@
 #SBATCH -o /cluster/work/romankb/slurm-fifo-%j.out
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
-module load Boost/1.77.0-GCC-11.2.0
-module load Python/3.9.6-GCCcore-11.2.0
+module load Boost/1.79.0-GCC-11.3.0
+module load Python/3.10.4-GCCcore-11.3.0
 binaries=("champsim32k" "champsim64k" "champsim_vcl_buffer_64d_max_way" "champsim_vcl_buffer_4_f" "champsim_vcl_buffer_8_f" "champsim_vcl_buffer_16_f" "champsim_vcl_buffer_32_f" "champsim_vcl_buffer_64_f" "champsim_vcl_buffer_128_f" "champsim_vcl_buffer_256_f")
 #binaries=("champsim_vcl_buffer_64d_max_way")
 for binary in ${binaries[@]}

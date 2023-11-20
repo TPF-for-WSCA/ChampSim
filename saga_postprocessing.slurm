@@ -10,8 +10,8 @@
 #SBATCH -e /cluster/work/users/romankb/slurm-postproc-%j.err
 #SBATCH -o /cluster/work/users/romankb/slurm-postproc-%j.out
 
-module load Boost/1.77.0-GCC-11.2.0
-module load Python/3.9.6-GCCcore-11.2.0
+module load Boost/1.79.0-GCC-11.3.0
+module load Python/3.10.4-GCCcore-11.3.0
 directories=("champsim8k" "champsim64k" "champsim4k" "champsim32k" "champsim2k" "champsim1k" "champsim16k" "champsim128k")
 for directory in ${directories[@]}
 do

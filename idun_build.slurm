@@ -10,5 +10,5 @@
 #SBATCH -e /cluster/work/romankb/slurm-build-%j.err
 #SBATCH -o /cluster/work/romankb/slurm-build-%j.out
 
-module load Boost/1.77.0-GCC-11.2.0
+module load Boost/1.79.0-GCC-11.3.0
 ~/ChampSim/idun_build.sh

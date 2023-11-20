@@ -10,7 +10,7 @@
 #SBATCH -e /cluster/work/users/romankb/slurm-idealway-%j.err
 #SBATCH -o /cluster/work/users/romankb/slurm-idealway-%j.out
 
-module load Python/3.9.6-GCCcore-11.2.0
+module load Python/3.10.4-GCCcore-11.3.0
 python ~/workspace/ChampSim/aggregation_scripts/apply_merge_strategies.py /cluster/work/users/romankb/results/ipc1_spec/sizes_champsim64k optimal_way &
 python ~/workspace/ChampSim/aggregation_scripts/apply_merge_strategies.py /cluster/work/users/romankb/results/ipc1_server/sizes_champsim64k optimal_way &
 python ~/workspace/ChampSim/aggregation_scripts/apply_merge_strategies.py /cluster/work/users/romankb/results/ipc1_client/sizes_champsim64k optimal_way &
