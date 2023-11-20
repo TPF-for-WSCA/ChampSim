@@ -5,8 +5,8 @@
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
   "num_cores": 1,
-  "CFLAGS": "-Wall -Wno-reorder -Werror -g -O3 -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-  "CXXFLAGS": "-Wall -Wno-reorder -Werror -g -O3 -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+  "CFLAGS": "-Wall -Wno-reorder -Werror -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+  "CXXFLAGS": "-Wall -Wno-reorder -Werror -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
   "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
   "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib",
   "ooo_cpu": [
@@ -42,16 +42,16 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 16,
+    "ways": 15,
     "buffer": true,
     "buffer_size": 64,
     "buffer_organisation": "DIRECT_MAPPED",
     "way_sizes": [
       4,
-      4,
       8,
       8,
-      12,
+      8,
+      8,
       12,
       20,
       24,
@@ -59,7 +59,7 @@
       36,
       40,
       48,
-      64,
+      60,
       64,
       64
     ],
@@ -79,7 +79,7 @@
     "prefetch_buffer_size": 16,
     "lru_modifier": "DEFAULT",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": true
+    "extend_blocks_to_branch": false
   },
   "L1D": {
     "perfect": false,
