@@ -79,7 +79,7 @@
     "prefetch_buffer_size": 16,
     "lru_modifier": "DEFAULT",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": false
+    "extend_blocks_to_branch": true
   },
   "L1D": {
     "perfect": false,
