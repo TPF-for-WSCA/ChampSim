@@ -1,6 +1,6 @@
 #!/bin/bash
 
-build_configs=("idun_32k_config.json" "idun_64k_config.json" "idun_32k_nofdip_config.json" "idun_64k_nofdip_config.json" "idun_vcl_buffer_64d_fdip_config.json" "idun_vcl_buffer_64d_fdip_16way_config.json" "idun_vcl_buffer_64d_fdip_extendblcks_config.json" "idun_vcl_buffer_64d_fdip_extendblcks_bigway_config.json" "idun_vcl_buffer_64d_config.json" "idun_line_distillation_size.json" "idun_vcl_buffer_64d_fdip_extendblcks_midway_config.json" "idun_vcl_buffer_64d_fdip_15way_config.json" "idun_vcl_buffer_64d_fdip_15way_extend_config.json" "idun_vcl_buffer_64d_fdip_16way_extend_config.json")
+build_configs=("idun_32k_config.json" "idun_64k_config.json" "idun_vcl_buffer_64d_fdip_16way_config.json" "idun_line_distillation_size.json" "idun_vcl_buffer_64d_fdip_15way_config.json" "idun_vcl_buffer_64d_fdip_15way_extend_config.json" "idun_vcl_buffer_64d_fdip_16way_extend_config.json")
 #build_configs=("idun_line_distillation_size.json")
 
 #build_configs=("idun_vcl_buffer_64d_max_way_config.json")
