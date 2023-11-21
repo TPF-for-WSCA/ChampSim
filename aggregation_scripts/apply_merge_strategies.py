@@ -659,7 +659,7 @@ def main(args):
                     data_per_benchmark[key] = value
                     avg.append(sum(value) / len(value))
             data_per_benchmark[f"{group.upper()} AVG"] = avg
-
+            print(f"{group.upper()} AVG: {sum(avg)/len(avg)}")
             axes[idx].violinplot(
                 data_per_benchmark.values(), showmeans=True, widths=0.9
             )
