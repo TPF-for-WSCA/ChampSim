@@ -646,9 +646,9 @@ def main(args):
         ax3.sharey(ax1)
         ax3.yaxis.set_tick_params(labelleft=False)
         fig.add_axes(ax3)
-        ax1.set_ylim([0.27, 0.71])
-        ax2.set_ylim([0.27, 0.71])
-        ax3.set_ylim([0.27, 0.71])
+        ax1.set_ylim([0.27, 0.85])
+        ax2.set_ylim([0.27, 0.85])
+        ax3.set_ylim([0.27, 0.85])
         axes = [ax1, ax2, ax3]
 
         for idx, group in enumerate(sorted(groups)):
