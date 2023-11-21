@@ -49,25 +49,28 @@ uint32_t O3_CPU::prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, ui
 
 void O3_CPU::prefetcher_cycle_operate()
 {
-  while (prefetch_queue.size() && L1I->get_occupancy(0, 0) < L1I->MSHR_SIZE >> 1) {
+  while (prefetch_queue.size()) {
 
+    if (L1I->get_occupancy(0, 0) < L1I->MSHR_SIZE >> 1) {
 #define L1I (static_cast<CACHE*>(L1I_bus.lower_level))
-    auto it = std::find(recent_prefetches.begin(), recent_prefetches.end(), std::get<0>(prefetch_queue.front()));
-    if (L1I->hit_test(std::get<1>(prefetch_queue.front()), std::get<2>(prefetch_queue.front()))) {
+      auto it = std::find(recent_prefetches.begin(), recent_prefetches.end(), std::get<0>(prefetch_queue.front()));
+      if (L1I->hit_test(std::get<1>(prefetch_queue.front()), std::get<2>(prefetch_queue.front()))) {
+        prefetch_queue.pop_front();
+        continue;
+      }
+      if (it == recent_prefetches.end()) {
+        prefetch_code_line(std::get<0>(prefetch_queue.front()));
+        recent_prefetches.push_back(std::get<0>(prefetch_queue.front()));
+      } else {
+        std::cout << "recent prefetch skip -- something failed when inserting into the pfq" << std::endl;
+        continue; // note: if all goes well we never end up here...
+      }
+      if (recent_prefetches.size() > MAX_RECENT_PFETCH) {
+        recent_prefetches.pop_front();
+      }
       prefetch_queue.pop_front();
-      continue;
     }
-    if (it == recent_prefetches.end()) {
-      prefetch_code_line(std::get<0>(prefetch_queue.front()));
-      recent_prefetches.push_back(std::get<0>(prefetch_queue.front()));
-    } else {
-      std::cout << "recent prefetch skip -- something failed when inserting into the pfq" << std::endl;
-      continue; // note: if all goes well we never end up here...
-    }
-    if (recent_prefetches.size() > MAX_RECENT_PFETCH) {
-      recent_prefetches.pop_front();
-    }
-    prefetch_queue.pop_front();
+    return;
   }
 }
 
