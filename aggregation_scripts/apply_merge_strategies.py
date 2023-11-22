@@ -325,7 +325,7 @@ def apply_way_analysis(
     overhead = 0
     for i in range(8, 64):
         if arm:
-            overhead = math.ceil((4 * i) / 8)  # 6 bits per tag
+            overhead = math.ceil(((4 + 26 + 4) * i) / 8)  # 6 bits per tag
         else:
             overhead = math.ceil((6 * i) / 8)  # 6 bits per tag
         local_target_size = target_size - overhead
