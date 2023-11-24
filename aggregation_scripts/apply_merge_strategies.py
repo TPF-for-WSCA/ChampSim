@@ -146,9 +146,7 @@ def trim_mask(mask):
 def int_t_to_boolean_list(line, bits=64):
     mask_array = []
     for i, integer in enumerate(line):
-        for bit in range(
-            int(bits / len(line)) * i, int(bits / len(line)) * (i + 1)
-        ):
+        for bit in range(int(bits / len(line)) * i, int(bits / len(line)) * (i + 1)):
             if (integer >> bit) & 1:
                 mask_array.append(True)
             else:
@@ -197,9 +195,7 @@ def get_mask_from_tracefile(tracefile_path, sample_distance=1, start_offset=0):
             yield array_line
 
 
-def get_uint64_t_from_tracefile(
-    tracefile_path, sample_distance=1, start_offset=0
-):
+def get_uint64_t_from_tracefile(tracefile_path, sample_distance=1, start_offset=0):
     with open(tracefile_path, "rb") as tracefile:
         tracefile.seek(start_offset, 0)
         while True:
@@ -213,9 +209,7 @@ def get_uint64_t_from_tracefile(
 
 
 def merge_single_mask(first_byte, trimmed_mask, only_chosen=False):
-    local_strategies = (
-        [strategies[CHOSEN_STRATEGY]] if only_chosen else strategies
-    )
+    local_strategies = [strategies[CHOSEN_STRATEGY]] if only_chosen else strategies
     if not strategies[0] in local_strategies:
         local_strategies.append(strategies[0])
     if all(trimmed_mask):
@@ -234,6 +228,30 @@ def merge_single_mask(first_byte, trimmed_mask, only_chosen=False):
 
 
 def create_uniform_buckets_of_size(num_buckets):
+    def get_offset_overhead(way_size):
+        if way_size == 64:
+            return 0
+        if arm:
+            if way_size >= 60:
+                return 1
+            if way_size >= 48:
+                return 2
+            if way_size >= 32:
+                return 3
+            return 4
+        else:
+            if way_size >= 62:
+                return 1
+            if way_size >= 60:
+                return 2
+            if way_size >= 56:
+                return 3
+            if way_size >= 48:
+                return 4
+            if way_size >= 32:
+                return 5
+            return 6
+
     normalised_histogram = [
         b / sum(BLOCK_SIZES_HISTOGRAM[strategies[CHOSEN_STRATEGY].name])
         for b in BLOCK_SIZES_HISTOGRAM[strategies[CHOSEN_STRATEGY].name]
@@ -243,6 +261,7 @@ def create_uniform_buckets_of_size(num_buckets):
     bucket_percentages = []
     counter = 1
     sumup = 0
+    offset_overhead = 0
     prev_bucket = 0.0
     bucket_idx = 1
     increment = 1
@@ -273,16 +292,16 @@ def create_uniform_buckets_of_size(num_buckets):
                     counter += increment
                 bucket_percentages.append(comp_value - prev_bucket)
                 bucket_sizes.append(counter)
+                offset_overhead += get_offset_overhead(counter)
                 prev_bucket = comp_value
                 sumup += single_val
                 bucket_idx += 1
                 value += single_val
                 inc_counter = False
                 continue
-            elif (
-                comp_value > (target * bucket_idx) and diff_without < diff_with
-            ):
+            elif comp_value > (target * bucket_idx) and diff_without < diff_with:
                 bucket_sizes.append(counter)
+                offset_overhead += get_offset_overhead(counter)
                 bucket_percentages.append(sumup - prev_bucket)
                 prev_bucket = sumup
                 bucket_idx += 1
@@ -292,10 +311,11 @@ def create_uniform_buckets_of_size(num_buckets):
             counter += increment
     while len(bucket_sizes) < num_buckets:
         bucket_sizes.append(bucket_sizes[-1])
+        offset_overhead += get_offset_overhead(bucket_sizes[-1])
     # print(f"target bucket size: {target}")
     # print(f"Actual buckets: {bucket_percentages}")
     bucket_percentages.append(1 - sum(bucket_percentages))
-    return bucket_sizes, bucket_percentages
+    return bucket_sizes, bucket_percentages, offset_overhead
 
 
 def apply_way_analysis(
@@ -323,24 +343,38 @@ def apply_way_analysis(
     selected_waysizes = []
     local_overhead = 0
     overhead = 0
+    max_size = 0
+    max_size_ways = []
     for i in range(8, 64):
+        tag_overhead = (i - 8) * (26 + 1 + 3) / 8  # (tag bits, valid bit, lru bits)
         if arm:
             overhead = math.ceil((4 * i) / 8)  # 6 bits per tag
         else:
             overhead = math.ceil((6 * i) / 8)  # 6 bits per tag
-        local_target_size = target_size - overhead
-        bucket_sizes, _ = create_uniform_buckets_of_size(i)
+        local_target_size = target_size - tag_overhead
+        (
+            bucket_sizes,
+            percentages_per_way,
+            offset_overhead,
+        ) = create_uniform_buckets_of_size(i)
         total_size = sum(bucket_sizes)
         # if total_size > local_target_size:
         #     break
-        if abs(local_target_size - sum(bucket_sizes)) < error:
-            error = abs(local_target_size - sum(bucket_sizes))
+        local_target_size -= offset_overhead
+        if abs(local_target_size - total_size) < error:
+            error = abs(local_target_size - total_size)
             selected_waysizes = bucket_sizes
             local_overhead = overhead
+        if local_target_size > total_size and total_size > max_size:
+            max_size = total_size
+            max_size_ways = bucket_sizes
     print(
         f"Optimal waysizes with error: {error}, overall size: {sum(selected_waysizes) + buffer_bytes_per_set + local_overhead}"
     )
     print(selected_waysizes)
+
+    print(f"Max waysizes within bounds: {max_size}")
+    print(max_size_ways)
     WAY_SIZES_BY_WORKLOAD[workload_name] = selected_waysizes
 
 
@@ -369,9 +403,7 @@ def apply_storage_efficiency_analysis(
     workload_name, tracedirectory_path, vcl_config=None
 ):
     # assuming 32k cache with S = 64
-    tracefile_path = os.path.join(
-        tracedirectory_path, "cpu0_L1I_cl_bytes_used.bin"
-    )
+    tracefile_path = os.path.join(tracedirectory_path, "cpu0_L1I_cl_bytes_used.bin")
     plt.rcParams.update({"font.size": 7})
 
     count = 0
@@ -485,9 +517,7 @@ def print_starting_offsets(trace_directory, workload):
     result_file_path = os.path.join(
         trace_directory, workload, "cpu0_L1I_cl_block_starts.tsv"
     )
-    with open(
-        result_file_path, "w", encoding="utf-8", newline=""
-    ) as result_file:
+    with open(result_file_path, "w", encoding="utf-8", newline="") as result_file:
         writer = csv.DictWriter(
             result_file,
             BLOCK_STARTS_BY_WORKLOAD.keys(),
@@ -509,11 +539,7 @@ def main(args):
         # BLOCK_SIZES_HISTOGRAM = defaultdict(lambda: [0 for i in range(64)]) # we do not reset it so we have in the end the average of all workloads
         if not os.path.isdir(os.path.join(trace_directory, workload)):
             continue
-        if (
-            workload.endswith(".txt")
-            or workload == "graphs"
-            or workload == "raw_data"
-        ):
+        if workload.endswith(".txt") or workload == "graphs" or workload == "raw_data":
             continue
         print(f"Handling {workload}...")
         try:
@@ -617,16 +643,12 @@ def main(args):
             continue  # Ignore this workload / log written to stderr
 
     def set_axis_style(ax, labels):
-        ax.set_xticks(
-            np.arange(1, len(labels) + 1), labels=labels, rotation=90
-        )
+        ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels, rotation=90)
         ax.set_xlim(0.25, len(labels) + 0.75)
 
     if args.action == "storage_efficiency":
         data_per_workload = dict(sorted(data_per_workload.items()))
-        groups = set(
-            [label.split("_")[0] for label in data_per_workload.keys()]
-        )
+        groups = set([label.split("_")[0] for label in data_per_workload.keys()])
         from mpl_toolkits.axes_grid1 import make_axes_locatable
 
         cm = 1 / 2.54
@@ -702,9 +724,7 @@ if __name__ == "__main__":
         ],
     )
 
-    parser.add_argument(
-        "architecture", type=str, default="x86", choices=["x86", "arm"]
-    )
+    parser.add_argument("architecture", type=str, default="x86", choices=["x86", "arm"])
     strategies_list = "\n".join(
         [f"\t{i}:\t{strategy}" for i, strategy in enumerate(strategies)]
     )
@@ -715,9 +735,7 @@ if __name__ == "__main__":
         help=f"Available strategies:\n\tIdx:\tStrategy Name:\n{strategies_list}",
     )
 
-    parser.add_argument(
-        "--vcl-configuration", dest="vcl_config", type=int, nargs="*"
-    )
+    parser.add_argument("--vcl-configuration", dest="vcl_config", type=int, nargs="*")
 
     args = parser.parse_args()
     main(args)
