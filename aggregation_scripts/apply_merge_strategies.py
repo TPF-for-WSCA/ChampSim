@@ -332,7 +332,7 @@ def apply_way_analysis(
     # 64 b (arm: 16) per entry + 6b counter per entry (only for non-directmapped required) + 128B merge registers overall (merge registers might be optimised away)
     if not arm:
         buffer_bytes_per_set = (
-            6 + 64 + 2
+            8 + 64 + 2
         )  # 6 bytes for bytes accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
     else:
         buffer_bytes_per_set = (
@@ -364,12 +364,12 @@ def apply_way_analysis(
         if abs(local_target_size - total_size) < error:
             error = abs(local_target_size - total_size)
             selected_waysizes = bucket_sizes
-            local_overhead = overhead
+            local_overhead = offset_overhead
         if local_target_size > total_size and total_size > max_size:
             max_size = total_size
             max_size_ways = bucket_sizes
     print(
-        f"Optimal waysizes with error: {error}, overall size: {sum(selected_waysizes) + buffer_bytes_per_set + local_overhead}"
+        f"Optimal waysizes with error: {error}, overall size: {sum(selected_waysizes) + buffer_bytes_per_set + local_overhead + tag_overhead}"
     )
     print(selected_waysizes)
 
