@@ -9,9 +9,9 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "-warmup_instructions",
-                "10000000",
+                "5000000",
                 "-simulation_instructions",
-                "10000000",
+                "5000000",
                 "-result_dir",
                 "~/Downloads/results/test/",
                 // "-ptrace",
@@ -127,6 +127,20 @@
             "stopOnEntry": false,
             "args": [
                 "/home/robrunne/Downloads/testoutput/32k"
+            ]
+        },
+        {
+            "name": "Python: OptimalWay",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/aggregation_scripts/apply_merge_strategies.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "stopOnEntry": false,
+            "args": [
+                "/home/robrunne/Downloads/results",
+                "optimal_way",
+                "arm"
             ]
         }
     ]

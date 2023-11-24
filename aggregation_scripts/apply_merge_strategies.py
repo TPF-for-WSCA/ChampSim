@@ -315,7 +315,7 @@ def create_uniform_buckets_of_size(num_buckets):
     # print(f"target bucket size: {target}")
     # print(f"Actual buckets: {bucket_percentages}")
     bucket_percentages.append(1 - sum(bucket_percentages))
-    return bucket_sizes, bucket_percentages, offset_overhead
+    return bucket_sizes, bucket_percentages, offset_overhead / 8
 
 
 def apply_way_analysis(
@@ -332,12 +332,12 @@ def apply_way_analysis(
     # 64 b (arm: 16) per entry + 6b counter per entry (only for non-directmapped required) + 128B merge registers overall (merge registers might be optimised away)
     if not arm:
         buffer_bytes_per_set = (
-            num_buffer_entries + num_buffer_entries * 8 + 128
-        ) / num_sets
+            6 + 64 + 2
+        )  # 6 bytes for bytes accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
     else:
         buffer_bytes_per_set = (
-            num_buffer_entries + num_buffer_entries * 2 + 128
-        ) / num_sets
+            2 + 64 + 2
+        )  # 2 bytes for instruction accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
     target_size = 512 - buffer_bytes_per_set
     error = target_size
     selected_waysizes = []
@@ -345,8 +345,8 @@ def apply_way_analysis(
     overhead = 0
     max_size = 0
     max_size_ways = []
-    for i in range(8, 64):
-        tag_overhead = (i - 8) * (26 + 1 + 3) / 8  # (tag bits, valid bit, lru bits)
+    for i in range(7, 64):
+        tag_overhead = (i - 7) * (26 + 1 + 3) / 8  # (tag bits, valid bit, lru bits)
         if arm:
             overhead = math.ceil(((4 + 26 + 4) * i) / 8)  # 6 bits per tag
         else:
