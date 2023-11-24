@@ -138,7 +138,7 @@
             "justMyCode": true,
             "stopOnEntry": false,
             "args": [
-                "/home/robrunne/Downloads/results",
+                "/home/robrunne/Downloads/results/collected",
                 "optimal_way",
                 "arm"
             ]

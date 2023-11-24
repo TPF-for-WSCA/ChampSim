@@ -528,6 +528,7 @@ def print_starting_offsets(trace_directory, workload):
 
 
 def main(args):
+    print("main execution started")
     trace_directory = args.trace_dir
     global TOTAL_LINES_AFTER_SPLIT_BY_STRATEGY, arm, CHOSEN_STRATEGY
     CHOSEN_STRATEGY = args.strategy
