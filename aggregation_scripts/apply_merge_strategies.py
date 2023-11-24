@@ -348,7 +348,7 @@ def apply_way_analysis(
     for i in range(8, 64):
         tag_overhead = (i - 8) * (26 + 1 + 3) / 8  # (tag bits, valid bit, lru bits)
         if arm:
-            overhead = math.ceil((4 * i) / 8)  # 6 bits per tag
+            overhead = math.ceil(((4 + 26 + 4) * i) / 8)  # 6 bits per tag
         else:
             overhead = math.ceil((6 * i) / 8)  # 6 bits per tag
         local_target_size = target_size - tag_overhead
@@ -681,7 +681,7 @@ def main(args):
                     data_per_benchmark[key] = value
                     avg.append(sum(value) / len(value))
             data_per_benchmark[f"{group.upper()} AVG"] = avg
-
+            print(f"{group.upper()} AVG: {sum(avg)/len(avg)}")
             axes[idx].violinplot(
                 data_per_benchmark.values(), showmeans=True, widths=0.9
             )
