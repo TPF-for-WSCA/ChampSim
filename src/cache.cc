@@ -1742,10 +1742,24 @@ void VCL_CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
 void VCL_CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
 {
   CACHE::readlike_hit(set, way, handle_pkt);
-  if (way_sizes[way] == 4 and (handle_pkt.branch_type == BRANCH_DIRECT_JUMP or handle_pkt.branch_type == BRANCH_INDIRECT)) {
-    stat_halfword_blocks_total++;
-    stat_halfword_jumppoints++;
-  } else if (way_sizes[way] == 4) {
+  if (warmup_complete[handle_pkt.cpu] and way_sizes[way] == 4) {
+    if (handle_pkt.branch_type == BRANCH_DIRECT_JUMP or handle_pkt.branch_type == BRANCH_INDIRECT) {
+      stat_halfword_jumppoints++;
+    } else if (handle_pkt.branch_type == BRANCH_RETURN) {
+      stat_halfword_return++;
+    } else if (handle_pkt.branch_type == BRANCH_CONDITIONAL) {
+      stat_halfword_conditional++;
+    } else if (handle_pkt.branch_type == BRANCH_DIRECT_CALL or handle_pkt.branch_type == BRANCH_INDIRECT_CALL) {
+      stat_halfword_call++;
+    } else if (handle_pkt.branch_type == BRANCH_OTHER) {
+      stat_halfword_branch++;
+    } else if (handle_pkt.branch_type == NOT_BRANCH and (handle_pkt.address % BLOCK_SIZE >= 57 or handle_pkt.v_address % BLOCK_SIZE >= 57)) {
+      stat_halfword_endofclaccess++;
+    } else if (handle_pkt.type == PREFETCH) {
+      stat_wrong_prefetch_filter++;
+    } else {
+      stat_unexplained++;
+    }
     stat_halfword_blocks_total++;
   }
 }
@@ -2230,7 +2244,14 @@ void VCL_CACHE::print_private_stats(void)
   CACHE::print_private_stats();
   std::cout << this->NAME << " single jump stats" << std::endl;
   std::cout << "\tSINGLE_INSTR_BLOCKS_TOTAL:" << std::right << std::setw(10) << stat_halfword_blocks_total;
-  std::cout << "\tJUMP_COUNT:" << std::right << std::setw(10) << stat_halfword_jumppoints << std::endl;
+  std::cout << "\tJUMP_COUNT:" << std::right << std::setw(10) << stat_halfword_jumppoints;
+  std::cout << "\tRETURN_COUNT:" << std::right << std::setw(10) << stat_halfword_return;
+  std::cout << "\tCONDITIONAL_COUNT:" << std::right << std::setw(10) << stat_halfword_conditional;
+  std::cout << "\tCALL_COUNT:" << std::right << std::setw(10) << stat_halfword_call;
+  std::cout << "\tBRANCH_OTHER_COUNT:" << std::right << std::setw(10) << stat_halfword_branch;
+  std::cout << "\tACCESS_AT_END_OF_CL:" << std::right << std::setw(10) << stat_halfword_endofclaccess;
+  std::cout << "\tPREFETCH_PARTIAL_HIT:" << std::right << std::setw(10) << stat_wrong_prefetch_filter;
+  std::cout << "\tUNEXPLAINED_4B_ACCESSES:" << std::right << std::setw(10) << stat_unexplained << std::endl;
 };
 
 bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block)
