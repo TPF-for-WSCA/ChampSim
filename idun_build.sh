@@ -16,6 +16,7 @@ do
     echo "Building ${build_script}"
     ~/ChampSim/config.sh ~/ChampSim/${build_script}
     make -j
+    sleep 1
 done
 cd $old_dir
 

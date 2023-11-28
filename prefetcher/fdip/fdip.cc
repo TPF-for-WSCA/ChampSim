@@ -14,7 +14,7 @@ void O3_CPU::prefetcher_initialize() {}
 
 void O3_CPU::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target, uint8_t size)
 {
-  uint64_t block_addr = ((ip >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE);
+  uint64_t block_addr = ((branch_target >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE);
   if (block_addr == 0)
     return;
 
@@ -23,7 +23,7 @@ void O3_CPU::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_
   if (it == prefetch_queue.end()) {
     std::deque<uint64_t>::iterator it1 = std::find(recent_prefetches.begin(), recent_prefetches.end(), block_addr);
     if (it1 == recent_prefetches.end()) {
-      prefetch_queue.push_back({block_addr, ip, size});
+      prefetch_queue.push_back({block_addr, branch_target, size});
     }
     if (prefetch_queue.size() > MAX_PFETCHQ_ENTRIES) {
       prefetch_queue.pop_front();
