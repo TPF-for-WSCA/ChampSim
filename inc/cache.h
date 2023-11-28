@@ -236,8 +236,8 @@ public:
   void record_cacheline_stats(uint32_t cpu, BLOCK& handle_block);
   virtual void record_overlap(void){};
 
-  void readlike_hit(PACKET& buffer_hit, PACKET& handle_pkt);
-  void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
+  virtual void readlike_hit(PACKET& buffer_hit, PACKET& handle_pkt);
+  virtual void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
   virtual bool readlike_miss(PACKET& handle_pkt);
   virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, bool treat_like_hit = false);
 
@@ -387,6 +387,7 @@ protected:
   virtual void handle_packet_insert_from_buffer(PACKET& pkt) override;
 
 public:
+  uint64_t stat_halfword_blocks_total = 0, stat_halfword_jumppoints = 0;
   BUFFER_CACHE buffer_cache;
   VCL_CACHE(std::string v1, double freq_scale, unsigned fill_level, uint32_t v2, int v3, uint8_t* way_sizes, bool buffer, uint32_t buffer_sets,
             bool buffer_fifo, bool aligned, uint32_t v5, uint32_t v6, uint32_t v7, uint32_t v8, uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read,
@@ -436,6 +437,7 @@ public:
   virtual void handle_read() override;
   // virtual void handle_prefetch() override;
   // virtual bool readlike_miss(PACKET& handle_pkt) override;
+  virtual void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt) override;
   void buffer_hit(BLOCK& b, PACKET& handle_pkt);
   virtual bool filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, bool treat_like_hit = false) override;
   virtual bool filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block);
@@ -453,6 +455,7 @@ public:
   void handle_fill_from_buffer(BLOCK& b, uint32_t set);
 
   uint8_t hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size);
+  void print_private_stats(void) override;
 
 private:
   std::vector<uint32_t> overlap_bytes_history;

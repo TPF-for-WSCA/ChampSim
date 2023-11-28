@@ -1739,6 +1739,17 @@ void VCL_CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
   }
 }
 
+void VCL_CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
+{
+  CACHE::readlike_hit(set, way, handle_pkt);
+  if (way_sizes[way] == 4 and (handle_pkt.branch_type == BRANCH_DIRECT_JUMP or handle_pkt.branch_type == BRANCH_INDIRECT)) {
+    stat_halfword_blocks_total++;
+    stat_halfword_jumppoints++;
+  } else if (way_sizes[way] == 4) {
+    stat_halfword_blocks_total++;
+  }
+}
+
 void VCL_CACHE::handle_fill()
 {
   while (writes_available_this_cycle > 0) {
@@ -2020,13 +2031,13 @@ void VCL_CACHE::handle_read()
       PACKET p = *prefetch_buffer_hit;
       PREFETCH_BUFFER.erase(prefetch_buffer_hit);
       pf_useful++;
-      readlike_hit(p, handle_pkt);
+      CACHE::readlike_hit(p, handle_pkt);
       handle_packet_insert_from_buffer(p);
     }
 
     auto filter_buffer_hit = probe_filter_buffer(handle_pkt.address, FILTER_BUFFER_QUEUE);
     if (filter_buffer_hit != FILTER_BUFFER.end()) {
-      readlike_hit(*filter_buffer_hit, handle_pkt);
+      CACHE::readlike_hit(*filter_buffer_hit, handle_pkt);
       RQ.pop_front();
       reads_available_this_cycle--;
       continue;
@@ -2213,6 +2224,14 @@ void CACHE::print_private_stats()
               << ":\t" << bc.merge_hit << std::endl;
   }
 }
+
+void VCL_CACHE::print_private_stats(void)
+{
+  CACHE::print_private_stats();
+  std::cout << this->NAME << " single jump stats" << std::endl;
+  std::cout << "\tSINGLE_INSTR_BLOCKS_TOTAL:" << std::right << std::setw(10) << stat_halfword_blocks_total;
+  std::cout << "\tJUMP_COUNT:" << std::right << std::setw(10) << stat_halfword_jumppoints << std::endl;
+};
 
 bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, BLOCK& handle_block)
 {
