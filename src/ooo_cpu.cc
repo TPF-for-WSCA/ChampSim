@@ -239,7 +239,6 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
     impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
-    impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, arch_instr.ip, arch_instr.size);
     impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target, arch_instr.size);
     prev_was_branch = true;
   }
