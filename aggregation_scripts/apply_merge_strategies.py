@@ -269,6 +269,15 @@ def create_uniform_buckets_of_size(num_buckets):
     if arm:
         increment = 4
         counter = 0
+        mod2_percentage = 0
+        for idx, percentage in enumerate(normalised_histogram):
+            if (idx + 1) % 2 == 0 and (idx + 1) % 4 != 0:
+                mod2_percentage = percentage
+                normalised_histogram[idx] = 0
+            if (idx + 1) % 4 == 0:
+                normalised_histogram[idx] = percentage + mod2_percentage
+                mod2_percentage = 0
+
     for idx, percentage in enumerate(normalised_histogram):
         if arm and (idx + 1) % 2 != 0:
             assert percentage == 0 or percentage == old_percentage
