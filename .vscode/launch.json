@@ -138,7 +138,7 @@
             "justMyCode": true,
             "stopOnEntry": false,
             "args": [
-                "/home/robrunne/Downloads/results/collected",
+                "/home/robrunne/OneDrive/Research/results/graphs_fixed_trace_3/ipc1_server/sizes_champsim32k",
                 "optimal_way",
                 "arm"
             ]

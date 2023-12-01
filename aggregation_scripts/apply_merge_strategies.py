@@ -265,13 +265,16 @@ def create_uniform_buckets_of_size(num_buckets):
     prev_bucket = 0.0
     bucket_idx = 1
     increment = 1
+    old_percentage = 0
     if arm:
         increment = 4
         counter = 0
     for idx, percentage in enumerate(normalised_histogram):
-        if arm and (idx + 1) % 4 != 0:
-            assert percentage == 0
+        if arm and (idx + 1) % 2 != 0:
+            assert percentage == 0 or percentage == old_percentage
+            old_percentage = percentage
             continue
+        old_percentage = percentage
         if percentage > target:
             split = int(percentage / target)
             value = percentage / split
