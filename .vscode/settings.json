@@ -85,7 +85,8 @@
         "queue": "cpp",
         "stack": "cpp",
         "__nullptr": "cpp",
-        "__string": "cpp"
+        "__string": "cpp",
+        "charconv": "cpp"
     },
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter"

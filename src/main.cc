@@ -502,7 +502,11 @@ void print_branch_stats()
     cout << "% MPKI: " << (1000.0 * ooo_cpu[i]->branch_mispredictions) / (ooo_cpu[i]->num_retired - warmup_instructions);
     cout << " Average ROB Occupancy at Mispredict: " << (1.0 * ooo_cpu[i]->total_rob_occupancy_at_branch_mispredict) / ooo_cpu[i]->branch_mispredictions
          << endl;
-
+    cout << "BRANCH DISTANCE STATS" << endl;
+    cout << "AVERAGE: " << ooo_cpu[i]->total_branch_distance / ooo_cpu[i]->branch_count << endl;
+    for (auto it = ooo_cpu[i]->branch_distance.begin(); it != ooo_cpu[i]->branch_distance.end(); it++) {
+      cout << std::right << std::setw(9) << it->first << ": " << std::setw(6) << it->second << endl;
+    }
     /*
     cout << "Branch types" << endl;
     cout << "NOT_BRANCH: " << ooo_cpu[i]->total_branch_types[0] << " " <<

@@ -206,6 +206,13 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   uint64_t predicted_branch_target = 0;
   if (arch_instr.is_branch) {
 
+    if (warmup_complete[cpu] && arch_instr.branch_target > 0) {
+      uint32_t branch_diff = std::abs((int64_t)arch_instr.ip - (int64_t)arch_instr.branch_target);
+      branch_distance[branch_diff]++;
+      branch_count++;
+      total_branch_distance += branch_diff;
+    }
+
     DP(if (warmup_complete[cpu]) {
       cout << "[BRANCH] instr_id: " << instr_unique_id << " ip: " << hex << arch_instr.ip << dec << " taken: " << +arch_instr.branch_taken << endl;
     });

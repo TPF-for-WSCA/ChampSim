@@ -3,6 +3,7 @@
 
 #include <array>
 #include <functional>
+#include <map>
 #include <queue>
 
 #include "block.h"
@@ -42,6 +43,9 @@ private:
 
 public:
   uint32_t cpu = 0;
+  std::map<uint32_t, uint32_t> branch_distance;
+  uint32_t branch_count;
+  uint64_t total_branch_distance;
 
   // instruction
   uint64_t instr_unique_id = 0, completed_executions = 0, begin_sim_cycle = 0, begin_sim_instr = 0, last_sim_cycle = 0, last_sim_instr = 0,

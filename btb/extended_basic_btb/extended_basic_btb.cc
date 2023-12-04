@@ -14,6 +14,7 @@
 #define BASIC_BTB_RAS_SIZE 64
 #define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
 #define BASIC_BTB_BRANCH_TABLE 131072
+#define EXTENDED_BTB_MAX_LOOP_BRANCH 512
 
 struct BRANCH_TABLE_ENTRY {
   uint8_t branch_type;
@@ -224,8 +225,8 @@ bool O3_CPU::is_block_ending_branch(uint64_t ip)
 
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
-  if (branch_type != NOT_BRANCH && not BLOCK_ENDING_BRANCH(branch_type) && branch_target > 0)
-    branch_table[(ip >> 2)] = {branch_type, 4, (branch_target < ip) ? true : false};
+  if (branch_type != NOT_BRANCH && not BLOCK_ENDING_BRANCH(branch_type))
+    branch_table[(ip >> 2)] = {branch_type, 4, (branch_target < ip && (ip - branch_target) < EXTENDED_BTB_MAX_LOOP_BRANCH) ? true : false};
   // updates for indirect branches
   if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
     basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)] = branch_target;
