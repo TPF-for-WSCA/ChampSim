@@ -22,9 +22,9 @@ binaries=("champsim32k" "champsim64k" "champsim_vcl_buffer_fdip_64d" "champsim_v
 
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/spec --nosub --output_dir /cluster/work/romankb/results/fixed_trace_4/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec_${binary}.log & # We got spec in dpc3
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/server --nosub --output_dir /cluster/work/romankb/results/fixed_trace_4/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server_${binary}.log &
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/client --nosub --output_dir /cluster/work/romankb/results/fixed_trace_4/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client_${binary}.log &
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/spec --nosub --output_dir /cluster/work/romankb/results/fixed_trace_5/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec_${binary}.log & # We got spec in dpc3
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/server --nosub --output_dir /cluster/work/romankb/results/fixed_trace_5/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server_${binary}.log &
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/client --nosub --output_dir /cluster/work/romankb/results/fixed_trace_5/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client_${binary}.log &
 done
 
 for job in `jobs -p`
