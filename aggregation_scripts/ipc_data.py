@@ -14,6 +14,7 @@ class STATS(Enum):
     USELESS = 5
     FRONTEND_STALLS = 6
     PARTIAL_MISSES = 7
+    BRANCH_DISTANCES = 8
 
 
 type = STATS.IPC
@@ -125,6 +126,35 @@ def extract_frontend_stalls_percentage(path):
         return float("NaN")
     return (float(stall_cycles) / float(total_instructions))*1000
 
+def extract_buffer_duration(path):
+    assert 0
+    return 0
+
+
+def extract_branch_distance(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    candidate_lines = []
+    logs = logs[::-1]
+    regex = re.compile("^\s+(\d+):\s+(\d+)")
+    for logline in logs:
+        matches = regex.match(logline)
+        if matches:
+            candidate_lines.append((int(matches.groups()[0]), int(matches.groups()[1])))
+        if "BRANCH DISTANCE STATS" in logline:
+            break
+    buckets = [64, 128, 256, 512, 1024, 2048, 4096, 8192, ">"]
+    count_by_bucket = {64:0, 128:0, 256:0, 512:0, 1024:0, 2048:0, 4096:0, 8192:0, ">": 0}
+    for single_entry in candidate_lines:
+        old_bucket = 0
+        bucket_key = 0
+        for bucket in buckets:
+            if old_bucket < single_entry[0] and (bucket == ">" or single_entry[0] < bucket):
+                bucket_key = bucket
+                break
+        count_by_bucket[bucket_key] += single_entry[1]
+    return count_by_bucket
 
 def single_run(path):
     stat_by_workload = {}
@@ -158,6 +188,12 @@ def single_run(path):
                 stat_by_workload[workload] = extract_l1i_detail_partial_misses(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.BUFFER_DURATION:
+                stat_by_workload[workload] = extract_buffer_duration(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.BRANCH_DISTANCES:
+                stat_by_workload[workload] = extract_branch_distance(f"{path}/{workload}/{logfile}")
             else:
                 stat_by_workload[workload] = extract_ipc(
                     f"{path}/{workload}/{logfile}"
@@ -214,6 +250,21 @@ def write_partial_misses(data, out_path="./"):
             outfile.flush()
     return
 
+def write_series(data, out_path="./"):
+    base_filename = "branch_distances"
+    for csize, values in data.items():
+        filename = base_filename + str(csize)
+        filename += ".tsv"
+        file_path = os.path.join(out_path, filename)
+        with open(file_path, "w+") as outfile:
+            for workload, series in data[csize].items():
+                outfile.write(f"{workload}")
+                for _, entry in series.items():
+                    outfile.write(f"\t{entry}")
+                outfile.write("\n")
+            outfile.flush()
+                
+
 
 def write_tsv(data, out_path=None):
     filename = "ipc"
@@ -229,6 +280,8 @@ def write_tsv(data, out_path=None):
         filename = "frontend_stalls"
     elif type == STATS.PARTIAL_MISSES:
         filename = "partial_misses"
+    elif type == STATS.BRANCH_DISTANCES:
+        filename = "branch_distances"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
@@ -291,6 +344,8 @@ elif sys.argv[3] == "FRONTEND_STALLS":
     type = STATS.FRONTEND_STALLS
 elif sys.argv[3] == "PARTIAL_MISSES":
     type = STATS.PARTIAL_MISSES
+elif sys.argv[3] == "BRANCH_DISTANCES":
+    type = STATS.BRANCH_DISTANCES
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
 if sys.argv[2] == "single":
@@ -303,5 +358,7 @@ else:
 
 if type == STATS.PARTIAL_MISSES:
     write_partial_misses(data, sys.argv[1])
+elif type == STATS.BRANCH_DISTANCES:
+    write_series(data, sys.argv[1])
 else:
     write_tsv(data, sys.argv[1])
