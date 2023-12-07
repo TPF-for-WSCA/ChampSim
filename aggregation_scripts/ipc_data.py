@@ -38,9 +38,7 @@ def extract_l1i_partial(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile(
-        "cpu0\_L1I TOTAL.*PARTIAL MISS\:\s+(\d*) \( (\d*\.?\d+)\%\)"
-    )
+    regex = re.compile("cpu0\_L1I TOTAL.*PARTIAL MISS\:\s+(\d*) \( (\d*\.?\d+)\%\)")
     logs.reverse()
     for line in logs:  # reverse to find last run first
         matches = regex.match(line)
@@ -78,9 +76,7 @@ def extrace_useless_percentage(path):
         logs = f.readlines()
     regex = re.compile("cpu0\_L1I EVICTIONS\:\s+(\d*)\s+USELESS:\s+(\d*)")
     if buffer:
-        regex = re.compile(
-            "cpu0\_L1I_buffer EVICTIONS\:\s+(\d*)\s+USELESS:\s+(\d*)"
-        )
+        regex = re.compile("cpu0\_L1I_buffer EVICTIONS\:\s+(\d*)\s+USELESS:\s+(\d*)")
 
     logs.reverse()
     for line in logs:  # reverse to find last run first
@@ -124,7 +120,8 @@ def extract_frontend_stalls_percentage(path):
     if total_instructions < 0 or stall_cycles < 0:
         print("ERROR: DID NOT EXTRACT STALL PERCENTAGE")
         return float("NaN")
-    return (float(stall_cycles) / float(total_instructions))*1000
+    return (float(stall_cycles) / float(total_instructions)) * 1000
+
 
 def extract_buffer_duration(path):
     assert 0
@@ -144,17 +141,32 @@ def extract_branch_distance(path):
             candidate_lines.append((int(matches.groups()[0]), int(matches.groups()[1])))
         if "BRANCH DISTANCE STATS" in logline:
             break
-    buckets = [64, 128, 256, 512, 1024, 2048, 4096, 8192, ">"]
-    count_by_bucket = {64:0, 128:0, 256:0, 512:0, 1024:0, 2048:0, 4096:0, 8192:0, ">": 0}
+    buckets = [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, ">"]
+    count_by_bucket = {
+        32: 0,
+        64: 0,
+        128: 0,
+        256: 0,
+        512: 0,
+        1024: 0,
+        2048: 0,
+        4096: 0,
+        8192: 0,
+        16384: 0,
+        ">": 0,
+    }
     for single_entry in candidate_lines:
         old_bucket = 0
         bucket_key = 0
         for bucket in buckets:
-            if old_bucket < single_entry[0] and (bucket == ">" or single_entry[0] < bucket):
+            if old_bucket < single_entry[0] and (
+                bucket == ">" or single_entry[0] < bucket
+            ):
                 bucket_key = bucket
                 break
         count_by_bucket[bucket_key] += single_entry[1]
     return count_by_bucket
+
 
 def single_run(path):
     stat_by_workload = {}
@@ -179,9 +191,7 @@ def single_run(path):
                     f"{path}/{workload}/{logfile}"
                 )
             elif type == STATS.FRONTEND_STALLS:
-                stat_by_workload[
-                    workload
-                ] = extract_frontend_stalls_percentage(
+                stat_by_workload[workload] = extract_frontend_stalls_percentage(
                     f"{path}/{workload}/{logfile}"
                 )
             elif type == STATS.PARTIAL_MISSES:
@@ -193,11 +203,11 @@ def single_run(path):
                     f"{path}/{workload}/{logfile}"
                 )
             elif type == STATS.BRANCH_DISTANCES:
-                stat_by_workload[workload] = extract_branch_distance(f"{path}/{workload}/{logfile}")
-            else:
-                stat_by_workload[workload] = extract_ipc(
+                stat_by_workload[workload] = extract_branch_distance(
                     f"{path}/{workload}/{logfile}"
                 )
+            else:
+                stat_by_workload[workload] = extract_ipc(f"{path}/{workload}/{logfile}")
     return stat_by_workload
 
 
@@ -211,9 +221,7 @@ def mutliple_sizes_run(out_dir=None):
         lip_matches = re.search(r"(\d*)lip", subdir)
         matches = re.search(r"(\d+)([km])+$", subdir)
         if not matches:
-            ipc_by_cachesize_and_workload[subdir] = single_run(
-                f"{out_dir}/{subdir}"
-            )
+            ipc_by_cachesize_and_workload[subdir] = single_run(f"{out_dir}/{subdir}")
             continue
         matches = matches.groups()
         name = ""
@@ -250,6 +258,7 @@ def write_partial_misses(data, out_path="./"):
             outfile.flush()
     return
 
+
 def write_series(data, out_path="./"):
     base_filename = "branch_distances"
     for csize, values in data.items():
@@ -263,7 +272,6 @@ def write_series(data, out_path="./"):
                     outfile.write(f"\t{entry}")
                 outfile.write("\n")
             outfile.flush()
-                
 
 
 def write_tsv(data, out_path=None):

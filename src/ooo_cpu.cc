@@ -206,7 +206,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   uint64_t predicted_branch_target = 0;
   if (arch_instr.is_branch) {
 
-    if (warmup_complete[cpu] && arch_instr.branch_target > 0 && !BLOCK_ENDING_BRANCH(arch_instr.ip) && arch_instr.branch_target < arch_instr.ip) {
+    if (arch_instr.branch_target > 0 && !BLOCK_ENDING_BRANCH(arch_instr.ip) && arch_instr.branch_target < arch_instr.ip) {
       uint32_t branch_diff = arch_instr.ip - arch_instr.branch_target;
       branch_distance[branch_diff]++;
       branch_count++;
