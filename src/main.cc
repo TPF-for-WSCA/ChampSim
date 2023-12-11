@@ -18,8 +18,9 @@
 #include "tracereader.h"
 #include "vmem.h"
 
-uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, all_warmup_complete = 0, all_simulation_complete = 0,
-        MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_pintrace = 0, knob_cloudsuite = 0, knob_low_bandwidth = 0, knob_intel = 0, knob_stall_on_miss = 1;
+uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, trace_ended[NUM_CPUS] = {}, all_warmup_complete = 0, all_simulation_complete = 0,
+        MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_pintrace = 0, knob_cloudsuite = 0, knob_low_bandwidth = 0, knob_intel = 0, knob_stall_on_miss = 1,
+        knob_stop_at_completion = 1;
 int8_t knob_ip_offset = 0;
 bool knob_no_detail_stats = false;
 
@@ -831,8 +832,16 @@ int main(int argc, char** argv)
 
     for (std::size_t i = 0; i < ooo_cpu.size(); ++i) {
       // read from trace
-      while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0) {
-        ooo_cpu[i]->init_instruction(traces[i]->get());
+      while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
+        struct ooo_model_instr trace_inst;
+        try {
+          trace_inst = traces[i]->get();
+          ooo_cpu[i]->num_read++;
+        } catch (EndOfTraceException e) {
+          trace_ended[i] = 1;
+          break;
+        }
+        ooo_cpu[i]->init_instruction(trace_inst);
       }
 
       // heartbeat information
@@ -868,10 +877,10 @@ int main(int argc, char** argv)
         all_warmup_complete++;
         finish_warmup();
       }
-
       // simulation complete
-      if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0)
-          && (ooo_cpu[i]->num_retired >= (ooo_cpu[i]->begin_sim_instr + simulation_instructions))) {
+      if (((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0)
+           && (ooo_cpu[i]->num_retired >= (ooo_cpu[i]->begin_sim_instr + simulation_instructions)))
+          || ooo_cpu[i]->num_retired == ooo_cpu[i]->num_read) {
         simulation_complete[i] = 1;
         ooo_cpu[i]->finish_sim_instr = ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr;
         ooo_cpu[i]->finish_sim_cycle = ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle;

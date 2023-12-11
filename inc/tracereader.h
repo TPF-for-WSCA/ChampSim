@@ -1,7 +1,13 @@
 #include <cstdio>
+#include <stdexcept>
 #include <string>
 
 #include "instruction.h"
+
+class EndOfTraceException : public std::runtime_error
+{
+  using std::runtime_error::runtime_error;
+};
 
 class tracereader
 {

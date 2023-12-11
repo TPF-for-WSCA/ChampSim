@@ -14,6 +14,7 @@ extern "C" {
 
 #define GZ_BUFFER_SIZE 50
 extern uint8_t knob_intel;
+extern uint8_t knob_stop_at_completion;
 extern int8_t knob_ip_offset;
 
 static const char* XED_REG_STR[] = {
@@ -121,6 +122,9 @@ ooo_model_instr tracereader::read_single_instr()
       // reached end of file for this trace
       std::cout << "*** Reached end of trace: " << trace_string << std::endl;
 
+      if (knob_stop_at_completion) {
+        throw EndOfTraceException("End of trace reached");
+      }
       // close the trace file and re-open it
       close();
       open(trace_string);
