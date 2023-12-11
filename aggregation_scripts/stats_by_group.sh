@@ -12,7 +12,7 @@ echo ${pg_dir}
 
 chroot=""
 
-if [ -z ${champsim_root+x} ]; then chroot="/cluster/home/romankb/ChampSim/"; else chroot=$champsim_root; fi
+if [ -z ${champsim_root+x} ]; then chroot="/cluster/home/romankb"; else chroot=$champsim_root; fi
 
 echo ${chroot}
 
