@@ -832,7 +832,11 @@ int main(int argc, char** argv)
     for (std::size_t i = 0; i < ooo_cpu.size(); ++i) {
       // read from trace
       while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0) {
-        ooo_cpu[i]->init_instruction(traces[i]->get());
+        struct ooo_model_instr* trace_inst = traces[i]->get();
+        if (trace_inst == NULL) {
+          goto sim_completed;
+        }
+        ooo_cpu[i]->init_instruction(trace_inst);
       }
 
       // heartbeat information
@@ -868,11 +872,11 @@ int main(int argc, char** argv)
         all_warmup_complete++;
         finish_warmup();
       }
-
       // simulation complete
       if ((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0)
           && (ooo_cpu[i]->num_retired >= (ooo_cpu[i]->begin_sim_instr + simulation_instructions))) {
         simulation_complete[i] = 1;
+      sim_completed:
         ooo_cpu[i]->finish_sim_instr = ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr;
         ooo_cpu[i]->finish_sim_cycle = ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle;
 
