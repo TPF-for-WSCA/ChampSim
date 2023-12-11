@@ -504,7 +504,8 @@ void print_branch_stats()
     cout << " Average ROB Occupancy at Mispredict: " << (1.0 * ooo_cpu[i]->total_rob_occupancy_at_branch_mispredict) / ooo_cpu[i]->branch_mispredictions
          << endl;
     cout << "BRANCH DISTANCE STATS" << endl;
-    cout << "AVERAGE: " << ooo_cpu[i]->total_branch_distance / ooo_cpu[i]->branch_count << endl;
+    cout << "\tAVERAGE: " << ooo_cpu[i]->total_branch_distance / ooo_cpu[i]->branch_count << endl;
+    cout << "\tTOTAL BRANCHES: " << ooo_cpu[i]->branch_count << std::endl;
     for (auto it = ooo_cpu[i]->branch_distance.begin(); it != ooo_cpu[i]->branch_distance.end(); it++) {
       cout << std::right << std::setw(9) << it->first << ": " << std::setw(6) << it->second << endl;
     }
