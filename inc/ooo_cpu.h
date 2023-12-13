@@ -43,7 +43,7 @@ private:
 
 public:
   uint32_t cpu = 0;
-  std::map<uint32_t, uint32_t> branch_distance;
+  std::map<uint64_t, uint64_t> branch_distance;
   uint32_t branch_count;
   uint64_t total_branch_distance;
 

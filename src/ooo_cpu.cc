@@ -71,7 +71,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     }
 
     /*
-       if((arch_instr.is_branch) && (arch_instr.destination_registers[i] > 24)
+       if((arch_instr.is_
+       ) && (arch_instr.destination_registers[i] > 24)
        && (arch_instr.destination_registers[i] < 28))
        {
        arch_instr.destination_registers[i] = 0;
@@ -206,8 +207,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   uint64_t predicted_branch_target = 0;
   if (arch_instr.is_branch) {
 
-    if (arch_instr.branch_target > 0 && !BLOCK_ENDING_BRANCH(arch_instr.ip) && arch_instr.branch_target < arch_instr.ip) {
-      uint32_t branch_diff = arch_instr.ip - arch_instr.branch_target;
+    if (arch_instr.branch_target > 0 && !MIGHT_LOOP_BRANCH(arch_instr.branch_type) && arch_instr.branch_target < arch_instr.ip) {
+      uint64_t branch_diff = arch_instr.ip - arch_instr.branch_target;
       branch_distance[branch_diff]++;
       branch_count++;
       total_branch_distance += branch_diff;
@@ -383,6 +384,10 @@ void O3_CPU::fetch_instruction()
     fetch_stall = 0;
     fetch_resume_cycle = 0;
   }
+
+  // TODO: Check if stalling here is correct
+  if (fetch_stall)
+    return;
 
   if (IFETCH_BUFFER.empty())
     return;
