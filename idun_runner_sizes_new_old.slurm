@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH -c16
 #SBATCH --mem-per-cpu=8G
-#SBATCH --time=00-02:30:00
+#SBATCH --time=00-05:00:00
 #SBATCH --mail-user=romankb@ntnu.no
 #SBATCH --mail-type=ALL
 #SBATCH -e /cluster/work/romankb/slurm-default-sizes-%j.err
@@ -22,12 +22,12 @@ binaries=("champsim32k")
 
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/spec --nosub --output_dir /cluster/work/romankb/results/new_vs_old/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec_${binary}.log & # We got spec in dpc3
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/server --nosub --output_dir /cluster/work/romankb/results/new_vs_old/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server_${binary}.log &
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/client --nosub --output_dir /cluster/work/romankb/results/new_vs_old/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client_${binary}.log &
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/spec --nosub --output_dir /cluster/work/romankb/results/new_vs_old/ipc1_spec/old_sizes_${binary}/ >> ~/pyrunner_ipc1_spec_old_${binary}.log & # We got spec in dpc3
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/server --nosub --output_dir /cluster/work/romankb/results/new_vs_old/ipc1_server/old_sizes_${binary}/ >> ~/pyrunner_ipc1_server_old_${binary}.log &
-    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/client --nosub --output_dir /cluster/work/romankb/results/new_vs_old/ipc1_client/old_sizes_${binary}/ >> ~/pyrunner_ipc1_client_old_${binary}.log &
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 500000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/spec --nosub --output_dir /cluster/work/romankb/results/new_vs_old/ipc1_spec/sizes_${binary}/ >> ~/pyrunner_ipc1_spec_${binary}.log & # We got spec in dpc3
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 500000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/server --nosub --output_dir /cluster/work/romankb/results/new_vs_old/ipc1_server/sizes_${binary}/ >> ~/pyrunner_ipc1_server_${binary}.log &
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 500000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/client --nosub --output_dir /cluster/work/romankb/results/new_vs_old/ipc1_client/sizes_${binary}/ >> ~/pyrunner_ipc1_client_${binary}.log &
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 500000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/spec --nosub --output_dir /cluster/work/romankb/results/new_vs_old/ipc1_spec/old_sizes_${binary}/ >> ~/pyrunner_ipc1_spec_old_${binary}.log & # We got spec in dpc3
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 500000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/server --nosub --output_dir /cluster/work/romankb/results/new_vs_old/ipc1_server/old_sizes_${binary}/ >> ~/pyrunner_ipc1_server_old_${binary}.log &
+    python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 500000000 --experiment_executable /cluster/home/romankb/ChampSim/bin/${binary} --traces_directory /cluster/work/romankb/dataset/ipc1/client --nosub --output_dir /cluster/work/romankb/results/new_vs_old/ipc1_client/old_sizes_${binary}/ >> ~/pyrunner_ipc1_client_old_${binary}.log &
 done
 
 for job in `jobs -p`
