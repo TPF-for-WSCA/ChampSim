@@ -36,6 +36,30 @@ def extract_ipc(path):
             return matches.groups()[0]
 
 
+def extract_branch_count(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile("\tTOTAL BRANCHES: (\d+)")
+    logs.reverse()
+    for line in logs:
+        matches = regex.match(line)
+        if matches:
+            return int(matches.groups()[0])
+
+
+def extract_instruction_count(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile("CPU \d+ cumulative IPC: \d+.\d+ instructions: (\d+)")
+    logs.reverse()
+    for line in logs:
+        matches = regex.match(line)
+        if matches:
+            return int(matches.groups()[0])
+
+
 def extract_l1i_partial(path):
     logs = []
     with open(path) as f:
@@ -208,6 +232,14 @@ def single_run(path):
                 stat_by_workload[workload] = extract_branch_distance(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.BRANCH_COUNT:
+                stat_by_workload[workload] = extract_branch_count(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.INSTRUCTION_COUNT:
+                stat_by_workload[workload] = extract_instruction_count(
+                    f"{path}/{workload}/{logfile}"
+                )
             else:
                 stat_by_workload[workload] = extract_ipc(f"{path}/{workload}/{logfile}")
     return stat_by_workload
@@ -292,6 +324,10 @@ def write_tsv(data, out_path=None):
         filename = "partial_misses"
     elif type == STATS.BRANCH_DISTANCES:
         filename = "branch_distances"
+    elif type == STATS.BRANCH_COUNT:
+        filename = "branch_count"
+    elif type == STATS.INSTRUCTION_COUNT:
+        filename = "instruction_count"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
@@ -356,6 +392,10 @@ elif sys.argv[3] == "PARTIAL_MISSES":
     type = STATS.PARTIAL_MISSES
 elif sys.argv[3] == "BRANCH_DISTANCES":
     type = STATS.BRANCH_DISTANCES
+elif sys.argv[3] == "BRANCH_COUNT":
+    type = STATS.BRANCH_COUNT
+elif sys.argv[3] == "INSTRUCTION_COUNT":
+    type = STATS.INSTRUCTION_COUNT
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
 if sys.argv[2] == "single":

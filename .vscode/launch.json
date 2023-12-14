@@ -21,7 +21,7 @@
                 "-traces",
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_019.champsimtrace.xz"
-                "/home/robrunne/OneDrive/Research/datasets/ipc1/server_030.champsimtrace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_030.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
                 //"/home/robrunne/Downloads/tmp/champsim_traces/whiskey/champsim-1748052322638680856.267686.memtrace.gz"
@@ -98,10 +98,9 @@
             "justMyCode": true,
             "stopOnEntry": false,
             "args": [
-                "~/OneDrive/Research/results/useless_vcl/tanvir/sizes_champsim_vcl_buffer_64d_max_way",
-                "single",
-                "USELESS_LINES",
-                "true"
+                "/home/robrunne/OneDrive/Research/results/new_vs_old/new_vs_old/ipc1_server",
+                "multiple",
+                "BRANCH_DISTANCES"
             ]
         },
         {

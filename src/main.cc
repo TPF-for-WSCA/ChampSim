@@ -881,7 +881,7 @@ int main(int argc, char** argv)
       // simulation complete
       if (((all_warmup_complete > NUM_CPUS) && (simulation_complete[i] == 0)
            && (ooo_cpu[i]->num_retired >= (ooo_cpu[i]->begin_sim_instr + simulation_instructions)))
-          || (ooo_cpu[i]->num_retired == ooo_cpu[i]->num_read && !ooo_cpu[i]->fetch_stall)) {
+          || trace_ended[i]) {
         simulation_complete[i] = 1;
         ooo_cpu[i]->finish_sim_instr = ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr;
         ooo_cpu[i]->finish_sim_cycle = ooo_cpu[i]->current_cycle - ooo_cpu[i]->begin_sim_cycle;

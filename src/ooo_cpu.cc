@@ -207,10 +207,10 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   uint64_t predicted_branch_target = 0;
   if (arch_instr.is_branch) {
 
+    branch_count++;
     if (arch_instr.branch_target > 0 && MIGHT_LOOP_BRANCH(arch_instr.branch_type) && arch_instr.branch_target < arch_instr.ip) {
       uint64_t branch_diff = arch_instr.ip - arch_instr.branch_target;
       branch_distance[branch_diff]++;
-      branch_count++;
       total_branch_distance += branch_diff;
     }
 
