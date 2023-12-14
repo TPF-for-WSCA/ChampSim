@@ -207,7 +207,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   uint64_t predicted_branch_target = 0;
   if (arch_instr.is_branch) {
 
-    if (arch_instr.branch_target > 0 && !MIGHT_LOOP_BRANCH(arch_instr.branch_type) && arch_instr.branch_target < arch_instr.ip) {
+    if (arch_instr.branch_target > 0 && MIGHT_LOOP_BRANCH(arch_instr.branch_type) && arch_instr.branch_target < arch_instr.ip) {
       uint64_t branch_diff = arch_instr.ip - arch_instr.branch_target;
       branch_distance[branch_diff]++;
       branch_count++;
@@ -384,10 +384,6 @@ void O3_CPU::fetch_instruction()
     fetch_stall = 0;
     fetch_resume_cycle = 0;
   }
-
-  // TODO: Check if stalling here is correct
-  if (fetch_stall)
-    return;
 
   if (IFETCH_BUFFER.empty())
     return;

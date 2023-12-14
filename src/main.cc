@@ -838,7 +838,7 @@ int main(int argc, char** argv)
         try {
           trace_inst = traces[i]->get();
           ooo_cpu[i]->num_read++;
-        } catch (EndOfTraceException e) {
+        } catch (EndOfTraceException const& e) {
           trace_ended[i] = 1;
           break;
         }
