@@ -57,7 +57,7 @@
     "filter_inserts": false,
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "L1D": {
     "sets": 64,

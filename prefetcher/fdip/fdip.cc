@@ -14,6 +14,7 @@ void O3_CPU::prefetcher_initialize() {}
 
 void O3_CPU::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target, uint8_t size)
 {
+  assert(ip % 4 == 0 and branch_target % 4 == 0);
   uint64_t block_addr = ((branch_target >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE);
   if (block_addr == 0)
     return;
@@ -35,6 +36,7 @@ void O3_CPU::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_
 
 uint32_t O3_CPU::prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit, uint32_t metadata_in)
 {
+  assert(v_addr % 4 == 0);
 #define L1I (static_cast<CACHE*>(L1I_bus.lower_level))
   if ((cache_hit == 0) && (L1I->get_occupancy(0, 0) < L1I->MSHR_SIZE >> 1)) {
     uint64_t pf_addr = v_addr + (1 << LOG2_BLOCK_SIZE);

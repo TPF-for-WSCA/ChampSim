@@ -225,6 +225,7 @@ bool O3_CPU::is_block_ending_branch(uint64_t ip)
 
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
+  assert(ip % 4 == 0 and branch_target % 4 == 0);
   if (branch_type != NOT_BRANCH && not BLOCK_ENDING_BRANCH(branch_type))
     branch_table[(ip >> 2)] = {branch_type, 4, (branch_target < ip && (ip - branch_target) < EXTENDED_BTB_MAX_LOOP_BRANCH) ? true : false};
   // updates for indirect branches

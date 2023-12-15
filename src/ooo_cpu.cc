@@ -391,13 +391,24 @@ void O3_CPU::fetch_instruction()
   // fetch cache lines that were part of a translated page but not the cache
   // line that initiated the translation
   auto l1i_req_begin = IFETCH_BUFFER.end();
-  l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) {
-    // NOTE: Just broken up for debugging purposes
-    if ((x.translated == COMPLETED) && (x.fetched == 0))
-      return true;
-    else
-      return false;
-  });
+  for (auto it = IFETCH_BUFFER.begin(); it != IFETCH_BUFFER.end(); it++) {
+    if (it->translated == COMPLETED && it->fetched == 0 && it->ip % 4 != 0) {
+      it->fetched = COMPLETED;
+      continue;
+    }
+    if (it->translated != COMPLETED || it->fetched != 0) {
+      continue;
+    }
+    l1i_req_begin = it;
+    break;
+  }
+  //  l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) {
+  //    // NOTE: Just broken up for debugging purposes
+  //    if ((x.translated == COMPLETED) && (x.fetched == 0))
+  //      return true;
+  //    else
+  //      return false;
+  //  });
 
   if (l1i_req_begin == IFETCH_BUFFER.end()) {
     return; // we did not find one that is translated and not yet fetched
