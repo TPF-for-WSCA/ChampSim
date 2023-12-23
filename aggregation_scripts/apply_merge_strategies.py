@@ -11,6 +11,7 @@ import traceback
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from argparse import RawTextHelpFormatter
+from enum import Enum
 from collections import defaultdict
 from collections.abc import MutableMapping
 from functools import partial
@@ -18,6 +19,13 @@ from functools import partial
 plt.style.use("tableau-colorblind10")
 
 # Statistics
+
+class WAY_SIZING_STRATEGY(Enum):
+    FAVOUR_SMALL = 1
+    FAVOUR_PRECISE = 2
+    FAVOUR_BIG = 3
+
+sizing_strategy = WAY_SIZING_STRATEGY.FAVOUR_PRECISE
 
 CHOSEN_STRATEGY = 1
 
@@ -299,7 +307,8 @@ def create_uniform_buckets_of_size(num_buckets):
             comp_value = sumup + single_val
             diff_with = abs(comp_value - (target * bucket_idx))
             diff_without = abs((target * bucket_idx) - sumup)
-            if comp_value > (target * bucket_idx) and diff_with < diff_without:
+            # TODO: Switch to target lower/larger error
+            if comp_value > (target * bucket_idx) and (diff_with < diff_without or sizing_strategy == WAY_SIZING_STRATEGY.FAVOUR_BIG):
                 if inc_counter and counter < 64:
                     counter += increment
                 bucket_percentages.append(comp_value - prev_bucket)
@@ -311,7 +320,7 @@ def create_uniform_buckets_of_size(num_buckets):
                 value += single_val
                 inc_counter = False
                 continue
-            elif comp_value > (target * bucket_idx) and diff_without < diff_with:
+            elif comp_value > (target * bucket_idx) and (diff_without < diff_with or sizing_strategy == WAY_SIZING_STRATEGY.FAVOUR_SMALL):
                 bucket_sizes.append(counter)
                 offset_overhead += get_offset_overhead(counter)
                 bucket_percentages.append(sumup - prev_bucket)
@@ -331,8 +340,16 @@ def create_uniform_buckets_of_size(num_buckets):
 
 
 def apply_way_analysis(
-    workload_name, tracefile_path, num_buffer_entries=64, num_sets=64
+    workload_name, tracefile_path, num_sets=64, allowable_overhead=0
 ):
+    """ Apply way analysis to find optimal way size. This runs the selected merge
+        strategies to find the optimal way size under the assumption of a given
+        merge strategy.
+
+        Keyword Arguments:
+        num_sets           -- Describe the number of sets that the cache will be configured for
+        allowable_overhead -- Additional storage allowed to be used by the current configuration. [B]
+    """
     # count = 0
     for mask in get_mask_from_tracefile(tracefile_path):
         trimmed_mask, first_byte = trim_mask(mask)
@@ -345,12 +362,14 @@ def apply_way_analysis(
     if not arm:
         buffer_bytes_per_set = (
             8 + 64 + 2
-        )  # 6 bytes for bytes accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
+        )  # 8 bytes for bytes accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
     else:
         buffer_bytes_per_set = (
             2 + 64 + 2
         )  # 2 bytes for instruction accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
     target_size = 512 - buffer_bytes_per_set
+    additional_storage_per_set = allowable_overhead / num_sets
+    target_size += additional_storage_per_set
     error = target_size
     selected_waysizes = []
     local_overhead = 0
@@ -736,6 +755,11 @@ if __name__ == "__main__":
             "storage_efficiency",
         ],
     )
+    parser.add_argument(
+        "--sizing_strategy",
+        default="precise",
+        choices=['small', 'precise', 'big'],
+    )
 
     parser.add_argument("architecture", type=str, default="x86", choices=["x86", "arm"])
     strategies_list = "\n".join(
@@ -751,4 +775,12 @@ if __name__ == "__main__":
     parser.add_argument("--vcl-configuration", dest="vcl_config", type=int, nargs="*")
 
     args = parser.parse_args()
+    match args.sizing_strategy:
+        case 'small':
+            sizing_strategy = WAY_SIZING_STRATEGY.FAVOUR_SMALL
+        case 'precise':
+            sizing_strategy = WAY_SIZING_STRATEGY.FAVOUR_PRECISE
+        case 'big':
+            sizing_strategy = WAY_SIZING_STRATEGY.FAVOUR_BIG
+
     main(args)

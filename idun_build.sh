@@ -14,7 +14,7 @@ cd ~/ChampSim/
 for build_script in ${build_configs[@]}
 do
     echo "Building ${build_script}"
-    ~/ChampSim/config.sh ~/ChampSim/${build_script}
+    ~/ChampSim/config.sh ~/ChampSim/IDUN_CONFIGS/${build_script}
     make -j
     sleep 1
 done
