@@ -350,7 +350,6 @@ def apply_way_analysis(
 
         Keyword Arguments:
         num_sets           -- Describe the number of sets that the cache will be configured for
-        allowable_overhead -- Additional storage allowed to be used by the current configuration. [B]
     """
     count = 0
     for mask in get_mask_from_tracefile(tracefile_path):
@@ -369,9 +368,7 @@ def apply_way_analysis(
         buffer_bytes_per_set = (
             2 + 64 + 2
         )  # 2 bytes for instruction accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
-    target_size = 512 - buffer_bytes_per_set
-    additional_storage_per_set = allowable_overhead / num_sets
-    target_size += additional_storage_per_set
+    target_size = 512 - buffer_bytes_per_set + overhead_allowance
     error = target_size
     selected_waysizes = []
     local_overhead = 0
@@ -385,7 +382,7 @@ def apply_way_analysis(
             overhead = math.ceil(((4 + 26 + 4) * i) / 8)  # 6 bits per tag
         else:
             overhead = math.ceil((6 * i) / 8)  # 6 bits per tag
-        local_target_size = target_size - tag_overhead + overhead_allowance
+        local_target_size = target_size - tag_overhead
         (
             bucket_sizes,
             percentages_per_way,
