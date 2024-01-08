@@ -226,7 +226,7 @@ bool O3_CPU::is_not_block_ending(uint64_t ip)
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   assert(ip % 4 == 0 and branch_target % 4 == 0);
-  if (branch_type != NOT_BRANCH) {
+  if (MIGHT_LOOP_BRANCH(branch_type))
     branch_table[(ip >> 2)] = {branch_type, 4, (branch_target < ip && (ip - branch_target) < EXTENDED_BTB_MAX_LOOP_BRANCH) ? true : false};
     if (branch_table.size() > BASIC_BTB_BRANCH_TABLE) {
       std::cerr << "overgrown branch table... " << branch_table.size() << std::endl;

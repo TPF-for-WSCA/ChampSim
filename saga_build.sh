@@ -13,7 +13,7 @@ cd ~/workspace/ChampSim/
 for build_script in ${build_configs[@]}
 do
     echo "Building ${build_script}"
-    ~/workspace/ChampSim/config.sh ~/workspace/ChampSim/${build_script}
+    ~/workspace/ChampSim/config.sh ~/workspace/ChampSim/SAGA_CONFIGS/${build_script}
     make -j
 done
 cd $old_dir
