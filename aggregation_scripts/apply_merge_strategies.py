@@ -332,8 +332,9 @@ def create_uniform_buckets_of_size(num_buckets):
         if counter < 64:  # dont increase if we already hit the ceiling
             counter += increment
     while len(bucket_sizes) < num_buckets:
-        bucket_sizes.append(bucket_sizes[-1])
-        offset_overhead += get_offset_overhead(bucket_sizes[-1])
+        # We add 64, as we only extend at the end
+        bucket_sizes.append(64)
+        offset_overhead += get_offset_overhead(64)
     # print(f"target bucket size: {target}")
     # print(f"Actual buckets: {bucket_percentages}")
     bucket_percentages.append(1 - sum(bucket_percentages))
@@ -341,7 +342,7 @@ def create_uniform_buckets_of_size(num_buckets):
 
 
 def apply_way_analysis(
-    workload_name, tracefile_path, num_sets=64, allowable_overhead=0
+    workload_name, tracefile_path, num_sets=64
 ):
     """ Apply way analysis to find optimal way size. This runs the selected merge
         strategies to find the optimal way size under the assumption of a given
