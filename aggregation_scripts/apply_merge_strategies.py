@@ -26,6 +26,7 @@ class WAY_SIZING_STRATEGY(Enum):
     FAVOUR_BIG = 3
 
 sizing_strategy = WAY_SIZING_STRATEGY.FAVOUR_PRECISE
+overhead_allowance = 0
 
 CHOSEN_STRATEGY = 1
 
@@ -382,7 +383,7 @@ def apply_way_analysis(
             overhead = math.ceil(((4 + 26 + 4) * i) / 8)  # 6 bits per tag
         else:
             overhead = math.ceil((6 * i) / 8)  # 6 bits per tag
-        local_target_size = target_size - tag_overhead
+        local_target_size = target_size - tag_overhead + overhead_allowance
         (
             bucket_sizes,
             percentages_per_way,
@@ -395,12 +396,12 @@ def apply_way_analysis(
         if abs(local_target_size - total_size) < error:
             error = abs(local_target_size - total_size)
             selected_waysizes = bucket_sizes
-            local_overhead = offset_overhead
+            local_overhead = offset_overhead + tag_overhead
         if local_target_size > total_size and total_size > max_size:
             max_size = total_size
             max_size_ways = bucket_sizes
     print(
-        f"Optimal waysizes with error: {error}, overall size: {sum(selected_waysizes) + buffer_bytes_per_set + local_overhead + tag_overhead}"
+        f"Optimal waysizes with error: {error}, overall size: {sum(selected_waysizes) + buffer_bytes_per_set + local_overhead}"
     )
     print(selected_waysizes)
 
@@ -761,6 +762,13 @@ if __name__ == "__main__":
         choices=['small', 'precise', 'big'],
     )
 
+    parser.add_argument(
+        "--overhead_allowance",
+        help="Allowed overhead when deciding the size of the ways per single set in Bytes",
+        default=0,
+        type=int
+    )
+
     parser.add_argument("architecture", type=str, default="x86", choices=["x86", "arm"])
     strategies_list = "\n".join(
         [f"\t{i}:\t{strategy}" for i, strategy in enumerate(strategies)]
@@ -783,5 +791,6 @@ if __name__ == "__main__":
             sizing_strategy = WAY_SIZING_STRATEGY.FAVOUR_PRECISE
         case 'big':
             sizing_strategy = WAY_SIZING_STRATEGY.FAVOUR_BIG
+    overhead_allowance = args.overhead_allowance
 
     main(args)
