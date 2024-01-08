@@ -307,7 +307,7 @@ def create_uniform_buckets_of_size(num_buckets):
             comp_value = sumup + single_val
             diff_with = abs(comp_value - (target * bucket_idx))
             diff_without = abs((target * bucket_idx) - sumup)
-            # TODO: Switch to target lower/larger error
+            # FIXME: Condition is wrong: IF diff_width < diff_without sizing_strategy is ignored
             if comp_value > (target * bucket_idx) and (diff_with < diff_without or sizing_strategy == WAY_SIZING_STRATEGY.FAVOUR_BIG):
                 if inc_counter and counter < 64:
                     counter += increment
@@ -350,13 +350,13 @@ def apply_way_analysis(
         num_sets           -- Describe the number of sets that the cache will be configured for
         allowable_overhead -- Additional storage allowed to be used by the current configuration. [B]
     """
-    # count = 0
+    count = 0
     for mask in get_mask_from_tracefile(tracefile_path):
         trimmed_mask, first_byte = trim_mask(mask)
         merge_single_mask(first_byte, trimmed_mask, only_chosen=True)
-        # count += 1
-        # if count > 100000:
-        #     break  # debug solution
+        count += 1
+        if count > 100000:
+            break  # debug solution
 
     # 64 b (arm: 16) per entry + 6b counter per entry (only for non-directmapped required) + 128B merge registers overall (merge registers might be optimised away)
     if not arm:
