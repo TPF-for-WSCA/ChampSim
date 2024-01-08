@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/saga_vcl_0KB_s_bwbp256",
+  "executable_name": "bin/0KB/saga_vcl_0KB_s_bwbp256",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,

@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim64k",
+  "executable_name": "bin/2KB/champsim64k",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
