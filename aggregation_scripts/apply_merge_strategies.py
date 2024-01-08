@@ -775,6 +775,7 @@ if __name__ == "__main__":
     parser.add_argument("--vcl-configuration", dest="vcl_config", type=int, nargs="*")
 
     args = parser.parse_args()
+
     match args.sizing_strategy:
         case 'small':
             sizing_strategy = WAY_SIZING_STRATEGY.FAVOUR_SMALL
