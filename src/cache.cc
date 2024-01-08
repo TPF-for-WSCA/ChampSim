@@ -1683,7 +1683,7 @@ void VCL_CACHE::operate_buffer_evictions()
       uint8_t block_start = std::max(min_start, blocks[i].first);
       size_t block_size = blocks[i].second - block_start + 1;
       uint64_t ip = merge_block.v_address + block_start;
-      while (extend_blocks_to_branch && block_start + block_size < BLOCK_SIZE && ooo_cpu[merge_block.cpu]->impl_is_block_ending_branch(ip)) {
+      while (extend_blocks_to_branch && block_start + block_size < BLOCK_SIZE && ooo_cpu[merge_block.cpu]->impl_is_not_block_ending(ip)) {
         ip += 4;
         block_size += 4;
       }

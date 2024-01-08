@@ -309,13 +309,13 @@ for cpu in cores:
         cpu['btb_name'] = 'b' + fname.translate(fname_translation_table)
         cpu['btb_initialize'] = 'btb_' + cpu['btb_name'] + '_initialize'
         cpu['btb_update'] = 'btb_' + cpu['btb_name'] + '_update'
-        cpu['btb_ending_branch'] = 'btb_' + cpu['btb_name'] + '_is_block_ending_branch'
+        cpu['btb_ending_branch'] = 'btb_' + cpu['btb_name'] + '_is_not_block_ending'
         cpu['btb_predict'] = 'btb_' + cpu['btb_name'] + '_predict'
 
         opts = ''
         opts += ' -Dinitialize_btb=' + cpu['btb_initialize']
         opts += ' -Dupdate_btb=' + cpu['btb_update']
-        opts += ' -Dis_block_ending_branch=' +cpu['btb_ending_branch']
+        opts += ' -Dis_not_block_ending=' +cpu['btb_ending_branch']
         opts += ' -Dbtb_prediction=' + cpu['btb_predict']
         libfilenames['btb_' + cpu['btb_name'] + '.a'] = (fname, opts)
 
@@ -524,7 +524,7 @@ with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     wfp.write('\n')
 
     wfp.write('\n'.join('bool {1}(uint64_t);'.format(*b) for b in btb_ending_branch))
-    wfp.write('\nbool impl_is_block_ending_branch(uint64_t ip)\n{\n    ')
+    wfp.write('\nbool impl_is_not_block_ending(uint64_t ip)\n{\n    ')
     wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}(ip);'.format(*b) for b in btb_ending_branch))
     wfp.write('\n    throw std::invalid_argument("Branch target buffer module not found");')
     wfp.write('\n}\n')

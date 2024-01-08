@@ -392,6 +392,10 @@ void O3_CPU::fetch_instruction()
   // line that initiated the translation
   auto l1i_req_begin = IFETCH_BUFFER.end();
   for (auto it = IFETCH_BUFFER.begin(); it != IFETCH_BUFFER.end(); it++) {
+
+    // TODO: Fix up for x86 instructions
+    // NOTE: this is here for the fake instructions in the fixed ipc1 traces,
+    // such that we don't increase throughput requirements on instruction fetching
     if (it->translated == COMPLETED && it->fetched == 0 && it->ip % 4 != 0) {
       it->fetched = COMPLETED;
       continue;

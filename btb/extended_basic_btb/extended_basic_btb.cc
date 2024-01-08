@@ -212,12 +212,12 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
   return std::make_pair(0, always_taken);
 }
 
-bool O3_CPU::is_block_ending_branch(uint64_t ip)
+bool O3_CPU::is_not_block_ending(uint64_t ip)
 {
   ip = ip >> 2;
   auto BTE = branch_table.find(ip);
   // if end - not a branch thus continuing to next entry
-  if (BTE == branch_table.end() || (BTE->second.BW && !BLOCK_ENDING_BRANCH(BTE->second.branch_type))) {
+  if (BTE == branch_table.end() || (BTE->second.BW && MIGHT_LOOP_BRANCH(BTE->second.branch_type))) {
     return true;
   }
   return false;
@@ -226,8 +226,12 @@ bool O3_CPU::is_block_ending_branch(uint64_t ip)
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   assert(ip % 4 == 0 and branch_target % 4 == 0);
-  if (branch_type != NOT_BRANCH && not BLOCK_ENDING_BRANCH(branch_type))
+  if (branch_type != NOT_BRANCH) {
     branch_table[(ip >> 2)] = {branch_type, 4, (branch_target < ip && (ip - branch_target) < EXTENDED_BTB_MAX_LOOP_BRANCH) ? true : false};
+    if (branch_table.size() > BASIC_BTB_BRANCH_TABLE) {
+      std::cerr << "overgrown branch table... " << branch_table.size() << std::endl;
+    }
+  }
   // updates for indirect branches
   if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
     basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)] = branch_target;
