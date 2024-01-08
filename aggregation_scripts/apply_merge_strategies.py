@@ -374,6 +374,7 @@ def apply_way_analysis(
     error = target_size
     selected_waysizes = []
     local_overhead = 0
+    max_local_overhead = 0
     overhead = 0
     max_size = 0
     max_size_ways = []
@@ -400,13 +401,14 @@ def apply_way_analysis(
         if local_target_size > total_size and total_size > max_size:
             max_size = total_size
             max_size_ways = bucket_sizes
+            max_local_overhead = offset_overhead + tag_overhead
     print(
         f"Optimal waysizes with error: {error}, overall size: {sum(selected_waysizes) + buffer_bytes_per_set + local_overhead}"
     )
     print(selected_waysizes)
 
-    print(f"Max waysizes within bounds: {max_size}")
-    print(max_size_ways)
+    print(f"Max waysizes within bounds: {max_size}, including overhead: {max_size + buffer_bytes_per_set + max_local_overhead}")
+    print(max_size_ways, flush=True)
     WAY_SIZES_BY_WORKLOAD[workload_name] = selected_waysizes
 
 
