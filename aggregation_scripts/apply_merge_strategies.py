@@ -307,8 +307,8 @@ def create_uniform_buckets_of_size(num_buckets):
             comp_value = sumup + single_val
             diff_with = abs(comp_value - (target * bucket_idx))
             diff_without = abs((target * bucket_idx) - sumup)
-            # FIXME: Condition is wrong: IF diff_width < diff_without sizing_strategy is ignored
-            if comp_value > (target * bucket_idx) and (diff_with < diff_without or sizing_strategy == WAY_SIZING_STRATEGY.FAVOUR_BIG):
+            choose_bigger = diff_with < diff_without if sizing_strategy == WAY_SIZING_STRATEGY.FAVOUR_PRECISE else sizing_strategy == WAY_SIZING_STRATEGY.FAVOUR_BIG
+            if comp_value > (target * bucket_idx) and choose_bigger:
                 if inc_counter and counter < 64:
                     counter += increment
                 bucket_percentages.append(comp_value - prev_bucket)
@@ -320,7 +320,7 @@ def create_uniform_buckets_of_size(num_buckets):
                 value += single_val
                 inc_counter = False
                 continue
-            elif comp_value > (target * bucket_idx) and (diff_without < diff_with or sizing_strategy == WAY_SIZING_STRATEGY.FAVOUR_SMALL):
+            elif comp_value > (target * bucket_idx) and not choose_bigger:
                 bucket_sizes.append(counter)
                 offset_overhead += get_offset_overhead(counter)
                 bucket_percentages.append(sumup - prev_bucket)
