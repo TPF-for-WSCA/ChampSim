@@ -43,6 +43,40 @@ void O3_CPU::initialize_core()
   impl_btb_initialize();
 }
 
+void O3_CPU::add_wrongpath_instruction()
+{
+  std::vector<std::pair<uint64_t, uint8_t>> possible_prediction_targets;
+  for (int j = 1; j <= BRANCH_OTHER; j++) {
+    impl_btb_prediction(last_wrong_ip, arch_instr.branch_type);
+    possible_prediction_targets.push_back();
+  }
+
+  predicted_branch_target = btb_result.first;
+  uint8_t always_taken = btb_result.second;
+  uint8_t branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
+  if ((branch_prediction == 0) && (always_taken == 0)) {
+    predicted_branch_target = 0;
+  }
+
+  if (predicted_branch_target != arch_instr.branch_target) {
+    branch_mispredictions++;
+    total_rob_occupancy_at_branch_mispredict += ROB.occupancy();
+    branch_type_misses[arch_instr.branch_type]++;
+    IFETCH_WRONGPATH.push_back(predicted_branch_target);
+    if (warmup_complete[cpu]) {
+      fetch_stall = 1;
+      instrs_to_read_this_cycle = 0;
+      arch_instr.branch_mispredicted = 1;
+    }
+  } else {
+    // if correctly predicted taken, then we can't fetch anymore instructions
+    // this cycle
+    if (arch_instr.branch_taken == 1) {
+      instrs_to_read_this_cycle = 0;
+    }
+  }
+}
+
 void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 {
   instrs_to_read_this_cycle--;
@@ -232,9 +266,12 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
       branch_mispredictions++;
       total_rob_occupancy_at_branch_mispredict += ROB.occupancy();
       branch_type_misses[arch_instr.branch_type]++;
+      IFETCH_WRONGPATH.push_back(predicted_branch_target);
+      last_wrong_ip = predicted_branch_target;
       if (warmup_complete[cpu]) {
         fetch_stall = 1;
-        instrs_to_read_this_cycle = 0;
+        if (branch_prediction)
+          instrs_to_read_this_cycle = 0;
         arch_instr.branch_mispredicted = 1;
       }
     } else {

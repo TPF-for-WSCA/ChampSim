@@ -845,6 +845,11 @@ int main(int argc, char** argv)
         ooo_cpu[i]->init_instruction(trace_inst);
       }
 
+      while (ooo_cpu[i]->fetch_stall && ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
+        ooo_cpu[i]->add_wrongpath_instruction();
+        ooo_cpu->instrs_to_read_this_cycle--;
+      }
+
       // heartbeat information
       if (show_heartbeat && (ooo_cpu[i]->num_retired >= ooo_cpu[i]->next_print_instruction)) {
         float cumulative_ipc;

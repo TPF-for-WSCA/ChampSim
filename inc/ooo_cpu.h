@@ -67,6 +67,8 @@ public:
 
   // reorder buffer, load/store queue, register file
   champsim::circular_buffer<ooo_model_instr> IFETCH_BUFFER;
+  champsim::circular_buffer<uint64_t> IFETCH_WRONGPATH;
+  uint64_t last_wrong_ip = 0;
   champsim::delay_queue<ooo_model_instr> DISPATCH_BUFFER;
   champsim::delay_queue<ooo_model_instr> DECODE_BUFFER;
   champsim::circular_buffer<ooo_model_instr> ROB;
@@ -104,6 +106,7 @@ public:
   void operate() override;
 
   // functions
+  void add_wrongpath_instruction();
   void init_instruction(ooo_model_instr instr);
   void check_dib();
   void translate_fetch();
