@@ -45,36 +45,17 @@ void O3_CPU::initialize_core()
 
 void O3_CPU::add_wrongpath_instruction()
 {
-  std::vector<std::pair<uint64_t, uint8_t>> possible_prediction_targets;
-  for (int j = 1; j <= BRANCH_OTHER; j++) {
-    impl_btb_prediction(last_wrong_ip, arch_instr.branch_type);
-    possible_prediction_targets.push_back();
-  }
-
-  predicted_branch_target = btb_result.first;
-  uint8_t always_taken = btb_result.second;
-  uint8_t branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
-  if ((branch_prediction == 0) && (always_taken == 0)) {
-    predicted_branch_target = 0;
-  }
-
-  if (predicted_branch_target != arch_instr.branch_target) {
-    branch_mispredictions++;
-    total_rob_occupancy_at_branch_mispredict += ROB.occupancy();
-    branch_type_misses[arch_instr.branch_type]++;
-    IFETCH_WRONGPATH.push_back(predicted_branch_target);
-    if (warmup_complete[cpu]) {
-      fetch_stall = 1;
-      instrs_to_read_this_cycle = 0;
-      arch_instr.branch_mispredicted = 1;
-    }
-  } else {
-    // if correctly predicted taken, then we can't fetch anymore instructions
-    // this cycle
-    if (arch_instr.branch_taken == 1) {
-      instrs_to_read_this_cycle = 0;
-    }
-  }
+  instrs_to_read_this_cycle--;
+  struct ooo_model_instr wrong_path_instr;
+  wrong_path_instr.ip = last_wrong_ip;
+  wrong_path_instr.instr_id = ++instr_unique_id;
+  wrong_path_instr.asid[0] = cpu;
+  wrong_path_instr.asid[1] = cpu;
+  wrong_path_instr.is_branch = false;
+  wrong_path_instr.branch_target = 0;
+  IFETCH_WRONGPATH.push_back(wrong_path_instr);
+  auto btb_prediction = impl_btb_prediction(last_wrong_ip, BRANCH_CONDITIONAL);
+  last_wrong_ip = btb_prediction.first; // if it was not in the btb we get back ip + instr size
 }
 
 void O3_CPU::init_instruction(ooo_model_instr arch_instr)
@@ -262,12 +243,15 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
       predicted_branch_target = 0;
     }
 
+    // TODO: check branch taken state
     if (predicted_branch_target != arch_instr.branch_target) {
       branch_mispredictions++;
       total_rob_occupancy_at_branch_mispredict += ROB.occupancy();
       branch_type_misses[arch_instr.branch_type]++;
-      IFETCH_WRONGPATH.push_back(predicted_branch_target);
       last_wrong_ip = predicted_branch_target;
+      if (not last_wrong_ip)
+        last_wrong_ip = arch_instr.ip + 4; // TODO: this is only valid for ARM
+      add_wrongpath_instruction();
       if (warmup_complete[cpu]) {
         fetch_stall = 1;
         if (branch_prediction)
@@ -360,24 +344,28 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
   }
 }
 
-// TODO: Do we need to fix that to fetch_width instead of entire FTQ size?
+// TODO: ONLY TRANSLATE/FETCH/PROMOTE WRONG PATH WHEN IT IS THEIR TURN! RELY ON INSTRUCTION ID PROBABLY?
 void O3_CPU::translate_fetch()
 {
-  if (IFETCH_BUFFER.empty())
-    return;
-
-  // scan through IFETCH_BUFFER to find instructions that need to be translated
-  auto itlb_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) { return !x.translated; });
-  if (itlb_req_begin == IFETCH_BUFFER.end()) {
-    return;
-  }
-  uint64_t find_addr = itlb_req_begin->ip;
-  auto itlb_req_end = std::find_if(itlb_req_begin, IFETCH_BUFFER.end(),
-                                   [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE); });
-  // auto end = std::min(IFETCH_BUFFER.end(), std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH));
-  if (itlb_req_end != IFETCH_BUFFER.end() || itlb_req_begin == IFETCH_BUFFER.begin()) {
-    do_translate_fetch(itlb_req_begin, itlb_req_end);
-  }
+  auto translate_from_queue = [&](champsim::circular_buffer<ooo_model_instr>& QUEUE) -> bool {
+    if (QUEUE.empty())
+      return false;
+    auto itlb_req_begin = std::find_if(QUEUE.begin(), QUEUE.end(), [](const ooo_model_instr& x) { return !x.translated; });
+    if (itlb_req_begin == QUEUE.end())
+      return false;
+    uint64_t find_addr = itlb_req_begin->ip;
+    auto itlb_req_end =
+        std::find_if(itlb_req_begin, QUEUE.end(), [find_addr](const ooo_model_instr& x) { return (find_addr >> LOG2_PAGE_SIZE) != (x.ip >> LOG2_PAGE_SIZE); });
+    if (itlb_req_end != QUEUE.end() or itlb_req_begin == QUEUE.begin()) {
+      do_translate_fetch(itlb_req_begin, itlb_req_end);
+      return true;
+    }
+    return false;
+  };
+  bool translated = false;
+  translated = translate_from_queue(IFETCH_BUFFER);
+  if (not translated)
+    translate_from_queue(IFETCH_WRONGPATH);
 }
 
 void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
@@ -411,6 +399,47 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
 
 void O3_CPU::fetch_instruction()
 {
+  auto fetch_instruction_from_queue = [&](champsim::circular_buffer<ooo_model_instr>& QUEUE) -> bool {
+    if (QUEUE.empty())
+      return false;
+    // fetch cache lines that were part of a translated page but not the cache
+    // line that initiated the translation
+    auto l1i_req_begin = QUEUE.end();
+    for (auto it = QUEUE.begin(); it != QUEUE.end(); it++) {
+
+      // TODO: Fix up for x86 instructions
+      // NOTE: this is here for the fake instructions in the fixed ipc1 traces,
+      // such that we don't increase throughput requirements on instruction fetching
+      if (it->translated == COMPLETED && it->fetched == 0 && it->ip % 4 != 0) {
+        it->fetched = COMPLETED;
+        continue;
+      }
+      if (it->translated != COMPLETED || it->fetched != 0) {
+        continue;
+      }
+      l1i_req_begin = it;
+      break;
+    }
+
+    if (l1i_req_begin == QUEUE.end()) {
+      return false; // we did not find one that is translated and not yet fetched
+    }
+
+    uint64_t find_addr = l1i_req_begin->instruction_pa;
+    auto end = std::min(QUEUE.end(), std::next(l1i_req_begin, FETCH_WIDTH + 1)); // Collapsing queue design?
+    auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr](const ooo_model_instr& x) {
+      bool is_adjacent =
+          find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa; // we compare first with ourselves. of course same address access is included
+      bool is_same_block = find_addr >> LOG2_BLOCK_SIZE == x.instruction_pa >> LOG2_BLOCK_SIZE;
+      find_addr = x.instruction_pa;
+      return not(is_adjacent && is_same_block);
+    });
+    if (l1i_req_end < end || l1i_req_begin == QUEUE.begin()) { // collapsing FTQ?
+      do_fetch_instruction(l1i_req_begin, l1i_req_end);
+      return true;
+    }
+    return false;
+  };
   // if we had a branch mispredict, turn fetching back on after the branch
   // mispredict penalty
   if (stall_on_miss == 1) {
@@ -420,53 +449,13 @@ void O3_CPU::fetch_instruction()
   if ((fetch_stall == 1) && (current_cycle >= fetch_resume_cycle) && (fetch_resume_cycle != 0)) {
     fetch_stall = 0;
     fetch_resume_cycle = 0;
+    IFETCH_WRONGPATH.clear();
   }
 
-  if (IFETCH_BUFFER.empty())
-    return;
-
-  // fetch cache lines that were part of a translated page but not the cache
-  // line that initiated the translation
-  auto l1i_req_begin = IFETCH_BUFFER.end();
-  for (auto it = IFETCH_BUFFER.begin(); it != IFETCH_BUFFER.end(); it++) {
-
-    // TODO: Fix up for x86 instructions
-    // NOTE: this is here for the fake instructions in the fixed ipc1 traces,
-    // such that we don't increase throughput requirements on instruction fetching
-    if (it->translated == COMPLETED && it->fetched == 0 && it->ip % 4 != 0) {
-      it->fetched = COMPLETED;
-      continue;
-    }
-    if (it->translated != COMPLETED || it->fetched != 0) {
-      continue;
-    }
-    l1i_req_begin = it;
-    break;
-  }
-  //  l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) {
-  //    // NOTE: Just broken up for debugging purposes
-  //    if ((x.translated == COMPLETED) && (x.fetched == 0))
-  //      return true;
-  //    else
-  //      return false;
-  //  });
-
-  if (l1i_req_begin == IFETCH_BUFFER.end()) {
-    return; // we did not find one that is translated and not yet fetched
-  }
-
-  uint64_t find_addr = l1i_req_begin->instruction_pa;
-  auto end = std::min(IFETCH_BUFFER.end(), std::next(l1i_req_begin, FETCH_WIDTH + 1)); // Collapsing queue design?
-  auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr](const ooo_model_instr& x) {
-    bool is_adjacent =
-        find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa; // we compare first with ourselves. of course same address access is included
-    bool is_same_block = find_addr >> LOG2_BLOCK_SIZE == x.instruction_pa >> LOG2_BLOCK_SIZE;
-    find_addr = x.instruction_pa;
-    return not(is_adjacent && is_same_block);
-  });
-  if (l1i_req_end < end || l1i_req_begin == IFETCH_BUFFER.begin()) { // collapsing FTQ?
-    do_fetch_instruction(l1i_req_begin, l1i_req_end);
-  }
+  bool fetched_instruction = false;
+  fetched_instruction = fetch_instruction_from_queue(IFETCH_BUFFER);
+  if (not fetched_instruction)
+    fetch_instruction_from_queue(IFETCH_WRONGPATH);
 }
 
 void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
@@ -511,20 +500,31 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
 void O3_CPU::promote_to_decode()
 {
   unsigned available_fetch_bandwidth = FETCH_WIDTH;
-  auto instr = IFETCH_BUFFER.front();
-  if (IFETCH_BUFFER.front().fetched != COMPLETED) {
-    frontend_stall_cycles++;
-  }
-  while (available_fetch_bandwidth > 0 && !IFETCH_BUFFER.empty() && !DECODE_BUFFER.full() && IFETCH_BUFFER.front().translated == COMPLETED
-         && IFETCH_BUFFER.front().fetched == COMPLETED) {
-    if (!warmup_complete[cpu] || IFETCH_BUFFER.front().decoded)
-      DECODE_BUFFER.push_back_ready(IFETCH_BUFFER.front());
-    else
-      DECODE_BUFFER.push_back(IFETCH_BUFFER.front());
+  auto promote_decode = [&](champsim::circular_buffer<ooo_model_instr>& QUEUE, bool wrongpath = false) {
+    if (QUEUE.front().fetched != COMPLETED) {
+      return;
+    }
+    while (available_fetch_bandwidth > 0 and not QUEUE.empty() and not DECODE_BUFFER.full() and QUEUE.front().translated == COMPLETED
+           and QUEUE.front().fetched == COMPLETED) {
+      if (wrongpath) {
+        QUEUE.pop_front();
+        available_fetch_bandwidth--;
+        continue;
+      }
+      if (not warmup_complete[cpu] or QUEUE.front().decoded) {
+        DECODE_BUFFER.push_back_ready(QUEUE.front());
+      } else {
+        DECODE_BUFFER.push_back(QUEUE.front());
+      }
 
-    IFETCH_BUFFER.pop_front();
+      QUEUE.pop_front();
+      available_fetch_bandwidth--;
+    }
+  };
 
-    available_fetch_bandwidth--;
+  promote_decode(IFETCH_BUFFER);
+  if (available_fetch_bandwidth > 0) {
+    promote_decode(IFETCH_WRONGPATH, true);
   }
 
   // check for deadlock

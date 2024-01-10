@@ -67,7 +67,7 @@ public:
 
   // reorder buffer, load/store queue, register file
   champsim::circular_buffer<ooo_model_instr> IFETCH_BUFFER;
-  champsim::circular_buffer<uint64_t> IFETCH_WRONGPATH;
+  champsim::circular_buffer<ooo_model_instr> IFETCH_WRONGPATH;
   uint64_t last_wrong_ip = 0;
   champsim::delay_queue<ooo_model_instr> DISPATCH_BUFFER;
   champsim::delay_queue<ooo_model_instr> DECODE_BUFFER;
@@ -159,12 +159,12 @@ public:
          unsigned execute_latency, MemoryRequestConsumer* itlb, MemoryRequestConsumer* dtlb, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
          bpred_t bpred_type, btb_t btb_type, size_t btb_sets, size_t btb_ways, size_t btb_max_loop_branch, ipref_t ipref_type)
       : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window), IFETCH_BUFFER(ifetch_buffer_size * 2),
-        DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency), ROB(rob_size), LQ(lq_size), SQ(sq_size),
-        FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width),
-        LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), SCHEDULING_LATENCY(schedule_latency),
-        EXEC_LATENCY(execute_latency), ITLB_bus(rob_size, itlb), DTLB_bus(rob_size, dtlb), L1I_bus(rob_size, l1i), L1D_bus(rob_size, l1d),
-        bpred_type(bpred_type), btb_type(btb_type), BTB_SETS(btb_sets), BTB_WAYS(btb_ways), EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch),
-        ipref_type(ipref_type)
+        IFETCH_WRONGPATH(ifetch_buffer_size * 2), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency),
+        ROB(rob_size), LQ(lq_size), SQ(sq_size), FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width),
+        SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width),
+        BRANCH_MISPREDICT_PENALTY(mispredict_penalty), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), ITLB_bus(rob_size, itlb),
+        DTLB_bus(rob_size, dtlb), L1I_bus(rob_size, l1i), L1D_bus(rob_size, l1d), bpred_type(bpred_type), btb_type(btb_type), BTB_SETS(btb_sets),
+        BTB_WAYS(btb_ways), EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch), ipref_type(ipref_type)
   {
     basic_btb = (BASIC_BTB_ENTRY*)malloc(NUM_CPUS * BTB_SETS * BTB_WAYS * sizeof(BASIC_BTB_ENTRY));
     if (!basic_btb) {

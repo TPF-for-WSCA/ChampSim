@@ -834,6 +834,10 @@ int main(int argc, char** argv)
     for (std::size_t i = 0; i < ooo_cpu.size(); ++i) {
       // read from trace
       while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
+        if (ooo_cpu[i]->IFETCH_BUFFER.occupancy() + ooo_cpu[i]->IFETCH_WRONGPATH.occupancy() > ooo_cpu[i]->IFETCH_BUFFER.size()) {
+          ooo_cpu[i]->instrs_to_read_this_cycle = 0;
+          continue; // We already have enough instructions in the FTQ
+        }
         struct ooo_model_instr trace_inst;
         try {
           trace_inst = traces[i]->get();
@@ -846,8 +850,11 @@ int main(int argc, char** argv)
       }
 
       while (ooo_cpu[i]->fetch_stall && ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
+        if (ooo_cpu[i]->IFETCH_BUFFER.occupancy() + ooo_cpu[i]->IFETCH_WRONGPATH.occupancy() > ooo_cpu[i]->IFETCH_BUFFER.size()) {
+          ooo_cpu[i]->instrs_to_read_this_cycle = 0;
+          continue; // We already have enough instructions in the FTQ
+        }
         ooo_cpu[i]->add_wrongpath_instruction();
-        ooo_cpu->instrs_to_read_this_cycle--;
       }
 
       // heartbeat information

@@ -198,7 +198,7 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
 
     if (btb_entry == NULL) {
       // no prediction for this IP
-      always_taken = true;
+      always_taken = false;
       return std::make_pair(ip + basic_btb_get_call_size(cpu, ip), always_taken);
     }
 
