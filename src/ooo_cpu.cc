@@ -7,15 +7,18 @@
 #include "champsim.h"
 #include "instruction.h"
 
-#define DEADLOCK_CYCLE 100000
+#define DEADLOCK_CYCLE 10000
 
+extern uint8_t knob_wrongpath;
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t MAX_INSTR_DESTINATIONS;
+
+#define BUFFER_SLOTS_AVAILABLE() (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy() - IFETCH_WRONGPATH.occupancy())
 
 void O3_CPU::operate()
 {
   // subtract 1, as we might insert two into the buffer (overlap)
-  instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy()) - 1);
+  instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, (BUFFER_SLOTS_AVAILABLE() - 1));
 
   retire_rob();                    // retire
   complete_inflight_instruction(); // finalize execution
@@ -45,11 +48,14 @@ void O3_CPU::initialize_core()
 
 void O3_CPU::add_wrongpath_instruction()
 {
-  if (IFETCH_WRONGPATH.occupancy() + IFETCH_BUFFER.occupancy() >= IFETCH_BUFFER.size())
-    return; // We do not att more than needed
+  if (BUFFER_SLOTS_AVAILABLE() >= 1 or not instrs_to_read_this_cycle) {
+    instrs_to_read_this_cycle = 0;
+    return; // We do not add more than needed
+  }
   instrs_to_read_this_cycle--;
   struct ooo_model_instr wrong_path_instr;
   wrong_path_instr.ip = last_wrong_ip;
+  wrong_path_instr.fake_instr = true;
   wrong_path_instr.instr_id = ++instr_unique_id;
   wrong_path_instr.asid[0] = cpu;
   wrong_path_instr.asid[1] = cpu;
@@ -258,13 +264,12 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
       last_wrong_ip = predicted_branch_target;
       if (not last_wrong_ip)
         last_wrong_ip = arch_instr.ip + 4; // TODO: this is only valid for ARM
-      add_wrongpath_instruction();
-      if (warmup_complete[cpu]) {
-        fetch_stall = 1;
-        if (branch_prediction)
-          instrs_to_read_this_cycle = 0;
-        arch_instr.branch_mispredicted = 1;
-      }
+      if (knob_wrongpath)
+        add_wrongpath_instruction();
+      fetch_stall = 1;
+      if (branch_prediction)
+        instrs_to_read_this_cycle = 0;
+      arch_instr.branch_mispredicted = 1;
     } else {
       // if correctly predicted taken, then we can't fetch anymore instructions
       // this cycle
@@ -311,7 +316,10 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   IFETCH_BUFFER.push_back(arch_instr);
 
   if (overlap) {
-    instrs_to_read_this_cycle--;
+    if (instrs_to_read_this_cycle)
+      instrs_to_read_this_cycle--;
+    else
+      instrs_to_read_this_cycle = 0;
     IFETCH_BUFFER.push_back(overhang_instr);
   }
 
@@ -1302,6 +1310,21 @@ void O3_CPU::print_deadlock()
     std::cerr << std::endl;
   } else {
     std::cerr << "IFETCH_BUFFER empty" << std::endl;
+  }
+
+  if (!std::empty(IFETCH_WRONGPATH)) {
+    std::cerr << "IFETCH_WRONGPATH head";
+    std::cerr << " instr_id: " << IFETCH_WRONGPATH.front().instr_id;
+    std::cerr << " translated: " << +IFETCH_WRONGPATH.front().translated;
+    std::cerr << " fetched: " << +IFETCH_WRONGPATH.front().fetched;
+    std::cerr << " scheduled: " << +IFETCH_WRONGPATH.front().scheduled;
+    std::cerr << " executed: " << +IFETCH_WRONGPATH.front().executed;
+    std::cerr << " is_memory: " << +IFETCH_WRONGPATH.front().is_memory;
+    std::cerr << " num_reg_dependent: " << +IFETCH_WRONGPATH.front().num_reg_dependent;
+    std::cerr << " event: " << IFETCH_WRONGPATH.front().event_cycle;
+    std::cerr << std::endl;
+  } else {
+    std::cerr << "IFETCH_WRONGPATH empty" << std::endl;
   }
 
   if (!std::empty(ROB)) {
