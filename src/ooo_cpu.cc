@@ -45,6 +45,8 @@ void O3_CPU::initialize_core()
 
 void O3_CPU::add_wrongpath_instruction()
 {
+  if (IFETCH_WRONGPATH.occupancy() + IFETCH_BUFFER.occupancy() >= IFETCH_BUFFER.size())
+    return; // We do not att more than needed
   instrs_to_read_this_cycle--;
   struct ooo_model_instr wrong_path_instr;
   wrong_path_instr.ip = last_wrong_ip;
@@ -53,9 +55,14 @@ void O3_CPU::add_wrongpath_instruction()
   wrong_path_instr.asid[1] = cpu;
   wrong_path_instr.is_branch = false;
   wrong_path_instr.branch_target = 0;
+  wrong_path_instr.event_cycle = current_cycle;
+  wrong_path_instr.size = 4;
   IFETCH_WRONGPATH.push_back(wrong_path_instr);
   auto btb_prediction = impl_btb_prediction(last_wrong_ip, BRANCH_CONDITIONAL);
   last_wrong_ip = btb_prediction.first; // if it was not in the btb we get back ip + instr size
+  if (not last_wrong_ip) {
+    last_wrong_ip = wrong_path_instr.ip + 4;
+  }
 }
 
 void O3_CPU::init_instruction(ooo_model_instr arch_instr)
@@ -364,7 +371,7 @@ void O3_CPU::translate_fetch()
   };
   bool translated = false;
   translated = translate_from_queue(IFETCH_BUFFER);
-  if (not translated)
+  if (not translated and std::all_of(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr v) { return v.translated >= INFLIGHT; }))
     translate_from_queue(IFETCH_WRONGPATH);
 }
 
@@ -454,7 +461,7 @@ void O3_CPU::fetch_instruction()
 
   bool fetched_instruction = false;
   fetched_instruction = fetch_instruction_from_queue(IFETCH_BUFFER);
-  if (not fetched_instruction)
+  if (not fetched_instruction and std::all_of(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr v) { return v.fetched >= INFLIGHT; }))
     fetch_instruction_from_queue(IFETCH_WRONGPATH);
 }
 
@@ -528,7 +535,8 @@ void O3_CPU::promote_to_decode()
   }
 
   // check for deadlock
-  if (!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle)
+  if (!std::empty(IFETCH_BUFFER) && (IFETCH_BUFFER.front().event_cycle + DEADLOCK_CYCLE) <= current_cycle
+      && (!std::empty(IFETCH_WRONGPATH) && IFETCH_WRONGPATH.front().event_cycle + DEADLOCK_CYCLE <= current_cycle))
     throw champsim::deadlock{cpu};
 }
 

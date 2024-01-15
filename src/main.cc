@@ -850,7 +850,7 @@ int main(int argc, char** argv)
       }
 
       while (ooo_cpu[i]->fetch_stall && ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
-        if (ooo_cpu[i]->IFETCH_BUFFER.occupancy() + ooo_cpu[i]->IFETCH_WRONGPATH.occupancy() > ooo_cpu[i]->IFETCH_BUFFER.size()) {
+        if (ooo_cpu[i]->IFETCH_BUFFER.occupancy() + ooo_cpu[i]->IFETCH_WRONGPATH.occupancy() >= ooo_cpu[i]->IFETCH_BUFFER.size()) {
           ooo_cpu[i]->instrs_to_read_this_cycle = 0;
           continue; // We already have enough instructions in the FTQ
         }
