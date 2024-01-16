@@ -26,6 +26,7 @@ class WAY_SIZING_STRATEGY(Enum):
     FAVOUR_BIG = 3
 
 sizing_strategy = WAY_SIZING_STRATEGY.FAVOUR_PRECISE
+overhead_allowance = 0
 
 CHOSEN_STRATEGY = 1
 
@@ -307,8 +308,8 @@ def create_uniform_buckets_of_size(num_buckets):
             comp_value = sumup + single_val
             diff_with = abs(comp_value - (target * bucket_idx))
             diff_without = abs((target * bucket_idx) - sumup)
-            # FIXME: Condition is wrong: IF diff_width < diff_without sizing_strategy is ignored
-            if comp_value > (target * bucket_idx) and (diff_with < diff_without or sizing_strategy == WAY_SIZING_STRATEGY.FAVOUR_BIG):
+            choose_bigger = diff_with < diff_without if sizing_strategy == WAY_SIZING_STRATEGY.FAVOUR_PRECISE else sizing_strategy == WAY_SIZING_STRATEGY.FAVOUR_BIG
+            if comp_value > (target * bucket_idx) and choose_bigger:
                 if inc_counter and counter < 64:
                     counter += increment
                 bucket_percentages.append(comp_value - prev_bucket)
@@ -320,7 +321,7 @@ def create_uniform_buckets_of_size(num_buckets):
                 value += single_val
                 inc_counter = False
                 continue
-            elif comp_value > (target * bucket_idx) and (diff_without < diff_with or sizing_strategy == WAY_SIZING_STRATEGY.FAVOUR_SMALL):
+            elif comp_value > (target * bucket_idx) and not choose_bigger:
                 bucket_sizes.append(counter)
                 offset_overhead += get_offset_overhead(counter)
                 bucket_percentages.append(sumup - prev_bucket)
@@ -331,8 +332,9 @@ def create_uniform_buckets_of_size(num_buckets):
         if counter < 64:  # dont increase if we already hit the ceiling
             counter += increment
     while len(bucket_sizes) < num_buckets:
-        bucket_sizes.append(bucket_sizes[-1])
-        offset_overhead += get_offset_overhead(bucket_sizes[-1])
+        # We add 64, as we only extend at the end
+        bucket_sizes.append(64)
+        offset_overhead += get_offset_overhead(64)
     # print(f"target bucket size: {target}")
     # print(f"Actual buckets: {bucket_percentages}")
     bucket_percentages.append(1 - sum(bucket_percentages))
@@ -340,7 +342,7 @@ def create_uniform_buckets_of_size(num_buckets):
 
 
 def apply_way_analysis(
-    workload_name, tracefile_path, num_sets=64, allowable_overhead=0
+    workload_name, tracefile_path, num_sets=64
 ):
     """ Apply way analysis to find optimal way size. This runs the selected merge
         strategies to find the optimal way size under the assumption of a given
@@ -348,7 +350,6 @@ def apply_way_analysis(
 
         Keyword Arguments:
         num_sets           -- Describe the number of sets that the cache will be configured for
-        allowable_overhead -- Additional storage allowed to be used by the current configuration. [B]
     """
     count = 0
     for mask in get_mask_from_tracefile(tracefile_path):
@@ -367,12 +368,11 @@ def apply_way_analysis(
         buffer_bytes_per_set = (
             2 + 64 + 2
         )  # 2 bytes for instruction accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
-    target_size = 512 - buffer_bytes_per_set
-    additional_storage_per_set = allowable_overhead / num_sets
-    target_size += additional_storage_per_set
+    target_size = 512 - buffer_bytes_per_set + overhead_allowance
     error = target_size
     selected_waysizes = []
     local_overhead = 0
+    max_local_overhead = 0
     overhead = 0
     max_size = 0
     max_size_ways = []
@@ -395,17 +395,18 @@ def apply_way_analysis(
         if abs(local_target_size - total_size) < error:
             error = abs(local_target_size - total_size)
             selected_waysizes = bucket_sizes
-            local_overhead = offset_overhead
+            local_overhead = offset_overhead + tag_overhead
         if local_target_size > total_size and total_size > max_size:
             max_size = total_size
             max_size_ways = bucket_sizes
+            max_local_overhead = offset_overhead + tag_overhead
     print(
-        f"Optimal waysizes with error: {error}, overall size: {sum(selected_waysizes) + buffer_bytes_per_set + local_overhead + tag_overhead}"
+        f"Optimal waysizes with error: {error}, overall size: {sum(selected_waysizes) + buffer_bytes_per_set + local_overhead}"
     )
     print(selected_waysizes)
 
-    print(f"Max waysizes within bounds: {max_size}")
-    print(max_size_ways)
+    print(f"Max waysizes within bounds: {max_size}, including overhead: {max_size + buffer_bytes_per_set + max_local_overhead}")
+    print(max_size_ways, flush=True)
     WAY_SIZES_BY_WORKLOAD[workload_name] = selected_waysizes
 
 
@@ -761,6 +762,13 @@ if __name__ == "__main__":
         choices=['small', 'precise', 'big'],
     )
 
+    parser.add_argument(
+        "--overhead_allowance",
+        help="Allowed overhead when deciding the size of the ways per single set in Bytes",
+        default=0,
+        type=int
+    )
+
     parser.add_argument("architecture", type=str, default="x86", choices=["x86", "arm"])
     strategies_list = "\n".join(
         [f"\t{i}:\t{strategy}" for i, strategy in enumerate(strategies)]
@@ -775,6 +783,7 @@ if __name__ == "__main__":
     parser.add_argument("--vcl-configuration", dest="vcl_config", type=int, nargs="*")
 
     args = parser.parse_args()
+
     match args.sizing_strategy:
         case 'small':
             sizing_strategy = WAY_SIZING_STRATEGY.FAVOUR_SMALL
@@ -782,5 +791,6 @@ if __name__ == "__main__":
             sizing_strategy = WAY_SIZING_STRATEGY.FAVOUR_PRECISE
         case 'big':
             sizing_strategy = WAY_SIZING_STRATEGY.FAVOUR_BIG
+    overhead_allowance = args.overhead_allowance
 
     main(args)

@@ -14,7 +14,6 @@
 #define BASIC_BTB_RAS_SIZE 64
 #define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
 #define BASIC_BTB_BRANCH_TABLE 131072
-#define EXTENDED_BTB_MAX_LOOP_BRANCH 64
 
 struct BRANCH_TABLE_ENTRY {
   uint8_t branch_type;
@@ -227,11 +226,11 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 {
   assert(ip % 4 == 0 and branch_target % 4 == 0);
   if (MIGHT_LOOP_BRANCH(branch_type))
-    branch_table[(ip >> 2)] = {branch_type, 4, (branch_target < ip && (ip - branch_target) < EXTENDED_BTB_MAX_LOOP_BRANCH) ? true : false};
-    if (branch_table.size() > BASIC_BTB_BRANCH_TABLE) {
-      std::cerr << "overgrown branch table... " << branch_table.size() << std::endl;
-    }
+    branch_table[(ip >> 2)] = {branch_type, 4, (branch_target < ip && (ip - branch_target) < EXTENDED_BTB_MAX_LOOP_BRANCH)};
+  if (branch_table.size() > BASIC_BTB_BRANCH_TABLE) {
+    std::cerr << "overgrown branch table... " << branch_table.size() << std::endl;
   }
+
   // updates for indirect branches
   if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
     basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)] = branch_target;
