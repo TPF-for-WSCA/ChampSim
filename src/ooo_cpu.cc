@@ -48,7 +48,7 @@ void O3_CPU::initialize_core()
 
 void O3_CPU::add_wrongpath_instruction()
 {
-  if (BUFFER_SLOTS_AVAILABLE() >= 1 or not instrs_to_read_this_cycle) {
+  if (BUFFER_SLOTS_AVAILABLE() <= 1 or not instrs_to_read_this_cycle) {
     instrs_to_read_this_cycle = 0;
     return; // We do not add more than needed
   }
@@ -64,8 +64,7 @@ void O3_CPU::add_wrongpath_instruction()
   wrong_path_instr.event_cycle = current_cycle;
   wrong_path_instr.size = 4;
   IFETCH_WRONGPATH.push_back(wrong_path_instr);
-  auto btb_prediction = impl_btb_prediction(last_wrong_ip, BRANCH_CONDITIONAL);
-  last_wrong_ip = btb_prediction.first; // if it was not in the btb we get back ip + instr size
+  last_wrong_ip = impl_btb_peek_wrongpath(last_wrong_ip);
   if (not last_wrong_ip) {
     last_wrong_ip = wrong_path_instr.ip + 4;
   }
@@ -233,6 +232,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   }
   // handle branch prediction
   uint64_t predicted_branch_target = 0;
+  btb_register_call_target(arch_instr.ip);
   if (arch_instr.is_branch) {
 
     branch_count++;
@@ -264,8 +264,10 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
       last_wrong_ip = predicted_branch_target;
       if (not last_wrong_ip)
         last_wrong_ip = arch_instr.ip + 4; // TODO: this is only valid for ARM
-      if (knob_wrongpath)
+      if (knob_wrongpath) {
+        impl_btb_begin_wrongpath();
         add_wrongpath_instruction();
+      }
       fetch_stall = 1;
       if (branch_prediction)
         instrs_to_read_this_cycle = 0;
@@ -465,6 +467,8 @@ void O3_CPU::fetch_instruction()
     fetch_stall = 0;
     fetch_resume_cycle = 0;
     IFETCH_WRONGPATH.clear();
+    clear_wrong_prefetch_queue();
+    impl_btb_end_wrongpath();
   }
 
   bool fetched_instruction = false;
@@ -537,9 +541,11 @@ void O3_CPU::promote_to_decode()
     }
   };
 
-  promote_decode(IFETCH_BUFFER);
-  if (available_fetch_bandwidth > 0) {
+  if (IFETCH_WRONGPATH.front().instr_id < IFETCH_BUFFER.front().instr_id) {
     promote_decode(IFETCH_WRONGPATH, true);
+  }
+  if (available_fetch_bandwidth > 0) {
+    promote_decode(IFETCH_BUFFER);
   }
 
   // check for deadlock

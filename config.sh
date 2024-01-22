@@ -311,11 +311,17 @@ for cpu in cores:
         cpu['btb_update'] = 'btb_' + cpu['btb_name'] + '_update'
         cpu['btb_ending_branch'] = 'btb_' + cpu['btb_name'] + '_is_not_block_ending'
         cpu['btb_predict'] = 'btb_' + cpu['btb_name'] + '_predict'
+        cpu['btb_begin_wrongpath'] = 'btb_' + cpu['btb_name'] + '_begin_wrongpath'
+        cpu['btb_end_wrongpath'] = 'btb_' + cpu['btb_name'] + '_end_wrongpath'
+        cpu['btb_peek_wrongpath'] = 'btb_' + cpu['btb_name'] + '_peek_wrongpath'
 
         opts = ''
         opts += ' -Dinitialize_btb=' + cpu['btb_initialize']
         opts += ' -Dupdate_btb=' + cpu['btb_update']
         opts += ' -Dis_not_block_ending=' +cpu['btb_ending_branch']
+        opts += ' -Dbtb_begin_wrongpath=' +cpu['btb_begin_wrongpath']
+        opts += ' -Dbtb_end_wrongpath=' +cpu['btb_end_wrongpath']
+        opts += ' -Dbtb_peek_wrongpath=' +cpu['btb_peek_wrongpath']
         opts += ' -Dbtb_prediction=' + cpu['btb_predict']
         libfilenames['btb_' + cpu['btb_name'] + '.a'] = (fname, opts)
 
@@ -470,22 +476,25 @@ with open(instantiation_file_name, 'wt') as wfp:
     wfp.write('\n};\n')
 
 # Core modules file
-bpred_names        = {c['bpred_name'] for c in cores}
-bpred_inits        = {(c['bpred_name'], c['bpred_initialize']) for c in cores}
-bpred_last_results = {(c['bpred_name'], c['bpred_last_result']) for c in cores}
-bpred_predicts     = {(c['bpred_name'], c['bpred_predict']) for c in cores}
-btb_names          = {c['btb_name'] for c in cores}
-btb_inits          = {(c['btb_name'], c['btb_initialize']) for c in cores}
-btb_updates        = {(c['btb_name'], c['btb_update']) for c in cores}
-btb_ending_branch  = {(c['btb_name'], c['btb_ending_branch']) for c in cores}
-btb_predicts       = {(c['btb_name'], c['btb_predict']) for c in cores}
-ipref_names        = {c['iprefetcher_name'] for c in cores}
-ipref_inits        = {(c['iprefetcher_name'], c['iprefetcher_initialize']) for c in cores}
-ipref_branch_ops   = {(c['iprefetcher_name'], c['iprefetcher_branch_operate']) for c in cores}
-ipref_cache_ops    = {(c['iprefetcher_name'], c['iprefetcher_cache_operate']) for c in cores}
-ipref_cycle_ops    = {(c['iprefetcher_name'], c['iprefetcher_cycle_operate']) for c in cores}
-ipref_fill         = {(c['iprefetcher_name'], c['iprefetcher_cache_fill']) for c in cores}
-ipref_finals       = {(c['iprefetcher_name'], c['iprefetcher_final_stats']) for c in cores}
+bpred_names         = {c['bpred_name'] for c in cores}
+bpred_inits         = {(c['bpred_name'], c['bpred_initialize']) for c in cores}
+bpred_last_results  = {(c['bpred_name'], c['bpred_last_result']) for c in cores}
+bpred_predicts      = {(c['bpred_name'], c['bpred_predict']) for c in cores}
+btb_names           = {c['btb_name'] for c in cores}
+btb_inits           = {(c['btb_name'], c['btb_initialize']) for c in cores}
+btb_updates         = {(c['btb_name'], c['btb_update']) for c in cores}
+btb_ending_branch   = {(c['btb_name'], c['btb_ending_branch']) for c in cores}
+btb_predicts        = {(c['btb_name'], c['btb_predict']) for c in cores}
+btb_begin_wrongpath = {(c['btb_name'], c['btb_begin_wrongpath']) for c in cores}
+btb_end_wrongpath   = {(c['btb_name'], c['btb_end_wrongpath']) for c in cores}
+btb_peek_wrongpath  = {(c['btb_name'], c['btb_peek_wrongpath']) for c in cores}
+ipref_names         = {c['iprefetcher_name'] for c in cores}
+ipref_inits         = {(c['iprefetcher_name'], c['iprefetcher_initialize']) for c in cores}
+ipref_branch_ops    = {(c['iprefetcher_name'], c['iprefetcher_branch_operate']) for c in cores}
+ipref_cache_ops     = {(c['iprefetcher_name'], c['iprefetcher_cache_operate']) for c in cores}
+ipref_cycle_ops     = {(c['iprefetcher_name'], c['iprefetcher_cycle_operate']) for c in cores}
+ipref_fill          = {(c['iprefetcher_name'], c['iprefetcher_cache_fill']) for c in cores}
+ipref_finals        = {(c['iprefetcher_name'], c['iprefetcher_final_stats']) for c in cores}
 with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     wfp.write('enum class bpred_t\n{\n    ')
     wfp.write(',\n    '.join(bpred_names))
@@ -540,6 +549,27 @@ with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     wfp.write('\n'.join('std::pair<uint64_t, uint8_t> {1}(uint64_t, uint8_t);'.format(*b) for b in btb_predicts))
     wfp.write('\nstd::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip, uint8_t branch_type)\n{\n    ')
     wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}(ip, branch_type);'.format(*b) for b in btb_predicts))
+    wfp.write('\n    throw std::invalid_argument("Branch target buffer module not found");')
+    wfp.write('\n}\n')
+    wfp.write('\n')
+
+    wfp.write('\n'.join('void {1}(void);'.format(*b) for b in btb_begin_wrongpath))
+    wfp.write('\nvoid impl_btb_begin_wrongpath(void)\n{\n    ')
+    wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}();'.format(*b) for b in btb_begin_wrongpath))
+    wfp.write('\n    throw std::invalid_argument("Branch target buffer module not found");')
+    wfp.write('\n}\n')
+    wfp.write('\n')
+
+    wfp.write('\n'.join('void {1}(void);'.format(*b) for b in btb_end_wrongpath))
+    wfp.write('\nvoid impl_btb_end_wrongpath(void)\n{\n    ')
+    wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}();'.format(*b) for b in btb_end_wrongpath))
+    wfp.write('\n    throw std::invalid_argument("Branch target buffer module not found");')
+    wfp.write('\n}\n')
+    wfp.write('\n')
+
+    wfp.write('\n'.join('uint64_t {1}(uint64_t);'.format(*b) for b in btb_peek_wrongpath))
+    wfp.write('\nuint64_t impl_btb_peek_wrongpath(uint64_t ip)\n{\n    ')
+    wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}(ip);'.format(*b) for b in btb_peek_wrongpath))
     wfp.write('\n    throw std::invalid_argument("Branch target buffer module not found");')
     wfp.write('\n}\n')
     wfp.write('\n')

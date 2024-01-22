@@ -33,7 +33,7 @@
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "btb": "extended_basic_btb",
-      "btb_max_loop_branch": 512
+      "btb_max_loop_branch": 64
     }
   ],
   "DIB": {
@@ -43,18 +43,19 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 12,
+    "ways": 13,
     "buffer": true,
     "buffer_size": 64,
     "buffer_organisation": "DIRECT_MAPPED",
     "way_sizes": [
       4,
+      4,
+      8,
       12,
-      16,
-      24,
+      20,
       28,
       32,
-      32,
+      36,
       36,
       44,
       64,
@@ -77,7 +78,7 @@
     "prefetch_buffer_size": 16,
     "lru_modifier": "LRU2BOUND4",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": true
+    "extend_blocks_to_branch": false
   },
   "L1D": {
     "perfect": false,
@@ -103,7 +104,7 @@
     "wq_size": 32,
     "pq_size": 16,
     "mshr_size": 32,
-    "latency": 30,
+    "latency": 12,
     "max_read": 1,
     "max_write": 1,
     "prefetch_as_load": false,

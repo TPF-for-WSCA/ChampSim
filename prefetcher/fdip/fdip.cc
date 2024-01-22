@@ -49,6 +49,8 @@ uint32_t O3_CPU::prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, ui
   return metadata_in;
 }
 
+void O3_CPU::clear_wrong_prefetch_queue() { prefetch_queue.clear(); }
+
 void O3_CPU::prefetcher_cycle_operate()
 {
   while (prefetch_queue.size()) {

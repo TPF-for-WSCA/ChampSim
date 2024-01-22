@@ -6,6 +6,8 @@
  * returns.
  */
 
+#include <cstring>
+
 #include "cache.h"
 #include "ooo_cpu.h"
 
@@ -21,6 +23,8 @@ struct BRANCH_TABLE_ENTRY {
   uint8_t BW;
 };
 
+bool last_was_call = false;
+
 std::map<uint64_t, BRANCH_TABLE_ENTRY> branch_table;
 uint64_t basic_btb_lru_counter[NUM_CPUS];
 
@@ -32,9 +36,16 @@ uint64_t basic_btb_conditional_history[NUM_CPUS];
 
 // return address stack
 uint64_t basic_btb_ras[NUM_CPUS][BASIC_BTB_RAS_SIZE];
+uint64_t basic_btb_cts[NUM_CPUS][BASIC_BTB_RAS_SIZE];
 int basic_btb_ras_index[NUM_CPUS];
-uint64_t basic_btb_ras_ip[NUM_CPUS][BASIC_BTB_RAS_SIZE];
-int basic_btb_ras_ip_index[NUM_CPUS];
+uint64_t basic_btb_return_ip_stack[NUM_CPUS][BASIC_BTB_RAS_SIZE];
+int basic_btb_return_ip_stack_index[NUM_CPUS];
+
+uint64_t basic_btb_wrongpath_backup_ras[NUM_CPUS][BASIC_BTB_RAS_SIZE];
+uint64_t basic_btb_wrongpath_backup_cts[NUM_CPUS][BASIC_BTB_RAS_SIZE];
+int basic_btb_wrongpath_backup_ras_index[NUM_CPUS];
+uint64_t basic_btb_wrongpath_backup_return_ip_stack[NUM_CPUS][BASIC_BTB_RAS_SIZE];
+int basic_btb_wrongpath_backup_return_ip_stack_index[NUM_CPUS];
 /*
  * The following two variables are used to automatically identify the
  * size of call instructions, in bytes, which tells us the appropriate
@@ -109,7 +120,8 @@ void push_basic_btb_ras(uint8_t cpu, uint64_t ip)
     basic_btb_ras_index[cpu] = 0;
   }
 
-  basic_btb_ras[cpu][basic_btb_ras_index[cpu]] = ip;
+  last_was_call = true;
+  basic_btb_ras[cpu][basic_btb_ras_index[cpu]] = ip; // NOTE: +4 as we should return to the instruction AFTER the ip
 }
 
 uint64_t peek_basic_btb_ras(uint8_t cpu) { return basic_btb_ras[cpu][basic_btb_ras_index[cpu]]; }
@@ -117,12 +129,12 @@ uint64_t peek_basic_btb_ras(uint8_t cpu) { return basic_btb_ras[cpu][basic_btb_r
 uint64_t pop_basic_btb_ras(uint8_t cpu, uint64_t ip)
 {
   uint64_t target = basic_btb_ras[cpu][basic_btb_ras_index[cpu]];
-  if (basic_btb_ras_ip[cpu][basic_btb_ras_ip_index[cpu]] != ip) {
-    basic_btb_ras_ip_index[cpu]++;
-    if (basic_btb_ras_ip_index[cpu] == BASIC_BTB_RAS_SIZE)
-      basic_btb_ras_ip_index[cpu] = 0;
+  if (basic_btb_return_ip_stack[cpu][basic_btb_return_ip_stack_index[cpu]] != ip) {
+    basic_btb_return_ip_stack_index[cpu]++;
+    if (basic_btb_return_ip_stack_index[cpu] == BASIC_BTB_RAS_SIZE)
+      basic_btb_return_ip_stack_index[cpu] = 0;
   }
-  basic_btb_ras_ip[cpu][basic_btb_ras_ip_index[cpu]] = ip;
+  basic_btb_return_ip_stack[cpu][basic_btb_return_ip_stack_index[cpu]] = ip;
   basic_btb_ras[cpu][basic_btb_ras_index[cpu]] = 0;
 
   basic_btb_ras_index[cpu]--;
@@ -169,6 +181,59 @@ void O3_CPU::initialize_btb()
   for (uint32_t i = 0; i < BASIC_BTB_CALL_INSTR_SIZE_TRACKERS; i++) {
     basic_btb_call_instr_sizes[cpu][i] = 4;
   }
+}
+
+void O3_CPU::btb_register_call_target(uint64_t ip)
+{
+  if (not last_was_call) [[likely]]
+    return;
+  basic_btb_cts[cpu][basic_btb_ras_index[cpu]] = ip; // We keep the call target as the return address, as the index should only be updated afterwards
+  last_was_call = false;
+}
+
+void O3_CPU::btb_begin_wrongpath(void)
+{
+  std::memcpy(basic_btb_wrongpath_backup_ras, basic_btb_ras, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_wrongpath_backup_ras);
+  std::memcpy(basic_btb_wrongpath_backup_cts, basic_btb_cts, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_wrongpath_backup_cts);
+  std::memcpy(basic_btb_wrongpath_backup_ras_index, basic_btb_ras_index, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof *basic_btb_wrongpath_backup_ras_index);
+  std::memcpy(basic_btb_wrongpath_backup_return_ip_stack, basic_btb_return_ip_stack,
+              NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_wrongpath_backup_return_ip_stack);
+  std::memcpy(basic_btb_wrongpath_backup_return_ip_stack_index, basic_btb_return_ip_stack_index,
+              NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof *basic_btb_wrongpath_backup_return_ip_stack_index);
+}
+
+uint64_t O3_CPU::btb_peek_wrongpath(uint64_t ip)
+{
+  auto is_call = std::find_if(std::begin(basic_btb_ras[cpu]), std::end(basic_btb_ras[cpu]), [ip](uint64_t addr) { return ip == addr; });
+  if (is_call != std::end(basic_btb_ras[cpu])) {
+    auto idx = is_call - std::begin(basic_btb_ras[cpu]);
+    return basic_btb_cts[cpu][idx];
+    push_basic_btb_ras(cpu, ip);
+  }
+
+  auto is_return =
+      std::find_if(std::begin(basic_btb_return_ip_stack[cpu]), std::end(basic_btb_return_ip_stack[cpu]), [ip](uint64_t addr) { return ip == addr; });
+  if (is_return != std::end(basic_btb_return_ip_stack[cpu])) {
+    return pop_basic_btb_ras(cpu, ip);
+  }
+
+  auto btb_entry = basic_btb_find_entry(cpu, ip, BTB_SETS, BTB_WAYS, basic_btb);
+
+  if (btb_entry == NULL) {
+    return ip + 4; // we are ignoring indirect jumps right now but no good way of detecting if something is an indirect jump
+  }
+
+  return btb_entry->target;
+}
+
+void O3_CPU::btb_end_wrongpath(void)
+{
+  std::memcpy(basic_btb_ras, basic_btb_wrongpath_backup_ras, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_ras);
+  std::memcpy(basic_btb_cts, basic_btb_wrongpath_backup_cts, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_cts);
+  std::memcpy(basic_btb_ras_index, basic_btb_wrongpath_backup_ras_index, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof *basic_btb_ras_index);
+  std::memcpy(basic_btb_return_ip_stack, basic_btb_wrongpath_backup_return_ip_stack, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_return_ip_stack);
+  std::memcpy(basic_btb_return_ip_stack_index, basic_btb_wrongpath_backup_return_ip_stack_index,
+              NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof *basic_btb_return_ip_stack_index);
 }
 
 std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
