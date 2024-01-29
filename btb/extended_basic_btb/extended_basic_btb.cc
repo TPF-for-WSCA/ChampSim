@@ -175,7 +175,7 @@ void O3_CPU::initialize_btb()
 void O3_CPU::btb_begin_wrongpath(void)
 {
   std::memcpy(basic_btb_wrongpath_backup_ras, basic_btb_ras, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_wrongpath_backup_ras);
-  std::memcpy(basic_btb_wrongpath_backup_ras_index, basic_btb_ras_index, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof *basic_btb_wrongpath_backup_ras_index);
+  std::memcpy(basic_btb_wrongpath_backup_ras_index, basic_btb_ras_index, NUM_CPUS * sizeof *basic_btb_wrongpath_backup_ras_index);
 }
 
 uint64_t O3_CPU::btb_peek_wrongpath(uint64_t ip)
@@ -210,7 +210,7 @@ uint64_t O3_CPU::btb_peek_wrongpath(uint64_t ip)
 void O3_CPU::btb_end_wrongpath(void)
 {
   std::memcpy(basic_btb_ras, basic_btb_wrongpath_backup_ras, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_ras);
-  std::memcpy(basic_btb_ras_index, basic_btb_wrongpath_backup_ras_index, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof *basic_btb_ras_index);
+  std::memcpy(basic_btb_ras_index, basic_btb_wrongpath_backup_ras_index, NUM_CPUS * sizeof *basic_btb_ras_index);
 }
 
 std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
