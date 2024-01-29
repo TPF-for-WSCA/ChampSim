@@ -525,10 +525,11 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
   {
     // update fill location
     mshr_entry->fill_level = std::min(mshr_entry->fill_level, handle_pkt.fill_level);
-
     packet_dep_merge(mshr_entry->lq_index_depend_on_me, handle_pkt.lq_index_depend_on_me);
     packet_dep_merge(mshr_entry->sq_index_depend_on_me, handle_pkt.sq_index_depend_on_me);
-    packet_dep_merge(mshr_entry->instr_depend_on_me, handle_pkt.instr_depend_on_me);
+    mshr_dep_merge(mshr_entry->instr_depend_on_me, handle_pkt.instr_depend_on_me);
+    // for (auto dep : handle_pkt.instr_depend_on_me)
+    //   std::cout << "[miss@" << handle_pkt.instr_id << "] instr_depend_on_me: " << dep->ip << std::endl;
     packet_dep_merge(mshr_entry->to_return, handle_pkt.to_return);
 
     if (handle_pkt.partial) {
@@ -1015,14 +1016,15 @@ int CACHE::add_rq(PACKET* packet)
 
   auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, 0));
   if (found_rq != RQ.end()) {
-
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_RQ" << std::endl;)
 
     packet_dep_merge(found_rq->lq_index_depend_on_me, packet->lq_index_depend_on_me);
     packet_dep_merge(found_rq->sq_index_depend_on_me, packet->sq_index_depend_on_me);
-    packet_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
-    packet_dep_merge(found_rq->to_return, packet->to_return);
+    mshr_dep_merge(found_rq->instr_depend_on_me, packet->instr_depend_on_me);
+    // for (auto dep : packet->instr_depend_on_me)
+    //   std::cout << "[add_rq@" << packet->instr_id << "] instr_depend_on_me: " << dep->ip << std::endl;
 
+    packet_dep_merge(found_rq->to_return, packet->to_return);
     RQ_MERGED++;
 
     return 0; // merged index
@@ -1186,9 +1188,12 @@ int CACHE::add_pq(PACKET* packet)
   // check for duplicates in the PQ
   auto found = std::find_if(PQ.begin(), PQ.end(), eq_addr<PACKET>(packet->address, OFFSET_BITS));
   if (found != PQ.end()) {
+    if (not packet->wrongpath)
+      found->wrongpath = packet->wrongpath;
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_PQ" << std::endl;)
 
     found->fill_level = std::min(found->fill_level, packet->fill_level);
+
     packet_dep_merge(found->to_return, packet->to_return);
 
     PQ_MERGED++;
@@ -2101,9 +2106,12 @@ int VCL_CACHE::add_pq(PACKET* packet)
   // check for duplicates in the PQ
   auto found = std::find_if(PQ.begin(), PQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, (OFFSET_BITS)));
   if (found != PQ.end()) {
+    if (not packet->wrongpath)
+      found->wrongpath = packet->wrongpath;
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_PQ" << std::endl;)
 
     found->fill_level = std::min(found->fill_level, packet->fill_level);
+
     packet_dep_merge(found->to_return, packet->to_return);
 
     PQ_MERGED++;

@@ -29,8 +29,8 @@ struct ooo_model_instr {
   uint64_t instr_id = 0, ip = 0, event_cycle = 0, size = 0;
   int indirect_branches = 0;
 
-  bool is_branch = 0, is_memory = 0, branch_taken = 0, branch_mispredicted = 0, fake_instr = 0, source_added[NUM_INSTR_SOURCES] = {},
-       destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {};
+  bool is_branch = 0, is_memory = 0, branch_taken = 0, branch_mispredicted = 0, source_added[NUM_INSTR_SOURCES] = {},
+       destination_added[NUM_INSTR_DESTINATIONS_SPARC] = {}, wrongpath = false;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 

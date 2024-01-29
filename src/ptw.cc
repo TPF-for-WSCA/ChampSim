@@ -166,7 +166,7 @@ int PageTableWalker::add_rq(PACKET* packet)
 
   // check for duplicates in the read queue
   auto found_rq = std::find_if(RQ.begin(), RQ.end(), eq_addr<PACKET>(packet->address, LOG2_PAGE_SIZE));
-  assert(found_rq == RQ.end()); // Duplicate request should not be sent.
+  assert(found_rq == RQ.end() or found_rq->wrongpath != packet->wrongpath); // Duplicate request should not be sent.
 
   // check occupancy
   if (RQ.full()) {

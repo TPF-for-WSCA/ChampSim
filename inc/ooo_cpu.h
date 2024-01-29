@@ -142,7 +142,6 @@ public:
   void handle_memory_return();
   void retire_rob();
   void clear_wrong_prefetch_queue();
-  void btb_register_call_target(uint64_t ip);
 
   void print_deadlock() override;
 
