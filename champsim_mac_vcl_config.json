@@ -32,7 +32,8 @@
       "schedule_latency": 2,
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
-      "btb": "extended_basic_btb"
+      "btb": "extended_basic_btb",
+      "btb_max_loop_branch": 64
     }
   ],
   "DIB": {
@@ -42,25 +43,21 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 17,
+    "ways": 13,
     "buffer": true,
     "buffer_size": 64,
     "buffer_organisation": "DIRECT_MAPPED",
     "way_sizes": [
       4,
       4,
-      4,
-      8,
-      8,
-      8,
       8,
       12,
-      16,
       20,
+      28,
       32,
       36,
       36,
-      48,
+      44,
       64,
       64,
       64

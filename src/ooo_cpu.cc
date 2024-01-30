@@ -53,6 +53,7 @@ void O3_CPU::add_wrongpath_instruction()
     return; // We do not add more than needed
   }
   instrs_to_read_this_cycle--;
+  assert(last_wrong_ip != 0);
   struct ooo_model_instr wrong_path_instr;
   wrong_path_instr.ip = last_wrong_ip;
   wrong_path_instr.fake_instr = true;
