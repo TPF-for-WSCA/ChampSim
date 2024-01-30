@@ -36,16 +36,11 @@ uint64_t basic_btb_conditional_history[NUM_CPUS];
 
 // return address stack
 uint64_t basic_btb_ras[NUM_CPUS][BASIC_BTB_RAS_SIZE];
-uint64_t basic_btb_cts[NUM_CPUS][BASIC_BTB_RAS_SIZE];
 int basic_btb_ras_index[NUM_CPUS];
-uint64_t basic_btb_return_ip_stack[NUM_CPUS][BASIC_BTB_RAS_SIZE];
-int basic_btb_return_ip_stack_index[NUM_CPUS];
 
 uint64_t basic_btb_wrongpath_backup_ras[NUM_CPUS][BASIC_BTB_RAS_SIZE];
-uint64_t basic_btb_wrongpath_backup_cts[NUM_CPUS][BASIC_BTB_RAS_SIZE];
 int basic_btb_wrongpath_backup_ras_index[NUM_CPUS];
-uint64_t basic_btb_wrongpath_backup_return_ip_stack[NUM_CPUS][BASIC_BTB_RAS_SIZE];
-int basic_btb_wrongpath_backup_return_ip_stack_index[NUM_CPUS];
+
 /*
  * The following two variables are used to automatically identify the
  * size of call instructions, in bytes, which tells us the appropriate
@@ -129,12 +124,6 @@ uint64_t peek_basic_btb_ras(uint8_t cpu) { return basic_btb_ras[cpu][basic_btb_r
 uint64_t pop_basic_btb_ras(uint8_t cpu, uint64_t ip)
 {
   uint64_t target = basic_btb_ras[cpu][basic_btb_ras_index[cpu]];
-  if (basic_btb_return_ip_stack[cpu][basic_btb_return_ip_stack_index[cpu]] != ip) {
-    basic_btb_return_ip_stack_index[cpu]++;
-    if (basic_btb_return_ip_stack_index[cpu] == BASIC_BTB_RAS_SIZE)
-      basic_btb_return_ip_stack_index[cpu] = 0;
-  }
-  basic_btb_return_ip_stack[cpu][basic_btb_return_ip_stack_index[cpu]] = ip;
   basic_btb_ras[cpu][basic_btb_ras_index[cpu]] = 0;
 
   basic_btb_ras_index[cpu]--;
@@ -183,44 +172,36 @@ void O3_CPU::initialize_btb()
   }
 }
 
-void O3_CPU::btb_register_call_target(uint64_t ip)
-{
-  if (not last_was_call) [[likely]]
-    return;
-  basic_btb_cts[cpu][basic_btb_ras_index[cpu]] = ip; // We keep the call target as the return address, as the index should only be updated afterwards
-  last_was_call = false;
-}
-
 void O3_CPU::btb_begin_wrongpath(void)
 {
   std::memcpy(basic_btb_wrongpath_backup_ras, basic_btb_ras, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_wrongpath_backup_ras);
-  std::memcpy(basic_btb_wrongpath_backup_cts, basic_btb_cts, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_wrongpath_backup_cts);
-  std::memcpy(basic_btb_wrongpath_backup_ras_index, basic_btb_ras_index, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof *basic_btb_wrongpath_backup_ras_index);
-  std::memcpy(basic_btb_wrongpath_backup_return_ip_stack, basic_btb_return_ip_stack,
-              NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_wrongpath_backup_return_ip_stack);
-  std::memcpy(basic_btb_wrongpath_backup_return_ip_stack_index, basic_btb_return_ip_stack_index,
-              NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof *basic_btb_wrongpath_backup_return_ip_stack_index);
+  std::memcpy(basic_btb_wrongpath_backup_ras_index, basic_btb_ras_index, NUM_CPUS * sizeof *basic_btb_wrongpath_backup_ras_index);
 }
 
 uint64_t O3_CPU::btb_peek_wrongpath(uint64_t ip)
 {
-  auto is_call = std::find_if(std::begin(basic_btb_ras[cpu]), std::end(basic_btb_ras[cpu]), [ip](uint64_t addr) { return ip == addr; });
-  if (is_call != std::end(basic_btb_ras[cpu])) {
-    auto idx = is_call - std::begin(basic_btb_ras[cpu]);
-    return basic_btb_cts[cpu][idx];
+  auto bt_it = branch_table.find(ip);
+  if (bt_it == branch_table.end()) {
+    return ip + 4;
+  }
+  auto BTE = bt_it->second;
+
+  if (BTE.branch_type == BRANCH_DIRECT_CALL || BTE.branch_type == BRANCH_INDIRECT_CALL) {
     push_basic_btb_ras(cpu, ip);
   }
 
-  auto is_return =
-      std::find_if(std::begin(basic_btb_return_ip_stack[cpu]), std::end(basic_btb_return_ip_stack[cpu]), [ip](uint64_t addr) { return ip == addr; });
-  if (is_return != std::end(basic_btb_return_ip_stack[cpu])) {
+  if (BTE.branch_type == BRANCH_RETURN) {
     return pop_basic_btb_ras(cpu, ip);
+  }
+
+  if (BTE.branch_type == BRANCH_INDIRECT || BTE.branch_type == BRANCH_INDIRECT_CALL) {
+    return basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)];
   }
 
   auto btb_entry = basic_btb_find_entry(cpu, ip, BTB_SETS, BTB_WAYS, basic_btb);
 
   if (btb_entry == NULL) {
-    return ip + 4; // we are ignoring indirect jumps right now but no good way of detecting if something is an indirect jump
+    return ip + 4;
   }
 
   return btb_entry->target;
@@ -229,11 +210,7 @@ uint64_t O3_CPU::btb_peek_wrongpath(uint64_t ip)
 void O3_CPU::btb_end_wrongpath(void)
 {
   std::memcpy(basic_btb_ras, basic_btb_wrongpath_backup_ras, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_ras);
-  std::memcpy(basic_btb_cts, basic_btb_wrongpath_backup_cts, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_cts);
-  std::memcpy(basic_btb_ras_index, basic_btb_wrongpath_backup_ras_index, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof *basic_btb_ras_index);
-  std::memcpy(basic_btb_return_ip_stack, basic_btb_wrongpath_backup_return_ip_stack, NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof **basic_btb_return_ip_stack);
-  std::memcpy(basic_btb_return_ip_stack_index, basic_btb_wrongpath_backup_return_ip_stack_index,
-              NUM_CPUS * BASIC_BTB_RAS_SIZE * sizeof *basic_btb_return_ip_stack_index);
+  std::memcpy(basic_btb_ras_index, basic_btb_wrongpath_backup_ras_index, NUM_CPUS * sizeof *basic_btb_ras_index);
 }
 
 std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
@@ -264,7 +241,7 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
     if (btb_entry == NULL) {
       // no prediction for this IP
       always_taken = false;
-      return std::make_pair(ip + basic_btb_get_call_size(cpu, ip), always_taken);
+      return std::make_pair(ip + 4, always_taken);
     }
 
     always_taken = btb_entry->always_taken;
@@ -290,7 +267,7 @@ bool O3_CPU::is_not_block_ending(uint64_t ip)
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   assert(ip % 4 == 0 and branch_target % 4 == 0);
-  if (MIGHT_LOOP_BRANCH(branch_type))
+  if (branch_type != NOT_BRANCH)
     branch_table[(ip >> 2)] = {branch_type, 4, (branch_target < ip && (ip - branch_target) < EXTENDED_BTB_MAX_LOOP_BRANCH)};
   if (branch_table.size() > BASIC_BTB_BRANCH_TABLE) {
     std::cerr << "overgrown branch table... " << branch_table.size() << std::endl;

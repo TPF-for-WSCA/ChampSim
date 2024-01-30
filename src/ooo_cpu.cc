@@ -56,7 +56,7 @@ void O3_CPU::add_wrongpath_instruction()
   assert(last_wrong_ip != 0);
   struct ooo_model_instr wrong_path_instr;
   wrong_path_instr.ip = last_wrong_ip;
-  wrong_path_instr.fake_instr = true;
+  wrong_path_instr.wrongpath = true;
   wrong_path_instr.instr_id = ++instr_unique_id;
   wrong_path_instr.asid[0] = cpu;
   wrong_path_instr.asid[1] = cpu;
@@ -233,7 +233,6 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   }
   // handle branch prediction
   uint64_t predicted_branch_target = 0;
-  btb_register_call_target(arch_instr.ip);
   if (arch_instr.is_branch) {
 
     branch_count++;
@@ -394,6 +393,7 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
   trace_packet.fill_level = ITLB_bus.lower_level->fill_level;
   trace_packet.cpu = cpu;
   trace_packet.address = begin->ip;
+  trace_packet.wrongpath = begin->wrongpath;
   trace_packet.v_address = begin->ip;
   trace_packet.instr_id = begin->instr_id;
   trace_packet.ip = begin->ip;
@@ -485,6 +485,7 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
   fetch_packet.cpu = cpu;
   fetch_packet.address = begin->instruction_pa;
+  fetch_packet.wrongpath = begin->wrongpath;
   fetch_packet.data = begin->instruction_pa;
   fetch_packet.v_address = begin->ip;
   fetch_packet.instr_id = begin->instr_id;
@@ -497,10 +498,14 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.to_return = {&L1I_bus};
   for (; begin != end; ++begin) {
     fetch_packet.instr_depend_on_me.push_back(begin);
+    // std::cout << "[fetch@" << fetch_packet.instr_id << "] instr_depend_on_me: " << begin->ip << std::endl;
     if (fetch_packet.address == begin->instruction_pa)
       continue;
     fetch_packet.size += begin->size;
   }
+
+  assert(fetch_packet.size <= 64);
+  assert(fetch_packet.instr_depend_on_me.size() <= 16);
 
   // std::cout << "fetch: " << std::setw(16) << fetch_packet.ip << ", size: " << std::setw(3) << fetch_packet.size << std::endl;
   int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
@@ -542,7 +547,7 @@ void O3_CPU::promote_to_decode()
     }
   };
 
-  if (IFETCH_WRONGPATH.front().instr_id < IFETCH_BUFFER.front().instr_id) {
+  if (IFETCH_WRONGPATH.front().instr_id < IFETCH_BUFFER.front().instr_id and available_fetch_bandwidth > 0) {
     promote_decode(IFETCH_WRONGPATH, true);
   }
   if (available_fetch_bandwidth > 0) {
@@ -1168,6 +1173,9 @@ void O3_CPU::handle_memory_return()
   while (available_fetch_bandwidth > 0 && to_read > 0 && !L1I_bus.PROCESSED.empty()) {
     PACKET& l1i_entry = L1I_bus.PROCESSED.front();
 
+    if (l1i_entry.instr_depend_on_me.empty()) {
+      std::cerr << "CANNT RESOLVE THAT... :(" << std::endl;
+    }
     // this is the L1I cache, so instructions are now fully fetched, so mark
     // them as such
     while (available_fetch_bandwidth > 0 && !l1i_entry.instr_depend_on_me.empty()) {

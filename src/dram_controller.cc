@@ -140,9 +140,8 @@ int MEMORY_CONTROLLER::add_rq(PACKET* packet)
   if (rq_it != std::end(channel.RQ)) {
     packet_dep_merge(rq_it->lq_index_depend_on_me, packet->lq_index_depend_on_me);
     packet_dep_merge(rq_it->sq_index_depend_on_me, packet->sq_index_depend_on_me);
-    packet_dep_merge(rq_it->instr_depend_on_me, packet->instr_depend_on_me);
+    mshr_dep_merge(rq_it->instr_depend_on_me, packet->instr_depend_on_me);
     packet_dep_merge(rq_it->to_return, packet->to_return);
-
     return std::distance(std::begin(channel.RQ), rq_it); // merged index
   }
 

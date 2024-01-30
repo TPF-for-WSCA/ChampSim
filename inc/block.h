@@ -2,6 +2,7 @@
 #define BLOCK_H
 
 #include <algorithm>
+#include <set>
 #include <vector>
 
 #include "champsim_constants.h"
@@ -16,7 +17,7 @@ class PACKET
 {
 public:
   bool scheduled = false;
-  bool partial = false;
+  bool partial = false, wrongpath = false;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0, fill_level = 0, pf_origin_level = 0,
           branch_type = NOT_BRANCH;
@@ -48,10 +49,34 @@ void packet_dep_merge(LIST& dest, LIST& src)
   dest.erase(uniq_end, std::end(dest));
 }
 
+template <typename LIST>
+void mshr_dep_merge(LIST& dest, LIST& src)
+{
+  std::set dep_merge_set(std::begin(dest), std::end(dest),
+                         [](champsim::circular_buffer<ooo_model_instr>::iterator first, champsim::circular_buffer<ooo_model_instr>::iterator second) {
+                           if (first->wrongpath == second->wrongpath)
+                             return first->ip < second->ip;
+                           else
+                             return first->wrongpath < second->wrongpath;
+                         });
+  dep_merge_set.insert(std::begin(src), std::end(src));
+  dest.reserve(std::size(dest) + std::size(src));
+  // dest.clear();
+  // dest.insert(dest.begin(), dep_merge_set.begin(), dep_merge_set.end());
+  auto middle = std::end(dest);
+  dest.insert(middle, std::begin(src), std::end(src));
+  std::inplace_merge(std::begin(dest), middle, std::end(dest));
+  // auto uniq_end = std::unique(std::begin(dest), std::end(dest),
+  //                             [](champsim::circular_buffer<ooo_model_instr>::iterator first, champsim::circular_buffer<ooo_model_instr>::iterator second) {
+  //                               return first->ip == second->ip and first->wrongpath == second->wrongpath;
+  //                             });
+  // dest.erase(uniq_end, std::end(dest));
+}
+
 // load/store queue
 struct LSQ_ENTRY {
   uint64_t instr_id = 0, producer_id = std::numeric_limits<uint64_t>::max(), virtual_address = 0, physical_address = 0, ip = 0, event_cycle = 0;
-
+  bool wrongpath = false;
   champsim::circular_buffer<ooo_model_instr>::iterator rob_index;
 
   uint8_t translated = 0, fetched = 0, asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
