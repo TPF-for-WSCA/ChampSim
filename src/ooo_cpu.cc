@@ -546,7 +546,7 @@ void O3_CPU::promote_to_decode()
     }
   };
 
-  if (IFETCH_WRONGPATH.front().instr_id < IFETCH_BUFFER.front().instr_id and available_fetch_bandwidth > 0) {
+  if ((IFETCH_WRONGPATH.front().instr_id < IFETCH_BUFFER.front().instr_id or IFETCH_BUFFER.empty()) and available_fetch_bandwidth > 0) {
     promote_decode(IFETCH_WRONGPATH, true);
   }
   if (available_fetch_bandwidth > 0) {
@@ -1052,6 +1052,7 @@ int O3_CPU::do_translate_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 
 int O3_CPU::execute_load(std::vector<LSQ_ENTRY>::iterator lq_it)
 {
+  assert(not lq_it->wrongpath);
   // add it to L1D
   PACKET data_packet;
   data_packet.fill_level = L1D_bus.lower_level->fill_level;
