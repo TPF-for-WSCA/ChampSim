@@ -19,8 +19,10 @@ void MEMORY_CONTROLLER::operate()
   for (auto& channel : channels) {
     // Finish request
     if (channel.active_request != std::end(channel.bank_request) && channel.active_request->event_cycle <= current_cycle) {
-      for (auto ret : channel.active_request->pkt->to_return)
+      // std::cout << "returning for inst " << channel.active_request->pkt->instr_id << std::endl;
+      for (auto ret : channel.active_request->pkt->to_return) {
         ret->return_data(&(*channel.active_request->pkt));
+      }
 
       channel.active_request->valid = false;
 
@@ -129,8 +131,10 @@ int MEMORY_CONTROLLER::add_rq(PACKET* packet)
   auto wq_it = std::find_if(std::begin(channel.WQ), std::end(channel.WQ), eq_addr<PACKET>(packet->address, LOG2_BLOCK_SIZE));
   if (wq_it != std::end(channel.WQ)) {
     packet->data = wq_it->data;
-    for (auto ret : packet->to_return)
+    // std::cout << "returning for inst " << packet->instr_id << std::endl;
+    for (auto ret : packet->to_return) {
       ret->return_data(packet);
+    }
 
     return -1; // merged index
   }

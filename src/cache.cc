@@ -563,6 +563,7 @@ bool CACHE::readlike_miss(PACKET& handle_pkt)
     assert(handle_pkt.size <= 64);
     // Allocate an MSHR
     if (handle_pkt.fill_level <= fill_level) {
+      assert(handle_pkt.instr_id != 0);
       auto it = MSHR.insert(std::end(MSHR), handle_pkt);
       it->cycle_enqueued = current_cycle;
       it->event_cycle = std::numeric_limits<uint64_t>::max();
@@ -1104,6 +1105,7 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_packet.fill_level = (fill_this_level ? fill_level : lower_level->fill_level);
   pf_packet.pf_origin_level = fill_level;
   pf_packet.pf_metadata = prefetch_metadata;
+  pf_packet.instr_id = -1;
   pf_packet.cpu = cpu;
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;

@@ -19,3 +19,7 @@ export filename=num_cl_with_block_size.tsv; export output_name='block_sizes_accu
 
 
 ~/plotgen/plotgen -i ./**/sizes_champsim32k/**/cpu0_L1I_num_cl_with_block_size.tsv --no-columns --join index --column-names --filename --apply-func cumsum --apply-columns : --normalise-function max --normalise-icolumns : --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.*' --add-function mean --add-row AVG --print --file ./raw_data/accumulated_all_applications.tsv -o ./graphs/accumulated_all_applications.html --width 900 --height 200 -o ./graphs/accumulated_all_applications.pdf 
+
+
+# compare wrongpath to default
+plotgen --debug -i ./correct_path_ipc/*  ./wrong_path_ipc/* --select-rows 32768 65536 sizes_champsim_vcl_buffer_fdip_64d sizes_saga_vcl_0KB_p_NE --irow-names 2: UBS UBS --drop-nan --apply-function cummean --apply-irows : --ignore-icolumns :-1 --print  --join index inner --column-names client server spec wrongpath_client wrongpath_server wrongpath_spec --print --x-type category --plot bar -o correct_vs_wrong.html

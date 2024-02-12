@@ -61,6 +61,7 @@ void PageTableWalker::handle_read()
     packet.type = handle_pkt.type;
 
     assert(packet.size <= 64);
+    assert(packet.instr_id != 0);
     auto it = MSHR.insert(std::end(MSHR), packet);
     it->cycle_enqueued = current_cycle;
     it->event_cycle = std::numeric_limits<uint64_t>::max();

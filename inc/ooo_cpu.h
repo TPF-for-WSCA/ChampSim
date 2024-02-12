@@ -49,7 +49,7 @@ public:
   uint64_t total_branch_distance;
 
   // instruction
-  uint64_t instr_unique_id = 0, completed_executions = 0, begin_sim_cycle = 0, begin_sim_instr = 0, last_sim_cycle = 0, last_sim_instr = 0,
+  uint64_t instr_unique_id = 1, completed_executions = 0, begin_sim_cycle = 0, begin_sim_instr = 0, last_sim_cycle = 0, last_sim_instr = 0,
            finish_sim_cycle = 0, finish_sim_instr = 0, instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
            next_print_instruction = STAT_PRINTING_PERIOD, num_retired = 0, num_read = 0, frontend_stall_cycles = 0, indirect_branches = 0;
   uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0;
