@@ -342,7 +342,7 @@ def create_uniform_buckets_of_size(num_buckets):
 
 
 def apply_way_analysis(
-    workload_name, tracefile_path, num_sets=32
+    workload_name, tracefile_path, num_sets=64
 ):
     """ Apply way analysis to find optimal way size. This runs the selected merge
         strategies to find the optimal way size under the assumption of a given
@@ -376,7 +376,7 @@ def apply_way_analysis(
     overhead = 0
     max_size = 0
     max_size_ways = []
-    for i in range(7, 64):
+    for i in range(7, 12):
         tag_overhead = (i - 7) * (26 + 1 + 3) / 8  # (tag bits, valid bit, lru bits)
         if arm:
             overhead = math.ceil(((4 + 26 + 4) * i) / 8)  # 6 bits per tag
