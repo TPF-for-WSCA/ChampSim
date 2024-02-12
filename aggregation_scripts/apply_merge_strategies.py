@@ -342,7 +342,7 @@ def create_uniform_buckets_of_size(num_buckets):
 
 
 def apply_way_analysis(
-    workload_name, tracefile_path, num_sets=64
+    workload_name, tracefile_path, num_sets=32
 ):
     """ Apply way analysis to find optimal way size. This runs the selected merge
         strategies to find the optimal way size under the assumption of a given
@@ -362,11 +362,11 @@ def apply_way_analysis(
     # 64 b (arm: 16) per entry + 6b counter per entry (only for non-directmapped required) + 128B merge registers overall (merge registers might be optimised away)
     if not arm:
         buffer_bytes_per_set = (
-            8 + 64 + 2
+            8 + 64 + (128/num_sets)
         )  # 8 bytes for bytes accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
     else:
         buffer_bytes_per_set = (
-            2 + 64 + 2
+            2 + 64 + (126/num_sets)
         )  # 2 bytes for instruction accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
     target_size = 512 - buffer_bytes_per_set + overhead_allowance
     error = target_size
