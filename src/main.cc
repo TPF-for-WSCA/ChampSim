@@ -839,8 +839,11 @@ int main(int argc, char** argv)
           trace_inst = traces[i]->get();
           ooo_cpu[i]->num_read++;
         } catch (EndOfTraceException const& e) {
-          trace_ended[i] = 1;
-          break;
+          if (ooo_cpu[i]->num_read >= (ooo_cpu[i]->begin_sim_instr + 50000000)) {
+            trace_ended[i] = 1;
+            break;
+          }
+          traces[i]->open();
         }
         ooo_cpu[i]->init_instruction(trace_inst);
       }

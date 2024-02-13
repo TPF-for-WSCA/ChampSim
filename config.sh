@@ -45,6 +45,10 @@ const_names = {
     'page_size': 'PAGE_SIZE',
     'heartbeat_frequency': 'STAT_PRINTING_PERIOD',
     'num_cores': 'NUM_CPUS',
+    'L1I': {
+        'sets': 'L1I_SET',
+        'ways': 'L1I_WAY'
+    },
     'physical_memory': {
         'io_freq': 'DRAM_IO_FREQ',
         'channels': 'DRAM_CHANNELS',
@@ -697,6 +701,9 @@ with open(constants_header_name, 'wt') as wfp:
     wfp.write(define_fmtstr.format(name='num_cores').format(names=const_names, config=config_file))
     wfp.write('#define NUM_CACHES ' + str(len(caches)) + 'u\n')
     wfp.write('#define NUM_OPERABLES ' + str(len(cores) + len(memory_system) + 1) + 'u\n')
+
+    for k in const_names['L1I']:
+        wfp.write(define_fmtstr.format(name=k).format(names=const_names['L1I'], config=config_file['L1I']))
 
     for k in const_names['physical_memory']:
         if k in ['tRP', 'tRCD', 'tCAS', 'turn_around_time']:

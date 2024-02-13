@@ -136,6 +136,8 @@ ooo_model_instr tracereader::read_single_instr()
   return retval;
 }
 
+void tracereader::open() { open(trace_string); }
+
 void tracereader::open(std::string trace_string)
 {
   char gunzip_command[4096];
