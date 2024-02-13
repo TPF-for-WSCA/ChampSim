@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/saga_vcl_24KB_extending",
+  "executable_name": "bin/saga_vcl_16KB_precise_not_extending",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -43,31 +43,20 @@
   },
   "L1I": {
     "sets": 32,
-    "ways": 21,
+    "ways": 10,
     "buffer": true,
     "buffer_size": 32,
     "buffer_organisation": "DIRECT_MAPPED",
     "way_sizes": [
       4,
-      4,
-      8,
       12,
-      16,
       20,
-      24,
-      28,
-      28,
-      28,
       28,
       32,
-      36,
-      44,
-      56,
-      60,
-      60,
-      60,
-      60,
-      60,
+      32,
+      48,
+      64,
+      64,
       64
     ],
     "rq_size": 64,
@@ -86,7 +75,7 @@
     "prefetch_buffer_size": 16,
     "lru_modifier": "LRU2BOUND4",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": true
+    "extend_blocks_to_branch": false
   },
   "L1D": {
     "sets": 64,

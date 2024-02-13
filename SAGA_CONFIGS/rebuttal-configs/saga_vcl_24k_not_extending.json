@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/saga_vcl_24KB_extending",
+  "executable_name": "bin/saga_vcl_24KB_not_extending",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -86,7 +86,7 @@
     "prefetch_buffer_size": 16,
     "lru_modifier": "LRU2BOUND4",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": true
+    "extend_blocks_to_branch": false
   },
   "L1D": {
     "sets": 64,
