@@ -1507,9 +1507,11 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
     }
   }
 
+  //  uint64_t evicting_address = 0;
   if (fill_block.valid) {
     // Record stats
     record_duration(fill_block);
+    //     evicting_address = fill_block.address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
     merge_block.push_back(fill_block, true);
     record_cacheline_stats(packet.cpu, fill_block);
   }
@@ -1536,6 +1538,11 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
     invalidated = true;
   }
   parent.cl_invalid_blocks_in_cache_buffer.push_back(parent.num_invalid_blocks_in_cache);
+  if (parent.num_invalid_blocks_in_cache > 0) {
+    // make eip happy
+    impl_prefetcher_cache_fill((virtual_prefetch ? packet.v_address : packet.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), set, way,
+                               packet.type == PREFETCH, packet.v_address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), packet.pf_metadata);
+  }
 
   fill_block.old_bytes_accessed = 0;
   if (invalidated) {
@@ -1569,6 +1576,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   if (packet.partial) {
     sim_partial_miss[packet.cpu][packet.type]++;
   }
+
   sim_access[packet.cpu][packet.type]++;
   way_hits[way]++;
   return true;
@@ -2263,6 +2271,10 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   if (fill_block.valid && fill_block.accesses == 0) {
     USELESS_CACHELINE++;
   }
+  uint64_t evicting_address = 0;
+  if (fill_block.valid) {
+    evicting_address = fill_block.address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
+  }
   if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
     record_cacheline_stats(handle_block.cpu, fill_block);
   }
@@ -2306,6 +2318,9 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   fill_block.time_present = 0;
   auto endidx = 64 - fill_block.offset - fill_block.size;
   fill_block.data = (handle_block.data << offset) >> offset >> endidx << endidx;
+
+  impl_prefetcher_cache_fill((virtual_prefetch ? handle_block.v_address : handle_block.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), set, way,
+                             false, evicting_address, 0);
   // We already acounted for the evicted block on insert, so what we count here is the insertion of a new block
   impl_replacement_update_state(handle_block.cpu, set, way, handle_block.address, handle_block.ip, 0, FILL, 0);
   return true;

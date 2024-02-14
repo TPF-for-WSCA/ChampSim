@@ -10,8 +10,8 @@
 ////////////////////////////////////////////////////////////////////////
 
 #include "cache.h"
-#include "ooo_cpu.h"
 #include "champsim_constants.h"
+#include "ooo_cpu.h"
 
 // To access cpu in my functions
 uint32_t l1i_cpu_id;
@@ -165,7 +165,7 @@ uint64_t l1i_get_bere_hist_table(uint64_t line_addr, uint64_t latency, uint32_t 
 // TIMING TABLES
 
 #define L1I_SET_BITS 6
-#define L1I_TIMING_MSHR_SIZE 208 // hardcoded as we use the same pq, mshr size everywhere - so we don't need to adjust code
+#define L1I_TIMING_MSHR_SIZE 1072 // just assuming enough space to be optimistic
 #define L1I_TIMING_MSHR_TAG_BITS 42
 #define L1I_TIMING_MSHR_TAG_MASK (((uint64_t)1 << L1I_HIST_TAG_BITS) - 1)
 #define L1I_TIMING_CACHE_TAG_BITS (L1I_TIMING_MSHR_TAG_BITS - L1I_SET_BITS)
@@ -292,7 +292,8 @@ bool l1i_invalid_timing_cache_entry(uint64_t line_addr, uint64_t& bere_line_addr
 {
   uint32_t set = line_addr % L1I_SET;
   uint32_t way = l1i_find_timing_cache_entry(line_addr);
-  assert(way < L1I_WAY);
+  if (not(way < L1I_WAY))
+    return false;
   l1i_timing_cache_table[l1i_cpu_id][set][way].valid = false;
   bere_line_addr = l1i_timing_cache_table[l1i_cpu_id][set][way].bere_line_addr;
   return l1i_timing_cache_table[l1i_cpu_id][set][way].accessed;
@@ -769,7 +770,7 @@ uint32_t O3_CPU::prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, ui
   }
 
   // Do prefetches
-  while (L1I->get_occupancy(3,0) < L1I->get_size(3,0) && !l1i_empty_xpq()) {
+  while (L1I->get_occupancy(3, 0) < L1I->get_size(3, 0) && !l1i_empty_xpq()) {
     uint64_t entangled_addr = 0;
     uint64_t pf_line_addr = l1i_get_xpq(entangled_addr);
     uint64_t pf_addr = (pf_line_addr << LOG2_BLOCK_SIZE);
@@ -786,7 +787,7 @@ void O3_CPU::prefetcher_cycle_operate()
 {
 #define L1I (static_cast<CACHE*>(L1I_bus.lower_level))
   // Do prefetches
-  while (L1I->get_occupancy(3, 0) < L1I->get_size(3,0) && !l1i_empty_xpq()) {
+  while (L1I->get_occupancy(3, 0) < L1I->get_size(3, 0) && !l1i_empty_xpq()) {
     uint64_t entangled_addr = 0;
     uint64_t pf_line_addr = l1i_get_xpq(entangled_addr);
     uint64_t pf_addr = (pf_line_addr << LOG2_BLOCK_SIZE);
