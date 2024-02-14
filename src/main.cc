@@ -20,7 +20,7 @@
 
 uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, trace_ended[NUM_CPUS] = {}, all_warmup_complete = 0, all_simulation_complete = 0,
         MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_pintrace = 0, knob_cloudsuite = 0, knob_low_bandwidth = 0, knob_intel = 0, knob_stall_on_miss = 1,
-        knob_stop_at_completion = 1;
+        knob_stop_at_completion = 0;
 int8_t knob_ip_offset = 0;
 bool knob_no_detail_stats = false;
 
