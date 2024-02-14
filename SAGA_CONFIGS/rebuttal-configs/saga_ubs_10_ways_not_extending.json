@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/ubs_few_ways_not_extending",
+    "executable_name": "bin/ubs_10_ways_not_extending",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,

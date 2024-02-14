@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/saga_vcl_24KB_precise_extending",
+    "executable_name": "bin/ubs_10_small_ways_not_extending",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
@@ -32,7 +32,7 @@
         "execute_latency": 0,
         "branch_predictor": "hashed_perceptron",
         "btb": "extended_basic_btb",
-        "btb_max_loop_branch": 16
+        "btb_max_loop_branch": 32
     }],
     "DIB": {
         "window_size": 16,
@@ -40,27 +40,19 @@
         "ways": 8
     },
     "L1I": {
-        "sets": 32,
-        "ways": 18,
+        "sets": 64,
+        "ways": 10,
         "buffer": true,
-        "buffer_size": 32,
+        "buffer_size": 64,
         "buffer_organisation": "DIRECT_MAPPED",
         "way_sizes": [
-            4,
-            8,
-            12,
-            16,
-            24,
+            20,
+            28,
+            28,
             32,
             36,
             36,
-            36,
-            40,
-            44,
-            48,
-            60,
-            64,
-            64,
+            56,
             64,
             64,
             64
@@ -81,7 +73,7 @@
         "prefetch_buffer_size": 16,
         "lru_modifier": "LRU2BOUND4",
         "counting_block_method": "SUM_ACCESSES",
-        "extend_blocks_to_branch": true
+        "extend_blocks_to_branch": false
     },
     "L1D": {
         "sets": 64,

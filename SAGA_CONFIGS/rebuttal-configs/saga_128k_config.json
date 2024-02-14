@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/ubs_few_ways_not_extending",
+    "executable_name": "bin/champsim128k",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
@@ -32,7 +32,7 @@
         "execute_latency": 0,
         "branch_predictor": "hashed_perceptron",
         "btb": "extended_basic_btb",
-        "btb_max_loop_branch": 32
+        "btb_max_loop_branch": 64
     }],
     "DIB": {
         "window_size": 16,
@@ -40,23 +40,8 @@
         "ways": 8
     },
     "L1I": {
-        "sets": 64,
-        "ways": 10,
-        "buffer": true,
-        "buffer_size": 64,
-        "buffer_organisation": "DIRECT_MAPPED",
-        "way_sizes": [
-            20,
-            28,
-            28,
-            32,
-            36,
-            36,
-            56,
-            64,
-            64,
-            64
-        ],
+        "sets": 256,
+        "ways": 8,
         "rq_size": 64,
         "wq_size": 64,
         "pq_size": 32,
@@ -71,9 +56,7 @@
         "filter_inserts": false,
         "filter_prefetches": true,
         "prefetch_buffer_size": 16,
-        "lru_modifier": "LRU2BOUND4",
-        "counting_block_method": "SUM_ACCESSES",
-        "extend_blocks_to_branch": false
+        "counting_block_method": "SUM_ACCESSES"
     },
     "L1D": {
         "sets": 64,
