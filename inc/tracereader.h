@@ -25,6 +25,7 @@ public:
   tracereader(uint8_t cpu, std::string _ts);
   ~tracereader();
   void open(std::string trace_string);
+  void open();
   void close();
 
   template <typename T>
