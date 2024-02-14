@@ -17,7 +17,7 @@ binaries0KB=("champsim32k" "champsim64k" "ubs" "ubs_short_only" "ubs_not_extendi
 
 for binary in ${binaries0KB[@]}
 do
-    python /cluster/home/romankb/workspace/ChampSim/data_collector.py --warmup 5000000 --evaluation 5000000000 --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/cvp1 --nosub --output_dir /cluster/work/users/romankb/results/isca_cvp1_extended/raw_logs/sizes_${binary}/ >> ~/pyrunner_cvp1_${binary}.log & # We got spec in dpc3
+    python /cluster/home/romankb/workspace/ChampSim/data_collector.py --warmup 5000000 --evaluation 50000000 --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/cvp1 --nosub --output_dir /cluster/work/users/romankb/results/isca_cvp1_extended/raw_logs/sizes_${binary}/ >> ~/pyrunner_cvp1_${binary}.log & # We got spec in dpc3
 done
 
 for job in `jobs -p`
