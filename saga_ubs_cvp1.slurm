@@ -13,7 +13,7 @@
 module load Boost/1.79.0-GCC-11.3.0
 module load Python/3.10.4-GCCcore-11.3.0
 
-binaries0KB=("champsim32k" "champsim64k" "ubs" "ubs_short_only" "ubs_not_extending" "ubs_few_ways")
+binaries0KB=("champsim32k" "champsim64k" "ubs" "ubs_short_only" "ubs_not_extending" "ubs_few_ways" "ubs_few_ways_not_extending")
 
 for binary in ${binaries0KB[@]}
 do

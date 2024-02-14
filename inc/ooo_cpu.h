@@ -142,6 +142,7 @@ public:
   void print_deadlock() override;
 
   int prefetch_code_line(uint64_t pf_v_addr);
+  void prefetcher_squash(uint64_t, uint64_t);
 
 #include "ooo_cpu_modules.inc"
 

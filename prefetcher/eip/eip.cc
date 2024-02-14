@@ -165,7 +165,7 @@ uint64_t l1i_get_bere_hist_table(uint64_t line_addr, uint64_t latency, uint32_t 
 // TIMING TABLES
 
 #define L1I_SET_BITS 6
-#define L1I_TIMING_MSHR_SIZE 1072 // just assuming enough space to be optimistic
+#define L1I_TIMING_MSHR_SIZE 104 // just assuming enough space to be optimistic
 #define L1I_TIMING_MSHR_TAG_BITS 42
 #define L1I_TIMING_MSHR_TAG_MASK (((uint64_t)1 << L1I_HIST_TAG_BITS) - 1)
 #define L1I_TIMING_CACHE_TAG_BITS (L1I_TIMING_MSHR_TAG_BITS - L1I_SET_BITS)
