@@ -15,7 +15,7 @@ module load Python/3.10.4-GCCcore-11.3.0
 #binaries=("champsim64k" "champsim32k" "champsim128m" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d_arm" "champsim_vcl_buffer_16")
 #binaries=("champsim64k" "champsim32k" "champsim128m" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d_arm" "champsim_vcl_buffer_16")
 # binaries=("champsim16k" "champsim32k" "champsim64k" "saga_vcl_16KB_extending" "saga_vcl_16KB_not_extending" "saga_vcl_16KB_precise_extending" "saga_vcl_16KB_precise_not_extending" "saga_vcl_20KB_extending" "saga_vcl_20KB_not_extending" "saga_vcl_24KB_extending" "saga_vcl_24KB_not_extending" "saga_vcl_24KB_precise_extending" "saga_vcl_24KB_precise_not_extending" "saga_vcl_28KB_extending" "saga_vcl_28KB_extending" "saga_vcl_64KB_extending" "saga_vcl_64KB_not_extending" "champsim128k")
-binaries=("saga_vcl_64KB_extending")
+binaries=("saga_vcl_64KB_64s_extending" "saga_vcl_64KB_not_extending" "saga_vcl_64KB_extending" "saga_vcl_64KB_64s_not_extending")
 #binaries=("saga_vcl_24KB_precise_extending" "saga_vcl_24KB_precise_not_extending")
 for binary in ${binaries[@]}
 do
