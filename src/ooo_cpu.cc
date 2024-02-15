@@ -942,7 +942,7 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
 
           // TODO: Get rid of this check once we have data accesses in the trace
           if (dependent->lq_index[j]->producer_id == std::numeric_limits<uint64_t>::max()) {
-            cerr << "Uninitialized DTLB dependency detected / needs fixing later [data trace must be available]" << endl;
+            // cerr << "Uninitialized DTLB dependency detected / needs fixing later [data trace must be available]" << endl;
             continue; // after warmup it can happen that we see an uninitialized value -- ignore
           }
           if (dependent->lq_index[j]->producer_id != sq_it->instr_id) {
