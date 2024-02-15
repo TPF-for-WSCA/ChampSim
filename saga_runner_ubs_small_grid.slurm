@@ -2,8 +2,8 @@
 #SBATCH --job-name="num-collection-champsim-quick"
 #SBATCH --account=nn4650k
 #SBATCH --nodes=1
-#SBATCH -c16
-#SBATCH --mem-per-cpu=10G
+#SBATCH -c20
+#SBATCH --mem-per-cpu=8G
 #SBATCH --time=00-24:00:00
 #SBATCH --mail-user=romankb@ntnu.no
 #SBATCH --mail-type=ALL
@@ -15,7 +15,7 @@ module load Python/3.10.4-GCCcore-11.3.0
 #binaries=("champsim64k" "champsim32k" "champsim128m" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d_arm" "champsim_vcl_buffer_16")
 #binaries=("champsim64k" "champsim32k" "champsim128m" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d_arm" "champsim_vcl_buffer_16")
 # binaries=("champsim16k" "champsim32k" "champsim64k" "saga_vcl_16KB_extending" "saga_vcl_16KB_not_extending" "saga_vcl_16KB_precise_extending" "saga_vcl_16KB_precise_not_extending" "saga_vcl_20KB_extending" "saga_vcl_20KB_not_extending" "saga_vcl_24KB_extending" "saga_vcl_24KB_not_extending" "saga_vcl_24KB_precise_extending" "saga_vcl_24KB_precise_not_extending" "saga_vcl_28KB_extending" "saga_vcl_28KB_extending" "saga_vcl_64KB_extending" "saga_vcl_64KB_not_extending" "champsim128k")
-binaries=("champsim16k")
+binaries=("saga_vcl_64KB_extending")
 #binaries=("saga_vcl_24KB_precise_extending" "saga_vcl_24KB_precise_not_extending")
 for binary in ${binaries[@]}
 do
