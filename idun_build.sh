@@ -1,6 +1,6 @@
 #!/bin/bash
 
-build_configs=("idun_32k_config.json" "idun_128k_config.json")
+build_configs=("idun_32k_config.json" "idun_128k_config.json" "idun_ubs_64k_64s_extend.json" "idun_ubs_64k_64s_not_extend.json" "idun_ubs_64k_extend.json" "idun_ubs_64k_not_extend.json")
 
 #build_configs=("idun_vcl_buffer_64d_max_way_config.json")
 #build_configs=("idun_vcl_buffer_64d_data_no_history_config.json" "idun_vcl_buffer_64d_data_partial_historyconfig.json" "idun_vcl_buffer_64d_no_history_config.json" "idun_vcl_buffer_64d_partial_history_config.json" "idun_vcl_buffer_64f_data_no_history_config.json" "idun_vcl_buffer_64f_data_partial_history_config.json" "idun_vcl_buffer_64f_no_history_config.json" "idun_vcl_buffer_64f_partial_history_config.json" "idun_vcl_buffer_64lru_8w_no_history_config.json" "idun_vcl_buffer_64lru_8w_partial_history_config.json" "idun_vcl_buffer_64lru_data_8w_no_history_config.json" "idun_vcl_buffer_64lru_data_8w_partial_history_config.json")
@@ -13,7 +13,7 @@ cd ~/ChampSim/
 for build_script in ${build_configs[@]}
 do
     echo "Building ${build_script}"
-    ~/ChampSim/config.sh ~/ChampSim/${build_script}
+    ~/ChampSim/config.sh ~/ChampSim/isca_configs/${build_script}
     make -j
 done
 cd $old_dir
