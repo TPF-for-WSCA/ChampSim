@@ -81,7 +81,7 @@
     "filter_inserts": false,
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,
-    "lru_modifier": "LRU4BOUND2",
+    "lru_modifier": "LRU4BOUND4",
     "counting_block_method": "SUM_ACCESSES",
     "extend_blocks_to_branch": true
   },
