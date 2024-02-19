@@ -48,7 +48,7 @@
     "buffer_size": 64,
     "buffer_organisation": "DIRECT_MAPPED",
     "way_sizes": [
-      20,
+      12,
       20,
       28,
       28,
