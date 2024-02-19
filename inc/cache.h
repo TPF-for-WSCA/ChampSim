@@ -33,6 +33,7 @@
 
 #define BLOCK_ENDING_BRANCH(bt) (bt == BRANCH_DIRECT_CALL || bt == BRANCH_RETURN || bt == BRANCH_INDIRECT_CALL)
 
+
 typedef unsigned long ulong;
 typedef std::pair<uint8_t, uint8_t> SUBSET;
 
@@ -63,6 +64,7 @@ enum LruModifier {
   BOUND3 = 3,
   BOUND4 = 4,
   BOUND6 = 6,
+  BOUND8 = 8,
   LRU1DEFAULT = 21,
   LRU1BOUND2 = 20,
   LRU1BOUND3 = 30,
@@ -70,11 +72,13 @@ enum LruModifier {
   LRU1BOUND5 = 50,
   LRU1BOUND6 = 60,
   LRU2DEFAULT = 201,
+  LRU2PRECISE = 100,
   LRU2BOUND2 = 200,
   LRU2BOUND3 = 300,
   LRU2BOUND4 = 400,
   LRU2BOUND5 = 500,
   LRU2BOUND6 = 600,
+  LRU2BOUND8 = 800,
   LRU3DEFAULT = 2001,
   LRU3BOUND2 = 2000,
   LRU3BOUND3 = 3000,
