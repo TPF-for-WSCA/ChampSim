@@ -16,8 +16,8 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-inst
 module load Boost/1.77.0-GCC-11.2.0
 module load Python/3.9.6-GCCcore-11.2.0
 
-binaries=("ubs_bound1" "ubs_bound2" "ubs_bound6" "ubs_bound8" "ubs_lru_default" "ubs_lru1" "ubs_lru3" "ubs_lru4")
-
+# binaries=("ubs_bound1" "ubs_bound2" "ubs_bound6" "ubs_bound8" "ubs_lru_default" "ubs_lru1" "ubs_lru3" "ubs_lru4")
+binaries=("champsim32k")
 #binaries=("champsim32k" "champsim128k" "ubs_64KB_64s_extending" "ubs_64KB_64s_not_extending" "ubs_64KB_extending" "ubs_64KB_not_extending")
 #binaries=("champsim_vcl_buffer_64d_data_small")
 

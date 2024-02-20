@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/ubs_64KB_extending",
+    "executable_name": "bin/ubs_128KB_extending",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
@@ -40,21 +40,13 @@
         "ways": 8
     },
     "L1I": {
-        "sets": 128,
-        "ways": 9,
+        "sets": 256,
+        "ways": 11,
         "buffer": true,
         "buffer_size": 64,
         "buffer_organisation": "DIRECT_MAPPED",
         "way_sizes": [
-            12,
-            24,
-            40,
-            48,
-            56,
-            60,
-            64,
-            64,
-            64
+            8, 16, 24, 28, 28, 32, 36, 56, 64, 64, 64
         ],
         "rq_size": 64,
         "wq_size": 64,

@@ -40,8 +40,8 @@
         "ways": 8
     },
     "L1I": {
-        "sets": 64,
-        "ways": 18,
+        "sets": 128,
+        "ways": 9,
         "buffer": true,
         "buffer_size": 64,
         "buffer_organisation": "DIRECT_MAPPED",
