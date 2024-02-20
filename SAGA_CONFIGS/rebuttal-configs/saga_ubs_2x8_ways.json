@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/ubs_10_small_ways_not_extending",
+  "executable_name": "bin/ubs_2x8_ways_precise",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -43,19 +43,25 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 10,
+    "ways": 16,
     "buffer": true,
     "buffer_size": 64,
     "buffer_organisation": "DIRECT_MAPPED",
     "way_sizes": [
+      4,
+      4,
+      8,
+      8,
       12,
       16,
-      20,
-      28,
+      24,
+      24,
       28,
       32,
+      32,
+      36,
       44,
-      64,
+      48,
       64,
       64
     ],
@@ -75,7 +81,7 @@
     "prefetch_buffer_size": 16,
     "lru_modifier": "LRU2BOUND4",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": false
+    "extend_blocks_to_branch": true
   },
   "L1D": {
     "sets": 64,
