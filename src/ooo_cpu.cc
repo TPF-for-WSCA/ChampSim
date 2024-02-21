@@ -1,6 +1,7 @@
 #include "ooo_cpu.h"
 
 #include <algorithm>
+#include <cstring>
 #include <vector>
 
 #include "cache.h"
@@ -15,8 +16,10 @@ extern uint8_t MAX_INSTR_DESTINATIONS;
 void O3_CPU::operate()
 {
   // subtract 1, as we might insert two into the buffer (overlap)
-  instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy()) - 1);
+  instrs_to_read_this_cycle = std::min(
+      {(std::size_t)FETCH_WIDTH + 1, (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy()) + not_fetch_instrs, (std::size_t)(FETCH_WIDTH + 1 + not_fetch_instrs)});
 
+  not_fetch_instrs = 0;
   retire_rob();                    // retire
   complete_inflight_instruction(); // finalize execution
   execute_instruction();           // execute instructions
@@ -200,7 +203,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   // add this instruction to the IFETCH_BUFFER
   if (prev_was_branch and not arch_instr.is_branch) {
     // call code prefetcher for every instruction (optimisation for vcl)
-    impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, arch_instr.ip + 4, arch_instr.size);
+    impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, arch_instr.ip + arch_instr.size, arch_instr.size);
     prev_was_branch = false;
   }
   // handle branch prediction
@@ -245,7 +248,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
       }
     }
 
-    impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+    impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type, arch_instr.size);
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target, arch_instr.size);
     prev_was_branch = true;
@@ -267,13 +270,22 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
   // Ensure no overlapping instructions
   bool overlap = false;
-  ooo_model_instr overhang_instr = arch_instr;
+  struct ooo_model_instr overhang_instr = arch_instr;
   if ((arch_instr.ip % BLOCK_SIZE) + arch_instr.size > BLOCK_SIZE) {
     arch_instr.size = BLOCK_SIZE - (arch_instr.ip % BLOCK_SIZE);
     overhang_instr.instr_id = ++instr_unique_id;
     overhang_instr.ip += arch_instr.size;
     overhang_instr.instruction_pa += arch_instr.size;
     overhang_instr.size -= arch_instr.size;
+    overhang_instr.branch_mispredicted = 0;
+    overhang_instr.num_mem_ops = 0; // << only execute mem op once - easier to execute with first, though unrealistic...
+    std::memset(overhang_instr.destination_registers, 0, sizeof(overhang_instr.destination_registers));
+    std::memset(overhang_instr.destination_memory, 0, sizeof(overhang_instr.destination_memory));
+    std::memset(overhang_instr.source_registers, 0, sizeof(overhang_instr.source_registers));
+    std::memset(overhang_instr.source_memory, 0, sizeof(overhang_instr.source_memory));
+    overhang_instr.num_reg_ops = 0;
+    overhang_instr.is_branch = 0;
+    overhang_instr.is_memory = 0;
     assert(overhang_instr.size > 0);
     arch_instr.is_branch = 0; // we only predict a branch once - once it is fully fetched
     overlap = true;
@@ -283,11 +295,18 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   IFETCH_BUFFER.push_back(arch_instr);
 
   if (overlap) {
-    instrs_to_read_this_cycle--;
+    if (instrs_to_read_this_cycle > 0)
+      instrs_to_read_this_cycle--;
+    else {
+      instrs_to_read_this_cycle = 0; // TODO: we add one too much to the fetch buffer...
+      not_fetch_instrs--;
+    }
+
     IFETCH_BUFFER.push_back(overhang_instr);
   }
 
   instr_unique_id++;
+  assert(not_fetch_instrs == 0 or not instrs_to_read_this_cycle);
 }
 
 void O3_CPU::check_dib()
@@ -396,7 +415,8 @@ void O3_CPU::fetch_instruction()
     // TODO: Fix up for x86 instructions
     // NOTE: this is here for the fake instructions in the fixed ipc1 traces,
     // such that we don't increase throughput requirements on instruction fetching
-    if (it->translated == COMPLETED && it->fetched == 0 && it->ip % 4 != 0) {
+    extern uint8_t knob_intel;
+    if (not knob_intel && it->translated == COMPLETED && it->fetched == 0 && it->ip % 4 != 0) {
       it->fetched = COMPLETED;
       continue;
     }
@@ -420,9 +440,10 @@ void O3_CPU::fetch_instruction()
 
   uint64_t find_addr = l1i_req_begin->instruction_pa;
   auto end = std::min(IFETCH_BUFFER.end(), std::next(l1i_req_begin, FETCH_WIDTH + 1)); // Collapsing queue design?
-  auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr](const ooo_model_instr& x) {
+  uint64_t next_addr = find_addr + l1i_req_begin->size;
+  auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr, next_addr](const ooo_model_instr& x) {
     bool is_adjacent =
-        find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa; // we compare first with ourselves. of course same address access is included
+        next_addr == x.instruction_pa || find_addr == x.instruction_pa; // we compare first with ourselves. of course same address access is included
     bool is_same_block = find_addr >> LOG2_BLOCK_SIZE == x.instruction_pa >> LOG2_BLOCK_SIZE;
     find_addr = x.instruction_pa;
     return not(is_adjacent && is_same_block);

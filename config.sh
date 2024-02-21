@@ -534,9 +534,9 @@ with open('inc/ooo_cpu_modules.inc', 'wt') as wfp:
     wfp.write('\n}\n')
     wfp.write('\n')
 
-    wfp.write('\n'.join('void {1}(uint64_t, uint64_t, uint8_t, uint8_t);'.format(*b) for b in btb_updates))
-    wfp.write('\nvoid impl_update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)\n{\n    ')
-    wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}(ip, branch_target, taken, branch_type);'.format(*b) for b in btb_updates))
+    wfp.write('\n'.join('void {1}(uint64_t, uint64_t, uint8_t, uint8_t, uint8_t);'.format(*b) for b in btb_updates))
+    wfp.write('\nvoid impl_update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type, uint8_t size)\n{\n    ')
+    wfp.write('\n    '.join('if (btb_type == btb_t::{}) return {}(ip, branch_target, taken, branch_type, size);'.format(*b) for b in btb_updates))
     wfp.write('\n    throw std::invalid_argument("Branch target buffer module not found");')
     wfp.write('\n}\n')
     wfp.write('\n')

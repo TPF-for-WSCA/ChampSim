@@ -51,7 +51,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "epi_4k",
+        "prefetcher": "fdip",
         "counting_block_method": "SUM_ACCESSES",
         "filter_inserts": false,
         "filter_prefetches": true,

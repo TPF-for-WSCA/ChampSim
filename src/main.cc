@@ -833,7 +833,8 @@ int main(int argc, char** argv)
 
     for (std::size_t i = 0; i < ooo_cpu.size(); ++i) {
       // read from trace
-      while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
+      // NOTE: we always need to account for potential overshoot on x86 traces
+      while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 1 && !trace_ended[i]) {
         struct ooo_model_instr trace_inst;
         try {
           trace_inst = traces[i]->get();

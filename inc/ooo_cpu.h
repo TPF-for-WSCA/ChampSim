@@ -41,6 +41,7 @@ private:
   size_t EXTENDED_BTB_MAX_LOOP_BRANCH;
   BASIC_BTB_ENTRY* basic_btb;
   bool prev_was_branch = false;
+  int not_fetch_instrs = 0;
 
 public:
   uint32_t cpu = 0;

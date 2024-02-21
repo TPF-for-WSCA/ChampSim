@@ -222,11 +222,13 @@ bool O3_CPU::is_not_block_ending(uint64_t ip)
   return false;
 }
 
-void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type, uint8_t inst_size)
 {
-  assert(ip % 4 == 0 and branch_target % 4 == 0);
+  extern uint8_t knob_intel;
+  assert(knob_intel or (ip % 4 == 0 and branch_target % 4 == 0 and inst_size == 4));
+  assert(inst_size > 0);
   if (MIGHT_LOOP_BRANCH(branch_type))
-    branch_table[(ip >> 2)] = {branch_type, 4, (branch_target < ip && (ip - branch_target) < EXTENDED_BTB_MAX_LOOP_BRANCH)};
+    branch_table[(ip >> 2)] = {branch_type, inst_size, (branch_target < ip && (ip - branch_target) < EXTENDED_BTB_MAX_LOOP_BRANCH)};
   if (branch_table.size() > BASIC_BTB_BRANCH_TABLE) {
     std::cerr << "overgrown branch table... " << branch_table.size() << std::endl;
   }
