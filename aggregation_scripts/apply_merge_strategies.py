@@ -265,6 +265,8 @@ def create_uniform_buckets_of_size(num_buckets):
         b / sum(BLOCK_SIZES_HISTOGRAM[strategies[CHOSEN_STRATEGY].name])
         for b in BLOCK_SIZES_HISTOGRAM[strategies[CHOSEN_STRATEGY].name]
     ]
+    filtered_histogram = [x for x in normalised_histogram if x != 0]
+    print(f"HISTOGRAM: {filtered_histogram}")
     target = 1.0 / num_buckets
     bucket_sizes = []
     bucket_percentages = []
@@ -342,7 +344,7 @@ def create_uniform_buckets_of_size(num_buckets):
 
 
 def apply_way_analysis(
-    workload_name, tracefile_path, num_sets=64
+    workload_name, tracefile_path, num_sets=256
 ):
     """ Apply way analysis to find optimal way size. This runs the selected merge
         strategies to find the optimal way size under the assumption of a given
@@ -368,7 +370,7 @@ def apply_way_analysis(
         buffer_bytes_per_set = (
             2 + 64 + (126/num_sets)
         )  # 2 bytes for instruction accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
-    target_size = 512 - buffer_bytes_per_set + overhead_allowance
+    target_size = 512 - buffer_bytes_per_set + overhead_allowance + (2048 / num_sets)
     error = target_size
     selected_waysizes = []
     local_overhead = 0
@@ -376,7 +378,8 @@ def apply_way_analysis(
     overhead = 0
     max_size = 0
     max_size_ways = []
-    for i in range(7, 12):
+    # for i in range(7, 20):
+    for i in range(7,20):
         tag_overhead = (i - 7) * (26 + 1 + 3) / 8  # (tag bits, valid bit, lru bits)
         if arm:
             overhead = math.ceil(((4 + 26 + 4) * i) / 8)  # 6 bits per tag
