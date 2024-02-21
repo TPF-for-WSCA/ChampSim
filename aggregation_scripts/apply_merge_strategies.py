@@ -701,10 +701,15 @@ def main(args):
         ax3.sharey(ax1)
         ax3.yaxis.set_tick_params(labelleft=False)
         fig.add_axes(ax3)
+        ax4 = divider.append_axes("right", size="88%", pad=0.05)
+        ax4.sharey(ax1)
+        ax4.yaxis.set_tick_params(labelleft=False)
+        fig.add_axes(ax4)
         ax1.set_ylim([0.27, 0.83])
         ax2.set_ylim([0.27, 0.83])
         ax3.set_ylim([0.27, 0.83])
-        axes = [ax1, ax2, ax3]
+        ax4.set_ylim([0.27, 0.83])
+        axes = [ax1, ax2, ax3, ax4]
 
         for idx, group in enumerate(sorted(groups)):
             avg = []
