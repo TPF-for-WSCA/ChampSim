@@ -613,7 +613,7 @@ def main(args):
                 )
                 if not results:
                     continue
-                label = workload.split(".")[0]
+                label = f"{workload.split(".")[0]}.{workload.split(".")[1]}"
                 if not label:
                     print("label is none")
                     continue
