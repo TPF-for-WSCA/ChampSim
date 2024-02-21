@@ -7,8 +7,8 @@
 #SBATCH --time=12:00:00
 #SBATCH --mail-user=romankb@ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH -e /cluster/work/romankb/storage-efficicency-%j.err
-#SBATCH -o /cluster/work/romankb/storage-efficicency-%j.out
+#SBATCH -e /cluster/work/users/romankb/storage-efficicency-%j.err
+#SBATCH -o /cluster/work/users/romankb/storage-efficicency-%j.out
 module load Boost/1.79.0-GCC-11.3.0
 module load Python/3.10.4-GCCcore-11.3.0
 #benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
