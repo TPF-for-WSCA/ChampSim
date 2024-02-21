@@ -16,8 +16,10 @@ extern uint8_t MAX_INSTR_DESTINATIONS;
 void O3_CPU::operate()
 {
   // subtract 1, as we might insert two into the buffer (overlap)
-  instrs_to_read_this_cycle = std::min(
-      {(std::size_t)FETCH_WIDTH + 1, (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy()) + not_fetch_instrs, (std::size_t)(FETCH_WIDTH + 1 + not_fetch_instrs)});
+  size_t remaining_slots = (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy());
+  if (remaining_slots + not_fetch_instrs < remaining_slots)
+    remaining_slots += not_fetch_instrs;
+  instrs_to_read_this_cycle = std::min({(std::size_t)FETCH_WIDTH, remaining_slots, (std::size_t)(FETCH_WIDTH + not_fetch_instrs)});
 
   not_fetch_instrs = 0;
   retire_rob();                    // retire
@@ -272,6 +274,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   bool overlap = false;
   struct ooo_model_instr overhang_instr = arch_instr;
   if ((arch_instr.ip % BLOCK_SIZE) + arch_instr.size > BLOCK_SIZE) {
+    // TODO: For performance analysis, the following code is not fit
     arch_instr.size = BLOCK_SIZE - (arch_instr.ip % BLOCK_SIZE);
     overhang_instr.instr_id = ++instr_unique_id;
     overhang_instr.ip += arch_instr.size;
