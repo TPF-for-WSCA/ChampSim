@@ -206,7 +206,7 @@ def get_mask_from_tracefile(tracefile_path, sample_distance=1, start_offset=0):
 
 def get_uint64_t_from_tracefile(tracefile_path, sample_distance=1, start_offset=0):
     with open(tracefile_path, "rb") as tracefile:
-        tracefile.seek(start_offset, 0)
+        tracefile.seek(start_offset * 8, 0)
         while True:
             line = tracefile.read(8)
             if not line:
