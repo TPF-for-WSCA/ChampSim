@@ -368,7 +368,7 @@ def apply_way_analysis(
         buffer_bytes_per_set = (
             2 + 64 + (126/num_sets)
         )  # 2 bytes for instruction accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
-    target_size = 512 - buffer_bytes_per_set + overhead_allowance
+    target_size = 512 - buffer_bytes_per_set + overhead_allowance + 32
     error = target_size
     selected_waysizes = []
     local_overhead = 0
@@ -376,7 +376,7 @@ def apply_way_analysis(
     overhead = 0
     max_size = 0
     max_size_ways = []
-    for i in range(7, 12):
+    for i in range(7, 20):
         tag_overhead = (i - 7) * (26 + 1 + 3) / 8  # (tag bits, valid bit, lru bits)
         if arm:
             overhead = math.ceil(((4 + 26 + 4) * i) / 8)  # 6 bits per tag
