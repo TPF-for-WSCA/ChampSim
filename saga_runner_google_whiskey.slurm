@@ -14,10 +14,10 @@ module load Boost/1.79.0-GCC-11.3.0
 module load Python/3.10.4-GCCcore-11.3.0
 #binaries=("champsim64k" "champsim32k" "champsim128m" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d_arm" "champsim_vcl_buffer_16")
 #binaries=("champsim64k" "champsim32k" "champsim128m" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d_arm" "champsim_vcl_buffer_16")
-binaries=("champsim32k" "champsim64k" "ubs")
+binaries=("champsim32k" "champsim64k" "ubs_x86")
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/workspace/ChampSim/data_collector.py --warmup 50000000 --evaluation 2500000000 --intel --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/google/whiskey --nosub --output_dir /cluster/work/users/romankb/results/google_complete/whiskey/sizes_${binary}/ >> ~/pyrunner_google_whiskey${binary}.log &
+    python /cluster/home/romankb/workspace/ChampSim/data_collector.py --warmup 50000000 --evaluation 250000000 --intel --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/google/whiskey --nosub --output_dir /cluster/work/users/romankb/results/google_big/whiskey/sizes_${binary}/ >> ~/pyrunner_google_whiskey${binary}.log &
 done
 
 for job in `jobs -p`
