@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/ubs_8_ways",
+  "executable_name": "bin/ubs_8_16_ways_not_extending",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -48,13 +48,13 @@
     "buffer_size": 64,
     "buffer_organisation": "DIRECT_MAPPED",
     "way_sizes": [
+      4,
       8,
       16,
-      20,
       24,
       32,
-      32,
-      64,
+      36,
+      48,
       64
     ],
     "rq_size": 64,
@@ -71,9 +71,9 @@
     "filter_inserts": false,
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,
-    "lru_modifier": "LRU2BOUND2",
+    "lru_modifier": "LRU2BOUND4",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": true
+    "extend_blocks_to_branch": false
   },
   "L1D": {
     "sets": 64,
