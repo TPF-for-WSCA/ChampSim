@@ -12,7 +12,7 @@
 #build_configs=("saga_vcl_64k_64s_extending.json" "saga_vcl_64k_64s_not_extending.json" "saga_128k_config.json")
 #build_configs=("saga_ubsBOUND1.json" "saga_ubsBOUND2.json" "saga_ubsBOUND6.json" "saga_ubsBOUND8.json" "saga_ubsDEFAULT.json" "saga_ubsINSERT1.json" "saga_ubsINSERT3.json" "saga_ubsINSERT4.json")
 #build_configs=("saga_ubs_10_ways.json" "saga_ubs_10_ways_not_extending.json" "saga_ubs_10_small_ways.json" "saga_ubs_10_small_ways_not_extending.json")
-build_configs=("saga_perfect_config.json")
+build_configs=("saga_ubs_x86.json")
 cd ~/workspace/ChampSim/
 old_dir=$(pwd)
 for build_script in ${build_configs[@]}
