@@ -11,10 +11,11 @@
 #SBATCH -o /cluster/work/romankb/storage-efficicency-%j.out
 module load Boost/1.79.0-GCC-11.3.0
 module load Python/3.10.4-GCCcore-11.3.0
-benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
+#benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
+benchmarks=("whiskey" "merced" "delta" "charlie")
 baseline_configs=("sizes_champsim32k")
-vcl_16_configs=("sizes_champsim_vcl_buffer_fdip_16way_64d")
-vcl_18_configs=("sizes_champsim_vcl_buffer_fdip_64d")
+vcl_16_configs=()
+vcl_18_configs=("sizes_ubs")
 
 
 old_dir=pwd
