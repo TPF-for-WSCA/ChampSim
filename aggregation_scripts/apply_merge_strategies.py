@@ -717,9 +717,9 @@ def main(args):
         else:
             graphs_dir = os.path.join(trace_directory, "graphs")
             os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
-            ax2 = divider.append_axes("right", size="400%", pad=0.05)
-            ax3 = divider.append_axes("right", size="400%", pad=0.05)
-            ax4 = divider.append_axes("right", size="400%", pad=0.05)
+            ax2 = divider.append_axes("right", size="300%", pad=0.05)
+            ax3 = divider.append_axes("right", size="300%", pad=0.05)
+            ax4 = divider.append_axes("right", size="300%", pad=0.05)
             ax1.set_ylim([y_lower, y_upper])
             ax2.sharey(ax1)
             ax2.yaxis.set_tick_params(labelleft=False)
