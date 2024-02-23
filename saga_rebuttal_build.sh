@@ -9,13 +9,13 @@
 build_dir=("rebuttal-configs")
 
 old_dir=$(pwd)
-cd ~/workspace/ChampSim/
+cd /cluster/projects/nn4650k/workspace/ChampSim/
 for spec_dir in ${build_dir[@]}
 do
     for build_script in ./SAGA_CONFIGS/$spec_dir/*;
     do
         echo "Building ${build_script}"
-        ~/workspace/ChampSim/config.sh $build_script
+        /cluster/projects/nn4650k/workspace/ChampSim/config.sh $build_script
         make -j
     done
 done
