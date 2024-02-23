@@ -693,8 +693,11 @@ def main(args):
         ax1 = fig.add_subplot(1, 1, 1)
         ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0, decimals=0))
         divider = make_axes_locatable(ax1)
-        y_lower = 0.4
-        y_upper = 0.9
+        #y_lower = 0.4
+        #y_upper = 1.0
+
+        y_lower = 0.2
+        y_upper = 0.83
         ax1.set_ylabel("Storage Efficiency")
         if (arm):
             graphs_dir = os.path.join(trace_directory, "graphs")
@@ -726,10 +729,12 @@ def main(args):
             ax4.xaxis.set_tick_params(labelbottom=False)
             ax4.yaxis.set_tick_params(labelleft=False)
             ax2.set_xticks([])
-            ax3.set_xticks([])
-            ax4.set_xticks([])
-
             ax2.set_ylim([y_lower, y_upper])
+            ax3.set_xticks([])
+            ax3.set_ylim([y_lower, y_upper])
+            ax4.set_xticks([])
+            ax4.set_ylim([y_lower, y_upper])
+
             fig.add_axes(ax2)
             axes = [ax1]
 
@@ -739,12 +744,12 @@ def main(args):
         for idx, group in enumerate(sorted(groups)):
             for key, value in data_per_workload.items():
                 if key.startswith(group):
-                    data_per_benchmark[key] = value
                     if group in ['merced', 'delta', 'whiskey', 'charlie']:
                         avg.extend(value)
                     else:
+                        data_per_benchmark[key] = value
                         avg.append(sum(value) / len(value))
-            print(f"{group.upper()} AVG: {sum(avg)/len(avg)}")
+            print(f"{group.upper()} AVG: {sum(avg)/len(avg)}, MIN: {min(avg)}, MAX: {max(avg)}")
             if group in ['merced', 'delta', 'whiskey', 'charlie']:
                 data_per_benchmark[group] = avg
                 avg = []
