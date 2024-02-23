@@ -758,6 +758,10 @@ def main(args):
                 avg = []
                 data_per_benchmark = {}
         if not arm:
+            avg = []
+            for _, v in data_per_benchmark.items():
+                avg.append(sum(v)/len(v))
+            data_per_benchmark["GOOGLE AVG:"] = avg
             axes[0].violinplot(
                 data_per_benchmark.values(), showmeans=True, widths=0.9
             )
