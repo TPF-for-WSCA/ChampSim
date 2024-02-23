@@ -767,6 +767,8 @@ def main(args):
             for _, v in data_per_benchmark.items():
                 avg.append(sum(v)/len(v))
             data_per_benchmark["GOOGLE AVG:"] = avg
+            print(f"GOOGLE AVG: {sum(avg)/len(avg)}, MIN: {min(avg)}, MAX: {max(avg)}")
+
             axes[0].violinplot(
                 data_per_benchmark.values(), showmeans=True, widths=0.9
             )
