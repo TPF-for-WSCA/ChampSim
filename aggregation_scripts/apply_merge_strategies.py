@@ -691,37 +691,77 @@ def main(args):
         fig = plt.figure(figsize=(18 * cm, 8 * cm))
         fig.subplots_adjust(bottom=0.39)
         ax1 = fig.add_subplot(1, 1, 1)
-        ax1.set_ylabel("Storage Efficiency")
-        ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+        ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0, decimals=0))
         divider = make_axes_locatable(ax1)
-        graphs_dir = os.path.join(trace_directory, "graphs")
-        os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
-        ax2 = divider.append_axes("right", size="400%", pad=0.05)
-        ax2.sharey(ax1)
-        ax2.yaxis.set_tick_params(labelleft=False)
-        fig.add_axes(ax2)
-        ax3 = divider.append_axes("right", size="88%", pad=0.05)
-        ax3.sharey(ax1)
-        ax3.yaxis.set_tick_params(labelleft=False)
-        fig.add_axes(ax3)
-        ax1.set_ylim([0.27, 0.83])
-        ax2.set_ylim([0.27, 0.83])
-        ax3.set_ylim([0.27, 0.83])
-        axes = [ax1, ax2, ax3]
+        y_lower = 0.4
+        y_upper = 0.9
+        ax1.set_ylabel("Storage Efficiency")
+        if (arm):
+            graphs_dir = os.path.join(trace_directory, "graphs")
+            os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
+            ax2 = divider.append_axes("right", size="400%", pad=0.05)
+            ax2.sharey(ax1)
+            ax2.yaxis.set_tick_params(labelleft=False)
+            fig.add_axes(ax2)
+            ax3 = divider.append_axes("right", size="88%", pad=0.05)
+            ax3.sharey(ax1)
+            ax3.yaxis.set_tick_params(labelleft=False)
+            fig.add_axes(ax3)
+            ax1.set_ylim([y_lower, y_upper])
+            ax2.set_ylim([y_lower, y_upper])
+            ax3.set_ylim([y_lower, y_upper])
+            axes = [ax1, ax2, ax3]
+        else:
+            graphs_dir = os.path.join(trace_directory, "graphs")
+            os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
+            ax2 = divider.append_axes("right", size="400%", pad=0.05)
+            ax3 = divider.append_axes("right", size="400%", pad=0.05)
+            ax4 = divider.append_axes("right", size="400%", pad=0.05)
+            ax1.set_ylim([y_lower, y_upper])
+            ax2.sharey(ax1)
+            ax2.yaxis.set_tick_params(labelleft=False)
+            ax2.xaxis.set_tick_params(labelbottom=False)
+            ax3.yaxis.set_tick_params(labelleft=False)
+            ax3.xaxis.set_tick_params(labelbottom=False)
+            ax4.xaxis.set_tick_params(labelbottom=False)
+            ax4.yaxis.set_tick_params(labelleft=False)
+            ax2.set_xticks([])
+            ax3.set_xticks([])
+            ax4.set_xticks([])
 
+            ax2.set_ylim([y_lower, y_upper])
+            fig.add_axes(ax2)
+            axes = [ax1]
+
+
+        avg = []
+        data_per_benchmark = {}
         for idx, group in enumerate(sorted(groups)):
-            avg = []
-            data_per_benchmark = {}
             for key, value in data_per_workload.items():
                 if key.startswith(group):
                     data_per_benchmark[key] = value
-                    avg.append(sum(value) / len(value))
-            data_per_benchmark[f"{group.upper()} AVG"] = avg
+                    if group in ['merced', 'delta', 'whiskey', 'charlie']:
+                        avg.extend(value)
+                    else:
+                        avg.append(sum(value) / len(value))
             print(f"{group.upper()} AVG: {sum(avg)/len(avg)}")
-            axes[idx].violinplot(
+            if group in ['merced', 'delta', 'whiskey', 'charlie']:
+                data_per_benchmark[group] = avg
+                avg = []
+            else:
+                data_per_benchmark[f"{group.upper()} AVG"] = avg
+            if group not in ['merced', 'delta', 'whiskey', 'charlie']:
+                axes[idx].violinplot(
+                    data_per_benchmark.values(), showmeans=True, widths=0.9
+                )
+                set_axis_style(axes[idx], data_per_benchmark.keys())
+                avg = []
+                data_per_benchmark = {}
+        if not arm:
+            axes[0].violinplot(
                 data_per_benchmark.values(), showmeans=True, widths=0.9
             )
-            set_axis_style(axes[idx], data_per_benchmark.keys())
+            set_axis_style(axes[0], data_per_benchmark.keys())
 
         plt.savefig(
             os.path.join(
