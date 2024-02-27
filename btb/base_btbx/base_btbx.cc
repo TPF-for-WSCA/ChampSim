@@ -36,7 +36,7 @@ struct BTB {
     assert(((Sets - 1) & (Sets)) == 0);
     theBTB.resize(Sets);
     indexMask = Sets - 1;
-    numIndexBits = (uint32_t)log2((double)Sets);
+    numIndexBits = (uint32_t)lg2((double)Sets);
   }
 
   void init_btb(int32_t Sets, int32_t Assoc)
@@ -47,7 +47,7 @@ struct BTB {
     assert(((Sets - 1) & (Sets)) == 0);
     theBTB.resize(Sets);
     indexMask = Sets - 1;
-    numIndexBits = (uint32_t)log2((double)Sets);
+    numIndexBits = (uint32_t)lg2((double)Sets);
   }
 
   int32_t index(uint64_t ip) { return ((ip >> 2) & indexMask); }
