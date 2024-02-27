@@ -693,11 +693,11 @@ def main(args):
         ax1 = fig.add_subplot(1, 1, 1)
         ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0, decimals=0))
         divider = make_axes_locatable(ax1)
-        #y_lower = 0.4
-        #y_upper = 1.0
+        y_lower = 0.4
+        y_upper = 0.9
 
-        y_lower = 0.2
-        y_upper = 0.83
+        #y_lower = 0.2
+        #y_upper = 0.83
         ax1.set_ylabel("Storage Efficiency")
         if (arm):
             graphs_dir = os.path.join(trace_directory, "graphs")
@@ -753,13 +753,18 @@ def main(args):
             if group in ['merced', 'delta', 'whiskey', 'charlie']:
                 data_per_benchmark[group] = avg
                 avg = []
-            else:
-                data_per_benchmark[f"{group.upper()} AVG"] = avg
+            # else:
+            #     data_per_benchmark[f"{group.upper()} AVG"] = avg
             if group not in ['merced', 'delta', 'whiskey', 'charlie']:
                 axes[idx].violinplot(
                     data_per_benchmark.values(), showmeans=True, widths=0.9
                 )
-                set_axis_style(axes[idx], data_per_benchmark.keys())
+                # axes[idx].hlines(sum(avg)/len(avg), 0.0, 100.0, linewidth=0.5, color='g', linestyles="dashed", label="AVG")
+                benchmarks = list(data_per_benchmark.keys())
+                # axes[idx].bar(len(benchmarks)+1, sum(avg)/len(avg), width=0.5)
+                axes[idx].plot(len(benchmarks) + 1, sum(avg)/len(avg), 'b+', markersize='4')
+                benchmarks.append(f" {group.upper()} AVG")
+                set_axis_style(axes[idx], benchmarks)
                 avg = []
                 data_per_benchmark = {}
         if not arm:

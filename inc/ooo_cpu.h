@@ -22,6 +22,13 @@ struct BASIC_BTB_ENTRY {
   uint64_t lru;
 };
 
+struct BTB_outcome {
+  uint64_t target;
+  uint64_t always_taken;
+  uint64_t branch_type;
+  uint64_t sequetial_BTB_access;
+};
+
 class CACHE;
 
 class CacheBus : public MemoryRequestProducer
@@ -95,6 +102,7 @@ public:
   uint64_t fetch_resume_cycle = 0;
   uint64_t num_branch = 0, branch_mispredictions = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict;
+  uint64_t BTB_reads, BTB_writes, PageBTB_reads, PageBTB_writes, PageBTB_readsBeforeWrite, RegionBTB_reads, RegionBTB_writes, RegionBTB_readsBeforeWrite;
 
   uint64_t total_branch_types[8] = {};
   uint64_t branch_type_misses[8] = {};
