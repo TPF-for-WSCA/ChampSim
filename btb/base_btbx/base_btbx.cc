@@ -157,7 +157,7 @@ BTB BTB_25D(256, 8);
 BTB BTB_46D(128, 8);
 BTB BTB_Ret(1024, 8);*/
 
-size_t NUM_BTB_PARTITIONS = -1;
+int NUM_BTB_PARTITIONS = -1;
 BTB* btb_partition;
 
 uint64_t basic_btb_lru_counter[NUM_CPUS];
