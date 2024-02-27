@@ -1,14 +1,14 @@
 #!/bin/bash
-#SBATCH --job-name="num-collection-champsim-quick"
+#SBATCH --job-name="num-collection-base-btb"
 #SBATCH --account=nn4650k
 #SBATCH --nodes=1
 #SBATCH -c20
 #SBATCH --mem-per-cpu=8G
-#SBATCH --time=00-24:00:00
+#SBATCH --time=00-12:00:00
 #SBATCH --mail-user=romankb@ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH -e /cluster/work/users/romankb/small-grid-%j.err
-#SBATCH -o /cluster/work/users/romankb/small-grid-%j.out
+#SBATCH -e /cluster/work/users/romankb/btb-base-%j.err
+#SBATCH -o /cluster/work/users/romankb/btb-base-%j.out
 
 module load Boost/1.79.0-GCC-11.3.0
 module load Python/3.10.4-GCCcore-11.3.0
