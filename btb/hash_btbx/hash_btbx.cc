@@ -13,6 +13,15 @@
 #define BASIC_BTB_INDIRECT_SIZE 4096
 #define BASIC_BTB_RAS_SIZE 64
 #define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
+#define HASH_BTBX_SMALL_TABLE_SIZE 128
+#define HASH_BTBX_SMALL_CUTOFF 7
+
+typedef struct _SMALL_BTB_ENTRY {
+  uint64_t offset;
+  bool negative;
+} SMALL_BTB_ENTRY;
+
+SMALL_BTB_ENTRY small_btb[NUM_CPUS][HASH_BTBX_SMALL_TABLE_SIZE];
 
 struct BTBEntry {
   uint64_t tag;
@@ -20,6 +29,8 @@ struct BTBEntry {
   uint8_t branch_type;
   uint64_t lru;
 };
+
+uint64_t hash_input[NUM_CPUS];
 
 struct BTB {
   std::vector<std::vector<BTBEntry>> theBTB;
@@ -36,7 +47,7 @@ struct BTB {
     assert(((Sets - 1) & (Sets)) == 0);
     theBTB.resize(Sets);
     indexMask = Sets - 1;
-    numIndexBits = (uint32_t)log2((double)Sets);
+    numIndexBits = (uint32_t)lg2((double)Sets);
   }
 
   void init_btb(int32_t Sets, int32_t Assoc)
@@ -47,7 +58,7 @@ struct BTB {
     assert(((Sets - 1) & (Sets)) == 0);
     theBTB.resize(Sets);
     indexMask = Sets - 1;
-    numIndexBits = (uint32_t)log2((double)Sets);
+    numIndexBits = (uint32_t)lg2((double)Sets);
   }
 
   int32_t index(uint64_t ip) { return ((ip >> 2) & indexMask); }
@@ -157,7 +168,7 @@ BTB BTB_25D(256, 8);
 BTB BTB_46D(128, 8);
 BTB BTB_Ret(1024, 8);*/
 
-size_t NUM_BTB_PARTITIONS = -1;
+int NUM_BTB_PARTITIONS = -1;
 BTB* btb_partition;
 
 uint64_t basic_btb_lru_counter[NUM_CPUS];
@@ -184,6 +195,15 @@ uint64_t basic_btb_abs_addr_dist(uint64_t addr1, uint64_t addr2)
   }
 
   return addr2 - addr1;
+}
+
+uint64_t btbx_small_offset_hash(uint8_t cpu, uint64_t ip)
+{
+  // TODO: split up the hash input into lg2(HASH_BTBX_SMALL_TABLE_SIZE) chunks
+  uint64_t hash = (ip >> 2) ^ hash_input[cpu];
+  hash &= HASH_BTBX_SMALL_TABLE_SIZE;
+  // We currently have no way of checking if this is correct, so we just return this as the index
+  return hash;
 }
 
 void push_basic_btb_ras(uint8_t cpu, uint64_t ip)
@@ -367,6 +387,19 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
   if (taken == false)
     return;
+
+  uint64_t diff_bits = (branch_target >> 2) ^ (ip >> 2);
+  if (diff_bits < HASH_BTBX_SMALL_CUTOFF) {
+    SMALL_BTB_ENTRY offset = small_btb[cpu][btbx_small_offset_hash(cpu, ip)];
+    uint64_t target = ip + ((1 + offset.negative * -2) * offset.offset);
+    if (target == branch_target)
+      return;
+    hash_input[cpu] ^= ip;
+    offset.negative = branch_target < ip;
+    offset.offset = offset.negative ? ip - branch_target : branch_target - ip;
+    small_btb[cpu][btbx_small_offset_hash(cpu, ip)] = offset;
+    return;
+  }
 
   BTBEntry* btb_entry;
   int partitionID = -1;
