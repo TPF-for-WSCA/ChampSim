@@ -158,7 +158,7 @@ BTB BTB_46D(128, 8);
 BTB BTB_Ret(1024, 8);*/
 
 int NUM_BTB_PARTITIONS = -1;
-BTB* btb_partition;
+BTB** btb_partition;
 
 uint64_t basic_btb_lru_counter[NUM_CPUS];
 
@@ -220,36 +220,37 @@ uint64_t basic_btb_get_call_size(uint8_t cpu, uint64_t ip)
   return size;
 }
 
+// TODO: Fix up this is not adapted to generic configs of BTBx - what about the actual sizes?
 int convert_offsetBits_to_partitionID(int num_bits)
 {
   if (num_bits == 0) {
     return 0;
   } else if (num_bits <= 4) {
     return 1;
-  } else if (num_bits <= 5) {
+  } else if (num_bits <= 6) {
     return 2;
-  } else if (num_bits <= 7) {
+  } else if (num_bits <= 8) {
     return 3;
-  } else if (num_bits <= 9) {
+  } else if (num_bits <= 10) {
     return 4;
-  } else if (num_bits <= 11) {
+  } else if (num_bits <= 18) {
     return 5;
-  } else if (num_bits <= 19) {
-    return 6;
   } else if (num_bits <= 25) {
-    return 7;
+    return 6;
   } else {
+    return 7;
+  } /*else {
     return 8;
-  }
+  }*/
   assert(0);
 }
 
 int get_lru_partition(int start_partitionID, uint64_t ip)
 {
   int lru_partition = start_partitionID;
-  uint64_t lru_value = btb_partition[start_partitionID].get_lru_value(ip);
+  uint64_t lru_value = btb_partition[start_partitionID]->get_lru_value(ip);
   for (int i = start_partitionID + 1; i < NUM_BTB_PARTITIONS; i++) {
-    uint64_t partition_lru_value = btb_partition[i].get_lru_value(ip);
+    uint64_t partition_lru_value = btb_partition[i]->get_lru_value(ip);
     if (partition_lru_value < lru_value) {
       lru_partition = i;
       lru_value = partition_lru_value;
@@ -272,13 +273,13 @@ void O3_CPU::initialize_btb()
   }
 
   NUM_BTB_PARTITIONS = BTB_WAYS;
-  btb_partition = (BTB*)malloc(BTB_WAYS * sizeof(BTB));
+  btb_partition = (BTB**)malloc(BTB_WAYS * sizeof(BTB*));
   assert(btb_partition);
   basic_btb_lru_counter[cpu] = 0;
   for (uint32_t i = 0; i < BTB_WAYS - 1; ++i) {
-    btb_partition[i].init_btb(BTB_SETS, 1);
+    btb_partition[i] = new BTB(BTB_SETS, 1);
   }
-  btb_partition[BTB_WAYS - 1].init_btb(64, 1);
+  btb_partition[BTB_WAYS - 1] = new BTB(64, 1);
 }
 
 BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
@@ -286,7 +287,7 @@ BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
   BTBEntry* btb_entry;
 
   for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
-    btb_entry = btb_partition[i].get_BTBentry(ip);
+    btb_entry = btb_partition[i]->get_BTBentry(ip);
     if (btb_entry) {
       break;
     }
@@ -371,7 +372,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   BTBEntry* btb_entry;
   int partitionID = -1;
   for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
-    btb_entry = btb_partition[i].get_BTBentry(ip);
+    btb_entry = btb_partition[i]->get_BTBentry(ip);
     if (btb_entry) {
       partitionID = i;
       break;
@@ -400,13 +401,13 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     int partition = get_lru_partition(smallest_offset_partition_id, ip);
     assert(partition < NUM_BTB_PARTITIONS);
 
-    btb_partition[partition].update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu]);
+    btb_partition[partition]->update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu]);
     basic_btb_lru_counter[cpu]++;
 
   } else {
     // update an existing entry
     assert(partitionID != -1);
-    btb_partition[partitionID].update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu]);
+    btb_partition[partitionID]->update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu]);
     basic_btb_lru_counter[cpu]++;
   }
 }
