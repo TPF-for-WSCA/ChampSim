@@ -253,6 +253,15 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   } else if ((branch_type != BRANCH_INDIRECT) && (branch_type != BRANCH_INDIRECT_CALL)) {
     // use BTB
+    uint64_t diff_bits = (branch_target >> 2) ^ (ip >> 2);
+    int num_bits = 0;
+    while (diff_bits != 0) {
+      diff_bits = diff_bits >> 1;
+      num_bits++;
+    }
+    if (num_bits < 7)
+      pc_offset_pairs.push_back(std::make_pair(ip, (branch_target < ip ? ip - branch_target : branch_target - ip)));
+
     auto btb_entry = basic_btb_find_entry(cpu, ip, BTB_SETS, BTB_WAYS, basic_btb);
 
     if (btb_entry == NULL) {

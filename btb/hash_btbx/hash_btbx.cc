@@ -305,6 +305,8 @@ BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
 {
   BTBEntry* btb_entry;
 
+  // We need to find how to decide small or normal?
+
   for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
     btb_entry = btb_partition[i].get_BTBentry(ip);
     if (btb_entry) {
@@ -389,7 +391,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     return;
 
   uint64_t diff_bits = (branch_target >> 2) ^ (ip >> 2);
-  if (diff_bits < HASH_BTBX_SMALL_CUTOFF) {
+  int num_bits = 0;
+  while (diff_bits != 0) {
+    diff_bits = diff_bits >> 1;
+    num_bits++;
+  }
+  if (num_bits < HASH_BTBX_SMALL_CUTOFF) {
     SMALL_BTB_ENTRY offset = small_btb[cpu][btbx_small_offset_hash(cpu, ip)];
     uint64_t target = ip + ((1 + offset.negative * -2) * offset.offset);
     if (target == branch_target)
@@ -415,16 +422,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
     BTB_writes++;
 
-    int num_bits;
     if (branch_type == BRANCH_RETURN) {
       num_bits = 0;
-    } else {
-      uint64_t diff_bits = (branch_target >> 2) ^ (ip >> 2);
-      num_bits = 0;
-      while (diff_bits != 0) {
-        diff_bits = diff_bits >> 1;
-        num_bits++;
-      }
     }
     assert(num_bits >= 0 && num_bits < 66);
 

@@ -495,9 +495,29 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
   }
 }
 
+void write_offsets(O3_CPU* cpu, int cpu_id)
+{
+  std::ofstream csv_file;
+  std::filesystem::path csv_file_path = result_dir;
+  string filename = "cpu" + std::to_string(cpu_id) + "_pc_offset_mapping.tsv";
+  csv_file_path /= filename;
+  csv_file.open(csv_file_path, std::ios::out);
+  if (!csv_file) {
+    std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+    std::cerr << std::flush;
+  } else {
+    cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
+    for (auto elem : cpu->pc_offset_pairs) {
+      csv_file << elem.first << "\t" << unsigned(elem.second) << endl;
+    }
+    csv_file.close();
+  }
+}
+
 void print_branch_stats()
 {
   for (uint32_t i = 0; i < NUM_CPUS; i++) {
+    write_offsets(ooo_cpu[i], i);
     cout << endl << "CPU " << i << " Branch Prediction Accuracy: ";
     cout << (100.0 * (ooo_cpu[i]->num_branch - ooo_cpu[i]->branch_mispredictions)) / ooo_cpu[i]->num_branch;
     cout << "% MPKI: " << (1000.0 * ooo_cpu[i]->branch_mispredictions) / (ooo_cpu[i]->num_retired - warmup_instructions);
