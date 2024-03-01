@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib import colormaps
+import multiprocessing
 import numpy as np
 import pandas as pd
 import argparse
@@ -24,9 +25,8 @@ names = [
     # "Nearest Neighbors",
     "Linear SVM",
     "RBF SVM",
-    "RBF SVM",
-    "RBF SVM",
-    "RBF SVM",
+    "RBF poly",
+    "RBF sigmoid",
     # "Gaussian Process",
     "Decision Tree",
     # "Random Forest",
@@ -38,11 +38,33 @@ names = [
 
 classifiers = [
     # KNeighborsClassifier(3),
-    SVC(kernel="linear", C=0.025, random_state=42),
-    SVC(gamma=2, C=1, random_state=42),
-    SVC(gamma=2, C=1, random_state=42),
-    SVC(gamma=2, C=1, random_state=42),
-    SVC(gamma=2, C=1, random_state=42),
+    SVC(
+        kernel="linear",
+        C=20,
+        random_state=42,
+        probability=True,
+        decision_function_shape="ovo",
+    ),
+    SVC(
+        gamma=2, C=20, random_state=42, probability=True, decision_function_shape="ovo"
+    ),
+    SVC(
+        kernel="poly",
+        gamma="scale",
+        C=20,
+        random_state=42,
+        probability=True,
+        decision_function_shape="ovo",
+        degree=64,
+    ),
+    SVC(
+        kernel="sigmoid",
+        gamma="scale",
+        C=20,
+        random_state=42,
+        probability=True,
+        decision_function_shape="ovo",
+    ),
     # GaussianProcessClassifier(1.0 * RBF(1.0), random_state=42),
     DecisionTreeClassifier(max_depth=5, random_state=42),
     # RandomForestClassifier(
@@ -55,7 +77,14 @@ classifiers = [
 ]
 
 
+def run_training_and_prediction(name, clf, X_train, X_test, y_train, y_test):
+    clf = make_pipeline(StandardScaler(), clf)
+    clf.fit(X_train, y_train)
+    return clf.score(X_test, y_test)
+
+
 def main(args):
+
     data = pd.read_csv(args.file_path, sep="\t")
 
     X = []
@@ -119,12 +148,18 @@ def main(args):
         print("___________________________________________")
         print(f"{'| Predictor':<18}|{'Accuracy':>22} |")
         print("|-----------------|-----------------------|")
-        for name, clf in zip(names, classifiers):
 
-            clf = make_pipeline(StandardScaler(), clf)
-            clf.fit(X_train, y_train)
-            score = clf.score(X_test, y_test)
-            print(f"|{name:<17}|{score:>22} |")
+        with multiprocessing.Pool(6) as p:
+            inputs = [
+                (name, classifier, X_train, X_test, y_train, y_test)
+                for name, classifier in zip(names, classifiers)
+            ]
+            output = p.starmap(
+                run_training_and_prediction,
+                inputs,
+            )
+            for name, score in zip(names, output):
+                print(f"|{name:<17}|{score:>22} |")
             # DecisionBoundaryDisplay.from_estimator(
             #     clf, X, cmap=cm, alpha=0.8, ax=ax, eps=0.5
             # )
