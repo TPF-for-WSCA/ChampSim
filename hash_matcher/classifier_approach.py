@@ -149,7 +149,7 @@ def main(args):
         print(f"{'| Predictor':<18}|{'Accuracy':>22} |")
         print("|-----------------|-----------------------|")
 
-        with multiprocessing.Pool(6) as p:
+        with multiprocessing.Pool(8) as p:
             inputs = [
                 (name, classifier, X_train, X_test, y_train, y_test)
                 for name, classifier in zip(names, classifiers)
