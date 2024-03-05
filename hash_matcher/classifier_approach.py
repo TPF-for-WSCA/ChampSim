@@ -78,9 +78,14 @@ classifiers = [
 
 
 def run_training_and_prediction(name, clf, X_train, X_test, y_train, y_test):
+    # print(f"Creating {name}")
     clf = make_pipeline(StandardScaler(), clf)
+    # print(f"Training {name}")
     clf.fit(X_train, y_train)
-    return clf.score(X_test, y_test)
+    # print(f"Scoring {name}")
+    score = clf.score(X_test, y_test)
+    print(f"Completed {name}")
+    return score
 
 
 def main(args):
@@ -145,9 +150,6 @@ def main(args):
         # plt.show()
 
         # iterate over classifiers
-        print("___________________________________________")
-        print(f"{'| Predictor':<18}|{'Accuracy':>22} |")
-        print("|-----------------|-----------------------|")
 
         with multiprocessing.Pool(8) as p:
             inputs = [
@@ -158,6 +160,10 @@ def main(args):
                 run_training_and_prediction,
                 inputs,
             )
+
+            print("___________________________________________")
+            print(f"{'| Predictor':<18}|{'Accuracy':>22} |")
+            print("|-----------------|-----------------------|")
             for name, score in zip(names, output):
                 print(f"|{name:<17}|{score:>22} |")
             # DecisionBoundaryDisplay.from_estimator(
