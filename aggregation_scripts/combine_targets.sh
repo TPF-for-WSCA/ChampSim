@@ -1,5 +1,5 @@
 #!/bin/bash
-benchmarks=("ipc1_server", "ipc1_client" "ipc1_spec")
+benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
 
 for b in ${benchmarks[@]}
 do
@@ -15,4 +15,5 @@ do
             cat $result >> ./${b}/complete_pc_offset_mapping.tsv
         fi
     done
+    cd $old_dir
 done
