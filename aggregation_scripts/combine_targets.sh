@@ -1,18 +1,18 @@
 #!/bin/bash
 benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
-
+echo $(pwd)
 for b in ${benchmarks[@]}
 do
     echo "Handling ${b}"
     touch ./${b}/complete_pc_offset_mapping.tsv
-    old_dir=pwd
+    old_dir=$(pwd)
     cd ./${b}
-    for result in ./**/*;
+    for result in ./**/**/*;
     do
-        if [ $result = *cpu0_pc_offset_mapping.tsv ]
+        if [ -z ${result##*pc_offset_mapping.tsv} ];
         then
-            echo "\tAdding ${result}"
-            cat $result >> ./${b}/complete_pc_offset_mapping.tsv
+            echo -e "\tAdding ${result}"
+            cat $result >> ./complete_pc_offset_mapping.tsv
         fi
     done
     cd $old_dir
