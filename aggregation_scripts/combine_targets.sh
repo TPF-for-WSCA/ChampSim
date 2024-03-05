@@ -1,6 +1,7 @@
 #!/bin/bash
 benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
 
+echo pwd
 for b in ${benchmarks[@]}
 do
     echo "Handling ${b}"
