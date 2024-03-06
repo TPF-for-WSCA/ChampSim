@@ -84,7 +84,7 @@ def run_training_and_prediction(name, clf, X_train, X_test, y_train, y_test):
     clf.fit(X_train, y_train)
     # print(f"Scoring {name}")
     score = clf.score(X_test, y_test)
-    print(f"Completed {name}")
+    print(f"|{name:<17}|{score:>22} |")
     return score
 
 
@@ -151,6 +151,9 @@ def main(args):
 
         # iterate over classifiers
 
+        print("___________________________________________")
+        print(f"{'| Predictor':<18}|{'Accuracy':>22} |")
+        print("|-----------------|-----------------------|")
         with multiprocessing.Pool(8) as p:
             inputs = [
                 (name, classifier, X_train, X_test, y_train, y_test)
@@ -161,11 +164,6 @@ def main(args):
                 inputs,
             )
 
-            print("___________________________________________")
-            print(f"{'| Predictor':<18}|{'Accuracy':>22} |")
-            print("|-----------------|-----------------------|")
-            for name, score in zip(names, output):
-                print(f"|{name:<17}|{score:>22} |")
             # DecisionBoundaryDisplay.from_estimator(
             #     clf, X, cmap=cm, alpha=0.8, ax=ax, eps=0.5
             # )
