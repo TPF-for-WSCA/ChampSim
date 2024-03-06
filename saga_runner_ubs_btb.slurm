@@ -3,7 +3,7 @@
 #SBATCH --account=nn4650k
 #SBATCH --nodes=1
 #SBATCH -c20
-#SBATCH --mem-per-cpu=9G
+#SBATCH --mem-per-cpu=8G
 #SBATCH --time=00-24:00:00
 #SBATCH --mail-user=romankb@ntnu.no
 #SBATCH --mail-type=ALL
