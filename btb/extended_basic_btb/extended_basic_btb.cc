@@ -259,7 +259,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       diff_bits = diff_bits >> 1;
       num_bits++;
     }
-    if (num_bits < 7)
+    extern uint8_t knob_collect_offsets;
+    if (num_bits < 7 && knob_collect_offsets)
       pc_offset_pairs.push_back(std::make_pair(ip, (branch_target < ip ? ip - branch_target : branch_target - ip)));
 
     auto btb_entry = basic_btb_find_entry(cpu, ip, BTB_SETS, BTB_WAYS, basic_btb);
