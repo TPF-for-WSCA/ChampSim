@@ -227,6 +227,9 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     if ((branch_prediction == 0) && (always_taken == 0)) {
       predicted_branch_target = 0;
     }
+    if (perfect_btb) {
+      predicted_branch_target = arch_instr.branch_target;
+    }
 
     if (predicted_branch_target != arch_instr.branch_target) {
       branch_mispredictions++;
