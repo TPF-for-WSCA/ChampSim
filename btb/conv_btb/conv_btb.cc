@@ -220,30 +220,7 @@ uint64_t basic_btb_get_call_size(uint8_t cpu, uint64_t ip)
   return size;
 }
 
-// TODO: Fix up this is not adapted to generic configs of BTBx - what about the actual sizes?
-int convert_offsetBits_to_partitionID(int num_bits)
-{
-  if (num_bits == 0) {
-    return 0;
-  } else if (num_bits <= 4) {
-    return 1;
-  } else if (num_bits <= 6) {
-    return 2;
-  } else if (num_bits <= 8) {
-    return 3;
-  } else if (num_bits <= 10) {
-    return 4;
-  } else if (num_bits <= 18) {
-    return 5;
-  } else if (num_bits <= 25) {
-    return 6;
-  } else {
-    return 7;
-  } /*else {
-    return 8;
-  }*/
-  assert(0);
-}
+int convert_offsetBits_to_partitionID(int num_bits) { return 0; }
 
 int get_lru_partition(int start_partitionID, uint64_t ip)
 {
@@ -273,13 +250,11 @@ void O3_CPU::initialize_btb()
   }
 
   NUM_BTB_PARTITIONS = BTB_WAYS;
-  btb_partition = (BTB**)malloc(BTB_WAYS * sizeof(BTB*));
+  btb_partition = (BTB**)malloc(2 * sizeof(BTB*));
   assert(btb_partition);
   basic_btb_lru_counter[cpu] = 0;
-  for (uint32_t i = 0; i < BTB_WAYS - 1; ++i) {
-    btb_partition[i] = new BTB(BTB_SETS, 1);
-  }
-  btb_partition[BTB_WAYS - 1] = new BTB(64, 1);
+  btb_partition[0] = new BTB(BTB_SETS, BTB_WAYS - 1);
+  btb_partition[1] = new BTB(64, 1);
 }
 
 BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
