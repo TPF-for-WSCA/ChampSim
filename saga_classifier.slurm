@@ -18,7 +18,7 @@ groups=("ipc1_client" "ipc1_server" "ipc1_spec")
 
 for g in ${groups[@]}
 do
-    python /cluster/projects/nn4650k/workspace/ChampSim/hash_matcher/classifier_approach.py /cluster/work/users/romankb/results/btb_offset_data/${g}/complete_pc_offset_mapping.tsv > /cluster/work/users/romankb/results/btb_offset_data/${g}/classifier_performance.txt &
+    python /cluster/projects/nn4650k/workspace/ChampSim/hash_matcher/classifier_approach.py /cluster/work/users/romankb/results/btb_offset_data/${g}/complete_pc_offset_mapping.tsv > /cluster/work/users/romankb/results/btb_offset_data/${g}/classifier_performance_fast.txt &
 done
 
 
