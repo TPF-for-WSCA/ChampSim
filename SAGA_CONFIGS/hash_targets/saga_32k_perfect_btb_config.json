@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim32k",
+  "executable_name": "bin/champsim32k_perfect_btb",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -33,7 +33,8 @@
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "btb": "extended_basic_btb",
-      "btb_max_loop_branch": 64
+      "btb_max_loop_branch": 64,
+      "btb_perfect": true
     }
   ],
   "DIB": {
