@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim32k",
+  "executable_name": "bin/champsim32k_perfect_l1i",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -42,6 +42,7 @@
     "ways": 8
   },
   "L1I": {
+    "perfect": true,
     "sets": 64,
     "ways": 8,
     "rq_size": 64,
