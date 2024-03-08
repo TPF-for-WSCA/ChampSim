@@ -249,7 +249,7 @@ void O3_CPU::initialize_btb()
     basic_btb_call_instr_sizes[cpu][i] = 4;
   }
 
-  NUM_BTB_PARTITIONS = BTB_WAYS;
+  NUM_BTB_PARTITIONS = 2;
   btb_partition = (BTB**)malloc(2 * sizeof(BTB*));
   assert(btb_partition);
   basic_btb_lru_counter[cpu] = 0;
