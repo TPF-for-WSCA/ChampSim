@@ -35,7 +35,7 @@
       "btb": "conv_btb",
       "btb_max_loop_branch": 64,
       "btb_perfect": true,
-      "branch_predictor_perfect": true
+      "branch_predict_perfect": true
     }
   ],
   "DIB": {
