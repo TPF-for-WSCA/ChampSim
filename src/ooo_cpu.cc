@@ -224,11 +224,17 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     predicted_branch_target = btb_result.target;
     uint8_t always_taken = btb_result.always_taken;
     uint8_t branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
-    if ((branch_prediction == 0) && (always_taken == 0)) {
-      predicted_branch_target = 0;
-    }
+
     if (perfect_btb) {
       predicted_branch_target = arch_instr.branch_target;
+    }
+
+    if (perfect_branch_predict) {
+      branch_prediction = arch_instr.branch_taken;
+    }
+
+    if ((branch_prediction == 0) && (always_taken == 0)) {
+      predicted_branch_target = 0;
     }
 
     if (predicted_branch_target != arch_instr.branch_target) {
