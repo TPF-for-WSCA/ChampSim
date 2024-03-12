@@ -25,8 +25,8 @@ names = [
     # "Nearest Neighbors",
     "Linear SVM",
     "RBF SVM",
-    "RBF poly",
-    "RBF sigmoid",
+    # "RBF poly",
+    # "RBF sigmoid",
     # "Gaussian Process",
     "Decision Tree",
     # "Random Forest",
@@ -48,23 +48,23 @@ classifiers = [
     SVC(
         gamma=2, C=20, random_state=42, probability=True, decision_function_shape="ovo"
     ),
-    SVC(
-        kernel="poly",
-        gamma="scale",
-        C=20,
-        random_state=42,
-        probability=True,
-        decision_function_shape="ovo",
-        degree=64,
-    ),
-    SVC(
-        kernel="sigmoid",
-        gamma="scale",
-        C=20,
-        random_state=42,
-        probability=True,
-        decision_function_shape="ovo",
-    ),
+    # SVC(
+    #     kernel="poly",
+    #     gamma="scale",
+    #     C=20,
+    #     random_state=42,
+    #     probability=True,
+    #     decision_function_shape="ovo",
+    #     degree=64,
+    # ),
+    # SVC(
+    #     kernel="sigmoid",
+    #     gamma="scale",
+    #     C=20,
+    #     random_state=42,
+    #     probability=True,
+    #     decision_function_shape="ovo",
+    # ),
     # GaussianProcessClassifier(1.0 * RBF(1.0), random_state=42),
     DecisionTreeClassifier(max_depth=5, random_state=42),
     # RandomForestClassifier(
@@ -89,9 +89,9 @@ def run_training_and_prediction(name, clf, X_train, X_test, y_train, y_test):
 
 
 def main(args):
-
+    print("Start overall execution")
     data = pd.read_csv(args.file_path, sep="\t")
-
+    print("Data read complete")
     X = []
     Y = []
     for [x, y] in data.values:
@@ -99,7 +99,7 @@ def main(args):
             [int(b) for b in ((int(x) >> 2) & 0x7FFFFFFFFFF).to_bytes(7, "little")]
         )
         Y.append(int(y))
-
+    print("Data feature unpacking complete")
     linearly_separable = (
         np.array([np.array(x) for x in X]),
         np.array([np.array(y) for y in Y]),
@@ -109,9 +109,10 @@ def main(args):
         linearly_separable,
     ]
 
-    figure = plt.figure(figsize=(27, 9))
+    # figure = plt.figure(figsize=(27, 9))
     i = 1
     # iterate over datasets
+
     for ds_cnt, ds in enumerate(datasets):
         # preprocess dataset, split into training and test part
         X, y = ds
@@ -121,35 +122,38 @@ def main(args):
 
         y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
         x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
+        print("Data set split complete")
 
         # just plot the dataset first
-        cm = plt.cm.RdBu
-        ax = plt.subplot(1, 1, i)
-        if ds_cnt == 0:
-            ax.set_title("Input data")
-        # Plot the training points
-        ax.scatter(
-            X_train[:, 0],
-            X_train[:, 1],
-            c=y_train,
-            edgecolors="k",
-        )
-        # Plot the testing points
-        ax.scatter(
-            X_test[:, 0],
-            X_test[:, 1],
-            c=y_test,
-            alpha=0.6,
-            edgecolors="k",
-        )
-        ax.set_xlim(x_min, x_max)
-        ax.set_ylim(y_min, y_max)
-        ax.set_xticks(())
-        ax.set_yticks(())
-        plt.tight_layout()
+        # cm = plt.cm.RdBu
+        # ax = plt.subplot(1, 1, i)
+        # if ds_cnt == 0:
+        #     ax.set_title("Input data")
+        # # Plot the training points
+        # ax.scatter(
+        #     X_train[:, 0],
+        #     X_train[:, 1],
+        #     c=y_train,
+        #     edgecolors="k",
+        # )
+        # # Plot the testing points
+        # ax.scatter(
+        #     X_test[:, 0],
+        #     X_test[:, 1],
+        #     c=y_test,
+        #     alpha=0.6,
+        #     edgecolors="k",
+        # )
+        # ax.set_xlim(x_min, x_max)
+        # ax.set_ylim(y_min, y_max)
+        # ax.set_xticks(())
+        # ax.set_yticks(())
+        # plt.tight_layout()
         # plt.show()
 
         # iterate over classifiers
+
+        print("start training and prediction cycles\n\n\n")
 
         print("___________________________________________")
         print(f"{'| Predictor':<18}|{'Accuracy':>22} |")
