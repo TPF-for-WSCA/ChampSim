@@ -125,7 +125,7 @@ def main(args):
 
         for _ in range(10):
             X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.1, train_size=0.2
+                X, y, test_size=0.05, train_size=0.1
             )
 
             y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
