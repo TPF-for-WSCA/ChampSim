@@ -56,7 +56,9 @@ public:
   std::map<uint64_t, uint64_t> branch_distance;
   uint32_t branch_count;
   uint64_t total_branch_distance;
-  std::vector<std::pair<uint64_t, uint8_t>> pc_offset_pairs;
+  std::vector<std::pair<uint64_t, int8_t>> pc_offset_pairs;
+  std::vector<std::vector<uint64_t>> pc_bits_offset;
+  std::vector<uint64_t> offset_counts;
 
   // instruction
   uint64_t instr_unique_id = 0, completed_executions = 0, begin_sim_cycle = 0, begin_sim_instr = 0, last_sim_cycle = 0, last_sim_instr = 0,
@@ -174,7 +176,8 @@ public:
         LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), SCHEDULING_LATENCY(schedule_latency),
         EXEC_LATENCY(execute_latency), ITLB_bus(rob_size, itlb), DTLB_bus(rob_size, dtlb), L1I_bus(rob_size, l1i), L1D_bus(rob_size, l1d),
         bpred_type(bpred_type), btb_type(btb_type), BTB_SETS(btb_sets), BTB_WAYS(btb_ways), EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch),
-        perfect_btb(perfect_btb), perfect_branch_predict(perfect_branch_predict), ipref_type(ipref_type)
+        perfect_btb(perfect_btb), perfect_branch_predict(perfect_branch_predict), ipref_type(ipref_type), pc_bits_offset(128, std::vector<uint64_t>(64)),
+        offset_counts(128, 0)
   {
     basic_btb = (BASIC_BTB_ENTRY*)malloc(NUM_CPUS * BTB_SETS * BTB_WAYS * sizeof(BASIC_BTB_ENTRY));
     if (!basic_btb) {

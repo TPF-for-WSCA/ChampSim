@@ -20,7 +20,7 @@
 
 uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, trace_ended[NUM_CPUS] = {}, all_warmup_complete = 0, all_simulation_complete = 0,
         MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_pintrace = 0, knob_cloudsuite = 0, knob_low_bandwidth = 0, knob_intel = 0, knob_stall_on_miss = 1,
-        knob_stop_at_completion = 1, knob_collect_offsets = 0;
+        knob_stop_at_completion = 1, knob_collect_offsets = 1, knob_min_50M = 0;
 int8_t knob_ip_offset = 0;
 bool knob_no_detail_stats = false;
 
@@ -508,7 +508,32 @@ void write_offsets(O3_CPU* cpu, int cpu_id)
   } else {
     cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
     for (auto elem : cpu->pc_offset_pairs) {
-      csv_file << elem.first << "\t" << unsigned(elem.second) << endl;
+      csv_file << elem.first << "\t" << elem.second << endl;
+    }
+    csv_file.close();
+  }
+
+  csv_file_path = result_dir;
+  filename = "cpu" + std::to_string(cpu_id) + "_pc_bits_offset.tsv";
+  csv_file_path /= filename;
+  csv_file.open(csv_file_path, std::ios::out);
+  if (!csv_file) {
+    std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+    std::cerr << std::flush;
+  } else {
+    cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
+    csv_file << "offset\t";
+    for (size_t i = 0; i < 64; i++) {
+      csv_file << "bit" << i + 1 << "\t";
+    }
+    csv_file << "total_observations" << endl;
+    for (size_t i = 0; i < cpu->pc_bits_offset.size(); i++) {
+      csv_file << ((int)i - 64) << "\t";
+      auto counts = cpu->pc_bits_offset[i];
+      for (size_t j = 0; j < 64; j++) {
+        csv_file << counts[j] << "\t";
+      }
+      csv_file << cpu->offset_counts[i] << endl;
     }
     csv_file.close();
   }
@@ -859,7 +884,7 @@ int main(int argc, char** argv)
           trace_inst = traces[i]->get();
           ooo_cpu[i]->num_read++;
         } catch (EndOfTraceException const& e) {
-          if (ooo_cpu[i]->num_read >= (ooo_cpu[i]->begin_sim_instr + 50000000)) {
+          if (!knob_min_50M || ooo_cpu[i]->num_read >= (ooo_cpu[i]->begin_sim_instr + 50000000)) {
             trace_ended[i] = 1;
             break;
           }
