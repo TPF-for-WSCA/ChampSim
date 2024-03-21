@@ -6,16 +6,16 @@
 #build_configs=("saga_vcl_buffer_64d_max_way_config.json" "saga_vcl_buffer_8f_config.json" "saga_vcl_buffer_16f_config.json" "saga_vcl_buffer_32f_config.json" "saga_vcl_buffer_64f_config.json" "saga_vcl_buffer_128f_config.json") 
 #build_configs=("saga_32k_config.json" "saga_vcl_buffer_8f_config.json" "saga_vcl_buffer_4f_config.json" "saga_vcl_buffer_128f_config.json" "saga_vcl_buffer_64f_config.json" "saga_vcl_buffer_32f_config.json" "saga_vcl_buffer_16f_config.json" "saga_vcl_buffer_256f_config.json") 
 #build_configs=("saga_4k_data_config.json" "saga_8k_data_config.json" "saga_16k_data_config.json" "saga_32k_data_config.json" "saga_64k_data_config.json" "saga_128k_data_config.json" "saga_256k_data_config.json") 
-build_dir=("allowance_0KB" "allowance_2KB" "allowance_4KB" "allowance_8KB")
+build_dir=("allowance_0KB")
 
 old_dir=$(pwd)
-cd ~/workspace/ChampSim/
+cd /cluster/projects/nn4650k/workspace/ChampSim/
 for spec_dir in ${build_dir[@]}
 do
     for build_script in ./SAGA_CONFIGS/$spec_dir/*;
     do
         echo "Building ${build_script}"
-        ~/workspace/ChampSim/config.sh $build_script
+        ./config.sh $build_script
         make -j
     done
 done

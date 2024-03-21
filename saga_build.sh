@@ -13,12 +13,12 @@
 #build_configs=("saga_ubsBOUND1.json" "saga_ubsBOUND2.json" "saga_ubsBOUND6.json" "saga_ubsBOUND8.json" "saga_ubsDEFAULT.json" "saga_ubsINSERT1.json" "saga_ubsINSERT3.json" "saga_ubsINSERT4.json")
 #build_configs=("saga_ubs_10_ways.json" "saga_ubs_10_ways_not_extending.json" "saga_ubs_10_small_ways.json" "saga_ubs_10_small_ways_not_extending.json")
 build_configs=("saga_perfect_config.json")
-cd ~/workspace/ChampSim/
+cd /cluster/projects/nn4650k/workspace/ChampSim/
 old_dir=$(pwd)
 for build_script in ${build_configs[@]}
 do
     echo "Building ${build_script}"
-    ~/workspace/ChampSim/config.sh ~/workspace/ChampSim/SAGA_CONFIGS/rebuttal-configs/${build_script}
+    ./config.sh ./SAGA_CONFIGS/rebuttal-configs/${build_script}
     make -j
 done
 cd $old_dir
