@@ -11,7 +11,7 @@ extern "C" {
 constexpr std::size_t NUM_INSTR_DESTINATIONS_SPARC = 4;
 constexpr std::size_t NUM_INSTR_DESTINATIONS_X86 = 3;
 constexpr std::size_t NUM_INSTR_DESTINATIONS = 2;
-constexpr std::size_t NUM_INSTR_SOURCES = 4;
+constexpr std::size_t NUM_INSTR_SOURCES = 8;
 
 class LSQ_ENTRY;
 

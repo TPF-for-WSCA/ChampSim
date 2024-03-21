@@ -50,6 +50,7 @@ private:
   bool prev_was_branch = false;
   bool perfect_btb;
   bool perfect_branch_predict;
+  size_t align_bits = LOG2_BLOCK_SIZE;
 
 public:
   uint32_t cpu = 0;
@@ -169,7 +170,7 @@ public:
          unsigned retire_width, unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency,
          unsigned execute_latency, MemoryRequestConsumer* itlb, MemoryRequestConsumer* dtlb, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
          bpred_t bpred_type, btb_t btb_type, size_t btb_sets, size_t btb_ways, size_t btb_max_loop_branch, bool perfect_btb, bool perfect_branch_predict,
-         ipref_t ipref_type)
+         ipref_t ipref_type, size_t align_bits)
       : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window), IFETCH_BUFFER(ifetch_buffer_size * 2),
         DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency), ROB(rob_size), LQ(lq_size), SQ(sq_size),
         FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width),
@@ -177,7 +178,7 @@ public:
         EXEC_LATENCY(execute_latency), ITLB_bus(rob_size, itlb), DTLB_bus(rob_size, dtlb), L1I_bus(rob_size, l1i), L1D_bus(rob_size, l1d),
         bpred_type(bpred_type), btb_type(btb_type), BTB_SETS(btb_sets), BTB_WAYS(btb_ways), EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch),
         perfect_btb(perfect_btb), perfect_branch_predict(perfect_branch_predict), ipref_type(ipref_type), pc_bits_offset(128, std::vector<uint64_t>(64)),
-        offset_counts(128, 0)
+        offset_counts(128, 0), align_bits(align_bits)
   {
     basic_btb = (BASIC_BTB_ENTRY*)malloc(NUM_CPUS * BTB_SETS * BTB_WAYS * sizeof(BASIC_BTB_ENTRY));
     if (!basic_btb) {

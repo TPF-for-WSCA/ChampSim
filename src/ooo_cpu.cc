@@ -429,10 +429,11 @@ void O3_CPU::fetch_instruction()
 
   uint64_t find_addr = l1i_req_begin->instruction_pa;
   auto end = std::min(IFETCH_BUFFER.end(), std::next(l1i_req_begin, FETCH_WIDTH + 1)); // Collapsing queue design?
-  auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr](const ooo_model_instr& x) {
+  auto conf_al_bits = align_bits;
+  auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr, conf_al_bits](const ooo_model_instr& x) {
     bool is_adjacent =
         find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa; // we compare first with ourselves. of course same address access is included
-    bool is_same_block = find_addr >> LOG2_BLOCK_SIZE == x.instruction_pa >> LOG2_BLOCK_SIZE;
+    bool is_same_block = find_addr >> conf_al_bits == x.instruction_pa >> conf_al_bits;
     find_addr = x.instruction_pa;
     return not(is_adjacent && is_same_block);
   });
