@@ -2026,6 +2026,9 @@ void VCL_CACHE::handle_read()
     uint32_t way = get_way(handle_pkt, set);
     auto prefetch_buffer_hit = probe_filter_buffer(handle_pkt.address, PREFETCH_BUFFER_QUEUE);
 
+    if (way_sizes[way] < 64 and) {
+    }
+
     // HIT IN VCL CACHE
     if (way < NUM_WAY) {
       way_hits[way]++;

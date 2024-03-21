@@ -32,7 +32,8 @@
       "schedule_latency": 2,
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
-      "btb": "extended_basic_btb"
+      "btb": "extended_basic_btb",
+      "align_bits": 5
     }
   ],
   "DIB": {
@@ -62,7 +63,7 @@
     "pq_size": 32,
     "mshr_size": 8,
     "latency": 4,
-    "max_read": 2,
+    "max_read": 1,
     "max_write": 2,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
