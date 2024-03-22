@@ -471,6 +471,9 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
 
   if (rq_index != -2) {
     // mark all instructions from this cache line as having been fetched
+    if (warmup_complete[cpu]) {
+      sim_fetched_instr++;
+    }
     for (auto dep_it : fetch_packet.instr_depend_on_me) {
       dep_it->fetched = INFLIGHT;
     }

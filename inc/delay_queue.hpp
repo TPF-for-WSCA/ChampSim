@@ -118,6 +118,15 @@ public:
     _delays.push_back(_latency);
   }
 
+  void update_front_delay(long long int add_delay)
+  {
+    auto delay = _delays.front();
+    _delays.pop_front();
+    _delays.push_front(delay + add_delay);
+    auto delay_it = std::partition_point(_delays.begin(), _delays.end(), [](long long int x) { return x <= 0; });
+    _end_ready = std::next(_buf.begin(), std::distance(_delays.begin(), delay_it));
+  }
+
   /***
    * Pops the element off of the front.
    * Note, no checking is performed. Guard all accesses with calls to

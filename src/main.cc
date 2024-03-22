@@ -225,6 +225,7 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
     cout << cache->NAME;
     cout << " TOTAL     ACCESS: " << setw(10) << TOTAL_ACCESS << "  HIT: " << setw(10) << TOTAL_HIT << "  MISS: " << setw(10) << TOTAL_MISS
          << "  PARTIAL MISS: " << setw(10) << TOTAL_PARTIAL_MISS << " ( " << fixed << setprecision(2) << miss_ratio << "%)" << endl;
+    cout << cache->NAME << " 64B WAY HITS: " << setw(10) << cache->way_64_accesses << "  OTHER WAYS HITS: " << setw(10) << cache->way_other_accesses << endl;
 
     miss_ratio = 0;
     if (cache->roi_miss[cpu][0] != 0 && cache->roi_partial_miss[cpu][0] != 0)
@@ -663,6 +664,8 @@ void reset_cache_stats(uint32_t cpu, CACHE* cache)
   cache->pf_fill = 0;
   cache->USELESS_CACHELINE = 0;
   cache->TOTAL_CACHELINES = 0;
+  cache->way_64_accesses = 0;
+  cache->way_other_accesses = 0;
 
   cache->total_miss_latency = 0;
 
@@ -975,6 +978,7 @@ int main(int argc, char** argv)
     cout << endl << "CPU " << i << " cumulative IPC: " << ((float)ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle);
     cout << " instructions: " << ooo_cpu[i]->finish_sim_instr << " cycles: " << ooo_cpu[i]->finish_sim_cycle << endl;
     cout << "CPU " << i << " FRONTEND STALLED CYCLES:\t" << ooo_cpu[i]->frontend_stall_cycles << endl;
+    cout << "CPU " << i << " FETCHED INSTRUCTIONS:\t" << ooo_cpu[i]->sim_fetched_instr << endl;
     for (auto it = caches.rbegin(); it != caches.rend(); ++it)
       print_roi_stats(i, *it);
   }

@@ -32,8 +32,8 @@
       "schedule_latency": 4,
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
-      "btb": "conv_btb",
-      "align_bits": 3
+      "btb": "extended_basic_btb",
+      "align_bits": 6
     }
   ],
   "DIB": {

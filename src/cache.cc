@@ -2026,12 +2026,19 @@ void VCL_CACHE::handle_read()
     uint32_t way = get_way(handle_pkt, set);
     auto prefetch_buffer_hit = probe_filter_buffer(handle_pkt.address, PREFETCH_BUFFER_QUEUE);
 
-    if (way_sizes[way] < 64 and) {
-    }
-
     // HIT IN VCL CACHE
     if (way < NUM_WAY) {
+      // TODO: if way sizes < 64 and aligned, push front with an additional cycle latency
+      if (way_sizes[way] < 64 and ooo_cpu[handle_pkt.cpu]->align_bits < LOG2_BLOCK_SIZE) {
+        RQ.update_front_delay(1);
+        continue; // if front still is ready, we will still handle it - it had more time to be executed
+      }
       way_hits[way]++;
+      if (way_sizes[way] < 64) {
+        way_other_accesses++;
+      } else {
+        way_64_accesses++;
+      }
 
       // std::cout << "hit in SET: " << std::setw(3) << set << ", way: " << std::setw(3) << way << std::endl;
       readlike_hit(set, way, handle_pkt);

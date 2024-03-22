@@ -50,7 +50,6 @@ private:
   bool prev_was_branch = false;
   bool perfect_btb;
   bool perfect_branch_predict;
-  size_t align_bits = LOG2_BLOCK_SIZE;
 
 public:
   uint32_t cpu = 0;
@@ -60,10 +59,10 @@ public:
   std::vector<std::pair<uint64_t, int8_t>> pc_offset_pairs;
   std::vector<std::vector<uint64_t>> pc_bits_offset;
   std::vector<uint64_t> offset_counts;
-
+  size_t align_bits = LOG2_BLOCK_SIZE;
   // instruction
   uint64_t instr_unique_id = 0, completed_executions = 0, begin_sim_cycle = 0, begin_sim_instr = 0, last_sim_cycle = 0, last_sim_instr = 0,
-           finish_sim_cycle = 0, finish_sim_instr = 0, instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
+           finish_sim_cycle = 0, finish_sim_instr = 0, instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0, sim_fetched_instr = 0,
            next_print_instruction = STAT_PRINTING_PERIOD, num_retired = 0, num_read = 0, frontend_stall_cycles = 0, indirect_branches = 0;
   uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0;
 
