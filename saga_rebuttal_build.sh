@@ -15,7 +15,7 @@ do
     for build_script in ./SAGA_CONFIGS/$spec_dir/*;
     do
         echo "Building ${build_script}"
-        /cluster/projects/nn4650k/workspace/ChampSim/config.sh $build_script
+        ./config.sh $build_script
         make -j
     done
 done
