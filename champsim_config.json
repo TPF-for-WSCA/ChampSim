@@ -21,7 +21,7 @@
       "fetch_width": 6,
       "decode_width": 6,
       "dispatch_width": 6,
-      "execute_width": 4,
+      "execute_width": 6,
       "lq_width": 2,
       "sq_width": 2,
       "retire_width": 5,
@@ -33,7 +33,7 @@
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "btb": "extended_basic_btb",
-      "align_bits": 6
+      "align_bits": 4
     }
   ],
   "DIB": {

@@ -428,12 +428,13 @@ void O3_CPU::fetch_instruction()
   }
 
   uint64_t find_addr = l1i_req_begin->instruction_pa;
-  auto end = std::min(IFETCH_BUFFER.end(), std::next(l1i_req_begin, FETCH_WIDTH + 1)); // Collapsing queue design?
-  auto conf_al_bits = align_bits;
-  auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr, conf_al_bits](const ooo_model_instr& x) {
-    bool is_adjacent =
-        find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa; // we compare first with ourselves. of course same address access is included
-    bool is_same_block = find_addr >> conf_al_bits == x.instruction_pa >> conf_al_bits;
+  auto end = std::min(IFETCH_BUFFER.end(), std::next(l1i_req_begin, FETCH_WIDTH)); // Collapsing queue design?
+#define L1I (static_cast<CACHE*>(L1I_bus.lower_level))
+  auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr, this](const ooo_model_instr& x) {
+    bool is_adjacent = find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa
+                       || not L1I->is_vcl; // we compare first with ourselves. of course same address access is included
+    bool is_same_block = find_addr >> align_bits == x.instruction_pa >> align_bits;
+    assert(not is_same_block || is_adjacent);
     find_addr = x.instruction_pa;
     return not(is_adjacent && is_same_block);
   });

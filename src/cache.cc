@@ -1038,7 +1038,7 @@ int CACHE::add_rq(PACKET* packet)
   }
 
   // if there is no duplicate, add it to RQ
-  assert(packet->size < 64);
+  assert(packet->size <= 64);
   if (warmup_complete[cpu])
     RQ.push_back(*packet);
   else
@@ -2029,10 +2029,12 @@ void VCL_CACHE::handle_read()
     // HIT IN VCL CACHE
     if (way < NUM_WAY) {
       // TODO: if way sizes < 64 and aligned, push front with an additional cycle latency
-      if (way_sizes[way] < 64 and ooo_cpu[handle_pkt.cpu]->align_bits < LOG2_BLOCK_SIZE) {
+      if (way_sizes[way] < 64 and not handle_pkt.delayed and ooo_cpu[handle_pkt.cpu]->align_bits < LOG2_BLOCK_SIZE) {
         RQ.update_front_delay(1);
+        handle_pkt.delayed = true;
         continue; // if front still is ready, we will still handle it - it had more time to be executed
       }
+      handle_pkt.delayed = false;
       way_hits[way]++;
       if (way_sizes[way] < 64) {
         way_other_accesses++;

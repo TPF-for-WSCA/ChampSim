@@ -33,7 +33,6 @@
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "btb": "extended_basic_btb",
-      "btb_max_loop_branch": 64,
       "align_bits": 4
     }
   ],
