@@ -390,7 +390,6 @@ protected:
   virtual void handle_packet_insert_from_buffer(PACKET& pkt) override;
 
 public:
-  bool is_vcl = true;
   uint64_t stat_halfword_blocks_total = 0, stat_halfword_jumppoints = 0, stat_halfword_return = 0, stat_halfword_conditional = 0, stat_halfword_call = 0,
            stat_halfword_branch = 0, stat_halfword_endofclaccess = 0, stat_wrong_prefetch_filter = 0, stat_unexplained = 0;
   BUFFER_CACHE buffer_cache;
@@ -425,6 +424,7 @@ public:
     CACHE::lru_modifier = lru_modifier;
     overlap_bytes_history.reserve(WRITE_BUFFER_SIZE);
     current_overlap = 0;
+    is_vcl = true;
   }
   virtual bool hit_test(uint64_t addr, uint8_t size) override;
 
