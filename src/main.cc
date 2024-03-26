@@ -978,7 +978,7 @@ int main(int argc, char** argv)
     cout << endl << "CPU " << i << " cumulative IPC: " << ((float)ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle);
     cout << " instructions: " << ooo_cpu[i]->finish_sim_instr << " cycles: " << ooo_cpu[i]->finish_sim_cycle << endl;
     cout << "CPU " << i << " FRONTEND STALLED CYCLES:\t" << ooo_cpu[i]->frontend_stall_cycles << endl;
-    cout << "CPU " << i << " FETCHED INSTRUCTIONS:\t" << ooo_cpu[i]->sim_fetched_instr << endl;
+    cout << "CPU " << i << " FETCHED PACKETS:\t" << ooo_cpu[i]->sim_fetched_instr << endl;
     for (auto it = caches.rbegin(); it != caches.rend(); ++it)
       print_roi_stats(i, *it);
   }

@@ -5,8 +5,8 @@
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
   "num_cores": 1,
-  "CFLAGS": "-Wall -Wno-reorder -g -O0 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
-  "CXXFLAGS": "-Wall -Wno-reorder -g -O0 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
+  "CFLAGS": "-Wall -Wno-reorder -DLOG -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
+  "CXXFLAGS": "-Wall -Wno-reorder -DLOG -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
   "LDLIBS": "-lxed -lz -lboost_system-mt -lboost_filesystem-mt -v",
   "LDFLAGS": "-L/Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/lib -L/opt/local/lib/boost/lib",
   "ooo_cpu": [
@@ -32,7 +32,8 @@
       "schedule_latency": 2,
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
-      "btb": "extended_basic_btb"
+      "btb": "extended_basic_btb",
+      "align_bits": 6
     }
   ],
   "DIB": {

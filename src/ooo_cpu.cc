@@ -434,7 +434,6 @@ void O3_CPU::fetch_instruction()
     bool is_adjacent = find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa
                        || (not L1I->is_vcl && align_bits < 6); // we compare first with ourselves. of course same address access is included
     bool is_same_block = find_addr >> align_bits == x.instruction_pa >> align_bits;
-    assert(not is_same_block || is_adjacent);
     find_addr = x.instruction_pa;
     return not(is_adjacent && is_same_block);
   });
@@ -490,6 +489,14 @@ void O3_CPU::promote_to_decode()
   unsigned available_fetch_bandwidth = FETCH_WIDTH;
   auto instr = IFETCH_BUFFER.front();
   if (IFETCH_BUFFER.front().fetched != COMPLETED) {
+#ifdef LOG
+    if (current_cycle > 380) {
+      cout << "++++ UPDATE POINT ++++" << endl;
+      cout << "FEND STALLS: " << frontend_stall_cycles << endl;
+      cout << "CURR CYCLE : " << current_cycle << endl;
+      cout << "INSTR HEAD : " << IFETCH_BUFFER.front().instr_id << endl;
+    }
+#endif
     frontend_stall_cycles++;
   }
   while (available_fetch_bandwidth > 0 && !IFETCH_BUFFER.empty() && !DECODE_BUFFER.full() && IFETCH_BUFFER.front().translated == COMPLETED

@@ -9,9 +9,9 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "-warmup_instructions",
-                "5000000",
+                "1",
                 "-simulation_instructions",
-                "5000000",
+                "10000",
                 "-result_dir",
                 "~/Downloads/results/test/",
                 // "-ptrace",
@@ -46,9 +46,9 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "-warmup_instructions",
-                "500",
+                "1",
                 "-simulation_instructions",
-                "50000000",
+                "1000",
                 "-result_dir",
                 "~/Downloads/results/vcl_clang/",
                 // "-ptrace",
