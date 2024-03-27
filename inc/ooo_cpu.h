@@ -35,7 +35,7 @@ class CacheBus : public MemoryRequestProducer
 {
 public:
   champsim::circular_buffer<PACKET> PROCESSED;
-  CacheBus(std::size_t q_size, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), PROCESSED(q_size) {}
+  CacheBus(std::size_t q_size, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), PROCESSED(q_size, "PROCESSED") {}
   void return_data(PACKET* packet);
 };
 
@@ -170,10 +170,11 @@ public:
          unsigned execute_latency, MemoryRequestConsumer* itlb, MemoryRequestConsumer* dtlb, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
          bpred_t bpred_type, btb_t btb_type, size_t btb_sets, size_t btb_ways, size_t btb_max_loop_branch, bool perfect_btb, bool perfect_branch_predict,
          ipref_t ipref_type, size_t align_bits)
-      : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window), IFETCH_BUFFER(ifetch_buffer_size * 2),
-        DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency), ROB(rob_size), LQ(lq_size), SQ(sq_size),
-        FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width),
-        LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), SCHEDULING_LATENCY(schedule_latency),
+      : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
+        IFETCH_BUFFER(ifetch_buffer_size * 2, "IFETCH_BUFFER"), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency, "DISPATCH_BUFFER"),
+        DECODE_BUFFER(decode_buffer_size, decode_latency, "DECODE_BUFFER"), ROB(rob_size, "ROB"), LQ(lq_size), SQ(sq_size), FETCH_WIDTH(fetch_width),
+        DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width),
+        SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), SCHEDULING_LATENCY(schedule_latency),
         EXEC_LATENCY(execute_latency), ITLB_bus(rob_size, itlb), DTLB_bus(rob_size, dtlb), L1I_bus(rob_size, l1i), L1D_bus(rob_size, l1d),
         bpred_type(bpred_type), btb_type(btb_type), BTB_SETS(btb_sets), BTB_WAYS(btb_ways), EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch),
         perfect_btb(perfect_btb), perfect_branch_predict(perfect_branch_predict), ipref_type(ipref_type), pc_bits_offset(128, std::vector<uint64_t>(64)),

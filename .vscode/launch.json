@@ -46,7 +46,7 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "-warmup_instructions",
-                "1",
+                "0",
                 "-simulation_instructions",
                 "1000",
                 "-result_dir",

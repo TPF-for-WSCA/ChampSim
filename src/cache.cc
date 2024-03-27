@@ -12,6 +12,7 @@
 #include "champsim_constants.h"
 #include "util.h"
 #include "vmem.h"
+#define TRACE_PREFIX "\n++++ TRACE INFO: ++++\n\t"
 
 #ifndef SANITY_CHECK
 #define NDEBUG
@@ -870,6 +871,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, 
     fill_block.data = handle_pkt.data;
     fill_block.ip = handle_pkt.ip;
     fill_block.cpu = handle_pkt.cpu;
+    fill_block.trace = handle_pkt.trace;
     fill_block.instr_id = handle_pkt.instr_id;
     fill_block.tag = get_tag(handle_pkt.address);
     fill_block.accesses = 0;
@@ -1232,6 +1234,12 @@ void CACHE::return_data(PACKET* packet)
     assert(0);
   }
 
+#ifdef LOG
+  if (packet->trace) {
+    cout << TRACE_PREFIX << this->NAME << " MSHR RESOLVED\t" << *packet << endl;
+  }
+#endif
+
   // MSHR holds the most updated information about this request
   mshr_entry->data = packet->data;
   mshr_entry->pf_metadata = packet->pf_metadata;
@@ -1559,6 +1567,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   fill_block.address = packet.address;
   fill_block.v_address = packet.v_address;
   fill_block.data = packet.data;
+  fill_block.trace = packet.trace;
   fill_block.ip = packet.ip;
   fill_block.cpu = packet.cpu;
   fill_block.tag = parent.get_tag(packet.address);
@@ -2326,6 +2335,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   fill_block.tag = get_tag(handle_block.address);
   fill_block.instr_id = handle_block.instr_id;
   fill_block.accesses = 0;
+  fill_block.trace = handle_block.trace;
   fill_block.last_modified_access = 0;
   fill_block.time_present = 0;
   auto endidx = 64 - fill_block.offset - fill_block.size;

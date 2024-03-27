@@ -8,7 +8,7 @@
 
 #include "circular_buffer.hpp"
 #include <type_traits>
-
+#define TRACE_PREFIX "\n++++ TRACE INFO: ++++\n\t"
 namespace champsim
 {
 
@@ -38,6 +38,27 @@ namespace champsim
  *`it != dq.end_ready()`.
  ***/
 template <typename T>
+class delay_queue;
+
+template <typename T>
+std::ostream& operator<<(std::ostream& s, const delay_queue<T>& q)
+{
+  return (s << q._name << "(occupancy: " << q._buf.occupancy() << ", latency: " << q._latency << ")");
+}
+
+template <typename T>
+struct traceable_value {
+  T val;
+  bool trace;
+};
+
+template <typename T>
+std::ostream& operator<<(std::ostream& s, const traceable_value<T>& v)
+{
+  return (s << v.val);
+}
+
+template <typename T>
 class delay_queue
 {
 private:
@@ -45,8 +66,11 @@ private:
   using buffer_t = circular_buffer<U>;
 
 public:
-  delay_queue(std::size_t size, unsigned latency) : sz(size), _buf(size), _delays(size), _latency(latency) {}
-
+  delay_queue(std::size_t size, unsigned latency, std::string name)
+      : sz(size), _buf(size, name + "_buf"), _delays(size, name + "_delays"), _latency(latency), _name(name)
+  {
+  }
+  friend std::ostream& operator<< <>(std::ostream& out, const delay_queue<T>& q);
   /***
    * These types provided for compatibility with standard containers.
    ***/
@@ -109,21 +133,32 @@ public:
    ***/
   void push_back(const T& item)
   {
+    if (item.trace) {
+      std::cout << TRACE_PREFIX << "[PUSH_BACK]\t" << (*this) << "\t" << item << std::endl;
+    }
     _buf.push_back(item);
-    _delays.push_back(_latency);
+    _delays.push_back({_latency, item.trace});
   }
   void push_back(const T&& item)
   {
+    if (item.trace) {
+      std::cout << TRACE_PREFIX << "[PUSH_BACK]\t" << (*this) << "\t" << item << std::endl;
+    }
     _buf.push_back(std::forward<T>(item));
-    _delays.push_back(_latency);
+    _delays.push_back({_latency, item.trace});
   }
 
   void update_front_delay(long long int add_delay)
   {
     auto delay = _delays.front();
+    if (_buf.front().trace) {
+      std::cout << TRACE_PREFIX << "[UPDATE_DELAY]\t" << (*this) << "\t" << _buf.front() << std::endl;
+      std::cout << "\tfrom " << delay.val << " to ";
+      std::cout << (delay.val + add_delay) << std::endl;
+    }
     _delays.pop_front();
-    _delays.push_front(delay + add_delay);
-    auto delay_it = std::partition_point(_delays.begin(), _delays.end(), [](long long int x) { return x <= 0; });
+    _delays.push_front({delay.val + add_delay, delay.trace});
+    auto delay_it = std::partition_point(_delays.begin(), _delays.end(), [](traceable_value<long long int> x) { return x.val <= 0; });
     _end_ready = std::next(_buf.begin(), std::distance(_delays.begin(), delay_it));
   }
 
@@ -134,6 +169,9 @@ public:
    ***/
   void pop_front()
   {
+    if (_buf.front().trace) {
+      std::cout << TRACE_PREFIX << "[POP_FRONT]\t" << (*this) << "\t" << _buf.front() << std::endl;
+    }
     _buf.pop_front();
     _delays.pop_front();
   }
@@ -144,13 +182,19 @@ public:
    ***/
   void push_back_ready(const T& item)
   {
+    if (item.trace) {
+      std::cout << TRACE_PREFIX << "[PUSH_BACK_READY]\t" << (*this) << "\t" << item << std::endl;
+    }
     _buf.push_back(item);
-    _delays.push_back(0);
+    _delays.push_back({0, item.trace});
   }
   void push_back_ready(const T&& item)
   {
+    if (item.trace) {
+      std::cout << TRACE_PREFIX << "[PUSH_BACK_READY]\t" << (*this) << "\t" << item << std::endl;
+    }
     _buf.push_back(std::forward<T>(item));
-    _delays.push_back(0);
+    _delays.push_back({0, item.trace});
   }
 
   /***
@@ -159,18 +203,19 @@ public:
   void operate()
   {
     for (auto& x : _delays)
-      --x; // The delay may go negative, this is permitted.
+      --(x.val); // The delay may go negative, this is permitted.
 
-    auto delay_it = std::partition_point(_delays.begin(), _delays.end(), [](long long int x) { return x <= 0; });
+    auto delay_it = std::partition_point(_delays.begin(), _delays.end(), [](traceable_value<long long int> x) { return x.val <= 0; });
     _end_ready = std::next(_buf.begin(), std::distance(_delays.begin(), delay_it));
   }
 
 private:
   const size_type sz;
   buffer_t<value_type> _buf{sz};
-  buffer_t<long long int> _delays{sz};
+  buffer_t<traceable_value<long long int>> _delays{sz};
   const long long int _latency;
   iterator _end_ready = _buf.end();
+  std::string _name;
 };
 
 } // namespace champsim

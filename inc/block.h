@@ -18,6 +18,7 @@ public:
   bool scheduled = false;
   bool partial = false;
   bool delayed = false;
+  bool trace = false;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0, fill_level = 0, pf_origin_level = 0,
           branch_type = NOT_BRANCH;
@@ -33,6 +34,7 @@ public:
   uint8_t translation_level = 0, init_translation_level = 0;
 };
 
+extern std::ostream& operator<<(std::ostream& s, const PACKET& p);
 template <>
 struct is_valid<PACKET> {
   bool operator()(const PACKET& test) { return test.address != 0; }

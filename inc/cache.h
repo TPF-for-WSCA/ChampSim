@@ -174,10 +174,10 @@ public:
   uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0, pf_not_issued = 0;
 
   // queues
-  champsim::delay_queue<PACKET> RQ{RQ_SIZE, HIT_LATENCY}, // read queue
-      PQ{PQ_SIZE, HIT_LATENCY},                           // prefetch queue
-      VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY},     // virtual address prefetch queue
-      WQ{WQ_SIZE, HIT_LATENCY};                           // write queue
+  champsim::delay_queue<PACKET> RQ, // read queue
+      PQ,                           // prefetch queue
+      VAPQ,                         // virtual address prefetch queue
+      WQ;                           // write queue
 
   std::list<PACKET> MSHR; // MSHR
 
@@ -260,11 +260,13 @@ public:
         uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
         unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, bool filter_inserts, bool filter_prefetches, size_t filter_buffer_size,
         size_t prefetch_buffer_size)
-      : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
-        perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat),
-        OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr),
-        virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref), count_method(CountBlockMethod::EVICTION),
-        filter_buffer_size(filter_buffer_size), prefetch_buffer_size(prefetch_buffer_size), filter_inserts(filter_inserts), filter_prefetches(filter_prefetches)
+      : RQ(RQ_SIZE, HIT_LATENCY, (v1 + "_RQ")), PQ(PQ_SIZE, HIT_LATENCY, (v1 + "_PQ")), VAPQ(PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY, (v1 + "_VAPQ")),
+        WQ(WQ_SIZE, HIT_LATENCY, (v1 + "_WQ")), champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1),
+        NUM_SET(v2), NUM_WAY(v3), perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat),
+        FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load),
+        match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref),
+        count_method(CountBlockMethod::EVICTION), filter_buffer_size(filter_buffer_size), prefetch_buffer_size(prefetch_buffer_size),
+        filter_inserts(filter_inserts), filter_prefetches(filter_prefetches)
   {
     if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
@@ -282,11 +284,13 @@ public:
         uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
         unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method, LruModifier lru_modifier, bool filter_inserts,
         bool filter_prefetches, size_t filter_buffer_size, size_t prefetch_buffer_size)
-      : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
-        perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat),
-        OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr),
-        virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref), count_method(method), lru_modifier(lru_modifier),
-        filter_buffer_size(filter_buffer_size), prefetch_buffer_size(prefetch_buffer_size), filter_inserts(filter_inserts), filter_prefetches(filter_prefetches)
+      : RQ(RQ_SIZE, HIT_LATENCY, (v1 + "_RQ")), PQ(PQ_SIZE, HIT_LATENCY, (v1 + "_PQ")), VAPQ(PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY, (v1 + "_VAPQ")),
+        WQ(WQ_SIZE, HIT_LATENCY, (v1 + "_WQ")), champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1),
+        NUM_SET(v2), NUM_WAY(v3), perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat),
+        FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load),
+        match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref), count_method(method),
+        lru_modifier(lru_modifier), filter_buffer_size(filter_buffer_size), prefetch_buffer_size(prefetch_buffer_size), filter_inserts(filter_inserts),
+        filter_prefetches(filter_prefetches)
   {
     if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
@@ -327,7 +331,7 @@ private:
   uint64_t partial_without_hit = 0;
 
 public:
-  buffer_t<BLOCK> merge_block{MAX_WRITE};
+  buffer_t<BLOCK> merge_block{MAX_WRITE, NAME + "_merge_block"};
   uint64_t total_accesses;
   uint64_t hits;
   uint64_t merge_hit;

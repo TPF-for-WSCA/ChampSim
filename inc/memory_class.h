@@ -18,7 +18,7 @@
 class BLOCK
 {
 public:
-  bool valid = false, prefetch = false, dirty = false;
+  bool valid = false, prefetch = false, dirty = false, trace = false;
 
   uint8_t size = 64, offset = 0;
 
@@ -36,6 +36,8 @@ public:
   uint32_t lru = std::numeric_limits<uint32_t>::max() >> 1;
   uint32_t max_time = 0;
 };
+
+extern std::ostream& operator<<(std::ostream& s, const BLOCK& p);
 
 class MemoryRequestConsumer
 {

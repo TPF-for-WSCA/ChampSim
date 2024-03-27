@@ -87,7 +87,8 @@
         "__nullptr": "cpp",
         "__string": "cpp",
         "charconv": "cpp",
-        "string.h": "c"
+        "string.h": "c",
+        "execution": "cpp"
     },
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter"

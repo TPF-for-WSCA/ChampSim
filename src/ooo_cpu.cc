@@ -1,6 +1,7 @@
 #include "ooo_cpu.h"
 
 #include <algorithm>
+#include <iostream>
 #include <vector>
 
 #include "cache.h"
@@ -11,6 +12,24 @@
 
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t MAX_INSTR_DESTINATIONS;
+
+std::ostream& operator<<(std::ostream& s, const ooo_model_instr& mi)
+{
+  return (s << "OOO_MODEL_INSTR"
+            << "(instr_id: " << mi.instr_id << ", ip: " << mi.ip << ")");
+}
+
+std::ostream& operator<<(std::ostream& s, const PACKET& p)
+{
+  return (s << "PACKET"
+            << "(instr_id: " << p.instr_id << ", ip: " << p.ip << ")");
+}
+
+std::ostream& operator<<(std::ostream& s, const BLOCK& b)
+{
+  return (s << "BLOCK"
+            << "(instr_id: " << b.instr_id << ", ip: " << b.ip << ")");
+}
 
 void O3_CPU::operate()
 {
@@ -48,6 +67,11 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   instrs_to_read_this_cycle--;
 
   arch_instr.instr_id = instr_unique_id;
+
+#ifdef LOG
+  if (instr_unique_id == 11 || instr_unique_id == 15 || instr_unique_id < 100)
+    arch_instr.trace = true;
+#endif
 
   bool reads_sp = false;
   bool writes_sp = false;
@@ -367,6 +391,7 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
   trace_packet.asid[0] = 0;
   trace_packet.asid[1] = 0;
   trace_packet.to_return = {&ITLB_bus};
+  trace_packet.trace = begin->trace;
   for (; begin != end; ++begin)
     trace_packet.instr_depend_on_me.push_back(begin);
 
@@ -458,6 +483,7 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.type = LOAD;
   fetch_packet.asid[0] = 0;
   fetch_packet.asid[1] = 0;
+  fetch_packet.trace = begin->trace;
   fetch_packet.to_return = {&L1I_bus};
   for (; begin != end; ++begin) {
     fetch_packet.instr_depend_on_me.push_back(begin);
@@ -490,11 +516,12 @@ void O3_CPU::promote_to_decode()
   auto instr = IFETCH_BUFFER.front();
   if (IFETCH_BUFFER.front().fetched != COMPLETED) {
 #ifdef LOG
-    if (current_cycle > 380) {
+    if (current_cycle > 0) { // NOTE: THIS IF is only here to limit output
       cout << "++++ UPDATE POINT ++++" << endl;
       cout << "FEND STALLS: " << frontend_stall_cycles << endl;
       cout << "CURR CYCLE : " << current_cycle << endl;
-      cout << "INSTR HEAD : " << IFETCH_BUFFER.front().instr_id << endl;
+      cout << "FTQ ENTRIES: " << IFETCH_BUFFER.occupancy() << endl;
+      cout << "instr_id: " << IFETCH_BUFFER.front().instr_id << endl;
     }
 #endif
     frontend_stall_cycles++;

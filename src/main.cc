@@ -880,8 +880,15 @@ int main(int argc, char** argv)
     std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
 
     for (std::size_t i = 0; i < ooo_cpu.size(); ++i) {
+#ifdef LOG
+      if (ooo_cpu[i]->fetch_stall || ooo_cpu[i]->instrs_to_read_this_cycle == 0) {
+        std::string reason = (ooo_cpu[i]->fetch_stall) ? "FETCH_STALL" : "NO READS LEFT";
+        cout << "@" << ooo_cpu[i]->current_cycle << "\tFTQ TARGET INSERTION STALLED\tREASON: " << reason << endl;
+      }
+#endif
       // read from trace
-      while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
+      // while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
+      while (ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
         struct ooo_model_instr trace_inst;
         try {
           trace_inst = traces[i]->get();
@@ -920,7 +927,7 @@ int main(int argc, char** argv)
 
       // check for warmup
       // warmup complete
-      if ((warmup_complete[i] == 0) && (ooo_cpu[i]->num_retired > warmup_instructions)) {
+      if ((warmup_complete[i] == 0) && (ooo_cpu[i]->num_retired >= warmup_instructions)) {
         warmup_complete[i] = 1;
         all_warmup_complete++;
       }

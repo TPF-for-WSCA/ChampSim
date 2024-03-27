@@ -29,7 +29,7 @@ struct ooo_model_instr {
   uint64_t instr_id = 0, ip = 0, event_cycle = 0, size = 0;
   int indirect_branches = 0;
 
-  bool is_branch = 0, is_memory = 0, branch_taken = 0, branch_mispredicted = 0;
+  bool is_branch = 0, is_memory = 0, branch_taken = 0, branch_mispredicted = 0, trace = 0;
   std::array<bool, NUM_INSTR_SOURCES> destination_added{};
   std::array<bool, NUM_INSTR_SOURCES> source_added{};
 
@@ -162,5 +162,7 @@ struct ooo_model_instr {
     asid[1] = cpu;
   }
 };
+
+extern std::ostream& operator<<(std::ostream& s, const ooo_model_instr& mi);
 
 #endif
