@@ -517,11 +517,11 @@ void O3_CPU::promote_to_decode()
   if (IFETCH_BUFFER.front().fetched != COMPLETED) {
 #ifdef LOG
     if (current_cycle > 0) { // NOTE: THIS IF is only here to limit output
-      cout << "++++ UPDATE POINT ++++" << endl;
-      cout << "FEND STALLS: " << frontend_stall_cycles << endl;
-      cout << "CURR CYCLE : " << current_cycle << endl;
-      cout << "FTQ ENTRIES: " << IFETCH_BUFFER.occupancy() << endl;
-      cout << "instr_id: " << IFETCH_BUFFER.front().instr_id << endl;
+      cout << "++++ UPDATE POINT: ";
+      cout << " FEND STALLS: " << frontend_stall_cycles;
+      cout << "; CURR CYCLE : " << current_cycle;
+      cout << "; FTQ ENTRIES: " << IFETCH_BUFFER.occupancy();
+      cout << "; instr_id: " << IFETCH_BUFFER.front().instr_id << " ++++" << endl;
     }
 #endif
     frontend_stall_cycles++;
