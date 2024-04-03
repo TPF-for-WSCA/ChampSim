@@ -35,7 +35,7 @@ class CacheBus : public MemoryRequestProducer
 {
 public:
   champsim::circular_buffer<PACKET> PROCESSED;
-  CacheBus(std::size_t q_size, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), PROCESSED(q_size, "PROCESSED") {}
+  CacheBus(std::size_t q_size, MemoryRequestConsumer* ll, std::string name) : MemoryRequestProducer(ll), PROCESSED(q_size, name + "_PROCESSED") {}
   void return_data(PACKET* packet);
 };
 
@@ -175,10 +175,10 @@ public:
         DECODE_BUFFER(decode_buffer_size, decode_latency, "DECODE_BUFFER"), ROB(rob_size, "ROB"), LQ(lq_size), SQ(sq_size), FETCH_WIDTH(fetch_width),
         DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width),
         SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), SCHEDULING_LATENCY(schedule_latency),
-        EXEC_LATENCY(execute_latency), ITLB_bus(rob_size, itlb), DTLB_bus(rob_size, dtlb), L1I_bus(rob_size, l1i), L1D_bus(rob_size, l1d),
-        bpred_type(bpred_type), btb_type(btb_type), BTB_SETS(btb_sets), BTB_WAYS(btb_ways), EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch),
-        perfect_btb(perfect_btb), perfect_branch_predict(perfect_branch_predict), ipref_type(ipref_type), pc_bits_offset(128, std::vector<uint64_t>(64)),
-        offset_counts(128, 0), align_bits(align_bits)
+        EXEC_LATENCY(execute_latency), ITLB_bus(rob_size, itlb, "ITLB_bus"), DTLB_bus(rob_size, dtlb, "DTLB_bus"), L1I_bus(rob_size, l1i, "L1I_bus"),
+        L1D_bus(rob_size, l1d, "L1D_bus"), bpred_type(bpred_type), btb_type(btb_type), BTB_SETS(btb_sets), BTB_WAYS(btb_ways),
+        EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch), perfect_btb(perfect_btb), perfect_branch_predict(perfect_branch_predict), ipref_type(ipref_type),
+        pc_bits_offset(128, std::vector<uint64_t>(64)), offset_counts(128, 0), align_bits(align_bits)
   {
     basic_btb = (BASIC_BTB_ENTRY*)malloc(NUM_CPUS * BTB_SETS * BTB_WAYS * sizeof(BASIC_BTB_ENTRY));
     if (!basic_btb) {

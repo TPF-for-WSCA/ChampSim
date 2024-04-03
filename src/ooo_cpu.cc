@@ -69,7 +69,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   arch_instr.instr_id = instr_unique_id;
 
 #ifdef LOG
-  if (instr_unique_id == 11 || instr_unique_id == 15 || instr_unique_id < 100)
+  if (instr_unique_id >= 22 and instr_unique_id <= 36)
     arch_instr.trace = true;
 #endif
 
@@ -408,12 +408,12 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
 
 void O3_CPU::fetch_instruction()
 {
-  // if we had a branch mispredict, turn fetching back on after the branch
-  // mispredict penalty
   if (stall_on_miss == 1) {
     return;
   }
 
+  // if we had a branch mispredict, turn fetching back on after the branch
+  // mispredict penalty
   if ((fetch_stall == 1) && (current_cycle >= fetch_resume_cycle) && (fetch_resume_cycle != 0)) {
     fetch_stall = 0;
     fetch_resume_cycle = 0;
@@ -434,7 +434,10 @@ void O3_CPU::fetch_instruction()
       it->fetched = COMPLETED;
       continue;
     }
-    if (it->translated != COMPLETED || it->fetched != 0) {
+    if (it->translated != COMPLETED) {
+      break;
+    }
+    if (it->fetched != 0) {
       continue;
     }
     l1i_req_begin = it;
@@ -462,9 +465,7 @@ void O3_CPU::fetch_instruction()
     find_addr = x.instruction_pa;
     return not(is_adjacent && is_same_block);
   });
-  if (l1i_req_end < end || l1i_req_begin == IFETCH_BUFFER.begin()) { // collapsing FTQ?
-    do_fetch_instruction(l1i_req_begin, l1i_req_end);
-  }
+  do_fetch_instruction(l1i_req_begin, l1i_req_end);
 }
 
 void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
@@ -521,7 +522,8 @@ void O3_CPU::promote_to_decode()
       cout << " FEND STALLS: " << frontend_stall_cycles;
       cout << "; CURR CYCLE : " << current_cycle;
       cout << "; FTQ ENTRIES: " << IFETCH_BUFFER.occupancy();
-      cout << "; instr_id: " << IFETCH_BUFFER.front().instr_id << " ++++" << endl;
+      cout << "; instr_id: " << IFETCH_BUFFER.front().instr_id << " / " << +IFETCH_BUFFER.front().translated << " / " << +IFETCH_BUFFER.front().fetched
+           << " ++++" << endl;
     }
 #endif
     frontend_stall_cycles++;
@@ -1264,6 +1266,9 @@ void O3_CPU::retire_rob()
     // release ROB entry
     DP(if (warmup_complete[cpu]) { cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << endl; });
 
+#ifdef LOG
+    cout << "instr_id: " << ROB.front().instr_id << ", committed @" << current_cycle << endl;
+#endif
     ROB.pop_front();
     completed_executions--;
     num_retired++;

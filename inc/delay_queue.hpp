@@ -43,7 +43,7 @@ class delay_queue;
 template <typename T>
 std::ostream& operator<<(std::ostream& s, const delay_queue<T>& q)
 {
-  return (s << q._name << "(occupancy: " << q._buf.occupancy() << ", latency: " << q._latency << ")");
+  return (s << q._name << "(occupancy: " << q._buf.occupancy() << ", latency: " << q._latency << ", cycle: " << q.delay_cycle << ")");
 }
 
 template <typename T>
@@ -64,6 +64,7 @@ class delay_queue
 private:
   template <typename U>
   using buffer_t = circular_buffer<U>;
+  uint64_t delay_cycle = 0;
 
 public:
   delay_queue(std::size_t size, unsigned latency, std::string name)
@@ -202,6 +203,7 @@ public:
    ***/
   void operate()
   {
+    delay_cycle++;
     for (auto& x : _delays)
       --(x.val); // The delay may go negative, this is permitted.
 
