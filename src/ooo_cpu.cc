@@ -458,7 +458,7 @@ void O3_CPU::fetch_instruction()
   uint64_t find_addr = l1i_req_begin->instruction_pa;
   auto end = std::min(IFETCH_BUFFER.end(), std::next(l1i_req_begin, FETCH_WIDTH));
   CACHE* L1I = static_cast<CACHE*>(L1I_bus.lower_level);
-  auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr, this, L1I](const ooo_model_instr& x) {
+  auto l1i_req_end = std::find_if(std::next(l1i_req_begin, 1), end, [&find_addr, this, L1I](const ooo_model_instr& x) {
     bool is_adjacent = find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa
                        || (not L1I->is_vcl && align_bits < 6); // we compare first with ourselves. of course same address access is included
     bool is_same_block = find_addr >> align_bits == x.instruction_pa >> align_bits;
