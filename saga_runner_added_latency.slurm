@@ -7,8 +7,8 @@
 #SBATCH --time=00-24:00:00
 #SBATCH --mail-user=romankb@ntnu.no
 #SBATCH --mail-type=ALL
-#SBATCH -e /cluster/work/users/romankb/btb-perfect-%j.err
-#SBATCH -o /cluster/work/users/romankb/btb-perfect-%j.out
+#SBATCH -e /cluster/work/users/romankb/latency-%j.err
+#SBATCH -o /cluster/work/users/romankb/latency-%j.out
 
 module load Boost/1.79.0-GCC-11.3.0
 module load Python/3.10.4-GCCcore-11.3.0
@@ -21,9 +21,9 @@ binaries=("champsim32k_8B" "champsim32k_16B" "champsim32k_32B" "champsim32k" "ub
 
 for binary in ${binaries[@]}
 do
-    python /cluster/projects/nn4650k/workspace/ChampSim/data_collector.py --warmup 50000000 --evaluation 500000000 --experiment_executable /cluster/projects/nn4650k/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/ipc1_new/spec --nosub --output_dir   /cluster/work/users/romankb/results/latency_fixed_2/ipc1_spec/sizes_${binary}/ >> /cluster/work/users/romankb/pyrunner_basebtb_ipc1_spec${binary}.log &
-    python /cluster/projects/nn4650k/workspace/ChampSim/data_collector.py --warmup 50000000 --evaluation 500000000 --experiment_executable /cluster/projects/nn4650k/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/ipc1_new/server --nosub --output_dir /cluster/work/users/romankb/results/latency_fixed_2/ipc1_server/sizes_${binary}/ >> /cluster/work/users/romankb/pyrunner_basebtb_ipc1_server${binary}.log &
-    python /cluster/projects/nn4650k/workspace/ChampSim/data_collector.py --warmup 50000000 --evaluation 500000000 --experiment_executable /cluster/projects/nn4650k/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/ipc1_new/client --nosub --output_dir /cluster/work/users/romankb/results/latency_fixed_2/ipc1_client/sizes_${binary}/ >> /cluster/work/users/romankb/pyrunner_basebtb_ipc1_client${binary}.log &
+    python /cluster/projects/nn4650k/workspace/ChampSim/data_collector.py --warmup 50000000 --evaluation 500000000 --experiment_executable /cluster/projects/nn4650k/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/ipc1_new/spec --nosub --output_dir   /cluster/work/users/romankb/results/latency_fixed_2/ipc1_spec/sizes_${binary}/   >> /cluster/work/users/romankb/pyrunner_latency_fixed_ipc1_spec_${binary}.log &
+    python /cluster/projects/nn4650k/workspace/ChampSim/data_collector.py --warmup 50000000 --evaluation 500000000 --experiment_executable /cluster/projects/nn4650k/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/ipc1_new/server --nosub --output_dir /cluster/work/users/romankb/results/latency_fixed_2/ipc1_server/sizes_${binary}/ >> /cluster/work/users/romankb/pyrunner_latency_fixed_ipc1_server_${binary}.log &
+    python /cluster/projects/nn4650k/workspace/ChampSim/data_collector.py --warmup 50000000 --evaluation 500000000 --experiment_executable /cluster/projects/nn4650k/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/ipc1_new/client --nosub --output_dir /cluster/work/users/romankb/results/latency_fixed_2/ipc1_client/sizes_${binary}/ >> /cluster/work/users/romankb/pyrunner_latency_fixed_ipc1_client_${binary}.log &
 done
 
 for job in `jobs -p`
