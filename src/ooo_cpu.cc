@@ -70,7 +70,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   arch_instr.instr_id = instr_unique_id;
 
 #ifdef LOG
-  if (instr_unique_id >= 42200160)
+  if (instr_unique_id >= 37625 and instr_unique_id < 37999)
     arch_instr.trace = true;
 #endif
 
@@ -328,7 +328,12 @@ void O3_CPU::check_dib()
 {
   // scan through IFETCH_BUFFER to find instructions that hit in the decoded
   // instruction buffer
-  auto end = std::min(IFETCH_BUFFER.end(), std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH));
+  auto end = std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH);
+  if ((IFETCH_BUFFER.end().pos < end.pos && end.pos < IFETCH_BUFFER.begin().pos)
+      or (IFETCH_BUFFER.end().pos < end.pos && IFETCH_BUFFER.begin().pos < IFETCH_BUFFER.end().pos)
+      or (IFETCH_BUFFER.begin().pos < IFETCH_BUFFER.end().pos && end.pos < IFETCH_BUFFER.begin().pos)) {
+    end = IFETCH_BUFFER.end();
+  }
   for (auto it = IFETCH_BUFFER.begin(); it != end; ++it)
     do_check_dib(*it);
 }
@@ -462,9 +467,6 @@ void O3_CPU::fetch_instruction()
   if ((IFETCH_BUFFER.end().pos < end.pos && end.pos < l1i_req_begin.pos) or (IFETCH_BUFFER.end().pos < end.pos && l1i_req_begin.pos < IFETCH_BUFFER.end().pos)
       or (l1i_req_begin.pos < IFETCH_BUFFER.end().pos && end.pos < l1i_req_begin.pos)) {
     end = IFETCH_BUFFER.end();
-  }
-  if (l1i_req_begin->instr_id == 42200422) {
-    std::cout << "FAULTY PACKET BEING BUILT...: Begin: " << *l1i_req_begin << ", end: " << *end << endl;
   }
   CACHE* L1I = static_cast<CACHE*>(L1I_bus.lower_level);
   auto l1i_req_end = std::find_if_not(l1i_req_begin, end, [&find_addr, this, L1I](const ooo_model_instr& x) {
