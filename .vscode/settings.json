@@ -88,7 +88,8 @@
         "__string": "cpp",
         "charconv": "cpp",
         "string.h": "c",
-        "execution": "cpp"
+        "execution": "cpp",
+        "csignal": "cpp"
     },
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter"

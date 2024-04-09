@@ -1,6 +1,7 @@
 #include "ooo_cpu.h"
 
 #include <algorithm>
+#include <csignal>
 #include <iostream>
 #include <vector>
 
@@ -69,7 +70,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   arch_instr.instr_id = instr_unique_id;
 
 #ifdef LOG
-  if (instr_unique_id >= 22 and instr_unique_id <= 36)
+  if (instr_unique_id >= 42200160)
     arch_instr.trace = true;
 #endif
 
@@ -405,7 +406,7 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
     }
   }
 }
-
+//  __attribute__((optimize("O0")))
 void O3_CPU::fetch_instruction()
 {
   if (stall_on_miss == 1) {
@@ -456,15 +457,25 @@ void O3_CPU::fetch_instruction()
   }
 
   uint64_t find_addr = l1i_req_begin->instruction_pa;
-  auto end = std::min(IFETCH_BUFFER.end(), std::next(l1i_req_begin, FETCH_WIDTH));
+  auto end = std::next(l1i_req_begin, FETCH_WIDTH);
+  // TODO: CHECK MINIMUM FUNCTION.
+  if ((IFETCH_BUFFER.end().pos < end.pos && end.pos < l1i_req_begin.pos) or (IFETCH_BUFFER.end().pos < end.pos && l1i_req_begin.pos < IFETCH_BUFFER.end().pos)
+      or (l1i_req_begin.pos < IFETCH_BUFFER.end().pos && end.pos < l1i_req_begin.pos)) {
+    end = IFETCH_BUFFER.end();
+  }
+  if (l1i_req_begin->instr_id == 42200422) {
+    std::cout << "FAULTY PACKET BEING BUILT...: Begin: " << *l1i_req_begin << ", end: " << *end << endl;
+  }
   CACHE* L1I = static_cast<CACHE*>(L1I_bus.lower_level);
-  auto l1i_req_end = std::find_if(std::next(l1i_req_begin, 1), end, [&find_addr, this, L1I](const ooo_model_instr& x) {
+  auto l1i_req_end = std::find_if_not(l1i_req_begin, end, [&find_addr, this, L1I](const ooo_model_instr& x) {
     bool is_adjacent = find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa
                        || (not L1I->is_vcl && align_bits < 6); // we compare first with ourselves. of course same address access is included
     bool is_same_block = find_addr >> align_bits == x.instruction_pa >> align_bits;
     find_addr = x.instruction_pa;
-    return not(is_adjacent && is_same_block);
+    return (is_adjacent && is_same_block);
   });
+  assert(l1i_req_begin != l1i_req_end);
+  assert(l1i_req_end - l1i_req_begin <= FETCH_WIDTH);
   do_fetch_instruction(l1i_req_begin, l1i_req_end);
 }
 
@@ -480,16 +491,15 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
   fetch_packet.branch_type = begin->branch_type;
-  fetch_packet.size = begin->size;
+  fetch_packet.size = 0;
   fetch_packet.type = LOAD;
   fetch_packet.asid[0] = 0;
   fetch_packet.asid[1] = 0;
   fetch_packet.trace = begin->trace;
   fetch_packet.to_return = {&L1I_bus};
   for (; begin != end; ++begin) {
+
     fetch_packet.instr_depend_on_me.push_back(begin);
-    if (fetch_packet.address == begin->instruction_pa)
-      continue;
     fetch_packet.size += begin->size;
   }
 
@@ -517,7 +527,7 @@ void O3_CPU::promote_to_decode()
   auto instr = IFETCH_BUFFER.front();
   if (IFETCH_BUFFER.front().fetched != COMPLETED) {
 #ifdef LOG
-    if (current_cycle > 0) { // NOTE: THIS IF is only here to limit output
+    if (current_cycle > 105175661) { // NOTE: THIS IF is only here to limit output
       cout << "++++ UPDATE POINT: ";
       cout << " FEND STALLS: " << frontend_stall_cycles;
       cout << "; CURR CYCLE : " << current_cycle;
@@ -1162,7 +1172,8 @@ void O3_CPU::handle_memory_return()
     // them as such
     while (available_fetch_bandwidth > 0 && !l1i_entry.instr_depend_on_me.empty()) {
       auto it = l1i_entry.instr_depend_on_me.front();
-      if ((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address >> LOG2_BLOCK_SIZE) && it->fetched != 0 && it->translated == COMPLETED) {
+      assert((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address >> LOG2_BLOCK_SIZE));
+      if (it->fetched != 0 && it->translated == COMPLETED) {
         it->fetched = COMPLETED;
         available_fetch_bandwidth--;
       }
@@ -1171,8 +1182,9 @@ void O3_CPU::handle_memory_return()
     }
 
     // remove this entry if we have serviced all of its instructions
-    if (l1i_entry.instr_depend_on_me.empty())
+    if (l1i_entry.instr_depend_on_me.empty()) {
       L1I_bus.PROCESSED.pop_front();
+    }
     --to_read;
   }
 
@@ -1267,7 +1279,8 @@ void O3_CPU::retire_rob()
     DP(if (warmup_complete[cpu]) { cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << endl; });
 
 #ifdef LOG
-    cout << "instr_id: " << ROB.front().instr_id << ", committed @" << current_cycle << endl;
+    if (current_cycle > 105175661)
+      cout << "instr_id: " << ROB.front().instr_id << ", committed @" << current_cycle << endl;
 #endif
     ROB.pop_front();
     completed_executions--;
