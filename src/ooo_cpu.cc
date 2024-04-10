@@ -69,8 +69,11 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
   arch_instr.instr_id = instr_unique_id;
 
+  // if (instr_unique_id == 2598646 || instr_unique_id == 2598698 || instr_unique_id == 2598703)
+  //   raise(SIGINT);
+
 #ifdef LOG
-  if (instr_unique_id >= 37625 and instr_unique_id < 37999)
+  if (instr_unique_id >= 2598546 and instr_unique_id <= 2598798)
     arch_instr.trace = true;
 #endif
 
@@ -326,21 +329,14 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
 void O3_CPU::check_dib()
 {
-  // scan through IFETCH_BUFFER to find instructions that hit in the decoded
-  // instruction buffer
-  auto end = std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH);
-  if ((IFETCH_BUFFER.end().pos < end.pos && end.pos < IFETCH_BUFFER.begin().pos)
-      or (IFETCH_BUFFER.end().pos < end.pos && IFETCH_BUFFER.begin().pos < IFETCH_BUFFER.end().pos)
-      or (IFETCH_BUFFER.begin().pos < IFETCH_BUFFER.end().pos && end.pos < IFETCH_BUFFER.begin().pos)) {
-    end = IFETCH_BUFFER.end();
-  }
-  for (auto it = IFETCH_BUFFER.begin(); it != end; ++it)
+  return; // deactivate dib
+  // scan through IFETCH_BUFFER to find instructions that hit in the
+  for (auto it = IFETCH_BUFFER.begin(); it != IFETCH_BUFFER.end(); ++it)
     do_check_dib(*it);
 }
 
 void O3_CPU::do_check_dib(ooo_model_instr& instr)
 {
-  return; // disable dib
   // Check DIB to see if we recently fetched this line
   auto dib_set_begin = std::next(DIB.begin(), ((instr.ip >> lg2(dib_window)) % dib_set) * dib_way);
   auto dib_set_end = std::next(dib_set_begin, dib_way);
@@ -470,7 +466,8 @@ void O3_CPU::fetch_instruction()
   }
   CACHE* L1I = static_cast<CACHE*>(L1I_bus.lower_level);
   auto l1i_req_end = std::find_if_not(l1i_req_begin, end, [&find_addr, this, L1I](const ooo_model_instr& x) {
-    bool is_adjacent = find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa
+    // we check for completed to ignore the dummy instructions at 2 offsets
+    bool is_adjacent = find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa || x.fetched == COMPLETED
                        || (not L1I->is_vcl && align_bits < 6); // we compare first with ourselves. of course same address access is included
     bool is_same_block = find_addr >> align_bits == x.instruction_pa >> align_bits;
     find_addr = x.instruction_pa;
@@ -484,6 +481,7 @@ void O3_CPU::fetch_instruction()
 void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
 {
   // add it to the L1-I's read queue
+  assert(begin->ip % 4 == 0);
   PACKET fetch_packet;
   fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
   fetch_packet.cpu = cpu;
@@ -500,7 +498,9 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.trace = begin->trace;
   fetch_packet.to_return = {&L1I_bus};
   for (; begin != end; ++begin) {
-
+    if (begin->ip % 4 != 0) {
+      continue; // Ignore dummy instructions in updated traces
+    }
     fetch_packet.instr_depend_on_me.push_back(begin);
     fetch_packet.size += begin->size;
   }
@@ -834,7 +834,7 @@ struct sq_will_forward {
     return sq_test.fetched == COMPLETED && sq_test.instr_id == match_id && sq_test.virtual_address == match_addr;
   }
 };
-
+//__attribute__((optimize("O0")))
 void O3_CPU::add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_it, uint32_t data_index)
 {
   // search for an empty slot
@@ -844,6 +844,14 @@ void O3_CPU::add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator
   // add it to the load queue
   rob_it->lq_index[data_index] = lq_it;
   rob_it->source_added[data_index] = 1;
+  champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior_it{rob_it};
+  prior_it = std::find_if(prior_it, ROB.rend(), instr_mem_will_produce(rob_it->source_memory[data_index]));
+  // if (prior_it->instr_id == 2598646) {
+  //   raise(SIGINT);
+  // }
+  // if (prior_it->instr_id == 2598698) {
+  //   raise(SIGINT);
+  // }
   lq_it->instr_id = rob_it->instr_id;
   lq_it->virtual_address = rob_it->source_memory[data_index];
   lq_it->ip = rob_it->ip;
@@ -854,10 +862,8 @@ void O3_CPU::add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator
 
   // Mark RAW in the ROB since the producer might not be added in the store
   // queue yet
-  champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior_it{rob_it};
-  prior_it = std::find_if(prior_it, ROB.rend(), instr_mem_will_produce(lq_it->virtual_address));
   if (prior_it != ROB.rend()) {
-    // this load cannot be executed until the prior store gets executed
+    //  this load cannot be executed until the prior store gets executed
     prior_it->memory_instrs_depend_on_me.push_back(rob_it);
     lq_it->producer_id = prior_it->instr_id;
     lq_it->translated = INFLIGHT;
@@ -872,13 +878,20 @@ void O3_CPU::add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator
   }
 }
 
+//__attribute__((optimize("O0")))
 void O3_CPU::add_store_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_it, uint32_t data_index)
 {
   auto sq_it = std::find_if_not(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>());
   assert(sq_it->virtual_address == 0);
-
+  // if (rob_it->instr_id == 2598646) {
+  //   raise(SIGINT);
+  // }
+  // if (rob_it->instr_id == 2598698) {
+  //   raise(SIGINT);
+  // }
   // add it to the store queue
   rob_it->sq_index[data_index] = sq_it;
+
   sq_it->instr_id = rob_it->instr_id;
   sq_it->virtual_address = rob_it->destination_memory[data_index];
   sq_it->ip = rob_it->ip;
@@ -999,8 +1012,10 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     // check if dependent loads are already added in the load queue
     for (uint32_t j = 0; j < NUM_INSTR_SOURCES; j++) { // which one is dependent?
       if (dependent->source_memory[j] && dependent->source_added[j]) {
-        if (dependent->source_memory[j] == sq_it->virtual_address) { // this is required since a single
-                                                                     // instruction can issue multiple loads
+        if (dependent->source_memory[j] == sq_it->virtual_address
+            and dependent->lq_index[j]->producer_id == sq_it->instr_id) { // this is required since a single
+                                                                          // instruction can issue multiple loads
+                                                                          // and can have multiple producers. We only want the latest producer
 
           // TODO: Get rid of this check once we have data accesses in the trace
           if (dependent->lq_index[j]->producer_id == std::numeric_limits<uint64_t>::max()) {

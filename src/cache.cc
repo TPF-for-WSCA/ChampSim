@@ -343,9 +343,6 @@ bool CACHE::hit_test(uint64_t addr, uint8_t size)
   auto way = get_vway(addr, set);
   if (way == NUM_WAY) {
     way = get_way(addr, set);
-    if (way < NUM_WAY) {
-      std::cout << "oops this was a translated prefetch" << std::endl;
-    }
   }
   if (way == NUM_WAY) {
     for (auto it = PREFETCH_BUFFER.begin(); it != PREFETCH_BUFFER.end(); it++) {
