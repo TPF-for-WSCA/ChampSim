@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim32k_16B",
+  "executable_name": "bin/champsim32k",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -18,8 +18,8 @@
       "rob_size": 352,
       "lq_size": 128,
       "sq_size": 72,
-      "fetch_width": 6,
-      "decode_width": 6,
+      "fetch_width": 4,
+      "decode_width": 4,
       "dispatch_width": 6,
       "execute_width": 6,
       "lq_width": 2,
