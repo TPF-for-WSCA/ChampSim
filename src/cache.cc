@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <bitset>
 #include <cmath>
+#include <csignal>
 #include <cstdlib>
 #include <iterator>
 #include <set>
@@ -342,9 +343,6 @@ bool CACHE::hit_test(uint64_t addr, uint8_t size)
   auto way = get_vway(addr, set);
   if (way == NUM_WAY) {
     way = get_way(addr, set);
-    if (way < NUM_WAY) {
-      std::cout << "oops this was a translated prefetch" << std::endl;
-    }
   }
   if (way == NUM_WAY) {
     for (auto it = PREFETCH_BUFFER.begin(); it != PREFETCH_BUFFER.end(); it++) {
@@ -1041,6 +1039,7 @@ int CACHE::add_rq(PACKET* packet)
 
   // if there is no duplicate, add it to RQ
   assert(packet->size <= 64);
+
   if (warmup_complete[cpu])
     RQ.push_back(*packet);
   else
@@ -2052,11 +2051,11 @@ void VCL_CACHE::handle_read()
       }
 
       // std::cout << "hit in SET: " << std::setw(3) << set << ", way: " << std::setw(3) << way << std::endl;
-      readlike_hit(set, way, handle_pkt);
       uint64_t newoffset = hit_check(set, way, handle_pkt.address, handle_pkt.size);
       if (!newoffset) {
         RQ.pop_front();
         reads_available_this_cycle--;
+        readlike_hit(set, way, handle_pkt);
         continue;
       }
       if (newoffset > 63) {
@@ -2076,6 +2075,9 @@ void VCL_CACHE::handle_read()
       pf_useful++;
       CACHE::readlike_hit(p, handle_pkt);
       handle_packet_insert_from_buffer(p);
+      RQ.pop_front();
+      reads_available_this_cycle--;
+      continue;
     }
 
     auto filter_buffer_hit = probe_filter_buffer(handle_pkt.address, FILTER_BUFFER_QUEUE);

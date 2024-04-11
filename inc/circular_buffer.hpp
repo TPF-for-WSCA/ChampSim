@@ -247,7 +247,7 @@ auto circular_buffer_iterator<T>::operator-(const self_type& other) const -> dif
   difference_type diff = pos - other.pos;
 
   // Adjust for the cases where the tail has wrapped, but the head has not.
-  // In the positive direction
+  // In the positive directiosn
   if (pos < buf->head_ && buf->head_ <= other.pos)
     diff = buf->entry_.size() + diff;
 
@@ -257,7 +257,6 @@ auto circular_buffer_iterator<T>::operator-(const self_type& other) const -> dif
 
   return diff;
 }
-
 } // namespace champsim
 
 #endif
