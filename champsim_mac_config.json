@@ -21,7 +21,7 @@
       "fetch_width": 6,
       "decode_width": 6,
       "dispatch_width": 6,
-      "execute_width": 4,
+      "execute_width": 6,
       "lq_width": 2,
       "sq_width": 2,
       "retire_width": 5,
@@ -33,7 +33,7 @@
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "btb": "extended_basic_btb",
-      "align_bits": 4
+      "align_bits": 5
     }
   ],
   "DIB": {
@@ -49,7 +49,7 @@
     "pq_size": 32,
     "mshr_size": 8,
     "hit_latency": 4,
-    "max_read": 2,
+    "max_read": 1,
     "max_write": 2,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
@@ -73,8 +73,8 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "no",
-    "counting_block_method": "EVICTION"
+    "prefetcher": "next_line",
+    "counting_block_method": "SUM_ACCESSES"
   },
   "L2C": {
     "sets": 1024,
@@ -90,7 +90,7 @@
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
     "prefetcher": "no",
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "ITLB": {
     "sets": 16,
@@ -103,7 +103,7 @@
     "max_read": 2,
     "max_write": 2,
     "prefetch_as_load": false,
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "DTLB": {
     "sets": 16,
