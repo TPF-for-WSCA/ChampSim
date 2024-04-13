@@ -32,7 +32,7 @@
       "schedule_latency": 2,
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
-      "btb": "conv_btb",
+      "btb": "extended_basic_btb",
       "align_bits": 4,
       "btb_max_loop_branch": 64
     }
