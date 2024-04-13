@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/ubs_lat_2",
+  "executable_name": "bin/ubs_lat_2_extended",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -33,7 +33,7 @@
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "btb": "conv_btb",
-      "btb_max_loop_branch": 32
+      "btb_max_loop_branch": 64
     }
   ],
   "DIB": {
@@ -77,7 +77,7 @@
     "prefetch_buffer_size": 16,
     "lru_modifier": "LRU2BOUND4",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": false
+    "extend_blocks_to_branch": true
   },
   "L1D": {
     "sets": 64,
