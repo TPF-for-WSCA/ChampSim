@@ -2,7 +2,7 @@
 #SBATCH --job-name="num-collection-base-btb"
 #SBATCH --account=nn4650k
 #SBATCH --nodes=1
-#SBATCH -c12
+#SBATCH -c20
 #SBATCH --mem-per-cpu=8G
 #SBATCH --time=00-24:00:00
 #SBATCH --mail-user=romankb@ntnu.no
