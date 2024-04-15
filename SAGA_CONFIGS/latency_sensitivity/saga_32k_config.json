@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim32k",
+  "executable_name": "bin/champsim32k_unaligned",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -25,7 +25,7 @@
       "lq_width": 2,
       "sq_width": 2,
       "retire_width": 5,
-      "mispredict_penalty": 5,
+      "mispredict_penalty": 1,
       "scheduler_size": 128,
       "decode_latency": 2,
       "dispatch_latency": 1,

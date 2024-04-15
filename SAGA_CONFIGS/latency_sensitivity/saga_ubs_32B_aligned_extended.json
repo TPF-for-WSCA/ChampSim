@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/ubs_32B",
+  "executable_name": "bin/ubs_32B_extended",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -34,7 +34,7 @@
       "branch_predictor": "hashed_perceptron",
       "btb": "extended_basic_btb",
       "align_bits": 5,
-      "btb_max_loop_branch": 32
+      "btb_max_loop_branch": 64
     }
   ],
   "DIB": {
@@ -79,7 +79,7 @@
     "prefetch_buffer_size": 16,
     "lru_modifier": "LRU2BOUND4",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": false
+    "extend_blocks_to_branch": true
   },
   "L1D": {
     "sets": 64,

@@ -1027,7 +1027,7 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
             cerr << " does not match to the store instr_id: " << sq_it->instr_id << endl;
           }
           // now we can resolve RAW dependency
-          assert(dependent->lq_index[j]->producer_id == sq_it->instr_id);
+          assert(sq_it->instr_id < dependent->lq_index[j]->instr_id);
           // update corresponding LQ entry
           do_sq_forward_to_lq(*sq_it, *(dependent->lq_index[j]));
         }
