@@ -410,6 +410,17 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
 //  __attribute__((optimize("O0")))
 void O3_CPU::fetch_instruction()
 {
+  if ((fetch_stall == 1) && (current_cycle >= fetch_resume_cycle) && (fetch_resume_cycle != 0)) {
+
+#ifdef LOG
+
+    cout << "\treseted fetch_stall\tfetch_stall: " << (int)fetch_stall << ", current_cycle: " << current_cycle << ", fetch_resume_cycle: " << fetch_resume_cycle
+         << endl;
+#endif
+    fetch_stall = 0;
+    fetch_resume_cycle = 0;
+  }
+
   if (stall_on_miss == 1) {
     return;
   }
@@ -420,16 +431,6 @@ void O3_CPU::fetch_instruction()
   if (current_cycle > 5000 and current_cycle < 6500)
     cout << "\tfetch_stall: " << (int)fetch_stall << ", current_cycle: " << current_cycle << ", fetch_resume_cycle: " << fetch_resume_cycle << endl;
 #endif
-  if ((fetch_stall == 1) && (current_cycle >= fetch_resume_cycle) && (fetch_resume_cycle != 0)) {
-
-    fetch_stall = 0;
-    fetch_resume_cycle = 0;
-#ifdef LOG
-    if (current_cycle > 5000 and current_cycle < 6500)
-      cout << "\treseted fetch_stall\tfetch_stall: " << (int)fetch_stall << ", current_cycle: " << current_cycle
-           << ", fetch_resume_cycle: " << fetch_resume_cycle << endl;
-#endif
-  }
 
   if (IFETCH_BUFFER.empty())
     return;
@@ -1023,6 +1024,7 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     for (uint32_t j = 0; j < NUM_INSTR_SOURCES; j++) { // which one is dependent?
       if (dependent->source_memory[j] && dependent->source_added[j]) {
         if (dependent->source_memory[j] == sq_it->virtual_address) {
+          // TODO: FIX DEPENDNECY
           // and dependent->lq_index[j]->producer_id == sq_it->instr_id) { // this is required since a single
           // instruction can issue multiple loads
           // and can have multiple producers. We only want the latest producer

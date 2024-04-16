@@ -888,9 +888,12 @@ int main(int argc, char** argv)
       }
 #endif
       // read from trace
-      // TODO: SHOULD WE CONTINUE READING THE TRACE on fetch stall?
-      while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
+      while (not ooo_cpu[i]->fetch_stall and ooo_cpu[i]->instrs_to_read_this_cycle > 0 and not trace_ended[i]) {
         // while (ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
+#ifdef LOG
+        cout << "\tfetch active\tfetch_stall: " << (int)ooo_cpu[i]->fetch_stall << ", current_cycle: " << ooo_cpu[i]->current_cycle
+             << ", fetch_resume_cycle: " << ooo_cpu[i]->fetch_resume_cycle << endl;
+#endif
         struct ooo_model_instr trace_inst;
         try {
           trace_inst = traces[i]->get();

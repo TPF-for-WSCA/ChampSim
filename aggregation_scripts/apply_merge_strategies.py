@@ -378,6 +378,7 @@ def apply_way_analysis(
     overhead = 0
     max_size = 0
     max_size_ways = []
+    print(f"Current workload: {tracefile_path}")
     # for i in range(7, 20):
     for i in range(7,20):
         tag_overhead = (i - 7) * (26 + 1 + 3) / 8  # (tag bits, valid bit, lru bits)

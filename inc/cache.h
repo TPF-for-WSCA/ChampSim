@@ -276,7 +276,7 @@ public:
     num_invalid_blocks_in_cache = NUM_SET * NUM_WAY;
     cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
     cl_invalid_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
-    way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
+    way_hits = (uint64_t*)calloc(NUM_WAY, sizeof(uint64_t));
     if (way_hits == NULL)
       std::cerr << "COULD NOT ALLOCATE WAY_HIT ARRAY" << std::endl;
   }
@@ -298,7 +298,7 @@ public:
     cl_accesses_percentage_of_presence_covered.resize(100);
     cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
     cl_invalid_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
-    way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
+    way_hits = (uint64_t*)calloc(NUM_WAY, sizeof(uint64_t));
     if (way_hits == NULL)
       std::cerr << "COULD NOT ALLOCATE WAY_HIT ARRAY" << std::endl;
   }
