@@ -63,14 +63,10 @@ def run_experiment(
         print(f"STDERR: {completed_experiment.stderr}\n", flush=True)
         success = False
     else:
-        print(
-            f"Experiment {' '.join(cmd)} completed successfully\n", flush=True
-        )
+        print(f"Experiment {' '.join(cmd)} completed successfully\n", flush=True)
 
     config_file_name = path.split(trace_file_path)[1].split(".")[0]
-    with open(
-        path.join(output_dir, f"{config_file_name}_log.txt"), mode="ab+"
-    ) as f:
+    with open(path.join(output_dir, f"{config_file_name}_log.txt"), mode="ab+") as f:
         now = datetime.now()
         datetimestring = now.strftime("%d.%m.%Y %H:%M")
         f.write(
@@ -106,9 +102,7 @@ def main(args):
                 lambda trace: trace.endswith(".gz") or trace.endswith(".xz"),
                 os.listdir(workload_dir),
             )
-            trace_files.extend(
-                map(partial(path.join, workload_dir), filenames)
-            )
+            trace_files.extend(map(partial(path.join, workload_dir), filenames))
         else:
             if workload.endswith(".gz") or workload.endswith(".xz"):
                 trace_files.append(path.join(traces_directory, workload))
@@ -118,7 +112,7 @@ def main(args):
         global executable
         executable = args.exec
 
-    pool = Pool(processes=16)
+    pool = Pool(processes=cpu_count())
     pending_experiments = []
 
     for trace in trace_files:
@@ -153,9 +147,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Run an experiment on a set of traces"
-    )
+    parser = argparse.ArgumentParser(description="Run an experiment on a set of traces")
     parser.add_argument(
         "--experiment_executable",
         metavar="EXECUTABLE PATH",
