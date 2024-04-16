@@ -73,7 +73,7 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   //   raise(SIGINT);
 
 #ifdef LOG
-  if (instr_unique_id >= 2598546 and instr_unique_id <= 2598798)
+  if (true)
     arch_instr.trace = true;
 #endif
 
@@ -416,9 +416,19 @@ void O3_CPU::fetch_instruction()
 
   // if we had a branch mispredict, turn fetching back on after the branch
   // mispredict penalty
+#ifdef LOG
+  if (current_cycle > 5000 and current_cycle < 6500)
+    cout << "\tfetch_stall: " << (int)fetch_stall << ", current_cycle: " << current_cycle << ", fetch_resume_cycle: " << fetch_resume_cycle << endl;
+#endif
   if ((fetch_stall == 1) && (current_cycle >= fetch_resume_cycle) && (fetch_resume_cycle != 0)) {
+
     fetch_stall = 0;
     fetch_resume_cycle = 0;
+#ifdef LOG
+    if (current_cycle > 5000 and current_cycle < 6500)
+      cout << "\treseted fetch_stall\tfetch_stall: " << (int)fetch_stall << ", current_cycle: " << current_cycle
+           << ", fetch_resume_cycle: " << fetch_resume_cycle << endl;
+#endif
   }
 
   if (IFETCH_BUFFER.empty())
@@ -529,7 +539,7 @@ void O3_CPU::promote_to_decode()
   auto instr = IFETCH_BUFFER.front();
   if (IFETCH_BUFFER.front().fetched != COMPLETED) {
 #ifdef LOG
-    if (current_cycle > 105175661) { // NOTE: THIS IF is only here to limit output
+    if (current_cycle < 10000) { // NOTE: THIS IF is only here to limit output
       cout << "++++ UPDATE POINT: ";
       cout << " FEND STALLS: " << frontend_stall_cycles;
       cout << "; CURR CYCLE : " << current_cycle;
@@ -1012,10 +1022,10 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     // check if dependent loads are already added in the load queue
     for (uint32_t j = 0; j < NUM_INSTR_SOURCES; j++) { // which one is dependent?
       if (dependent->source_memory[j] && dependent->source_added[j]) {
-        if (dependent->source_memory[j] == sq_it->virtual_address
-            and dependent->lq_index[j]->producer_id == sq_it->instr_id) { // this is required since a single
-                                                                          // instruction can issue multiple loads
-                                                                          // and can have multiple producers. We only want the latest producer
+        if (dependent->source_memory[j] == sq_it->virtual_address) {
+          // and dependent->lq_index[j]->producer_id == sq_it->instr_id) { // this is required since a single
+          // instruction can issue multiple loads
+          // and can have multiple producers. We only want the latest producer
 
           // TODO: Get rid of this check once we have data accesses in the trace
           if (dependent->lq_index[j]->producer_id == std::numeric_limits<uint64_t>::max()) {
@@ -1296,7 +1306,7 @@ void O3_CPU::retire_rob()
     DP(if (warmup_complete[cpu]) { cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << endl; });
 
 #ifdef LOG
-    if (current_cycle > 105175661)
+    if (current_cycle < 10000)
       cout << "instr_id: " << ROB.front().instr_id << ", committed @" << current_cycle << endl;
 #endif
     ROB.pop_front();

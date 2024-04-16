@@ -881,9 +881,10 @@ int main(int argc, char** argv)
 
     for (std::size_t i = 0; i < ooo_cpu.size(); ++i) {
 #ifdef LOG
-      if ((ooo_cpu[i]->fetch_stall || ooo_cpu[i]->instrs_to_read_this_cycle == 0) && ooo_cpu[i]->current_cycle > 105175661) {
+      if ((ooo_cpu[i]->fetch_stall || ooo_cpu[i]->instrs_to_read_this_cycle == 0) and ooo_cpu[i]->current_cycle < 10000) {
         std::string reason = (ooo_cpu[i]->fetch_stall) ? "FETCH_STALL" : "NO READS LEFT";
         cout << "@" << ooo_cpu[i]->current_cycle << "\tFTQ TARGET INSERTION STALLED\tREASON: " << reason << endl;
+        cout << "\tRESUME CYCLE: " << ooo_cpu[i]->fetch_resume_cycle << endl;
       }
 #endif
       // read from trace
