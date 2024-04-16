@@ -1,14 +1,14 @@
 {
-  "executable_name": "bin/champsim",
+  "executable_name": "bin/ubs_unaligned_overhead",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
-  "heartbeat_frequency": 1000000,
+  "heartbeat_frequency": 10000000,
   "num_cores": 1,
-  "CFLAGS": "-Wall -Wno-reorder -Werror -g -O3 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-  "CXXFLAGS": "-Wall -Wno-reorder -Werror -g -O3 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+  "CFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include",
+  "CXXFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include",
   "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
-  "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib",
+  "LDFLAGS": "-L/cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/lib",
   "ooo_cpu": [
     {
       "frequency": 4000,
@@ -25,7 +25,7 @@
       "lq_width": 2,
       "sq_width": 2,
       "retire_width": 5,
-      "mispredict_penalty": 12,
+      "mispredict_penalty": 1,
       "scheduler_size": 128,
       "decode_latency": 2,
       "dispatch_latency": 1,
@@ -33,7 +33,7 @@
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "btb": "extended_basic_btb",
-      "align_bits": 4
+      "btb_max_loop_branch": 32
     }
   ],
   "DIB": {
@@ -43,13 +43,31 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 8,
+    "ways": 13,
+    "buffer": true,
+    "buffer_size": 64,
+    "buffer_organisation": "DIRECT_MAPPED",
+    "way_sizes": [
+      8,
+      12,
+      16,
+      16,
+      16,
+      28,
+      32,
+      32,
+      36,
+      48,
+      64,
+      64,
+      64
+    ],
     "rq_size": 64,
     "wq_size": 64,
     "pq_size": 32,
     "mshr_size": 8,
-    "latency": 4,
-    "max_read": 1,
+    "latency": 5,
+    "max_read": 2,
     "max_write": 2,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
@@ -58,7 +76,9 @@
     "filter_inserts": false,
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,
-    "counting_block_method": "SUM_ACCESSES"
+    "lru_modifier": "LRU2BOUND4",
+    "counting_block_method": "SUM_ACCESSES",
+    "extend_blocks_to_branch": false
   },
   "L1D": {
     "sets": 64,
@@ -73,7 +93,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "no",
+    "prefetcher": "next_line",
     "counting_block_method": "SUM_ACCESSES"
   },
   "L2C": {
@@ -83,7 +103,7 @@
     "wq_size": 32,
     "pq_size": 16,
     "mshr_size": 32,
-    "latency": 30,
+    "latency": 12,
     "max_read": 1,
     "max_write": 1,
     "prefetch_as_load": false,
@@ -154,7 +174,7 @@
     "wq_size": 32,
     "pq_size": 32,
     "mshr_size": 64,
-    "latency": 60,
+    "latency": 42,
     "max_read": 1,
     "max_write": 1,
     "prefetch_as_load": false,
