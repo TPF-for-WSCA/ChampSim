@@ -13,3 +13,5 @@ obj/
 *.swp
 tracer/pin/obj-intel64/
 core.*
+
+**/.DS_Store
