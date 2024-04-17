@@ -17,6 +17,7 @@ class STATS(Enum):
     BRANCH_DISTANCES = 8
     BRANCH_COUNT = 9
     INSTRUCTION_COUNT = 10
+    BRANCH_MPKI = 11
 
 
 type = STATS.IPC
@@ -110,6 +111,18 @@ def extrace_useless_percentage(path):
         if matches:
             return int(matches.groups()[1]) / int(matches.groups()[0])
     return -1
+
+
+def extract_branch_mpki(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile("cpu0\_L1I MPKI\: (\d*\.?\d+)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[0]
 
 
 def extract_l1i_mpki(path):
@@ -238,6 +251,10 @@ def single_run(path):
                 )
             elif type == STATS.INSTRUCTION_COUNT:
                 stat_by_workload[workload] = extract_instruction_count(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.BRANCH_MPKI:
+                stat_by_workload[workload] = extract_branch_mpki(
                     f"{path}/{workload}/{logfile}"
                 )
             else:
