@@ -23,6 +23,7 @@ extern uint8_t knob_stall_on_miss;
 
 void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper)
 {
+  assert(lower <= upper);
   if (upper > 63) {
     upper = 63;
   }
