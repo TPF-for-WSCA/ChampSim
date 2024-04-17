@@ -475,6 +475,8 @@ void O3_CPU::fetch_instruction()
       or (l1i_req_begin.pos < IFETCH_BUFFER.end().pos && end.pos < l1i_req_begin.pos)) {
     end = IFETCH_BUFFER.end();
   }
+
+  // TODO: fix up size for aligned packets
   CACHE* L1I = static_cast<CACHE*>(L1I_bus.lower_level);
   auto l1i_req_end = std::find_if_not(l1i_req_begin, end, [&find_addr, this, L1I](const ooo_model_instr& x) {
     // we check for completed to ignore the dummy instructions at 2 offsets
