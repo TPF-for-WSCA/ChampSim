@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/ubs",
+  "executable_name": "bin/size_sensitivity/ubs",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
