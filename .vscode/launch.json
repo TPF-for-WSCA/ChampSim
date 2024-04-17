@@ -11,7 +11,7 @@
                 "-warmup_instructions",
                 "0",
                 "-simulation_instructions",
-                "5000000000",
+                "5000",
                 "-result_dir",
                 "~/Downloads/results/test/",
                 // "-ptrace",
