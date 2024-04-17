@@ -48,7 +48,7 @@
     "wq_size": 64,
     "pq_size": 32,
     "mshr_size": 8,
-    "latency": 4,
+    "latency": 5,
     "max_read": 2,
     "max_write": 2,
     "prefetch_as_load": false,
