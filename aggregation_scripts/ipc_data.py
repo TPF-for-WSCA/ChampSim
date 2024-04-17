@@ -278,7 +278,7 @@ def write_partial_misses(data, out_path="./"):
         filename = base_filename + str(csize)
         filename += ".tsv"
         file_path = os.path.join(out_path, filename)
-        if not "vcl" in csize:
+        if not ("ubs" in csize or "vcl" in csize):
             continue
         with open(file_path, "w+") as outfile:
             for workload, _ in data[csize].items():
