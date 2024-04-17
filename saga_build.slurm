@@ -11,7 +11,7 @@
 #SBATCH -o /cluster/work/users/romankb/slurm-build-%j.out
 
 module load Boost/1.79.0-GCC-11.3.0
-/cluster/projects/nn4650k/workspace/ChampSim/saga_build.sh
-#/cluster/projects/nn4650k/workspace/ChampSim/saga_rebuttal_build.sh
+#/cluster/projects/nn4650k/workspace/ChampSim/saga_build.sh
+/cluster/projects/nn4650k/workspace/ChampSim/saga_rebuttal_build.sh
 #/cluster/projects/nn4650k/workspace/ChampSim/saga_grid_build.sh
 #/cluster/projects/nn4650k/workspace/ChampSim/saga_btb_build.sh
