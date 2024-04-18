@@ -8,7 +8,7 @@
 
 #include "ooo_cpu.h"
 
-#define BASIC_BTB_SETS 4096
+#define BASIC_BTB_SETS 512
 #define BASIC_BTB_WAYS 4
 #define BASIC_BTB_INDIRECT_SIZE 4096
 #define BASIC_BTB_RAS_SIZE 64

@@ -265,6 +265,8 @@ def create_uniform_buckets_of_size(num_buckets):
         b / sum(BLOCK_SIZES_HISTOGRAM[strategies[CHOSEN_STRATEGY].name])
         for b in BLOCK_SIZES_HISTOGRAM[strategies[CHOSEN_STRATEGY].name]
     ]
+    filtered_histogram = [x for x in normalised_histogram if x != 0]
+    print(f"HISTOGRAM: {filtered_histogram}")
     target = 1.0 / num_buckets
     bucket_sizes = []
     bucket_percentages = []
@@ -342,7 +344,7 @@ def create_uniform_buckets_of_size(num_buckets):
 
 
 def apply_way_analysis(
-    workload_name, tracefile_path, num_sets=64
+    workload_name, tracefile_path, num_sets=256
 ):
     """ Apply way analysis to find optimal way size. This runs the selected merge
         strategies to find the optimal way size under the assumption of a given
@@ -368,7 +370,11 @@ def apply_way_analysis(
         buffer_bytes_per_set = (
             2 + 64 + (126/num_sets)
         )  # 2 bytes for instruction accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
+<<<<<<< HEAD
     target_size = 512 - buffer_bytes_per_set + overhead_allowance + 32
+=======
+    target_size = 512 - buffer_bytes_per_set + overhead_allowance + (2048 / num_sets)
+>>>>>>> vcl_buffer
     error = target_size
     selected_waysizes = []
     local_overhead = 0
@@ -376,7 +382,12 @@ def apply_way_analysis(
     overhead = 0
     max_size = 0
     max_size_ways = []
+<<<<<<< HEAD
     for i in range(7, 20):
+=======
+    # for i in range(7, 20):
+    for i in range(7,20):
+>>>>>>> vcl_buffer
         tag_overhead = (i - 7) * (26 + 1 + 3) / 8  # (tag bits, valid bit, lru bits)
         if arm:
             overhead = math.ceil(((4 + 26 + 4) * i) / 8)  # 6 bits per tag
@@ -688,9 +699,9 @@ def main(args):
         fig = plt.figure(figsize=(18 * cm, 8 * cm))
         fig.subplots_adjust(bottom=0.39)
         ax1 = fig.add_subplot(1, 1, 1)
-        ax1.set_ylabel("Storage Efficiency")
-        ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+        ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0, decimals=0))
         divider = make_axes_locatable(ax1)
+<<<<<<< HEAD
         graphs_dir = os.path.join(trace_directory, "graphs")
         os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
         ax2 = divider.append_axes("right", size="400%", pad=0.05)
@@ -710,20 +721,88 @@ def main(args):
         ax3.set_ylim([0.27, 0.83])
         ax4.set_ylim([0.27, 0.83])
         axes = [ax1, ax2, ax3, ax4]
+=======
+        y_lower = 0.6
+        y_upper = 0.9
+>>>>>>> vcl_buffer
 
+        #y_lower = 0.2
+        #y_upper = 0.83
+        ax1.set_ylabel("Storage Efficiency")
+        if (arm):
+            graphs_dir = os.path.join(trace_directory, "graphs")
+            os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
+            ax2 = divider.append_axes("right", size="400%", pad=0.05)
+            ax2.sharey(ax1)
+            ax2.yaxis.set_tick_params(labelleft=False)
+            fig.add_axes(ax2)
+            ax3 = divider.append_axes("right", size="88%", pad=0.05)
+            ax3.sharey(ax1)
+            ax3.yaxis.set_tick_params(labelleft=False)
+            fig.add_axes(ax3)
+            ax1.set_ylim([y_lower, y_upper])
+            ax2.set_ylim([y_lower, y_upper])
+            ax3.set_ylim([y_lower, y_upper])
+            axes = [ax1, ax2, ax3]
+        else:
+            graphs_dir = os.path.join(trace_directory, "graphs")
+            os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
+            ax2 = divider.append_axes("right", size="300%", pad=0.05)
+            ax3 = divider.append_axes("right", size="300%", pad=0.05)
+            ax4 = divider.append_axes("right", size="300%", pad=0.05)
+            ax1.set_ylim([y_lower, y_upper])
+            ax2.sharey(ax1)
+            ax2.yaxis.set_tick_params(labelleft=False)
+            ax2.xaxis.set_tick_params(labelbottom=False)
+            ax3.yaxis.set_tick_params(labelleft=False)
+            ax3.xaxis.set_tick_params(labelbottom=False)
+            ax4.xaxis.set_tick_params(labelbottom=False)
+            ax4.yaxis.set_tick_params(labelleft=False)
+            ax2.set_xticks([])
+            ax2.set_ylim([y_lower, y_upper])
+            ax3.set_xticks([])
+            ax3.set_ylim([y_lower, y_upper])
+            ax4.set_xticks([])
+            ax4.set_ylim([y_lower, y_upper])
+
+            fig.add_axes(ax2)
+            axes = [ax1]
+
+
+        avg = []
+        data_per_benchmark = {}
         for idx, group in enumerate(sorted(groups)):
-            avg = []
-            data_per_benchmark = {}
             for key, value in data_per_workload.items():
                 if key.startswith(group):
-                    data_per_benchmark[key] = value
-                    avg.append(sum(value) / len(value))
-            data_per_benchmark[f"{group.upper()} AVG"] = avg
-            print(f"{group.upper()} AVG: {sum(avg)/len(avg)}")
-            axes[idx].violinplot(
+                    if group in ['merced', 'delta', 'whiskey', 'charlie']:
+                        avg.extend(value)
+                    else:
+                        data_per_benchmark[key] = value
+                        avg.append(sum(value) / len(value))
+            print(f"{group.upper()} AVG: {sum(avg)/len(avg)}, MIN: {min(avg)}, MAX: {max(avg)}")
+            if group in ['merced', 'delta', 'whiskey', 'charlie']:
+                data_per_benchmark[group] = avg
+                avg = []
+            else:
+                data_per_benchmark[f"{group.upper()} AVG"] = avg
+            if group not in ['merced', 'delta', 'whiskey', 'charlie']:
+                axes[idx].violinplot(
+                    data_per_benchmark.values(), showmeans=True, widths=0.9
+                )
+                set_axis_style(axes[idx], data_per_benchmark.keys())
+                avg = []
+                data_per_benchmark = {}
+        if not arm:
+            avg = []
+            for _, v in data_per_benchmark.items():
+                avg.append(sum(v)/len(v))
+            data_per_benchmark["GOOGLE AVG"] = avg
+            print(f"GOOGLE AVG: {sum(avg)/len(avg)}, MIN: {min(avg)}, MAX: {max(avg)}")
+
+            axes[0].violinplot(
                 data_per_benchmark.values(), showmeans=True, widths=0.9
             )
-            set_axis_style(axes[idx], data_per_benchmark.keys())
+            set_axis_style(axes[0], data_per_benchmark.keys())
 
         plt.savefig(
             os.path.join(
