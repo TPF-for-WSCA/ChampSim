@@ -12,13 +12,14 @@
 #build_configs=("saga_vcl_64k_64s_extending.json" "saga_vcl_64k_64s_not_extending.json" "saga_128k_config.json")
 #build_configs=("saga_ubsBOUND1.json" "saga_ubsBOUND2.json" "saga_ubsBOUND6.json" "saga_ubsBOUND8.json" "saga_ubsDEFAULT.json" "saga_ubsINSERT1.json" "saga_ubsINSERT3.json" "saga_ubsINSERT4.json")
 #build_configs=("saga_ubs_10_ways.json" "saga_ubs_10_ways_not_extending.json" "saga_ubs_10_small_ways.json" "saga_ubs_10_small_ways_not_extending.json")
-build_configs=("saga_ubs_unaligned_overhead_isca.json" "saga_ubs_unaligned_overhead_isca_extend.json" "saga_ubs_overhead_isca.json" "saga_ubs.json" "saga_64k_16B_aligned_config.json" "saga_32k_config.json" "saga_32k_16B_aligned_config.json" "saga_32k_4c_config.json")
+#build_configs=("saga_ubs_unaligned_overhead_isca.json" "saga_ubs_unaligned_overhead_isca_extend.json" "saga_ubs_overhead_isca.json" "saga_ubs.json" "saga_64k_16B_aligned_config.json" "saga_32k_config.json" "saga_32k_16B_aligned_config.json" "saga_32k_4c_config.json")
+build_configs=("saga_ubs_5c.json")
 cd /cluster/projects/nn4650k/workspace/ChampSim/
 old_dir=$(pwd)
 for build_script in ${build_configs[@]}
 do
     echo "Building ${build_script}"
-    ./config.sh ./SAGA_CONFIGS/latency_sensitivity/${build_script}
+    ./config.sh ./SAGA_CONFIGS/size_sensitivity/${build_script}
     make -j
 done
 cd $old_dir

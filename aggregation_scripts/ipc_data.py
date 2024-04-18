@@ -19,6 +19,8 @@ class STATS(Enum):
     INSTRUCTION_COUNT = 10
     BRANCH_MPKI = 11
     FETCH_COUNT = 12
+    STALL_CYCLES = 13
+    ROB_AT_MISS = 14
 
 
 type = STATS.IPC
@@ -74,6 +76,7 @@ def extract_l1i_partial(path):
             return matches.groups()[1]
     return 0
 
+
 def extract_fetches(path):
     logs = []
     with open(path) as f:
@@ -85,6 +88,7 @@ def extract_fetches(path):
         if matches:
             return int(matches.groups()[0])
     return 0
+
 
 def extract_l1i_detail_partial_misses(path):
     logs = []
@@ -129,12 +133,47 @@ def extract_branch_mpki(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile("cpu0\_L1I MPKI\: (\d*\.?\d+)")
+    regex = re.compile("BRANCH\_MPKI\: (\d*\.?\d+)")
     logs.reverse()
     for line in logs:  # reverse to find last run first
         matches = regex.match(line)
         if matches:
             return matches.groups()[0]
+
+
+def extract_rob_at_stall(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile("AVG ROB SIZE AT STALL\: (\d*\.?\d+)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[0]
+
+
+def extract_stall_cycles(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+        stallcycles_regex = re.compile("CPU 0 FRONTEND STALLED CYCLES:\s+(\d+)")
+    regex = re.compile("CPU 0 cumulative IPC\: (\d*\.?\d+)")
+    totalmiss_regex = re.compile("cpu0\_L1I TOTAL.*MISS\:\s+(\d*)\s+PARTIAL MISS")
+    logs.reverse()
+    total_misses = -1
+    stall_cycles = -1
+    for line in logs:
+        stallcycles_matches = stallcycles_regex.match(line)
+        totalcycles_matches = totalmiss_regex.match(line)
+        if stallcycles_matches:
+            stall_cycles = int(stallcycles_matches.groups()[0])
+        if totalcycles_matches:
+            total_misses = int(totalcycles_matches.groups()[0])
+    if total_misses < 0 or stall_cycles < 0:
+        print("ERROR: DID NOT EXTRACT STALL PERCENTAGE")
+        return float("NaN")
+    return float(stall_cycles) / float(total_misses)
 
 
 def extract_l1i_mpki(path):
@@ -269,8 +308,16 @@ def single_run(path):
                 stat_by_workload[workload] = extract_instruction_count(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.ROB_AT_MISS:
+                stat_by_workload[workload] = extract_rob_at_stall(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.BRANCH_MPKI:
                 stat_by_workload[workload] = extract_branch_mpki(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.STALL_CYCLES:
+                stat_by_workload[workload] = extract_stall_cycles(
                     f"{path}/{workload}/{logfile}"
                 )
             else:
@@ -365,6 +412,10 @@ def write_tsv(data, out_path=None):
         filename = "branch_count"
     elif type == STATS.INSTRUCTION_COUNT:
         filename = "instruction_count"
+    elif type == STATS.STALL_CYCLES:
+        filename = "stall_cycles"
+    elif type == STATS.ROB_AT_MISS:
+        filename = "rob_at_miss"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
@@ -421,6 +472,10 @@ elif sys.argv[3] == "FETCH_COUNT":
     type = STATS.FETCH_COUNT
 elif sys.argv[3] == "BRANCH_MPKI":
     type = STATS.BRANCH_MPKI
+elif sys.argv[3] == "STALL_CYCLES":
+    type = STATS.STALL_CYCLES
+elif sys.argv[3] == "ROB_AT_MISS":
+    type = STATS.ROB_AT_MISS
 elif sys.argv[3] == "PARTIAL":
     type = STATS.PARTIAL
 elif sys.argv[3] == "BUFFER_DURATION":
