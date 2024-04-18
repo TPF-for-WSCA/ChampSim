@@ -701,30 +701,8 @@ def main(args):
         ax1 = fig.add_subplot(1, 1, 1)
         ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0, decimals=0))
         divider = make_axes_locatable(ax1)
-<<<<<<< HEAD
-        graphs_dir = os.path.join(trace_directory, "graphs")
-        os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
-        ax2 = divider.append_axes("right", size="400%", pad=0.05)
-        ax2.sharey(ax1)
-        ax2.yaxis.set_tick_params(labelleft=False)
-        fig.add_axes(ax2)
-        ax3 = divider.append_axes("right", size="88%", pad=0.05)
-        ax3.sharey(ax1)
-        ax3.yaxis.set_tick_params(labelleft=False)
-        fig.add_axes(ax3)
-        ax4 = divider.append_axes("right", size="88%", pad=0.05)
-        ax4.sharey(ax1)
-        ax4.yaxis.set_tick_params(labelleft=False)
-        fig.add_axes(ax4)
-        ax1.set_ylim([0.27, 0.83])
-        ax2.set_ylim([0.27, 0.83])
-        ax3.set_ylim([0.27, 0.83])
-        ax4.set_ylim([0.27, 0.83])
-        axes = [ax1, ax2, ax3, ax4]
-=======
         y_lower = 0.6
         y_upper = 0.9
->>>>>>> vcl_buffer
 
         #y_lower = 0.2
         #y_upper = 0.83
