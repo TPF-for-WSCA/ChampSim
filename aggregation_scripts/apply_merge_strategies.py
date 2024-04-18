@@ -693,11 +693,11 @@ def main(args):
         ax1 = fig.add_subplot(1, 1, 1)
         ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0, decimals=0))
         divider = make_axes_locatable(ax1)
-        #y_lower = 0.4
-        #y_upper = 1.0
+        y_lower = 0.6
+        y_upper = 0.9
 
-        y_lower = 0.2
-        y_upper = 0.83
+        #y_lower = 0.2
+        #y_upper = 0.83
         ax1.set_ylabel("Storage Efficiency")
         if (arm):
             graphs_dir = os.path.join(trace_directory, "graphs")
