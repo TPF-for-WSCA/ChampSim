@@ -18,6 +18,7 @@ class STATS(Enum):
     BRANCH_COUNT = 9
     INSTRUCTION_COUNT = 10
     BRANCH_MPKI = 11
+    FETCH_COUNT = 12
 
 
 type = STATS.IPC
@@ -73,6 +74,17 @@ def extract_l1i_partial(path):
             return matches.groups()[1]
     return 0
 
+def extract_fetches(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile("cpu0\_L1I LOAD.*ACCESS\:\s+(\d*)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return int(matches.groups()[0])
+    return 0
 
 def extract_l1i_detail_partial_misses(path):
     logs = []
@@ -221,6 +233,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_l1i_mpki(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.FETCH_COUNT:
+                stat_by_workload[workload] = extract_fetches(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.PARTIAL:
                 stat_by_workload[workload] = extract_l1i_partial(
                     f"{path}/{workload}/{logfile}"
@@ -329,6 +345,8 @@ def write_tsv(data, out_path=None):
     filename = "ipc"
     if type == STATS.MPKI:
         filename = "mpki"
+    elif type == STATS.FETCH_COUNT:
+        filename = "fetch_count"
     elif type == STATS.PARTIAL:
         filename = "partial"
     elif type == STATS.BUFFER_DURATION:
@@ -397,6 +415,8 @@ def multiple_benchmarks_run():
 data = {}
 if sys.argv[3] == "MPKI":
     type = STATS.MPKI
+elif sys.argv[3] == "FETCH_COUNT":
+    type = STATS.FETCH_COUNT
 elif sys.argv[3] == "PARTIAL":
     type = STATS.PARTIAL
 elif sys.argv[3] == "BUFFER_DURATION":
