@@ -19,6 +19,7 @@ class STATS(Enum):
     INSTRUCTION_COUNT = 10
     BRANCH_MPKI = 11
     FETCH_COUNT = 12
+    STALL_CYCLES = 13
 
 
 type = STATS.IPC
@@ -74,6 +75,7 @@ def extract_l1i_partial(path):
             return matches.groups()[1]
     return 0
 
+
 def extract_fetches(path):
     logs = []
     with open(path) as f:
@@ -85,6 +87,7 @@ def extract_fetches(path):
         if matches:
             return int(matches.groups()[0])
     return 0
+
 
 def extract_l1i_detail_partial_misses(path):
     logs = []
@@ -421,6 +424,8 @@ elif sys.argv[3] == "FETCH_COUNT":
     type = STATS.FETCH_COUNT
 elif sys.argv[3] == "BRANCH_MPKI":
     type = STATS.BRANCH_MPKI
+elif sys.argv[3] == "STALL_CYCLES":
+    type = STATS.STALL_CYCLES
 elif sys.argv[3] == "PARTIAL":
     type = STATS.PARTIAL
 elif sys.argv[3] == "BUFFER_DURATION":
