@@ -52,6 +52,7 @@ private:
   bool perfect_branch_predict;
 
 public:
+  uint64_t rob_size_at_stall = 0;
   uint32_t cpu = 0;
   std::map<uint64_t, uint64_t> branch_distance;
   uint32_t branch_count;

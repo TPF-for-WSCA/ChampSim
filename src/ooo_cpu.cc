@@ -552,6 +552,7 @@ void O3_CPU::promote_to_decode()
     }
 #endif
     frontend_stall_cycles++;
+    rob_size_at_stall += ROB.occupancy();
   }
   while (available_fetch_bandwidth > 0 && !IFETCH_BUFFER.empty() && !DECODE_BUFFER.full() && IFETCH_BUFFER.front().translated == COMPLETED
          && IFETCH_BUFFER.front().fetched == COMPLETED) {
