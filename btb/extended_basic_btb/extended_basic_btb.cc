@@ -10,7 +10,7 @@
 #include "ooo_cpu.h"
 
 #define idx(cpu, set, way, NUM_SETS, NUM_WAYS) (cpu * NUM_SETS * NUM_WAYS + set * NUM_WAYS + way)
-#define BASIC_BTB_INDIRECT_SIZE 4096
+#define BASIC_BTB_INDIRECT_SIZE 32768
 #define BASIC_BTB_RAS_SIZE 64
 #define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
 #define BASIC_BTB_BRANCH_TABLE 131072

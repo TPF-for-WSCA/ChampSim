@@ -268,8 +268,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     if (predicted_branch_target != arch_instr.branch_target) {
       branch_mispredictions++;
       total_rob_occupancy_at_branch_mispredict += ROB.occupancy();
-      branch_type_misses[arch_instr.branch_type]++;
       if (warmup_complete[cpu]) {
+        branch_type_misses[arch_instr.branch_type]++;
         fetch_stall = 1;
         instrs_to_read_this_cycle = 0;
         arch_instr.branch_mispredicted = 1;
