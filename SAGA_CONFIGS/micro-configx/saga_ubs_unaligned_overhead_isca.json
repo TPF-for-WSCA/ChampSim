@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/ubs_unaligned_overhead_isca",
+  "executable_name": "bin/micro/ubs_unaligned_overhead_isca",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,

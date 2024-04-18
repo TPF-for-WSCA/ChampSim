@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim64k_unaligned",
+  "executable_name": "bin/micro/champsim64k_unaligned",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
