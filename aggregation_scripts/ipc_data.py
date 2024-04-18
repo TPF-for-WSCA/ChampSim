@@ -133,7 +133,7 @@ def extract_branch_mpki(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile("cpu0\_L1I MPKI\: (\d*\.?\d+)")
+    regex = re.compile("BRANCH\_MPKI\: (\d*\.?\d+)")
     logs.reverse()
     for line in logs:  # reverse to find last run first
         matches = regex.match(line)
