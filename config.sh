@@ -119,7 +119,7 @@ default_core = {
     "execute_latency": 0,
     "branch_predictor": "bimodal",
     "btb": "basic_btb",
-    "btb_sets": 4096,
+    "btb_sets": 512,
     "align_bits": 6,
     "btb_ways": 8,
     "btb_max_loop_branch": 64,
