@@ -20,6 +20,7 @@ class STATS(Enum):
     BRANCH_MPKI = 11
     FETCH_COUNT = 12
     STALL_CYCLES = 13
+    ROB_AT_MISS = 14
 
 
 type = STATS.IPC
@@ -133,6 +134,18 @@ def extract_branch_mpki(path):
     with open(path) as f:
         logs = f.readlines()
     regex = re.compile("cpu0\_L1I MPKI\: (\d*\.?\d+)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[0]
+
+
+def extract_rob_at_stall(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile("AVG ROB SIZE AT STALL\: (\d*\.?\d+)")
     logs.reverse()
     for line in logs:  # reverse to find last run first
         matches = regex.match(line)
@@ -295,6 +308,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_instruction_count(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.ROB_AT_MISS:
+                stat_by_workload[workload] = extract_rob_at_stall(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.BRANCH_MPKI:
                 stat_by_workload[workload] = extract_branch_mpki(
                     f"{path}/{workload}/{logfile}"
@@ -397,6 +414,8 @@ def write_tsv(data, out_path=None):
         filename = "instruction_count"
     elif type == STATS.STALL_CYCLES:
         filename = "stall_cycles"
+    elif type == STATS.ROB_AT_MISS:
+        filenam = "rob_at_miss"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
@@ -455,6 +474,8 @@ elif sys.argv[3] == "BRANCH_MPKI":
     type = STATS.BRANCH_MPKI
 elif sys.argv[3] == "STALL_CYCLES":
     type = STATS.STALL_CYCLES
+elif sys.argv[3] == "ROB_AT_MISS":
+    type = STATS.ROB_AT_MISS
 elif sys.argv[3] == "PARTIAL":
     type = STATS.PARTIAL
 elif sys.argv[3] == "BUFFER_DURATION":

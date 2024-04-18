@@ -596,7 +596,7 @@ void print_branch_stats()
     cout << "BRANCH_INDIRECT_CALL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[5] / total_instructions) << endl;
     cout << "BRANCH_RETURN: " << (1000.0 * ooo_cpu[i]->branch_type_misses[6] / total_instructions) << endl << endl;
 
-    cout << "AVG ROB SIZE AT STALL: " << ooo_cpu[i]->rob_size_at_stall / ooo_cpu[i]->frontend_stall_cycles << endl << endl;
+    cout << "AVG ROB SIZE AT STALL: " << (1.0 * ooo_cpu[i]->rob_size_at_stall) / ooo_cpu[i]->frontend_stall_cycles << endl << endl;
   }
 }
 
