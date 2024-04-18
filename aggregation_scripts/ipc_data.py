@@ -140,6 +140,29 @@ def extract_branch_mpki(path):
             return matches.groups()[0]
 
 
+def extract_stall_cycles(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+        stallcycles_regex = re.compile("CPU 0 FRONTEND STALLED CYCLES:\s+(\d+)")
+    regex = re.compile("CPU 0 cumulative IPC\: (\d*\.?\d+)")
+    totalmiss_regex = re.compile("cpu0\_L1I TOTAL.*MISS\:\s+(\d*)\s+PARTIAL MISS")
+    logs.reverse()
+    total_misses = -1
+    stall_cycles = -1
+    for line in logs:
+        stallcycles_matches = stallcycles_regex.match(line)
+        totalcycles_matches = totalmiss_regex.match(line)
+        if stallcycles_matches:
+            stall_cycles = int(stallcycles_matches.groups()[0])
+        if totalcycles_matches:
+            total_misses = int(totalcycles_matches.groups()[0])
+    if total_misses < 0 or stall_cycles < 0:
+        print("ERROR: DID NOT EXTRACT STALL PERCENTAGE")
+        return float("NaN")
+    return float(stall_cycles) / float(total_misses)
+
+
 def extract_l1i_mpki(path):
     logs = []
     with open(path) as f:
@@ -276,6 +299,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_branch_mpki(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.STALL_CYCLES:
+                stat_by_workload[workload] = extract_stall_cycles(
+                    f"{path}/{workload}/{logfile}"
+                )
             else:
                 stat_by_workload[workload] = extract_ipc(f"{path}/{workload}/{logfile}")
     return stat_by_workload
@@ -368,6 +395,8 @@ def write_tsv(data, out_path=None):
         filename = "branch_count"
     elif type == STATS.INSTRUCTION_COUNT:
         filename = "instruction_count"
+    elif type == STATS.STALL_CYCLES:
+        filename = "stall_cycles"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
