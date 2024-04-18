@@ -378,12 +378,7 @@ def apply_way_analysis(
     overhead = 0
     max_size = 0
     max_size_ways = []
-<<<<<<< HEAD
-    for i in range(7, 20):
-=======
-    # for i in range(7, 20):
     for i in range(7,20):
->>>>>>> vcl_buffer
         tag_overhead = (i - 7) * (26 + 1 + 3) / 8  # (tag bits, valid bit, lru bits)
         if arm:
             overhead = math.ceil(((4 + 26 + 4) * i) / 8)  # 6 bits per tag
