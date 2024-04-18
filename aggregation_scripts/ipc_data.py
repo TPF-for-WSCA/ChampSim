@@ -347,6 +347,8 @@ def write_tsv(data, out_path=None):
         filename = "mpki"
     elif type == STATS.FETCH_COUNT:
         filename = "fetch_count"
+    elif type == STATS.FETCH_COUNT:
+        filename = "flush_count"
     elif type == STATS.PARTIAL:
         filename = "partial"
     elif type == STATS.BUFFER_DURATION:
