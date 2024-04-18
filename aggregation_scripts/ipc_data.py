@@ -419,6 +419,8 @@ if sys.argv[3] == "MPKI":
     type = STATS.MPKI
 elif sys.argv[3] == "FETCH_COUNT":
     type = STATS.FETCH_COUNT
+elif sys.argv[3] == "BRANCH_MPKI":
+    type = STATS.BRANCH_MPKI
 elif sys.argv[3] == "PARTIAL":
     type = STATS.PARTIAL
 elif sys.argv[3] == "BUFFER_DURATION":
