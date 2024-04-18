@@ -415,7 +415,7 @@ def write_tsv(data, out_path=None):
     elif type == STATS.STALL_CYCLES:
         filename = "stall_cycles"
     elif type == STATS.ROB_AT_MISS:
-        filenam = "rob_at_miss"
+        filename = "rob_at_miss"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
