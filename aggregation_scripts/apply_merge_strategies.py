@@ -370,11 +370,7 @@ def apply_way_analysis(
         buffer_bytes_per_set = (
             2 + 64 + (126/num_sets)
         )  # 2 bytes for instruction accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
-<<<<<<< HEAD
     target_size = 512 - buffer_bytes_per_set + overhead_allowance + 32
-=======
-    target_size = 512 - buffer_bytes_per_set + overhead_allowance + (2048 / num_sets)
->>>>>>> vcl_buffer
     error = target_size
     selected_waysizes = []
     local_overhead = 0
