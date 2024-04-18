@@ -683,7 +683,7 @@ def main(args):
 
     if args.action == "storage_efficiency":
         data_per_workload = dict(sorted(data_per_workload.items()))
-        groups = set([label.split(".")[0] for label in data_per_workload.keys()])
+        groups = set([label.split("_")[0] for label in data_per_workload.keys()])
         from mpl_toolkits.axes_grid1 import make_axes_locatable
 
         cm = 1 / 2.54
