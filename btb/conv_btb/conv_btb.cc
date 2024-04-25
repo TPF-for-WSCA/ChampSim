@@ -369,7 +369,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         num_bits++;
       }
       extern uint8_t knob_collect_offsets;
-      if (knob_collect_offsets && num_bits < 7) {
+      if (knob_collect_offsets && num_bits < 4) {
         pc_offset_pairs.push_back(std::make_pair(ip, (branch_target >> 2) - (ip >> 2)));
         auto idx = (branch_target > ip) ? (branch_target >> 2) - (ip >> 2) + 64 : (ip >> 2) - (branch_target >> 2);
         assert(idx <= 128);
