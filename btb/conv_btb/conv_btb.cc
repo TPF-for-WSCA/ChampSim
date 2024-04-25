@@ -381,7 +381,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         }
       }
     }
-    assert(num_bits >= 0 && num_bits < 66);
+    assert(num_bits >= 0 && num_bits < 65);
 
     int smallest_offset_partition_id = convert_offsetBits_to_partitionID(num_bits);
 
