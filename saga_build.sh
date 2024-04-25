@@ -19,7 +19,7 @@ old_dir=$(pwd)
 for build_script in ${build_configs[@]}
 do
     echo "Building ${build_script}"
-    ./config.sh ./SAGA_CONFIGS/size_sensitivity/${build_script}
+    ./config.sh ./SAGA_CONFIGS/${build_script}
     make -j
 done
 cd $old_dir
