@@ -9,11 +9,11 @@ build_configs=("saga_32k_fdip_config.json" ""saga_64k_fdip_config.json"" "saga_v
 #build_configs=("saga_4k_data_config.json" "saga_8k_data_config.json" "saga_16k_data_config.json" "saga_32k_data_config.json" "saga_64k_data_config.json" "saga_128k_data_config.json" "saga_256k_data_config.json") 
 
 old_dir=$(pwd)
-cd /cluster/projects/nn4650k/workspace/ChampSim/
+cd /cluster/projects/nn4650k/workspace/ChampSimISCA/
 for build_script in ${build_configs[@]}
 do
     echo "Building ${build_script}"
-    /cluster/projects/nn4650k/workspace/ChampSim/config.sh /cluster/projects/nn4650k/workspace/ChampSim/${build_script}
+    /cluster/projects/nn4650k/workspace/ChampSimISCA/config.sh /cluster/projects/nn4650k/workspace/ChampSimISCA/${build_script}
     make -j
 done
 cd $old_dir

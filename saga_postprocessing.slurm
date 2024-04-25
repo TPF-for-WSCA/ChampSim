@@ -15,7 +15,7 @@ module load Python/3.9.6-GCCcore-11.2.0
 directories=("champsim8k" "champsim64k" "champsim4k" "champsim32k" "champsim2k" "champsim1k" "champsim16k" "champsim128k")
 for directory in ${directories[@]}
 do
-    python /cluster/home/romankb/workspace/ChampSim/aggregation_scripts/apply_merge_strategies.py /cluster/work/users/romankb/results/champsim_${directory}/ >> ~/pyaggregate_smallcache_${directory}.log &
+    python /cluster/home/romankb/workspace/ChampSimISCA/aggregation_scripts/apply_merge_strategies.py /cluster/work/users/romankb/results/champsim_${directory}/ >> ~/pyaggregate_smallcache_${directory}.log &
 done
 
 for job in `jobs -p`

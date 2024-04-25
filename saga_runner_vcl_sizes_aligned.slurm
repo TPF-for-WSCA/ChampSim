@@ -15,7 +15,7 @@ module load Python/3.9.6-GCCcore-11.2.0
 binaries=("champsim_vcl_8_aligned" "champsim_vcl_12_aligned" "champsim_vcl_16_aligned")
 for binary in ${binaries[@]}
 do
-    python /cluster/home/romankb/workspace/ChampSim/data_collector.py --instructions 90000000 --experiment_executable /cluster/home/romankb/workspace/ChampSim/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/tanvir --output_dir /cluster/work/users/romankb/results/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
+    python /cluster/home/romankb/workspace/ChampSimISCA/data_collector.py --instructions 90000000 --experiment_executable /cluster/home/romankb/workspace/ChampSimISCA/bin/${binary} --traces_directory /cluster/work/users/romankb/dataset/tanvir --output_dir /cluster/work/users/romankb/results/sizes_${binary}/ >> ~/pyrunner_${binary}.log & 
 done
 
 for job in `jobs -p`
