@@ -366,7 +366,7 @@ public:
     trace_read_instr_pt.decoded_instruction = raw_pt_inst;
 
     uint32_t numOperands = xed_decoded_inst_noperands(&raw_pt_inst);
-    xed_iclass_enum_t opcode = xed_decoded_inst_get_iclass(&raw_pt_inst);
+    // xed_iclass_enum_t opcode = xed_decoded_inst_get_iclass(&raw_pt_inst);
     uint32_t inRegIdx = 0, outRegIdx = 0;
     uint32_t inMemIdx = 0, outMemIdx = 0;
     for (uint32_t opIdx = 0; opIdx < numOperands; opIdx++) {
@@ -410,10 +410,10 @@ public:
           char buf[2048];
           xed_decoded_inst_dump(&raw_pt_inst, buf, 2048);
           std::cout << "Processing " << buf << std::endl;
-          for (int i = 0; i < inRegIdx; i++) {
+          for (uint32_t i = 0; i < inRegIdx; i++) {
             std::cout << "inreg " << i << ": " << XedRegEnumToStr(trace_read_instr_pt.source_registers[i]) << std::endl;
           }
-          for (int i = 0; i < outRegIdx; i++) {
+          for (uint32_t i = 0; i < outRegIdx; i++) {
             std::cout << "outreg " << i << ": " << XedRegEnumToStr(trace_read_instr_pt.destination_registers[i]) << std::endl;
           }
           assert(0);

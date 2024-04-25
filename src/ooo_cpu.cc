@@ -384,30 +384,41 @@ void O3_CPU::fetch_instruction()
   // fetch cache lines that were part of a translated page but not the cache
   // line that initiated the translation
   auto l1i_req_begin = IFETCH_BUFFER.end();
-  l1i_req_begin = std::find_if(IFETCH_BUFFER.begin(), IFETCH_BUFFER.end(), [](const ooo_model_instr& x) {
-    // NOTE: Just broken up for debugging purposes
-    if ((x.translated == COMPLETED) && (x.fetched == 0))
-      return true;
-    else
-      return false;
-  });
+  for (auto it = IFETCH_BUFFER.begin(); it != IFETCH_BUFFER.end(); it++) {
+    if (it->translated == COMPLETED && it->fetched == 0 && it->ip % 4 != 0) {
+      it->fetched = COMPLETED;
+      continue;
+    }
+    if (it->translated != COMPLETED)
+      break;
+
+    if (it->fetched != 0) {
+      continue;
+    }
+
+    l1i_req_begin = it;
+    break;
+  }
 
   if (l1i_req_begin == IFETCH_BUFFER.end()) {
     return; // we did not find one that is translated and not yet fetched
   }
 
   uint64_t find_addr = l1i_req_begin->instruction_pa;
-  auto end = std::min(IFETCH_BUFFER.end(), std::next(l1i_req_begin, FETCH_WIDTH + 1)); // Collapsing queue design?
-  auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr](const ooo_model_instr& x) {
-    bool is_adjacent =
-        find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa; // we compare first with ourselves. of course same address access is included
-    bool is_same_block = find_addr >> LOG2_BLOCK_SIZE == x.instruction_pa >> LOG2_BLOCK_SIZE;
+  auto end = std::next(l1i_req_begin, FETCH_WIDTH);
+  if ((IFETCH_BUFFER.end().pos < end.pos && end.pos < l1i_req_begin.pos) or (IFETCH_BUFFER.end().pos < end.pos && l1i_req_begin.pos < IFETCH_BUFFER.end().pos)
+      or (l1i_req_begin.pos < IFETCH_BUFFER.end().pos && end.pos < l1i_req_begin.pos)) {
+    end = IFETCH_BUFFER.end();
+  }
+
+  auto l1i_req_end = std::find_if(l1i_req_begin, end, [&find_addr, this](const ooo_model_instr& x) {
+    bool is_adjacent = find_addr + 4 == x.instruction_pa || x.fetched == COMPLETED
+                       || align_bits < 6; // we compare first with ourselves. of course same address access is included
+    bool is_same_block = find_addr >> align_bits == x.instruction_pa >> align_bits;
     find_addr = x.instruction_pa;
     return not(is_adjacent && is_same_block);
   });
-  if (l1i_req_end < end || l1i_req_begin == IFETCH_BUFFER.begin()) { // collapsing FTQ?
-    do_fetch_instruction(l1i_req_begin, l1i_req_end);
-  }
+  do_fetch_instruction(l1i_req_begin, l1i_req_end);
 }
 
 void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
