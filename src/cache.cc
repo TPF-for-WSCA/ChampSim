@@ -808,7 +808,8 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, 
   });
   if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
     ooo_cpu[handle_pkt.cpu]->stall_on_miss = 0;
-    record_block_insert_removal(set, way, handle_pkt.address, warmup_complete[handle_pkt.cpu]);
+    // TODO: Fix function below for wider cores
+    // record_block_insert_removal(set, way, handle_pkt.address, warmup_complete[handle_pkt.cpu]);
   }
   bool bypass = (way == NUM_WAY);
 #ifndef LLC_BYPASS
