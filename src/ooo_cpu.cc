@@ -439,6 +439,8 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.asid[1] = 0;
   fetch_packet.to_return = {&L1I_bus};
   for (; begin != end; ++begin) {
+    if (begin->ip % 4 != 0)
+      continue;
     fetch_packet.instr_depend_on_me.push_back(begin);
     if (fetch_packet.address == begin->instruction_pa)
       continue;
