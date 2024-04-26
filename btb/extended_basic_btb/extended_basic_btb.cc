@@ -254,23 +254,32 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   } else if ((branch_type != BRANCH_INDIRECT) && (branch_type != BRANCH_INDIRECT_CALL)) {
     // use BTB
     uint64_t diff_bits = (branch_target >> 2) ^ (ip >> 2);
-    int num_bits = 0;
-    while (diff_bits != 0) {
-      diff_bits = diff_bits >> 1;
-      num_bits++;
-    }
-    extern uint8_t knob_collect_offsets;
-    if (knob_collect_offsets && num_bits < 7) {
-      pc_offset_pairs.push_back(std::make_pair(ip, (branch_target >> 2) - (ip >> 2)));
-      auto idx = (branch_target > ip) ? (branch_target >> 2) - (ip >> 2) + 64 : (ip >> 2) - (branch_target >> 2);
-      assert(idx <= 128);
-      offset_counts[idx]++;
-      for (uint64_t i = 0; i < 64; i++) {
-        uint64_t bitsel = 0x1ull << i;
-        if (bitsel & ip)
-          pc_bits_offset[idx][i]++;
+    int num_bits;
+    if (branch_type == BRANCH_RETURN) {
+      num_bits = 0;
+    } else {
+      uint64_t offset = branch_target & (diff_bits - 1);
+      num_bits = 0;
+      while (diff_bits != 0) {
+        diff_bits = diff_bits >> 1;
+        num_bits++;
+      }
+      assert(num_bits <= 64);
+      extern uint8_t knob_collect_offsets;
+      if (knob_collect_offsets) {
+        pc_offset_pairs.push_back(std::make_pair(ip, offset));
+        if (num_bits < 6) {
+          assert(idx <= 128);
+          offset_counts[offset]++;
+          for (uint64_t i = 0; i < 64; i++) {
+            uint64_t bitsel = 0x1ull << i;
+            if (bitsel & ip)
+              pc_bits_offset[offset][i]++;
+          }
+        }
       }
     }
+    assert(num_bits >= 0 && num_bits < 65);
 
     auto btb_entry = basic_btb_find_entry(cpu, ip, BTB_SETS, BTB_WAYS, basic_btb);
 

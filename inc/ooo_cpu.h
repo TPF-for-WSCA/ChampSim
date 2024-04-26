@@ -59,7 +59,7 @@ public:
   uint64_t total_branch_distance;
   std::vector<std::pair<uint64_t, int8_t>> pc_offset_pairs;
   std::vector<std::vector<uint64_t>> pc_bits_offset;
-  std::vector<uint64_t> offset_counts;
+  std::map<uint64_t, uint64_t> offset_counts;
   size_t align_bits = LOG2_BLOCK_SIZE;
   // instruction
   uint64_t instr_unique_id = 0, completed_executions = 0, begin_sim_cycle = 0, begin_sim_instr = 0, last_sim_cycle = 0, last_sim_instr = 0,
@@ -179,7 +179,7 @@ public:
         EXEC_LATENCY(execute_latency), ITLB_bus(rob_size, itlb, "ITLB_bus"), DTLB_bus(rob_size, dtlb, "DTLB_bus"), L1I_bus(rob_size, l1i, "L1I_bus"),
         L1D_bus(rob_size, l1d, "L1D_bus"), bpred_type(bpred_type), btb_type(btb_type), BTB_SETS(btb_sets), BTB_WAYS(btb_ways),
         EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch), perfect_btb(perfect_btb), perfect_branch_predict(perfect_branch_predict), ipref_type(ipref_type),
-        pc_bits_offset(128, std::vector<uint64_t>(64)), offset_counts(128, 0), align_bits(align_bits)
+        pc_bits_offset(128, std::vector<uint64_t>(64)), align_bits(align_bits)
   {
     basic_btb = (BASIC_BTB_ENTRY*)malloc(NUM_CPUS * BTB_SETS * BTB_WAYS * sizeof(BASIC_BTB_ENTRY));
     if (!basic_btb) {

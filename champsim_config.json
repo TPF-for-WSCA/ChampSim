@@ -15,7 +15,7 @@
       "ifetch_buffer_size": 128,
       "decode_buffer_size": 32,
       "dispatch_buffer_size": 32,
-      "rob_size": 352,
+      "rob_size": 512,
       "lq_size": 192,
       "sq_size": 114,
       "fetch_width": 8,
@@ -24,22 +24,22 @@
       "execute_width": 12,
       "lq_width": 2,
       "sq_width": 2,
-      "retire_width": 8,
+      "retire_width": 12,
       "mispredict_penalty": 4,
       "scheduler_size": 205,
       "decode_latency": 2,
       "dispatch_latency": 1,
       "schedule_latency": 2,
-      "execute_latency": 0,
+      "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
-      "btb": "extended_basic_btb",
-      "align_bits": 5
+      "btb": "conv_btb",
+      "align_bits": 6
     }
   ],
   "DIB": {
-    "window_size": 16,
-    "sets": 32,
-    "ways": 8
+    "window_size": 64,
+    "sets": 256,
+    "ways": 16
   },
   "L1I": {
     "sets": 64,
@@ -147,7 +147,7 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "LLC": {
-    "frequency": 4000,
+    "frequency": 2000,
     "sets": 32768,
     "ways": 15,
     "rq_size": 32,
