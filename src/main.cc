@@ -509,7 +509,7 @@ void write_offsets(O3_CPU* cpu, int cpu_id)
   } else {
     cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
     for (auto elem : cpu->pc_offset_pairs) {
-      csv_file << elem.first << "\t" << (int)elem.second << endl;
+      csv_file << elem.first << "\t" << (uint)elem.second << endl;
     }
     csv_file.close();
   }

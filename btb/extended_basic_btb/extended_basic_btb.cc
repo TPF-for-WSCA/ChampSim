@@ -269,7 +269,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       if (knob_collect_offsets) {
         pc_offset_pairs.push_back(std::make_pair(ip, offset));
         if (num_bits < 6) {
-          assert(idx <= 128);
+          assert(offset <= 128);
           offset_counts[offset]++;
           for (uint64_t i = 0; i < 64; i++) {
             uint64_t bitsel = 0x1ull << i;

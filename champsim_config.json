@@ -24,7 +24,7 @@
       "execute_width": 12,
       "lq_width": 2,
       "sq_width": 2,
-      "retire_width": 12,
+      "retire_width": 8,
       "mispredict_penalty": 4,
       "scheduler_size": 205,
       "decode_latency": 2,
