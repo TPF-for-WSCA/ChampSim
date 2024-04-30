@@ -10,6 +10,9 @@ from enum import Enum
 
 value_set_per_bit_size = defaultdict(set)
 count_per_offset = defaultdict(int)
+ways_per_set_per_idx_size_count = defaultdict(
+    lambda: defaultdict(set)
+)  # cardinality of the set is the number of ways
 
 value_count_per_addr_bit = defaultdict(lambda: defaultdict(int))
 total_lines_read = 0
@@ -38,6 +41,15 @@ def write_result_files(out_dir: str):
             offset_counts = sorted(offsets.values(), reverse=True)
             row.extend(offset_counts)
             writer.writerow(row)
+    with open(
+        os.path.join(out_dir, "num_ways_based_on_index.tsv"), "w+", encoding="utf-8"
+    ) as ordered_addr_offset_file:
+        writer = csv.writer(ordered_addr_offset_file)
+        writer.writerow(["Num Sets", "Max Num Ways"])
+        for num_sets, max_ways in ways_per_set_per_idx_size_count.items():
+            num_ways = max([s.size() for s in max_ways.values()])
+            row = [f"{num_sets}", f"{num_ways}"]
+            writer.writerow(row)
 
 
 def read_single_tsv(path: str):
@@ -57,8 +69,11 @@ def read_single_tsv(path: str):
             bit_size = 0 if offset == 0 else math.ceil(math.log2(offset))
             value_set_per_bit_size[bit_size].add(offset)
             count_per_offset[offset] += 1
-            addr = (addr >> 2) & 0b1111
-            value_count_per_addr_bit[addr][offset] += 1
+            idx = (addr >> 2) & 0b1111
+            value_count_per_addr_bit[idx][offset] += 1
+            for i in [1, 2, 4, 8, 16, 32, 64, 128, 256]:
+                idx = (addr >> 2) & ((1 << i) - 1)
+                ways_per_set_per_idx_size_count[i][idx].add(offset)
 
 
 def main(args):
