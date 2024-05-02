@@ -8,7 +8,7 @@ import sys
 from collections import defaultdict
 from enum import Enum
 
-value_set_per_bit_size = defaultdict(set)
+value_set_per_bit_size = defaultdict(lambda: defaultdict(int))
 count_per_offset = defaultdict(int)
 ways_per_set_per_idx_size_count = defaultdict(
     lambda: defaultdict(set)
@@ -26,9 +26,7 @@ def write_result_files(out_dir: str):
         writer.writerow(["Offset Size", "Offset Counts"])
         for offset_size, offsets in value_set_per_bit_size.items():
             row = [offset_size]
-            offset_counts = sorted(
-                [count_per_offset[offset] for offset in offsets], reverse=True
-            )
+            offset_counts = sorted(offsets.values(), reverse=True)
             row.extend(offset_counts)
             writer.writerow(row)
     with open(
@@ -52,28 +50,28 @@ def write_result_files(out_dir: str):
             writer.writerow(row)
 
 
-def read_single_tsv(path: str):
+def read_single_application(path: str):
     global total_lines_read
-    with open(
-        os.path.join(path, "cpu0_pc_offset_mapping.tsv"),
-        "r",
-        encoding="utf-8",
-        newline="",
-    ) as input_file:
-        input_file.seek(0)
-        reader = csv.reader(input_file, delimiter="\t")
-        for line in reader:
-            total_lines_read += 1
-            addr = int(line[0])
-            offset = int(line[1])
-            bit_size = 0 if offset == 0 else math.ceil(math.log2(offset))
-            value_set_per_bit_size[bit_size].add(offset)
-            count_per_offset[offset] += 1
-            idx = (addr >> 2) & 0b1111
-            value_count_per_addr_bit[idx][offset] += 1
-            for i in [1, 2, 4, 8, 16, 32, 64, 128, 256]:
-                idx = (addr >> 2) & ((1 << i) - 1)
-                ways_per_set_per_idx_size_count[i][idx].add(offset)
+    for bit_size in range(1, 65):
+        with open(
+            os.path.join(path, f"cpu0_size{bit_size}_pc_offset_mapping.tsv"),
+            "r",
+            encoding="utf-8",
+            newline="",
+        ) as input_file:
+            input_file.seek(0)
+            reader = csv.reader(input_file, delimiter="\t")
+            for line in reader:
+                total_lines_read += 1
+                addr = int(line[0])
+                offset = int(line[1])
+                value_set_per_bit_size[bit_size][offset] += 1
+                count_per_offset[offset] += 1
+                idx = (addr >> 2) & 0b1111
+                value_count_per_addr_bit[idx][offset] += 1
+                for i in [1, 2, 4, 8, 16, 32, 64, 128, 256]:
+                    idx = (addr >> 2) & ((1 << i) - 1)
+                    ways_per_set_per_idx_size_count[i][idx].add(offset)
 
 
 def main(args):
@@ -86,7 +84,7 @@ def main(args):
         )
         for workload in os.listdir(benchmark_path):
             print(f"\t{workload}: ...", end="", flush=True)
-            read_single_tsv(os.path.join(benchmark_path, workload))
+            read_single_application(os.path.join(benchmark_path, workload))
             print(f"\r\t{workload}:    \tCOMPLETED")
     print(f"TOTAL LINES READ: {total_lines_read}")
     out_dir = os.path.join(args.result_dir[0], "raw_data")
