@@ -13,7 +13,7 @@
                 "-simulation_instructions",
                 "1000000",
                 "-result_dir",
-                "~/Downloads/results/sizes_champsim32k/test/",
+                "~/Downloads/results/ipc1/sizes_champsim32k/test/",
                 // "-ptrace",
                 // "-cloudsuite",
                 //"-intel",

@@ -57,9 +57,9 @@ public:
   std::map<uint64_t, uint64_t> branch_distance;
   uint32_t branch_count;
   uint64_t total_branch_distance;
-  std::vector<std::pair<uint64_t, uint64_t>> pc_offset_pairs;
+  std::array<std::vector<std::pair<uint64_t, uint64_t>>, 64> pc_offset_pairs_by_size;
+  std::array<std::map<uint64_t, uint64_t>, 64> offset_counts_by_size;
   std::vector<std::vector<uint64_t>> pc_bits_offset;
-  std::map<uint64_t, uint64_t> offset_counts;
   size_t align_bits = LOG2_BLOCK_SIZE;
   // instruction
   uint64_t instr_unique_id = 0, completed_executions = 0, begin_sim_cycle = 0, begin_sim_instr = 0, last_sim_cycle = 0, last_sim_instr = 0,

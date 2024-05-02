@@ -267,7 +267,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       assert(num_bits <= 64);
       extern uint8_t knob_collect_offsets;
       if (knob_collect_offsets) {
-        pc_offset_pairs.push_back(std::make_pair(ip, offset));
+        pc_offset_pairs_by_size.push_back(std::make_pair(ip, offset));
         if (num_bits < 6) {
           assert(offset <= 128);
           offset_counts[offset]++;

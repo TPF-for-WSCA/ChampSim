@@ -6,6 +6,8 @@
  * returns.
  */
 
+#include <tuple>
+
 #include "ooo_cpu.h"
 
 #define BASIC_BTB_SETS 4096
@@ -369,19 +371,17 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         num_bits++;
       }
       uint64_t offset = (branch_target >> 2) & ((1ull << num_bits) - 1);
-      assert(num_bits <= 64);
+      assert(num_bits <= 64 and 1 <= num_bits);
       extern uint8_t knob_collect_offsets;
       if (knob_collect_offsets) {
-        pc_offset_pairs.push_back(std::make_pair(ip, offset));
-        if (num_bits < 6) {
-          assert(offset <= 128);
-          offset_counts[offset]++;
-          for (uint64_t i = 0; i < 64; i++) {
-            uint64_t bitsel = 0x1ull << i;
-            if (bitsel & ip)
-              pc_bits_offset[offset][i]++;
-          }
-        }
+        pc_offset_pairs_by_size[num_bits - 1].push_back(std::make_pair(ip, offset));
+
+        offset_counts_by_size[num_bits - 1][offset]++;
+        // for (uint64_t i = 0; i < 64; i++) {
+        //   uint64_t bitsel = 0x1ull << i;
+        //   if (bitsel & ip)
+        //     pc_bits_offset[offset][i]++;
+        // }
       }
     }
     assert(num_bits >= 0 && num_bits < 65);

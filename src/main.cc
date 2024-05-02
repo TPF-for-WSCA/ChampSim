@@ -499,45 +499,47 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
 void write_offsets(O3_CPU* cpu, int cpu_id)
 {
   std::ofstream csv_file;
-  std::filesystem::path csv_file_path = result_dir;
-  string filename = "cpu" + std::to_string(cpu_id) + "_pc_offset_mapping.tsv";
-  csv_file_path /= filename;
-  csv_file.open(csv_file_path, std::ios::out);
-  if (!csv_file) {
-    std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
-    std::cerr << std::flush;
-  } else {
-    cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
-    for (auto elem : cpu->pc_offset_pairs) {
-      csv_file << elem.first << "\t" << elem.second << endl;
+  std::filesystem::path csv_result_path = result_dir;
+  for (int i = 0; i < 64; i++) {
+    string filename = "cpu" + std::to_string(cpu_id) + "_size" + std::to_string(i + 1) + "_pc_offset_mapping.tsv";
+    auto csv_file_path = csv_result_path / filename;
+    csv_file.open(csv_file_path, std::ios::out);
+    if (!csv_file) {
+      std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+      std::cerr << std::flush;
+    } else {
+      cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
+      for (auto elem : (cpu->pc_offset_pairs_by_size)[i]) {
+        csv_file << elem.first << "\t" << elem.second << endl;
+      }
+      csv_file.close();
     }
-    csv_file.close();
   }
 
-  csv_file_path = result_dir;
-  filename = "cpu" + std::to_string(cpu_id) + "_pc_bits_offset.tsv";
-  csv_file_path /= filename;
-  csv_file.open(csv_file_path, std::ios::out);
-  if (!csv_file) {
-    std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
-    std::cerr << std::flush;
-  } else {
-    cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
-    csv_file << "offset\t";
-    for (size_t i = 0; i < 64; i++) {
-      csv_file << "bit" << i + 1 << "\t";
-    }
-    csv_file << "total_observations" << endl;
-    for (size_t i = 0; i < cpu->pc_bits_offset.size(); i++) {
-      csv_file << ((int)i - 64) << "\t";
-      auto counts = cpu->pc_bits_offset[i];
-      for (size_t j = 0; j < 64; j++) {
-        csv_file << counts[j] << "\t";
-      }
-      csv_file << cpu->offset_counts[i] << endl;
-    }
-    csv_file.close();
-  }
+  // csv_file_path = result_dir;
+  // filename = "cpu" + std::to_string(cpu_id) + "_pc_bits_offset.tsv";
+  // csv_file_path /= filename;
+  // csv_file.open(csv_file_path, std::ios::out);
+  // if (!csv_file) {
+  //   std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+  //   std::cerr << std::flush;
+  // } else {
+  //   cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
+  //   csv_file << "offset\t";
+  //   for (size_t i = 0; i < 64; i++) {
+  //     csv_file << "bit" << i + 1 << "\t";
+  //   }
+  //   csv_file << "total_observations" << endl;
+  //   for (size_t i = 0; i < cpu->pc_bits_offset.size(); i++) {
+  //     csv_file << ((int)i - 64) << "\t";
+  //     auto counts = cpu->pc_bits_offset[i];
+  //     for (size_t j = 0; j < 64; j++) {
+  //       csv_file << counts[j] << "\t";
+  //     }
+  //     csv_file << cpu->offset_counts[i] << endl;
+  //   }
+  //   csv_file.close();
+  // }
 }
 
 void print_branch_stats()
