@@ -9,11 +9,11 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "-warmup_instructions",
-                "50000000",
+                "1",
                 "-simulation_instructions",
-                "100000000",
+                "1000000",
                 "-result_dir",
-                "~/Downloads/results/test/",
+                "~/Downloads/results/sizes_champsim32k/test/",
                 // "-ptrace",
                 // "-cloudsuite",
                 //"-intel",
@@ -81,7 +81,7 @@
         },
         {
             "name": "Python: MergingBlocks",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceRoot}/aggregation_scripts/apply_merge_strategies.py",
             "console": "integratedTerminal",
@@ -95,7 +95,7 @@
         },
         {
             "name": "Python: ExtractLogs",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceRoot}/aggregation_scripts/ipc_data.py",
             "console": "integratedTerminal",
@@ -109,7 +109,7 @@
         },
         {
             "name": "Python: Timeseries",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceRoot}/aggregation_scripts/plot_timeseries.py",
             "console": "integratedTerminal",
@@ -121,8 +121,21 @@
             ]
         },
         {
+            "name": "Python: Offsets",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceRoot}/aggregation_scripts/offset_plotting.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "stopOnEntry": false,
+            "args": [
+                "--result_dir",
+                "~/Downloads/results/"
+            ]
+        },
+        {
             "name": "Python: LinesPerWay",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceRoot}/aggregation_scripts/ways_handled.py",
             "console": "integratedTerminal",
@@ -134,7 +147,7 @@
         },
         {
             "name": "Python: OptimalWay",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceRoot}/aggregation_scripts/apply_merge_strategies.py",
             "console": "integratedTerminal",

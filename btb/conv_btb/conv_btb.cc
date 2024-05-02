@@ -368,7 +368,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         diff_bits = diff_bits >> 1;
         num_bits++;
       }
-      uint64_t offset = (branch_target >> 2) & ((1 << num_bits) - 1);
+      uint64_t offset = (branch_target >> 2) & ((1ull << num_bits) - 1);
       assert(num_bits <= 64);
       extern uint8_t knob_collect_offsets;
       if (knob_collect_offsets) {

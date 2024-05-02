@@ -47,7 +47,7 @@ def write_result_files(out_dir: str):
         writer = csv.writer(ordered_addr_offset_file)
         writer.writerow(["Num Sets", "Max Num Ways"])
         for num_sets, max_ways in ways_per_set_per_idx_size_count.items():
-            num_ways = max([s.size() for s in max_ways.values()])
+            num_ways = max([len(s) for s in max_ways.values()])
             row = [f"{num_sets}", f"{num_ways}"]
             writer.writerow(row)
 
