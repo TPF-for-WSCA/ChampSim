@@ -1,14 +1,14 @@
 {
-  "executable_name": "bin/champsim",
+  "executable_name": "bin/wide_core/ubs_unaligned_overhead_isca",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
-  "heartbeat_frequency": 10000,
+  "heartbeat_frequency": 10000000,
   "num_cores": 1,
-  "CFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O0 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-  "CXXFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O0 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+  "CFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include",
+  "CXXFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include",
   "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
-  "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib -fsanitize=bounds",
+  "LDFLAGS": "-L/cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/lib",
   "ooo_cpu": [
     {
       "frequency": 4000,
@@ -33,7 +33,7 @@
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
       "btb": "conv_btb",
-      "align_bits": 6
+      "btb_max_loop_branch": 32
     }
   ],
   "DIB": {
@@ -43,12 +43,35 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 8,
+    "ways": 18,
+    "buffer": true,
+    "buffer_size": 64,
+    "buffer_organisation": "DIRECT_MAPPED",
+    "way_sizes": [
+      4,
+      4,
+      4,
+      4,
+      8,
+      8,
+      8,
+      8,
+      12,
+      16,
+      20,
+      32,
+      36,
+      36,
+      48,
+      64,
+      64,
+      64
+    ],
     "rq_size": 64,
     "wq_size": 64,
     "pq_size": 32,
     "mshr_size": 8,
-    "latency": 4,
+    "latency": 5,
     "max_read": 2,
     "max_write": 2,
     "prefetch_as_load": false,
@@ -58,7 +81,9 @@
     "filter_inserts": false,
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,
-    "counting_block_method": "SUM_ACCESSES"
+    "lru_modifier": "LRU2BOUND4",
+    "counting_block_method": "SUM_ACCESSES",
+    "extend_blocks_to_branch": false
   },
   "L1D": {
     "sets": 64,
@@ -185,4 +210,3 @@
     "minor_fault_penalty": 200
   }
 }
-
