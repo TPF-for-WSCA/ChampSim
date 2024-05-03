@@ -19,10 +19,10 @@ echo ${chroot}
 
 for b in ${benchmarks[@]}
 do
-	echo "Accumulating ${b}"
-	python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi MPKI &
-	python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi IPC  &
-	python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL &
+    echo "Accumulating ${b}"
+    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi MPKI &
+    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi IPC  &
+    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL &
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi FRONTEND_STALLS &
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL_MISSES &
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi USELESS_LINES &
@@ -41,8 +41,8 @@ done
 
 for b in ${benchmarks[@]}
 do
-	echo "Plotting ${b}"
-    
+    echo "Plotting ${b}"
+
     echo "${pg_dir}plotgen --debug -i ./${b}/ipc.tsv --drop-nan --palette bright --normalise-to-row $((2**15)) --apply-func sub 1 --apply-icolumns : --apply-function cset = nan 0 --apply-icolumns : --x-type category --y-tick-format ',.2%' --plot bar --transpose --sort-by-column sizes_champsim_vcl_buffer_fdip_64d --row-names --renameregex '(.*)\.champsimtrace' --add-function mean --add-row AVG --ignore-columns $((2**15)) --column-names 'sizes_champsim_vcl_buffer_fdip_64d:UBS cache' --file ./raw_data/ipc_relative_${b}.tsv --width 1350 --height 300 -o ./graphs/ipc_relative_${b}.html ./graphs/ipc_relative_${b}.pdf"
     ${pg_dir}plotgen --debug -i ./${b}/mpki.tsv --drop-nan --palette bright --normalise-to-row $((2**15)) --apply-func sub 1 --apply-icolumns : --apply-function cset = nan 0 --apply-icolumns : --x-type category --y-tick-format ',.2%' --plot bar --transpose --sort-by-column sizes_champsim_vcl_buffer_fdip_64d --reverse-columns --row-names --renameregex '(.*)\.champsimtrace' --add-function mean --add-row AVG --ignore-columns $((2**15)) --column-names 'sizes_champsim_vcl_buffer_fdip_64d:UBS cache' --file ./raw_data/mpki_relative_${b}.tsv  --width 1350 --height 300 -o ./graphs/mpki_relative_${b}.html ./graphs/mpki_relative_${b}.pdf  &
     ${pg_dir}plotgen --debug -i ./${b}/ipc.tsv --drop-nan --palette bright --normalise-to-row $((2**15)) --apply-func sub 1 --apply-icolumns : --apply-function cset = nan 0 --apply-icolumns : --x-type category --y-tick-format ',.2%' --plot bar --transpose --sort-by-column sizes_champsim_vcl_buffer_fdip_64d --row-names --renameregex '(.*)\.champsimtrace' --add-function mean --add-row AVG --ignore-columns $((2**15)) --column-names 'sizes_champsim_vcl_buffer_fdip_64d:UBS cache' --file ./raw_data/ipc_relative_${b}.tsv  --width 1350 --height 300 -o ./graphs/ipc_relative_${b}.html ./graphs/ipc_relative_${b}.pdf  &
@@ -87,8 +87,9 @@ i=1
 end=64
 
 while [ $i -le $end ]; do
-    ${pg_dir}plotgen --debug -i ./**/sizes_champsim32k/**/cpu0_size${i}_pc_offset_mapping.tsv --drop-nan --palette bright --column-names --filename --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*' --join index --sort-function name --sort-columns --row-names --print --normalise-function sum --normalise-irows : --y-master-title "Relative Frequency of Offsets" --palette bright --master-title "" --plot line --y-title-standoff 135 --file ./raw_data/ordered_offset_${i}_counts.tsv --width 1350 --height 300 -o ./graphs/ordered_offset_${i}_counts.html ./graphs/ordered_offset_${i}_counts.pdf &
+    ${pg_dir}plotgen --debug -i ./**/sizes_champsim32k/**/cpu0_size${i}_offset_count.tsv --drop-nan --palette bright --column-names --filename --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*'      --join index --sort-function name --sort-columns --row-names --sort-order desc --sort-function median --sort-rows --apply-function cset = nan 0 --apply-icolumns : --print --normalise-function sum --normalise-icolumns : --apply-fun cumsum --apply-columns : --apply-function cset = nan 1 --apply-icolumns : --print --y-master-title "Relative Frequency of Offsets" --palette bright --master-title "" --plot line --y-title-standoff 135 --file ./raw_data/ordered_offset_${i}_counts.tsv --width 1350 --height 300 -o ./graphs/ordered_offset_${i}_counts.html ./graphs/ordered_offset_${i}_counts.pdf
     i=$(($i+1))
+    #    ${pg_dir}plotgen --debug -i ./**/sizes_champsim32k/**/cpu0_size${i}_pc_offset_mapping.tsv --column-names --filename --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*' --join index --sort-function name --sort-columns --row-names --print --normalise-function sum --normalise-irows : --y-master-title "Relative Frequency of Offsets" --palette bright --master-title "" --plot line --y-title-standoff 135 --file ./raw_data/ordered_offset_${i}_counts.tsv --width 1350 --height 300 -o ./graphs/ordered_offset_${i}_counts.html ./graphs/ordered_offset_${i}_counts.pdf &
 done
 
 
