@@ -16,7 +16,6 @@ if [ -z ${champsim_root+x} ]; then chroot="/cluster/home/romankb"; else chroot=$
 
 echo ${chroot}
 
-python ${chroot}/ChampSim/aggregation_scripts/offset_plotting.py --result_dir ./ &
 
 for b in ${benchmarks[@]}
 do
@@ -61,6 +60,8 @@ do
     echo $job
     wait $job
 done
+
+python ${chroot}/ChampSim/aggregation_scripts/offset_plotting.py --result_dir ./ &
 
 ${pg_dir}plotgen --debug -i ./**/sizes_champsim_data_32k/**/cpu0_L1I_num_cl_with_num_holes.tsv --column-names --filename --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*' --join index --transpose --add-function sum --add-column "TOTAL CACHELINES" --sort-function name --sort-rows --row-names --select-column "TOTAL CACHELINES" --print --y-master-title "#Cachelines" --palette bright --master-title "Total Evictions" --plot bar --y-title-standoff 135 --file ./raw_data/cacheline_count.tsv --width 1350 --height 300 -o ./graphs/cacheline_count.html ./graphs/cacheline_count.pdf &
 # TODO: fixup line and ipc script to generate headers ${pg_dir}plotgen --debug -i ./**/sizes_champsim32k/branch_distancesconst.tsv --column-names --filename --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*' --join index --transpose --add-function sum --add-column "TOTAL CACHELINES" --sort-function name --sort-rows --row-names --select-column "TOTAL CACHELINES" --print --y-master-title "#Cachelines" --palette bright --master-title "Total Evictions" --plot bar --y-title-standoff 135 --file ./raw_data/cacheline_count.tsv --width 1350 --height 300 -o ./graphs/cacheline_count.html ./graphs/cacheline_count.pdf &
