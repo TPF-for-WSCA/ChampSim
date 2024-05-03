@@ -516,6 +516,22 @@ void write_offsets(O3_CPU* cpu, int cpu_id)
     }
   }
 
+  for (int i = 0; i < 64; i++) {
+    string filename = "cpu" + std::to_string(cpu_id) + "_size" + std::to_string(i + 1) + "_offset_count.tsv";
+    auto csv_file_path = csv_result_path / filename;
+    csv_file.open(csv_file_path, std::ios::out);
+    if (!csv_file) {
+      std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+      std::cerr << std::flush;
+    } else {
+      cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
+      for (auto elem : cpu->offset_counts_by_size[i]) {
+        csv_file << elem.first << "\t" << elem.second << endl;
+      }
+      csv_file.close();
+    }
+  }
+
   // csv_file_path = result_dir;
   // filename = "cpu" + std::to_string(cpu_id) + "_pc_bits_offset.tsv";
   // csv_file_path /= filename;
