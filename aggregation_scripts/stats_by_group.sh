@@ -87,7 +87,8 @@ i=1
 end=64
 
 while [ $i -le $end ]; do
-    ${pg_dir}plotgen --debug -i ./**/sizes_champsim32k/**/cpu0_size${i}_pc_offset_mapping.tsv --column-names --filename --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*' --join index --sort-function name --sort-columns --row-names --print --normalise-function sum --normalise-irows : --y-master-title "Relative Frequency of Offsets" --palette bright --master-title "" --plot line --y-title-standoff 135 --file ./raw_data/ordered_offset_${i}_counts.tsv --width 1350 --height 300 -o ./graphs/ordered_offset_${i}_counts.html ./graphs/ordered_offset_${i}_counts.pdf &
+    ${pg_dir}plotgen --debug -i ./**/sizes_champsim32k/**/cpu0_size${i}_pc_offset_mapping.tsv --drop-nan --palette bright --column-names --filename --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*' --join index --sort-function name --sort-columns --row-names --print --normalise-function sum --normalise-irows : --y-master-title "Relative Frequency of Offsets" --palette bright --master-title "" --plot line --y-title-standoff 135 --file ./raw_data/ordered_offset_${i}_counts.tsv --width 1350 --height 300 -o ./graphs/ordered_offset_${i}_counts.html ./graphs/ordered_offset_${i}_counts.pdf &
+    i=$(($i+1))
 done
 
 
