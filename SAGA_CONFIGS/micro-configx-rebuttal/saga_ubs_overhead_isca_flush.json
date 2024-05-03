@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/wide_core/ubs_overhead_isca_flush",
+  "executable_name": "bin/wide_core/ubs_overhead_isca_extending",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -21,7 +21,7 @@
       "fetch_width": 8,
       "decode_width": 6,
       "dispatch_width": 6,
-      "execute_width": 10,
+      "execute_width": 8,
       "lq_width": 2,
       "sq_width": 2,
       "retire_width": 8,
@@ -33,6 +33,7 @@
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
       "btb": "conv_btb",
+      "align_bits": 5,
       "btb_max_loop_branch": 32
     }
   ],
@@ -83,7 +84,7 @@
     "prefetch_buffer_size": 16,
     "lru_modifier": "LRU2BOUND4",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": false
+    "extend_blocks_to_branch": true
   },
   "L1D": {
     "sets": 64,
@@ -172,7 +173,7 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "LLC": {
-    "frequency": 2000,
+    "frequency": 4000,
     "sets": 32768,
     "ways": 15,
     "rq_size": 32,

@@ -18,10 +18,10 @@
       "rob_size": 512,
       "lq_size": 192,
       "sq_size": 114,
-      "fetch_width": 8,	
+      "fetch_width": 8,
       "decode_width": 6,
       "dispatch_width": 6,
-      "execute_width": 10,
+      "execute_width": 8,
       "lq_width": 2,
       "sq_width": 2,
       "retire_width": 8,
@@ -172,7 +172,7 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "LLC": {
-    "frequency": 2000,
+    "frequency": 4000,
     "sets": 32768,
     "ways": 15,
     "rq_size": 32,
