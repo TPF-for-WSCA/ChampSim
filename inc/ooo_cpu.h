@@ -2,6 +2,7 @@
 #define OOO_CPU_H
 
 #include <array>
+#include <cmath>
 #include <functional>
 #include <map>
 #include <queue>
