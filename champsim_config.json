@@ -31,8 +31,22 @@
         "schedule_latency": 2,
         "execute_latency": 1,
         "branch_predictor": "hashed_perceptron",
-        "btb": "base_btbx",
-        "align_bits": 6
+        "btb": "xbtbx",
+        "btb_ways": 8,
+        "btb_non_indirect": 4,
+        "btb_sets": 512,
+        "align_bits": 6,
+        "btb_offset_sizes": [
+            0,
+            4,
+            5,
+            7,
+            9,
+            11,
+            19,
+            25,
+            64
+        ]
     }],
     "DIB": {
         "window_size": 64,

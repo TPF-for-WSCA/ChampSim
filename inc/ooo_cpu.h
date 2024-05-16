@@ -47,8 +47,10 @@ class O3_CPU : public champsim::operable
 private:
   size_t BTB_SETS;
   size_t BTB_WAYS;
+  size_t BTB_NON_INDIRECT;
   size_t EXTENDED_BTB_MAX_LOOP_BRANCH;
   BASIC_BTB_ENTRY* basic_btb;
+  uint8_t* btb_sizes;
   bool prev_was_branch = false;
   bool perfect_btb;
   bool perfect_branch_predict;
@@ -156,6 +158,7 @@ public:
   void retire_rob();
 
   void print_deadlock() override;
+  void btb_final_stats();
 
   int prefetch_code_line(uint64_t pf_v_addr);
   void prefetcher_squash(uint64_t, uint64_t);
@@ -171,17 +174,17 @@ public:
          unsigned decode_width, unsigned dispatch_width, unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width,
          unsigned retire_width, unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency,
          unsigned execute_latency, MemoryRequestConsumer* itlb, MemoryRequestConsumer* dtlb, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
-         bpred_t bpred_type, btb_t btb_type, size_t btb_sets, size_t btb_ways, size_t btb_max_loop_branch, bool perfect_btb, bool perfect_branch_predict,
-         ipref_t ipref_type, size_t align_bits)
+         bpred_t bpred_type, btb_t btb_type, size_t btb_sets, size_t btb_ways, uint8_t* btb_offset_sizes, size_t btb_non_indirect, size_t btb_max_loop_branch,
+         bool perfect_btb, bool perfect_branch_predict, ipref_t ipref_type, size_t align_bits)
       : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
         IFETCH_BUFFER(ifetch_buffer_size * 2, "IFETCH_BUFFER"), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency, "DISPATCH_BUFFER"),
         DECODE_BUFFER(decode_buffer_size, decode_latency, "DECODE_BUFFER"), ROB(rob_size, "ROB"), LQ(lq_size), SQ(sq_size), FETCH_WIDTH(fetch_width),
         DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width),
         SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), SCHEDULING_LATENCY(schedule_latency),
         EXEC_LATENCY(execute_latency), ITLB_bus(rob_size, itlb, "ITLB_bus"), DTLB_bus(rob_size, dtlb, "DTLB_bus"), L1I_bus(rob_size, l1i, "L1I_bus"),
-        L1D_bus(rob_size, l1d, "L1D_bus"), bpred_type(bpred_type), btb_type(btb_type), BTB_SETS(btb_sets), BTB_WAYS(btb_ways),
-        EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch), perfect_btb(perfect_btb), perfect_branch_predict(perfect_branch_predict), ipref_type(ipref_type),
-        pc_bits_offset(128, std::vector<uint64_t>(64)), align_bits(align_bits)
+        L1D_bus(rob_size, l1d, "L1D_bus"), bpred_type(bpred_type), btb_type(btb_type), BTB_SETS(btb_sets), BTB_WAYS(btb_ways), btb_sizes(btb_offset_sizes),
+        BTB_NON_INDIRECT(btb_non_indirect), EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch), perfect_btb(perfect_btb),
+        perfect_branch_predict(perfect_branch_predict), ipref_type(ipref_type), pc_bits_offset(128, std::vector<uint64_t>(64)), align_bits(align_bits)
   {
     basic_btb = (BASIC_BTB_ENTRY*)malloc(NUM_CPUS * BTB_SETS * BTB_WAYS * sizeof(BASIC_BTB_ENTRY));
     if (!basic_btb) {
