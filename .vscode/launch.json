@@ -11,7 +11,7 @@
                 "-warmup_instructions",
                 "1",
                 "-simulation_instructions",
-                "1000000",
+                "10000",
                 "-result_dir",
                 "~/Downloads/results/ipc1/sizes_champsim32k/test/",
                 // "-ptrace",

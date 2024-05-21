@@ -33,8 +33,7 @@ struct BTBEntry {
 struct offset_BTBEntry {
   uint64_t target_offset;
   uint64_t lru;
-  uint64_t ref_count;
-  uint32_t reuse_count;
+  uint32_t ref_count;
 };
 
 struct BTB {
@@ -228,7 +227,7 @@ struct offsetBTB {
         offset_BTBEntry entry;
         entry.target_offset = target_offset;
         entry.lru = lru_counter;
-        entry.reuse_count = 1;
+        entry.ref_count = 1;
 
         // Find and replace LRU entry
         if (theOffsetBTB[idx].size() < assoc) {
@@ -244,13 +243,13 @@ struct offsetBTB {
             }
           }
 
-          uint32_t reuse_count = theOffsetBTB[idx][way].reuse_count;
+          uint32_t ref_count = theOffsetBTB[idx][way].ref_count;
           map<uint32_t, uint64_t>::iterator it;
-          it = offset_reuse_freq.find(reuse_count);
+          it = offset_reuse_freq.find(ref_count);
           if (it != offset_reuse_freq.end()) {
             it->second++;
           } else {
-            offset_reuse_freq[reuse_count] = 1;
+            offset_reuse_freq[ref_count] = 1;
           }
 
           theOffsetBTB[idx][way] = entry;
@@ -261,7 +260,7 @@ struct offsetBTB {
       // Update LRU counter
       theOffsetBTB[idx][way].lru = lru_counter;
       if (is_new_entry) {
-        theOffsetBTB[idx][way].reuse_count += 1;
+        theOffsetBTB[idx][way].ref_count += 1;
       }
     }
 
@@ -370,15 +369,9 @@ int convert_offsetBits_to_btb_partitionID(int num_bits)
     return 2;
   } else if (num_bits <= btb_partition_sizes[3] /*7*/) {
     return 3;
-  } else if (num_bits <= btb_partition_sizes[4] /*9*/) { // Since the next four partitions store the index to offsetBTB, an entry can be allocated in any of
-                                                         // them
-    return 4;
-  } else if (num_bits <= btb_partition_sizes[5] /*11*/) {
-    return 4;
-  } else if (num_bits <= btb_partition_sizes[6] /*19*/) {
-    return 4;
-  } else if (num_bits <= btb_partition_sizes[7] /*25*/) {
-    return 4;
+  } else if (btb_partition_sizes[3] /*9*/ < num_bits and num_bits <= btb_partition_sizes[7] /*25*/) { // Since the next four partitions store the index to
+                                                                                                      // offsetBTB, an entry can be allocated in any of them
+    return NUM_NON_INDIRECT_PARTITIONS;
   } else {
     return 8;
   }
@@ -554,6 +547,13 @@ uint64_t get_target_from_offset_btb_entry(BTBEntry* entry, uint64_t ip, int part
   return target;
 }
 
+void print_map(std::map<uint32_t, uint16_t>& pm)
+{
+  for (auto const& [key, val] : pm) {
+    std::cout << key << ": " << val << std::endl;
+  }
+}
+
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   // updates for indirect branches
@@ -567,6 +567,20 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       basic_btb_conditional_history[cpu] |= 1;
     }
   }*/
+
+  // TODO: Do fuzzy current cycle (variable containing last measurement timestamp, > 1000 clear)
+  if (current_cycle % 1000 == 0) {
+    std::cout << "Getting copy statistics - cycle: " << current_cycle << std::endl;
+    for (int i = 0; i < NUM_OFFSET_BTB_PARTITIONS; ++i) {
+      std::map<uint32_t, uint16_t> reuse_frequency;
+      auto offsetBTB = offsetBTB_partition[i];
+      for (auto& set : offsetBTB->theOffsetBTB)
+        for (auto& entry : set) {
+          reuse_frequency[entry.ref_count] += 1;
+        }
+      sharing_in_btb_by_partition[i].push_back(reuse_frequency); // TODO: We are adding this for multiple offset btbs
+    }
+  }
 
   if (branch_type == BRANCH_RETURN) {
     // recalibrate call-return offset
@@ -663,8 +677,7 @@ void O3_CPU::btb_final_stats()
     std::cout << "XXX reuse" << it->first << " " << it->second << '\n';
     offsetBTB_evictions += it->second;
   }
-  std::cout << "XXX reuseM"
-            << " " << (total_offsetBTB_evictions - offsetBTB_evictions) << '\n';
+  std::cout << "XXX reuseM" << " " << (total_offsetBTB_evictions - offsetBTB_evictions) << '\n';
 }
 
 bool O3_CPU::is_not_block_ending(uint64_t ip) { return true; }
