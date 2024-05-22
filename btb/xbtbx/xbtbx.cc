@@ -14,10 +14,6 @@
 #define BASIC_BTB_RAS_SIZE 64
 #define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
 
-#define NUM_NON_INDIRECT_PARTITIONS 4
-#define NUM_OFFSET_BTB_PARTITIONS (NUM_BTB_PARTITIONS - NUM_NON_INDIRECT_PARTITIONS - 1)
-#define LAST_BTB_PARTITION_ID NUM_BTB_PARTITIONS - 1
-
 map<uint32_t, uint64_t> offset_reuse_freq;
 uint64_t offset_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBmiss;
@@ -28,6 +24,7 @@ struct BTBEntry {
   uint64_t target_ip;
   uint8_t branch_type;
   uint64_t lru;
+
   uint32_t offsetBTB_partitionID;
   uint32_t offsetBTB_set;
   uint32_t offsetBTB_way;
@@ -36,7 +33,7 @@ struct BTBEntry {
 struct offset_BTBEntry {
   uint64_t target_offset;
   uint64_t lru;
-  uint32_t reuse_count;
+  uint32_t ref_count;
 };
 
 struct BTB {
@@ -54,7 +51,7 @@ struct BTB {
     assert(((Sets - 1) & (Sets)) == 0);
     theBTB.resize(Sets);
     indexMask = Sets - 1;
-    numIndexBits = (uint32_t)lg2((double)Sets);
+    numIndexBits = (uint32_t)log2((double)Sets);
   }
 
   void init_btb(int32_t Sets, int32_t Assoc)
@@ -65,7 +62,7 @@ struct BTB {
     assert(((Sets - 1) & (Sets)) == 0);
     theBTB.resize(Sets);
     indexMask = Sets - 1;
-    numIndexBits = (uint32_t)lg2((double)Sets);
+    numIndexBits = (uint32_t)log2((double)Sets);
   }
 
   int32_t index(uint64_t ip) { return ((ip >> 2) & indexMask); }
@@ -147,6 +144,7 @@ struct BTB {
       theBTB[idx].erase(theBTB[idx].begin() + way);
       theBTB[idx].push_back(entry);
     }
+
     return &(theBTB[idx].back());
   }
 
@@ -168,8 +166,6 @@ struct BTB {
     return lru_value;
   }
 };
-
-// TODO: LOOK AT THIS
 
 struct offsetBTB {
   std::vector<std::vector<offset_BTBEntry>> theOffsetBTB;
@@ -231,7 +227,7 @@ struct offsetBTB {
         offset_BTBEntry entry;
         entry.target_offset = target_offset;
         entry.lru = lru_counter;
-        entry.reuse_count = 1;
+        entry.ref_count = 1;
 
         // Find and replace LRU entry
         if (theOffsetBTB[idx].size() < assoc) {
@@ -247,13 +243,13 @@ struct offsetBTB {
             }
           }
 
-          uint32_t reuse_count = theOffsetBTB[idx][way].reuse_count;
+          uint32_t ref_count = theOffsetBTB[idx][way].ref_count;
           map<uint32_t, uint64_t>::iterator it;
-          it = offset_reuse_freq.find(reuse_count);
+          it = offset_reuse_freq.find(ref_count);
           if (it != offset_reuse_freq.end()) {
             it->second++;
           } else {
-            offset_reuse_freq[reuse_count] = 1;
+            offset_reuse_freq[ref_count] = 1;
           }
 
           theOffsetBTB[idx][way] = entry;
@@ -264,7 +260,7 @@ struct offsetBTB {
       // Update LRU counter
       theOffsetBTB[idx][way].lru = lru_counter;
       if (is_new_entry) {
-        theOffsetBTB[idx][way].reuse_count += 1;
+        theOffsetBTB[idx][way].ref_count += 1;
       }
     }
 
@@ -280,8 +276,6 @@ struct offsetBTB {
   }
 };
 
-// TODO: UNTIL HERE
-
 /*BTB BTB_4D(1024, 8);                                   //Storage: (tag:16-bit, branch-type: 2-bit, target-offset: 10-bit) 28*1024*8 = 28KB
 BTB BTB_6D(1024, 8);                                   //Storage: (tag:16-bit, branch-type: 2-bit, target-offset: 15-bit) 33*1024*7 = 28.875KB
 BTB BTB_8D(1024, 8);                                   //Storage: (tag:16-bit, branch-type: 2-bit, target-offset: 25-bit) 43*1024*8 = 43KB
@@ -291,8 +285,18 @@ BTB BTB_25D(256, 8);
 BTB BTB_46D(128, 8);
 BTB BTB_Ret(1024, 8);*/
 
+// Way sizes in bits
+uint8_t* btb_partition_sizes;
+
+uint8_t* offsetbtb_partition_sizes;
+
 int NUM_BTB_PARTITIONS = -1;
+int NUM_NON_INDIRECT_PARTITIONS = -1;
+int NUM_OFFSET_BTB_PARTITIONS = -1;
+int LAST_BTB_PARTITION_ID = -1;
 BTB** btb_partition;
+
+offsetBTB** offsetBTB_partition;
 
 uint64_t basic_btb_lru_counter[NUM_CPUS];
 
@@ -354,29 +358,40 @@ uint64_t basic_btb_get_call_size(uint8_t cpu, uint64_t ip)
   return size;
 }
 
-// TODO: Fix up this is not adapted to generic configs of BTBx - what about the actual sizes?
-int convert_offsetBits_to_partitionID(int num_bits)
+// TODO: CONVERT TO FLEXIBLE SIZE SOLUTION
+int convert_offsetBits_to_btb_partitionID(int num_bits)
 {
   if (num_bits == 0) {
     return 0;
-  } else if (num_bits <= 4) {
+  } else if (num_bits <= btb_partition_sizes[1] /*4*/) {
     return 1;
-  } else if (num_bits <= 6) {
+  } else if (num_bits <= btb_partition_sizes[2] /*5*/) {
     return 2;
-  } else if (num_bits <= 8) {
+  } else if (num_bits <= btb_partition_sizes[3] /*7*/) {
     return 3;
-  } else if (num_bits <= 10) {
-    return 4;
-  } else if (num_bits <= 18) {
-    return 5;
-  } else if (num_bits <= 25) {
-    return 6;
+  } else if (btb_partition_sizes[3] /*9*/ < num_bits and num_bits <= btb_partition_sizes[7] /*25*/) { // Since the next four partitions store the index to
+                                                                                                      // offsetBTB, an entry can be allocated in any of them
+    return NUM_NON_INDIRECT_PARTITIONS;
   } else {
-    return 7;
-  } /*else {
     return 8;
-  }*/
+  }
   assert(0);
+}
+
+int convert_offsetBits_to_offsetbtb_partitionID(int num_bits)
+{
+  if (num_bits <= offsetbtb_partition_sizes[0]) {
+    return 0;
+  } else if (num_bits <= offsetbtb_partition_sizes[1]) {
+    return 1;
+  } else if (num_bits <= offsetbtb_partition_sizes[2] /*7*/) {
+    return 2;
+  } else if (num_bits <= offsetbtb_partition_sizes[3] /*9*/) {
+    return 3;
+  } else {
+    cout << "Num bits " << dec << num_bits << endl;
+    assert(0);
+  }
 }
 
 int get_lru_partition(int start_partitionID, uint64_t ip)
@@ -397,6 +412,14 @@ void O3_CPU::initialize_btb()
 {
   std::cout << "Basic BTB sets: " << BTB_SETS << " ways: " << BTB_WAYS << " indirect buffer size: " << BASIC_BTB_INDIRECT_SIZE
             << " RAS size: " << BASIC_BTB_RAS_SIZE << std::endl;
+  btb_partition_sizes = btb_sizes;
+  NUM_BTB_PARTITIONS = BTB_WAYS + 1;
+  NUM_NON_INDIRECT_PARTITIONS = BTB_NON_INDIRECT;
+  offsetbtb_partition_sizes = btb_partition_sizes + NUM_NON_INDIRECT_PARTITIONS;
+  NUM_OFFSET_BTB_PARTITIONS = (NUM_BTB_PARTITIONS - NUM_NON_INDIRECT_PARTITIONS - 1);
+  LAST_BTB_PARTITION_ID = BTB_WAYS;
+  btb_partition = (BTB**)malloc(NUM_BTB_PARTITIONS * sizeof(BTB*));
+  offsetBTB_partition = (offsetBTB**)malloc(NUM_NON_INDIRECT_PARTITIONS * sizeof(offsetBTB**));
 
   for (uint32_t i = 0; i < BASIC_BTB_RAS_SIZE; i++) {
     basic_btb_ras[cpu][i] = 0;
@@ -406,23 +429,34 @@ void O3_CPU::initialize_btb()
     basic_btb_call_instr_sizes[cpu][i] = 4;
   }
 
-  NUM_BTB_PARTITIONS = BTB_WAYS;
-  btb_partition = (BTB**)malloc(BTB_WAYS * sizeof(BTB*));
-  assert(btb_partition);
   basic_btb_lru_counter[cpu] = 0;
-  for (uint32_t i = 0; i < BTB_WAYS - 1; ++i) {
+
+  offset_reuse_freq.clear();
+  offset_found_on_BTBmiss = 0;
+  offset_not_found_on_BTBmiss = 0;
+  offset_not_found_on_BTBhit = 0;
+
+  for (uint32_t i = 0; i < BTB_WAYS; i++) {
     btb_partition[i] = new BTB(BTB_SETS, 1);
   }
-  btb_partition[BTB_WAYS - 1] = new BTB(64, 1);
+  uint32_t small_btb_sets = BTB_SETS / 8;
+  if (small_btb_sets == 0)
+    small_btb_sets = 1;
+  btb_partition[BTB_WAYS] = new BTB(small_btb_sets, 1);
+
+  for (int i = 0; i < NUM_BTB_PARTITIONS; i++)
+    offsetBTB_partition[i] = new offsetBTB(1, 2048); // TODO: make sets/ways configurable
 }
 
 BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
 {
   BTBEntry* btb_entry;
+  int partitionID = -1;
 
   for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
     btb_entry = btb_partition[i]->get_BTBentry(ip);
     if (btb_entry) {
+      partitionID = i;
       break;
     }
   }
@@ -432,9 +466,8 @@ BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
     if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL) {
       push_basic_btb_ras(cpu, ip);
     }
-    BTB_outcome outcome = {0, 0, BRANCH_CONDITIONAL, 2 /*To indicate that it was a BTB miss*/};
+    BTB_outcome outcome = {0, BRANCH_CONDITIONAL, 2 /*To indicate that it was a BTB miss*/};
     return outcome;
-    // return std::make_pair(0, 0);
   }
 
   branch_type = NOT_BRANCH;
@@ -456,9 +489,8 @@ BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
     // and adjust for the size of the call instr
     target += basic_btb_get_call_size(cpu, target);
 
-    BTB_outcome outcome = {target, 1, BRANCH_RETURN, 0};
+    BTB_outcome outcome = {target, BRANCH_RETURN, 0};
     return outcome;
-    // return std::make_pair(target, always_taken);
   } /*else if ((branch_type == BRANCH_INDIRECT) ||
              (branch_type == BRANCH_INDIRECT_CALL)) {
     return std::make_pair(basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)], always_taken);
@@ -466,13 +498,60 @@ BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
   else {
     // use BTB for all other branches + direct calls
 
-    BTB_outcome outcome = {btb_entry->target_ip, 0, branch_type, 0};
+    uint64_t branch_target = btb_entry->target_ip;
+    assert(partitionID != -1 && partitionID < NUM_BTB_PARTITIONS);
+    if (partitionID >= NUM_NON_INDIRECT_PARTITIONS && partitionID != LAST_BTB_PARTITION_ID) {
+      // cout << "Going to read offset. Partition " << std::hex << partitionID << " ip " << ip << " set " << btb_entry->offsetBTB_set << " way " <<
+      // btb_entry->offsetBTB_way << endl;
+      uint64_t target_offset =
+          offsetBTB_partition[btb_entry->offsetBTB_partitionID]->get_offset_from_offsetBTB(btb_entry->offsetBTB_set, btb_entry->offsetBTB_way);
+      int offset_size = offsetbtb_partition_sizes[btb_entry->offsetBTB_partitionID];
+      uint64_t temp = ((ip >> offset_size) >> 2) << offset_size;
+      branch_target = (temp | target_offset) << 2;
+      /*if (btb_entry->target_ip != branch_target) {
+        cout << "Partition ID " <<  partitionID << " correct target " << std::hex << btb_entry->target_ip << " computed target " << branch_target << " offset "
+      << target_offset << endl; assert(0);
+      }*/
+    }
+
+    BTB_outcome outcome = {branch_target, branch_type, 0};
     return outcome;
-    // return std::make_pair(btb_entry->target_ip, always_taken);
   }
 
   assert(0);
   // return std::make_pair(0, always_taken);
+}
+
+void update_offsetbtb(uint64_t branch_target, int num_offset_bits, BTBEntry* btb_entry, uint64_t lru_counter, bool is_new_entry)
+{
+  int offsetBTB_partitionID = convert_offsetBits_to_offsetbtb_partitionID(num_offset_bits);
+  assert(offsetBTB_partitionID < NUM_OFFSET_BTB_PARTITIONS);
+  uint64_t target_offset_mask = ((uint64_t)1 << offsetbtb_partition_sizes[offsetBTB_partitionID]) - 1;
+  uint64_t target_offset = (branch_target >> 2) & target_offset_mask;
+
+  std::pair<uint32_t, uint32_t> offsetBTB_index = offsetBTB_partition[offsetBTB_partitionID]->update_OffsetBTB(target_offset, lru_counter, is_new_entry);
+
+  btb_entry->offsetBTB_partitionID = offsetBTB_partitionID;
+  btb_entry->offsetBTB_set = offsetBTB_index.first;
+  btb_entry->offsetBTB_way = offsetBTB_index.second;
+}
+
+uint64_t get_target_from_offset_btb_entry(BTBEntry* entry, uint64_t ip, int partitionID)
+{
+  if (partitionID <= NUM_NON_INDIRECT_PARTITIONS)
+    return entry->target_ip;
+  uint64_t offset = offsetBTB_partition[entry->offsetBTB_partitionID]->get_offset_from_offsetBTB(entry->offsetBTB_set, entry->offsetBTB_way);
+  int num_bits = offsetbtb_partition_sizes[entry->offsetBTB_partitionID];
+  uint64_t mask = pow(2, num_bits) - 1;
+  auto target = (ip & ~mask) | (offset & mask);
+  return target;
+}
+
+void print_map(std::map<uint32_t, uint16_t>& pm)
+{
+  for (auto const& [key, val] : pm) {
+    std::cout << key << ": " << val << std::endl;
+  }
 }
 
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
@@ -489,6 +568,20 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   }*/
 
+  // TODO: Do fuzzy current cycle (variable containing last measurement timestamp, > 1000 clear)
+  if (current_cycle % 1000 == 0) {
+    std::cout << "Getting copy statistics - cycle: " << current_cycle << std::endl;
+    for (int i = 0; i < NUM_OFFSET_BTB_PARTITIONS; ++i) {
+      std::map<uint32_t, uint16_t> reuse_frequency;
+      auto offsetBTB = offsetBTB_partition[i];
+      for (auto& set : offsetBTB->theOffsetBTB)
+        for (auto& entry : set) {
+          reuse_frequency[entry.ref_count] += 1;
+        }
+      sharing_in_btb_by_partition[i].push_back(reuse_frequency); // TODO: We are adding this for multiple offset btbs
+    }
+  }
+
   if (branch_type == BRANCH_RETURN) {
     // recalibrate call-return offset
     // if our return prediction got us into the right ball park, but not the
@@ -500,10 +593,10 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   }
 
-  if (not taken)
+  if (taken == false)
     return;
 
-  BTBEntry* btb_entry;
+  BTBEntry* btb_entry = NULL;
   int partitionID = -1;
   for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
     btb_entry = btb_partition[i]->get_BTBentry(ip);
@@ -513,37 +606,78 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   }
 
+  int num_bits;
+  if (branch_type == BRANCH_RETURN) {
+    num_bits = 0;
+  } else {
+    uint64_t diff_bits = (branch_target >> 2) ^ (ip >> 2);
+    num_bits = 0;
+    while (diff_bits != 0) {
+      diff_bits = diff_bits >> 1;
+      num_bits++;
+    }
+  }
+  assert(num_bits >= 0 && num_bits < 66);
+
+  uint64_t predicted_target = 0;
+  if (btb_entry != NULL)
+    predicted_target = get_target_from_offset_btb_entry(btb_entry, ip, partitionID);
+  // REPLACE THIS BY GENERIC HIT CHECK FUNCTION
+  if (btb_entry != NULL && predicted_target != branch_target) {
+    btb_entry->tag = 0;
+    btb_entry->lru = 0;
+    btb_entry = NULL;
+  }
+
   if (btb_entry == NULL) {
 
     BTB_writes++;
 
-    int num_bits;
-    if (branch_type == BRANCH_RETURN) {
-      num_bits = 0;
-    } else {
-      uint64_t diff_bits = (branch_target >> 2) ^ (ip >> 2);
-      num_bits = 0;
-      while (diff_bits != 0) {
-        diff_bits = diff_bits >> 1;
-        num_bits++;
-      }
-    }
-    assert(num_bits >= 0 && num_bits < 66);
-
-    int smallest_offset_partition_id = convert_offsetBits_to_partitionID(num_bits);
+    int smallest_offset_partition_id = convert_offsetBits_to_btb_partitionID(num_bits);
 
     int partition = get_lru_partition(smallest_offset_partition_id, ip);
     assert(partition < NUM_BTB_PARTITIONS);
 
-    btb_partition[partition]->update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu]);
+    // cout << "IP " << ip << " Target " << branch_target << " mask " << target_offset_mask << " offset " << target_offset << " num bits " << num_bits <<  endl;
+
+    BTBEntry* btb_entry = btb_partition[partition]->update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu]);
+    if (partition >= NUM_NON_INDIRECT_PARTITIONS && partition != LAST_BTB_PARTITION_ID && branch_type != BRANCH_RETURN) {
+      update_offsetbtb(branch_target, num_bits, btb_entry, basic_btb_lru_counter[cpu], 1);
+    }
+
     basic_btb_lru_counter[cpu]++;
+
+    // cout << "stored IP " << std::hex << ip << " target " << branch_target << " in partition " << partition << endl;
 
   } else {
     // update an existing entry
     assert(partitionID != -1);
-    btb_partition[partitionID]->update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu]);
+    BTBEntry* btb_entry = btb_partition[partitionID]->update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu]);
+
+    if (partitionID >= NUM_NON_INDIRECT_PARTITIONS && partitionID != LAST_BTB_PARTITION_ID && branch_type != BRANCH_RETURN) {
+      update_offsetbtb(branch_target, num_bits, btb_entry, basic_btb_lru_counter[cpu], 0);
+    }
     basic_btb_lru_counter[cpu]++;
   }
+}
+
+void O3_CPU::btb_final_stats()
+{
+  cout << "XXX offset_found_on_BTBmiss " << offset_found_on_BTBmiss << endl;
+  cout << "XXX offset_not_found_on_BTBmiss " << offset_not_found_on_BTBmiss << endl;
+  cout << "XXX offset_not_found_on_BTBhit " << offset_not_found_on_BTBhit << endl;
+  uint64_t total_offsetBTB_evictions = 0;
+  for (map<uint32_t, uint64_t>::iterator it = offset_reuse_freq.begin(); it != offset_reuse_freq.end(); ++it)
+    total_offsetBTB_evictions += it->second;
+
+  cout << "XXX total_offsetBTB_evictions " << total_offsetBTB_evictions << endl;
+  int i = 0;
+  uint64_t offsetBTB_evictions = 0;
+  for (map<uint32_t, uint64_t>::iterator it = offset_reuse_freq.begin(); it != offset_reuse_freq.end() && i < 10; ++it, i++) {
+    std::cout << "XXX reuse" << it->first << " " << it->second << '\n';
+    offsetBTB_evictions += it->second;
+  }
+  std::cout << "XXX reuseM" << " " << (total_offsetBTB_evictions - offsetBTB_evictions) << '\n';
 }
 
 bool O3_CPU::is_not_block_ending(uint64_t ip) { return true; }

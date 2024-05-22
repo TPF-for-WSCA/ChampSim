@@ -90,7 +90,8 @@
         "string.h": "c",
         "execution": "cpp",
         "csignal": "cpp",
-        "user.h": "c"
+        "user.h": "c",
+        "*.btb": "c"
     },
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter"

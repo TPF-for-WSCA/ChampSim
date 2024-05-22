@@ -1,14 +1,14 @@
 {
-    "executable_name": "bin/champsim",
+    "executable_name": "bin/wide_core/champsim32k",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
-    "heartbeat_frequency": 10000,
+    "heartbeat_frequency": 10000000,
     "num_cores": 1,
-    "CFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O0 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-    "CXXFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O0 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+    "CFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include",
+    "CXXFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include",
     "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
-    "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib -fsanitize=bounds",
+    "LDFLAGS": "-L/cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/lib",
     "ooo_cpu": [{
         "frequency": 4000,
         "ifetch_buffer_size": 128,
@@ -20,7 +20,7 @@
         "fetch_width": 8,
         "decode_width": 6,
         "dispatch_width": 6,
-        "execute_width": 12,
+        "execute_width": 8,
         "lq_width": 2,
         "sq_width": 2,
         "retire_width": 8,
@@ -33,9 +33,8 @@
         "branch_predictor": "hashed_perceptron",
         "btb": "xbtbx",
         "btb_ways": 8,
-        "btb_non_indirect": 8,
+        "btb_non_indirect": 4,
         "btb_sets": 512,
-        "align_bits": 6,
         "btb_offset_sizes": [
             0,
             4,
@@ -46,7 +45,8 @@
             19,
             25,
             64
-        ]
+        ],
+        "align_bits": 5
     }],
     "DIB": {
         "window_size": 64,
@@ -159,7 +159,7 @@
         "counting_block_method": "SUM_ACCESSES"
     },
     "LLC": {
-        "frequency": 2000,
+        "frequency": 4000,
         "sets": 32768,
         "ways": 15,
         "rq_size": 32,
