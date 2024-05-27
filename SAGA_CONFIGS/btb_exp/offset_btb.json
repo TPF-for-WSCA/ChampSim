@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/wide_core/champsim32k",
+    "executable_name": "bin/wide_core/champsim_offset_btb",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
@@ -159,7 +159,7 @@
         "counting_block_method": "SUM_ACCESSES"
     },
     "LLC": {
-        "frequency": 4000,
+        "frequency": 2000,
         "sets": 32768,
         "ways": 15,
         "rq_size": 32,
