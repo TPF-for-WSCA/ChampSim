@@ -13,17 +13,13 @@ module load Boost/1.79.0-GCC-11.3.0
 module load Python/3.10.4-GCCcore-11.3.0
 benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
 #benchmarks=("whiskey" "merced" "delta" "charlie")
-#baseline_configs=("sizes_champsim32k")
-baseline_configs=()
-vcl_16_configs=()
-vcl_18_configs=("sizes_ubs")
-
+baseline_config="sizes_champsim_offset_btb"
 
 old_dir=pwd
 
 for benchmark in ${benchmarks[@]}
 do
-    for run in $benchmark
+    for run in $benchmark/$baseline_config/*
     do
         echo "Handling ${run}"
         # python /cluster/projects/nn4650k/workspace/ChampSim/aggregation_scripts/btb_offset_analysis.py $run &
