@@ -11,6 +11,7 @@
 #SBATCH -o /cluster/work/romankb/storage-efficicency-%j.out
 module load Boost/1.79.0-GCC-11.3.0
 module load Python/3.10.4-GCCcore-11.3.0
+module load Anaconda3/2022.10
 benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
 #benchmarks=("whiskey" "merced" "delta" "charlie")
 baseline_config="sizes_champsim_offset_btb"
