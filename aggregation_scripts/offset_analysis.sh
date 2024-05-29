@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name="storage_efficiency_calculation"
-#SBATCH --account=share-ie-idi
+#SBATCH --job-name="btb_offset_calculation"
+#SBATCH --account=nn4650k
 #SBATCH --nodes=1
 #SBATCH -c12
 #SBATCH --mem-per-cpu=8G
