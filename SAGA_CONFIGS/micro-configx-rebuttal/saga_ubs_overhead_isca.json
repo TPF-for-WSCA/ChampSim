@@ -33,8 +33,7 @@
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
       "btb": "conv_btb",
-      "align_bits": 5,
-      "btb_max_loop_branch": 32
+      "align_bits": 5
     }
   ],
   "DIB": {
