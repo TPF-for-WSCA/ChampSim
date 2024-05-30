@@ -15,6 +15,7 @@ def main(args):
         file_path = os.path.join(
             args.logdir, f"cpu0_offset_btb_{i}_sharing_over_time.json"
         )
+        print(f"\tPloting {file_path}")
         offset_information = pd.read_json(file_path)
         num_offset_entries_by_time = {}
         num_idx_entries_by_time = {}
