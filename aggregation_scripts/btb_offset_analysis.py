@@ -7,12 +7,7 @@ import os
 
 import pandas as pd
 import numpy as np
-import holoviews as hv
-
-
-from holoviews import opts
-
-hv.extension("bokeh")
+import matplotlib.pyplot as plt
 
 
 def main(args):
@@ -24,7 +19,8 @@ def main(args):
         num_offset_entries_by_time = {}
         num_idx_entries_by_time = {}
         max_share_by_time = {}
-        i = 0
+        compression_factor_by_time = {}
+        j = 0
         for single_record in offset_information.ref_frequencies:
             offset_entries = 0
             idx_entries = 0
@@ -36,16 +32,32 @@ def main(args):
                 offset_entries += entry["frequency"]
                 if max_shared_offset < entry["ref_count"]:
                     max_shared_offset = entry["ref_count"]
-            num_offset_entries_by_time[i] = offset_entries
-            num_idx_entries_by_time[i] = idx_entries
-            max_share_by_time[i] = max_shared_offset
-            i += 1
-        scatter = hv.Scatter(num_idx_entries_by_time)
-        hv.save(scatter, os.path.join(args.logdir, "idx_entries_over_time.html"))
-        scatter = hv.Scatter(num_offset_entries_by_time)
-        hv.save(scatter, os.path.join(args.logdir, "offset_entries_over_time.html"))
-        scatter = hv.Scatter(max_share_by_time)
-        hv.save(scatter, os.path.join(args.logdir, "max_share_over_time.html"))
+            num_offset_entries_by_time[j] = offset_entries
+            num_idx_entries_by_time[j] = idx_entries
+            compression_factor_by_time[j] = idx_entries / offset_entries
+            max_share_by_time[j] = max_shared_offset
+            j += 1
+        num_offset_entries_by_time = np.array(list(num_offset_entries_by_time.items()))[
+            :, 1
+        ]
+        num_idx_entries_by_time = np.array(list(num_idx_entries_by_time.items()))[:, 1]
+        max_share_by_time = np.array(list(max_share_by_time.items()))[:, 1]
+        compression_factor_by_time = np.array(list(compression_factor_by_time.items()))[
+            :, 1
+        ]
+        plt.figure(figsize=(10, 20))
+        plt.subplot(212)
+        plt.plot(max_share_by_time, label="Max Shared Offset")
+        plt.legend(loc="upper right")
+
+        plt.subplot(211)
+        plt.plot(num_idx_entries_by_time, "r--", label="Index BTB entries")
+        plt.plot(num_offset_entries_by_time, "b-", label="Offset BTB entries")
+        plt.legend(loc="lower right")
+        ax2 = plt.gca().twinx()
+        ax2.plot(compression_factor_by_time, "g-", label="Compression Factor")
+        ax2.legend(loc="upper right")
+        plt.savefig(os.path.join(args.logdir, f"btb_{i}_offset_stats.pdf"))
 
 
 if __name__ == "__main__":
