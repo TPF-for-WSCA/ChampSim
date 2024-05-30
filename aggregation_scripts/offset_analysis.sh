@@ -9,8 +9,7 @@
 #SBATCH --mail-type=ALL
 #SBATCH -e /cluster/work/romankb/storage-efficicency-%j.err
 #SBATCH -o /cluster/work/romankb/storage-efficicency-%j.out
-module load Python/3.10.4-GCCcore-11.3.0
-module load matplotlib/3.5.2-foss-2022a
+module load matplotlib/3.8.2-gfbf-2023b
 benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
 #benchmarks=("whiskey" "merced" "delta" "charlie")
 baseline_config="sizes_champsim_offset_btb"
