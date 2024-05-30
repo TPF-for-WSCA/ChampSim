@@ -57,7 +57,10 @@ def main(args):
         ax2 = plt.gca().twinx()
         ax2.plot(compression_factor_by_time, "g-", label="Compression Factor")
         ax2.legend(loc="upper right")
-        plt.savefig(os.path.join(args.logdir, f"btb_{i}_offset_stats.pdf"))
+        benchmark_name = os.path.basename(os.path.normpath(args.logdir))
+        plt.savefig(
+            os.path.join(args.logdir, f"{benchmark_name}_btb_{i}_offset_stats.pdf")
+        )
 
 
 if __name__ == "__main__":
