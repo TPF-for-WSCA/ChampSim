@@ -5,14 +5,14 @@ benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
 #benchmarks=("crc2_spec" "crc2_cloud" "dpc3")
 pg_dir=""
 
-if [ -z ${plotgen_dir+x} ]; then pg_dir="/cluster/home/romankb/plotgen/"; else pg_dir=$plotgen_dir; fi
+if [ -z ${plotgen_dir+x} ]; then pg_dir="/cluster/projects/nn4650k/workspace/plotgen/"; else pg_dir=$plotgen_dir; fi
 
 echo ${pg_dir}
 
 
 chroot=""
 
-if [ -z ${champsim_root+x} ]; then chroot="/cluster/home/romankb"; else chroot=$champsim_root; fi
+if [ -z ${champsim_root+x} ]; then chroot="/cluster/projects/nn4650k/workspace"; else chroot=$champsim_root; fi
 
 echo ${chroot}
 
