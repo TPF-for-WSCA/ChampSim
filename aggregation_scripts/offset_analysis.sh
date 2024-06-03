@@ -12,13 +12,13 @@
 module load matplotlib/3.8.2-gfbf-2023b
 benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
 #benchmarks=("whiskey" "merced" "delta" "charlie")
-baseline_config="sizes_champsim_offset_btb"
+baseline_config=["sizes_champsim_offset_btb"]
 
 old_dir=pwd
 
 for benchmark in ${benchmarks[@]}
 do
-    for run in $benchmark/$baseline_config/*
+    for run in $benchmark/${baseline_config[@]}
     do
         echo "Handling ${run}"
         python /cluster/projects/nn4650k/workspace/ChampSim/aggregation_scripts/btb_offset_analysis.py $run &
