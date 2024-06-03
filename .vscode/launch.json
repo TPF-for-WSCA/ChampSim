@@ -9,9 +9,9 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "-warmup_instructions",
-                "1",
+                "50000000",
                 "-simulation_instructions",
-                "10000",
+                "50000000",
                 "-result_dir",
                 "~/Downloads/results/ipc1/sizes_champsim32k/test/",
                 // "-ptrace",
@@ -20,8 +20,8 @@
                 // "-stallonmiss",
                 "-traces",
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
-                //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_019.champsimtrace.xz"
-                "/home/robrunne/OneDrive/Research/datasets/ipc1/client_008.champsimtrace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/ipc1/server_019.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1/client_008.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"

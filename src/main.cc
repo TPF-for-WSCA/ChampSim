@@ -532,29 +532,47 @@ void write_offsets(O3_CPU* cpu, int cpu_id)
     }
   }
 
-  std::vector<std::ofstream> csv_files_per_offset_btb;
+  std::vector<std::ofstream> json_files_per_offset_btb;
 
   for (size_t i = 0; i < cpu->BTB_WAYS - cpu->BTB_NON_INDIRECT; i++) {
-    string filename = "cpu" + std::to_string(cpu_id) + "_offset_btb_" + std::to_string(i) + "_sharing_over_time.tsv";
+    string filename = "cpu" + std::to_string(cpu_id) + "_offset_btb_" + std::to_string(i) + "_sharing_over_time.json";
     auto csv_file_path = csv_result_path / filename;
     csv_file.open(csv_file_path, std::ios::out);
     if (!csv_file) {
       std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
       std::cerr << std::flush;
     } else {
-      csv_files_per_offset_btb.push_back(std::move(csv_file));
+      json_files_per_offset_btb.push_back(std::move(csv_file));
       std::cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
     }
   }
 
-  if (csv_files_per_offset_btb.size() == cpu->BTB_WAYS - cpu->BTB_NON_INDIRECT) {
+  if (json_files_per_offset_btb.size() == cpu->BTB_WAYS - cpu->BTB_NON_INDIRECT) {
     for (auto const& [partition, sharing_in_partition] : cpu->sharing_in_btb_by_partition) {
-      auto& csv_file = csv_files_per_offset_btb[partition];
-      for (auto const& offset_freq : sharing_in_partition)
+      auto& json_file = json_files_per_offset_btb[partition];
+      json_file << "[" << endl;
+      uint64_t id = 0;
+      uint64_t prev_ref_count = -1;
+      for (auto const& offset_freq : sharing_in_partition) {
         for (auto const& [ref_count, frequency] : offset_freq) {
-          csv_file << ref_count << "\t" << frequency << "\t" << endl; // TODO: Separate datapoints: When ref count gets smaller or equal compared to prior
-                                                                      // iteration we have a new datapoint - how to separate is another question.
+          if (ref_count < prev_ref_count) {
+            if (id > 0) {
+              json_file << "\n\t\t]\n\t}," << endl;
+            }
+            json_file << "\t{" << endl;
+            json_file << "\t\t\"id\": " << id << "," << endl; // todo: only insert on datapoint switch
+            json_file << "\t\t\"ref_frequencies\": [" << endl;
+            ++id;
+            json_file << "\t\t\t{ \"ref_count\": " << ref_count << ", \"frequency\": " << frequency << "}";
+            prev_ref_count = ref_count;
+            continue;
+          }
+          json_file << ",\n\t\t\t{ \"ref_count\": " << ref_count << ", \"frequency\": " << frequency << "}";
+          prev_ref_count = ref_count;
         }
+      }
+      json_file << "\n\t\t]\n\t}" << endl;
+      json_file << "]" << endl;
     }
   } else {
     std::cerr << "Not all files have been created" << std::endl;

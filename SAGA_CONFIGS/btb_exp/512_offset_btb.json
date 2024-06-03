@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/wide_core/champsim32k",
+    "executable_name": "bin/btb_x_vs_offset/champsim_512_offset_btb",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
@@ -34,7 +34,7 @@
         "btb": "xbtbx",
         "btb_ways": 8,
         "btb_non_indirect": 4,
-        "btb_sets": 512,
+        "btb_sets": 128,
         "btb_offset_sizes": [
             0,
             4,
@@ -159,7 +159,7 @@
         "counting_block_method": "SUM_ACCESSES"
     },
     "LLC": {
-        "frequency": 4000,
+        "frequency": 2000,
         "sets": 32768,
         "ways": 15,
         "rq_size": 32,
