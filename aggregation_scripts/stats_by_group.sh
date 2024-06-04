@@ -26,11 +26,11 @@ do
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi FRONTEND_STALLS &
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL_MISSES &
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi USELESS_LINES &
-    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BRANCH_MPKI &
-    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi FETCH_COUNT &
-    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi ROB_AT_MISS &
+    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BRANCH_MPKI &
+    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi FETCH_COUNT &
+    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi ROB_AT_MISS &
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi STALL_CYCLES &
-    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_champsim32k single BRANCH_DISTANCES &
+    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_champsim32k single BRANCH_DISTANCES &
 done
 
 echo "Waiting for jobs to finish:"
