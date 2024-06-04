@@ -10,7 +10,7 @@ from collections import defaultdict
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
+import multiprocessing as mp
 
 plt.style.use("tableau-colorblind10")
 plt.rcParams.update({"font.size": 7})
@@ -117,6 +117,9 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
         data_per_benchmark = {}
         benchmarks = []
         for key, value in data_per_workload.items():
+            value = value.get()
+            if not value:
+                continue
             if key.startswith(group):
                 value = value[offset_idx][rv_idx]
                 avg.append(sum(value) / len(value))
@@ -135,6 +138,7 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
 
 
 def main(args):
+    pool = mp.Pool(processes=20)
     results_by_application_by_config = defaultdict(lambda: defaultdict(lambda: 0))
     for benchmark in os.listdir(args.logdir):
         if benchmark not in ["ipc1_server", "ipc1_client", "ipc1_spec"]:
@@ -147,9 +151,7 @@ def main(args):
             results_by_application = {}
             for application in os.listdir(config_path):
                 app_path = os.path.join(config_path, application)
-                result = extract_single_workload(app_path)
-                if not result:
-                    continue
+                result = pool.apply_async(extract_single_workload, args=(app_path,))
                 results_by_application_by_config[config][application] = result
 
     print("COMPLETED DATA GATHERING")
