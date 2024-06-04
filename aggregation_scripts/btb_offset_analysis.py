@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 
 plt.style.use("tableau-colorblind10")
+plt.rcParams.update({"font.size": 7})
 
 
 def extract_single_workload(path):
@@ -64,6 +65,7 @@ def extract_single_workload(path):
         ax2.legend(loc="upper right")
         benchmark_name = os.path.basename(os.path.normpath(path))
         plt.savefig(os.path.join(path, f"{benchmark_name}_btb_{i}_offset_stats.pdf"))
+        plt.close()
         result_per_offset.append(
             (
                 num_offset_entries_by_time,
@@ -75,8 +77,15 @@ def extract_single_workload(path):
     return result_per_offset
 
 
-def plot_config(results_by_application_by_benchmark, graph_dir, filename):
+def plot_config(results_by_application, graph_dir, filename, offset_idx):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+    def set_axis_style(ax, labels):
+        ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels, rotation=90)
+        ax.set_xlim(0.25, len(labels) + 0.75)
+
+    data_per_workload = dict(sorted(results_by_application.items()))
+    groups = set([label.split("_")[0] for label in data_per_workload.keys()])
 
     cm = 1 / 2.54
     fig = plt.figure(figsize=(18 * cm, 8 * cm))
@@ -96,15 +105,35 @@ def plot_config(results_by_application_by_benchmark, graph_dir, filename):
 
     axes = [ax1, ax2, ax3]
 
+    for idx, group in enumerate(sorted(groups)):
+        avg = []
+        data_per_benchmark = {}
+        benchmarks = []
+        for key, value in data_per_workload.items():
+            if key.startswith(group):
+                value = value[offset_idx][3]
+                avg.append(sum(value) / len(value))
+                data_per_benchmark[key] = value
+                benchmarks.append(key.split(".", 1)[0])
+        axes[idx].violinplot(data_per_benchmark.values(), showmeans=True, widths=0.9)
+        axes[idx].bar(len(benchmarks) + 1, sum(avg) / len(avg), width=0.8)
+        benchmarks.append(f"{group.upper()} AVG")
+        set_axis_style(axes[idx], benchmarks)
+
+    ax1.set_ylim(bottom=1.0)
+    ax2.set_ylim(bottom=1.0)
+    ax3.set_ylim(bottom=1.0)
+    plt.savefig(os.path.join(graph_dir, f"{filename}_{offset_idx}.pdf"))
+    plt.close()
+
 
 def main(args):
     results_by_application_by_benchmark_by_config = defaultdict(
-        lambda: defaultdict(lambda: defaultdict(lambda: 0))
+        lambda: defaultdict(lambda: 0)
     )
     for benchmark in os.listdir(args.logdir):
         if benchmark not in ["ipc1_server", "ipc1_client", "ipc1_spec"]:
             continue
-        benchmark_name = benchmark.split("_")[1]
         benchmark_path = os.path.join(args.logdir, benchmark)
         for config in os.listdir(benchmark_path):
             if not config.endswith("offset_btb"):
@@ -114,14 +143,15 @@ def main(args):
             for application in os.listdir(config_path):
                 app_path = os.path.join(config_path, application)
                 result = extract_single_workload(app_path)
-                results_by_application_by_benchmark_by_config[config][benchmark_name][
+                results_by_application_by_benchmark_by_config[config][
                     application
-                ] = result[3]
+                ] = result
 
     graph_dir = os.path.join(args.logdir, "graphs")
     os.makedirs(graph_dir, exist_ok=True)
-    for config, results in results_by_application_by_benchmark_by_config.items():
-        pass
+    for offset_btb_idx in range(4):
+        for config, results in results_by_application_by_benchmark_by_config.items():
+            plot_config(results, graph_dir, config, offset_btb_idx)
 
 
 if __name__ == "__main__":
