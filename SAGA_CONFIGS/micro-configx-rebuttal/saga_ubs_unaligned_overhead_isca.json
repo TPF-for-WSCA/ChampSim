@@ -34,7 +34,8 @@
         "btb": "conv_btb",
         "btb_max_loop_branch": 32,
         "btb_sets": 2048,
-        "btb_ways": 9
+        "btb_ways": 9,
+        "align_bits": 6
     }],
     "DIB": {
         "window_size": 64,

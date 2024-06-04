@@ -135,9 +135,7 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
 
 
 def main(args):
-    results_by_application_by_benchmark_by_config = defaultdict(
-        lambda: defaultdict(lambda: 0)
-    )
+    results_by_application_by_config = defaultdict(lambda: defaultdict(lambda: 0))
     for benchmark in os.listdir(args.logdir):
         if benchmark not in ["ipc1_server", "ipc1_client", "ipc1_spec"]:
             continue
@@ -152,10 +150,9 @@ def main(args):
                 result = extract_single_workload(app_path)
                 if not result:
                     continue
-                results_by_application_by_benchmark_by_config[config][
-                    application
-                ] = result
+                results_by_application_by_config[config][application] = result
 
+    print("COMPLETED DATA GATHERING")
     graph_dir = os.path.join(args.logdir, "graphs")
     os.makedirs(graph_dir, exist_ok=True)
     for rv_idx, name in enumerate(result_names):
@@ -163,7 +160,7 @@ def main(args):
             for (
                 config,
                 results,
-            ) in results_by_application_by_benchmark_by_config.items():
+            ) in results_by_application_by_config.items():
                 plot_config(
                     results, graph_dir, f"{config}_{name}", offset_btb_idx, rv_idx
                 )
