@@ -140,7 +140,7 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
 
 
 def main(args):
-    pool = mp.Pool(processes=4)
+    pool = mp.Pool(processes=28)
     results_by_application_by_config = defaultdict(lambda: defaultdict(lambda: 0))
     for benchmark in os.listdir(args.logdir):
         if benchmark not in ["ipc1_server", "ipc1_client", "ipc1_spec"]:
