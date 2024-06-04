@@ -44,7 +44,9 @@ def extract_single_workload(path):
                     max_shared_offset = entry["ref_count"]
             num_offset_entries_by_time[j] = offset_entries
             num_idx_entries_by_time[j] = idx_entries
-            compression_factor_by_time[j] = idx_entries / offset_entries
+            compression_factor_by_time[j] = (
+                0 if offset_entries == 0 else idx_entries / offset_entries
+            )
             max_share_by_time[j] = max_shared_offset
             j += 1
         num_offset_entries_by_time = np.array(list(num_offset_entries_by_time.items()))[

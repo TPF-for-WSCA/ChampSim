@@ -7,14 +7,14 @@ pg_dir=""
 
 if [ -z ${plotgen_dir+x} ]; then pg_dir="/cluster/projects/nn4650k/workspace/plotgen/"; else pg_dir=$plotgen_dir; fi
 
-echo ${pg_dir}
+echo "pg_dir: ${pg_dir}"
 
 
 chroot=""
 
 if [ -z ${champsim_root+x} ]; then chroot="/cluster/projects/nn4650k/workspace"; else chroot=$champsim_root; fi
 
-echo ${chroot}
+echo "chroot: ${chroot}"
 
 
 for b in ${benchmarks[@]}
@@ -33,11 +33,14 @@ do
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_champsim32k single BRANCH_DISTANCES &
 done
 
+echo "Waiting for jobs to finish:"
 for job in `jobs -p`
 do
     echo $job
     wait $job
 done
+
+echo "aggregation scripts finished"
 
 for b in ${benchmarks[@]}
 do
@@ -55,11 +58,13 @@ do
 
 done
 
+echo "Waiting for jobs to finish:"
 for job in `jobs -p`
 do
     echo $job
     wait $job
 done
+echo "aggregation scripts finished"
 
 python ${chroot}/ChampSim/aggregation_scripts/offset_plotting.py --result_dir ./ &
 
