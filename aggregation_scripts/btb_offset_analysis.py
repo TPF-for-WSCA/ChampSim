@@ -21,7 +21,11 @@ def extract_single_workload(path):
     for i in range(4):
         file_path = os.path.join(path, f"cpu0_offset_btb_{i}_sharing_over_time.json")
         print(f"\tPloting {file_path}")
-        offset_information = pd.read_json(file_path)
+        try:
+            offset_information = pd.read_json(file_path)
+        except:
+            print(f"\tERROR: Could not open {file_path}")
+            return None
         num_offset_entries_by_time = {}
         num_idx_entries_by_time = {}
         max_share_by_time = {}
@@ -146,6 +150,8 @@ def main(args):
             for application in os.listdir(config_path):
                 app_path = os.path.join(config_path, application)
                 result = extract_single_workload(app_path)
+                if not result:
+                    continue
                 results_by_application_by_benchmark_by_config[config][
                     application
                 ] = result
