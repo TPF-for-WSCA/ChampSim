@@ -77,7 +77,10 @@ def extract_single_workload(path):
     return result_per_offset
 
 
-def plot_config(results_by_application, graph_dir, filename, offset_idx):
+result_names = ["num_offsets", "num_idx", "max_shared", "compression_factor"]
+
+
+def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     def set_axis_style(ax, labels):
@@ -111,7 +114,7 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx):
         benchmarks = []
         for key, value in data_per_workload.items():
             if key.startswith(group):
-                value = value[offset_idx][3]
+                value = value[offset_idx][rv_idx]
                 avg.append(sum(value) / len(value))
                 data_per_benchmark[key] = value
                 benchmarks.append(key.split(".", 1)[0])
@@ -149,9 +152,15 @@ def main(args):
 
     graph_dir = os.path.join(args.logdir, "graphs")
     os.makedirs(graph_dir, exist_ok=True)
-    for offset_btb_idx in range(4):
-        for config, results in results_by_application_by_benchmark_by_config.items():
-            plot_config(results, graph_dir, config, offset_btb_idx)
+    for rv_idx, name in enumerate(result_names):
+        for offset_btb_idx in range(4):
+            for (
+                config,
+                results,
+            ) in results_by_application_by_benchmark_by_config.items():
+                plot_config(
+                    results, graph_dir, f"{config}_{name}", offset_btb_idx, rv_idx
+                )
 
 
 if __name__ == "__main__":
