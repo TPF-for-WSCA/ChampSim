@@ -33,8 +33,8 @@
         "branch_predictor": "hashed_perceptron",
         "btb": "conv_btb",
         "btb_max_loop_branch": 32,
-        "btb_sets": 2048,
-        "btb_ways": 9
+        "btb_sets": 1024,
+        "btb_ways": 6
     }],
     "DIB": {
         "window_size": 64,
