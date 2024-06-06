@@ -34,7 +34,7 @@
       "branch_predictor": "hashed_perceptron",
       "btb": "conv_btb",
       "btb_ways": 6,
-      "btb_non_indirect": 6,
+      "btb_non_indirect": 8,
       "btb_sets": 1024,
       "align_bits": 5
     }

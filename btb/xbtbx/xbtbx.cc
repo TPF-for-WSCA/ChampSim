@@ -613,8 +613,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   }*/
 
-  // TODO: Do fuzzy current cycle (variable containing last measurement timestamp, > 1000 clear)
-  if (99997 <= current_cycle - last_stats_cycle) {
+  if (warmup_complete[cpu] && 99997 <= current_cycle - last_stats_cycle) {
     std::cout << "Getting copy statistics - cycle: " << current_cycle << std::endl;
     last_stats_cycle = current_cycle;
     for (int i = 0; i < NUM_OFFSET_BTB_PARTITIONS; ++i) {
@@ -624,7 +623,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         for (auto& entry : set) {
           reuse_frequency[entry.ref_count] += 1;
         }
-      sharing_in_btb_by_partition[i].push_back(reuse_frequency); // TODO: We are adding this for multiple offset btbs
+      sharing_in_btb_by_partition[i].push_back(reuse_frequency);
     }
   }
 
