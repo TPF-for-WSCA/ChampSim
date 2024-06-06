@@ -36,6 +36,7 @@
       "btb_max_loop_branch": 32,
       "btb_sets": 1024,
       "btb_ways": 6,
+      "btb_non_indirect": 6,
       "align_bits": 6
     }
   ],
