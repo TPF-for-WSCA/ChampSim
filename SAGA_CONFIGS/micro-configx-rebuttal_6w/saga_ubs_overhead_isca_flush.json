@@ -35,9 +35,9 @@
       "btb": "conv_btb",
       "align_bits": 5,
       "btb_max_loop_branch": 32,
-      "btb_sets": 1024,
-      "btb_ways": 6,
-      "btb_non_indirect": 6
+      "btb_sets": 512,
+      "btb_ways": 12,
+      "btb_non_indirect": 12
     }
   ],
   "DIB": {

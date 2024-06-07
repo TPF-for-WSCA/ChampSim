@@ -537,7 +537,7 @@ void write_offsets(O3_CPU* cpu, int cpu_id)
   size_t num_files_required = cpu->BTB_WAYS - cpu->BTB_NON_INDIRECT;
   num_files_required =
       std::min(num_files_required,
-               cpu->BTB_WAYS); // This is a sanity check to prevent a but from surfacing (BTB_NON_INDIRECT is not guaranteed to be initialized properly)
+               cpu->BTB_WAYS); // This is a sanity check to prevent a bug from surfacing (BTB_NON_INDIRECT is not guaranteed to be initialized properly)
   for (size_t i = 0; i < num_files_required; i++) {
     string filename = "cpu" + std::to_string(cpu_id) + "_offset_btb_" + std::to_string(i) + "_sharing_over_time.json";
     auto csv_file_path = csv_result_path / filename;
