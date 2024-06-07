@@ -173,7 +173,7 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "LLC": {
-    "frequency": 4000,
+    "frequency": 2000,
     "sets": 32768,
     "ways": 15,
     "rq_size": 32,
@@ -191,7 +191,7 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "physical_memory": {
-    "frequency": 4000,
+    "frequency": 1000,
     "channels": 1,
     "ranks": 1,
     "banks": 8,
