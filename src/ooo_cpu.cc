@@ -475,10 +475,10 @@ void O3_CPU::fetch_instruction()
     bool is_adjacent = find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa || x.fetched == COMPLETED
                        || (not L1I->is_vcl && align_bits < 6); // we compare first with ourselves. of course same address access is included
     bool is_same_block = find_addr >> align_bits == x.instruction_pa >> align_bits;
+    bool is_monotonically_increasing = find_addr <= x.instruction_pa;
     find_addr = x.instruction_pa;
-    return (is_adjacent && is_same_block);
+    return (is_adjacent && is_same_block && is_monotonically_increasing);
   });
-  assert(l1i_req_begin != l1i_req_end);
   assert(l1i_req_end - l1i_req_begin <= FETCH_WIDTH);
   do_fetch_instruction(l1i_req_begin, l1i_req_end);
 }
@@ -496,23 +496,28 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
   fetch_packet.branch_type = begin->branch_type;
-  fetch_packet.size = 0;
   fetch_packet.type = LOAD;
   fetch_packet.asid[0] = 0;
   fetch_packet.asid[1] = 0;
   fetch_packet.trace = begin->trace;
   fetch_packet.to_return = {&L1I_bus};
-  std::set<uint64_t> addresses_added;
+  fetch_packet.instr_depend_on_me.push_back(begin);
+  uint64_t min_addr = begin->instruction_pa;
+  uint64_t max_addr = min_addr + begin->size;
   for (; begin != end; ++begin) {
     if (begin->ip % 4 != 0) {
       continue; // Ignore dummy instructions in updated traces
     }
 
-    bool fresh = addresses_added.insert(begin->instruction_pa).second;
-    fetch_packet.instr_depend_on_me.push_back(begin);
-    if (fresh) {
-      fetch_packet.size += begin->size;
+    if (begin->instruction_pa < min_addr) {
+      min_addr = begin->instruction_pa;
     }
+
+    if (max_addr < begin->instruction_pa + begin->size) {
+      max_addr = begin->instruction_pa + begin->size;
+    }
+
+    fetch_packet.instr_depend_on_me.push_back(begin);
 
     if (begin->instruction_pa < fetch_packet.address) {
       fetch_packet.address = begin->instruction_pa;
@@ -521,6 +526,8 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
       fetch_packet.ip = begin->ip;
     }
   }
+
+  fetch_packet.size = max_addr - min_addr;
 
   // std::cout << "fetch: " << std::setw(16) << fetch_packet.ip << ", size: " << std::setw(3) << fetch_packet.size << std::endl;
   int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
