@@ -114,6 +114,7 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
 
     axes = [ax1, ax2, ax3]
 
+    max_limit = 1.0
     for idx, group in enumerate(sorted(groups)):
         avg = []
         data_per_benchmark = {}
@@ -127,14 +128,16 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
                 avg.append(sum(value) / len(value))
                 data_per_benchmark[key] = value
                 benchmarks.append(key.split(".", 1)[0])
+                if idx == 1:
+                    max_limit = max(max_limit, max(value))
         axes[idx].violinplot(data_per_benchmark.values(), showmeans=True, widths=0.9)
         axes[idx].bar(len(benchmarks) + 1, sum(avg) / len(avg), width=0.8)
         benchmarks.append(f"{group.upper()} AVG")
         set_axis_style(axes[idx], benchmarks)
 
-    ax1.set_ylim(bottom=1.0)
-    ax2.set_ylim(bottom=1.0)
-    ax3.set_ylim(bottom=1.0)
+    ax1.set_ylim(bottom=1.0, top=max_limit)
+    ax2.set_ylim(bottom=1.0, top=max_limit)
+    ax3.set_ylim(bottom=1.0, top=max_limit)
     plt.savefig(os.path.join(graph_dir, f"{filename}_{offset_idx}.pdf"))
     plt.close()
 
