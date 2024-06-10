@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <csignal>
 #include <iostream>
+#include <set>
 #include <vector>
 
 #include "cache.h"
@@ -16,21 +17,12 @@ extern uint8_t MAX_INSTR_DESTINATIONS;
 
 std::ostream& operator<<(std::ostream& s, const ooo_model_instr& mi)
 {
-  return (s << "OOO_MODEL_INSTR"
-            << "(instr_id: " << mi.instr_id << ", ip: " << mi.ip << ")");
+  return (s << "OOO_MODEL_INSTR" << "(instr_id: " << mi.instr_id << ", ip: " << mi.ip << ")");
 }
 
-std::ostream& operator<<(std::ostream& s, const PACKET& p)
-{
-  return (s << "PACKET"
-            << "(instr_id: " << p.instr_id << ", ip: " << p.ip << ")");
-}
+std::ostream& operator<<(std::ostream& s, const PACKET& p) { return (s << "PACKET" << "(instr_id: " << p.instr_id << ", ip: " << p.ip << ")"); }
 
-std::ostream& operator<<(std::ostream& s, const BLOCK& b)
-{
-  return (s << "BLOCK"
-            << "(instr_id: " << b.instr_id << ", ip: " << b.ip << ")");
-}
+std::ostream& operator<<(std::ostream& s, const BLOCK& b) { return (s << "BLOCK" << "(instr_id: " << b.instr_id << ", ip: " << b.ip << ")"); }
 
 void O3_CPU::operate()
 {
@@ -305,8 +297,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   // Ensure no overlapping instructions
   bool overlap = false;
   ooo_model_instr overhang_instr = arch_instr;
-  if ((arch_instr.ip % BLOCK_SIZE) + arch_instr.size > BLOCK_SIZE) {
-    arch_instr.size = BLOCK_SIZE - (arch_instr.ip % BLOCK_SIZE);
+  if ((arch_instr.ip & (BLOCK_SIZE - 1)) + arch_instr.size > BLOCK_SIZE) {
+    arch_instr.size = BLOCK_SIZE - (arch_instr.ip & (BLOCK_SIZE - 1));
     overhang_instr.instr_id = ++instr_unique_id;
     overhang_instr.ip += arch_instr.size;
     overhang_instr.instruction_pa += arch_instr.size;
@@ -480,7 +472,7 @@ void O3_CPU::fetch_instruction()
   CACHE* L1I = static_cast<CACHE*>(L1I_bus.lower_level);
   auto l1i_req_end = std::find_if_not(l1i_req_begin, end, [&find_addr, this, L1I](const ooo_model_instr& x) {
     // we check for completed to ignore the dummy instructions at 2 offsets
-    bool is_adjacent = find_addr + 4 == x.instruction_pa || find_addr == x.instruction_pa || x.fetched == COMPLETED
+    bool is_adjacent = find_addr + 4 == x.instruction_pa || x.fetched == COMPLETED
                        || (not L1I->is_vcl && align_bits < 6); // we compare first with ourselves. of course same address access is included
     bool is_same_block = find_addr >> align_bits == x.instruction_pa >> align_bits;
     find_addr = x.instruction_pa;
@@ -510,12 +502,24 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.asid[1] = 0;
   fetch_packet.trace = begin->trace;
   fetch_packet.to_return = {&L1I_bus};
+  std::set<uint64_t> addresses_added;
   for (; begin != end; ++begin) {
     if (begin->ip % 4 != 0) {
       continue; // Ignore dummy instructions in updated traces
     }
+
+    bool fresh = addresses_added.insert(begin->instruction_pa).second;
     fetch_packet.instr_depend_on_me.push_back(begin);
-    fetch_packet.size += begin->size;
+    if (fresh) {
+      fetch_packet.size += begin->size;
+    }
+
+    if (begin->instruction_pa < fetch_packet.address) {
+      fetch_packet.address = begin->instruction_pa;
+      fetch_packet.data = begin->instruction_pa;
+      fetch_packet.v_address = begin->ip;
+      fetch_packet.ip = begin->ip;
+    }
   }
 
   // std::cout << "fetch: " << std::setw(16) << fetch_packet.ip << ", size: " << std::setw(3) << fetch_packet.size << std::endl;
