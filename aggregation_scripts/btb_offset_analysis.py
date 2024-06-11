@@ -18,6 +18,7 @@ plt.rcParams.update({"font.size": 7})
 
 def extract_single_workload(path):
     result_per_offset = []
+    summary_results = defaultdict(int)
     for i in range(4):
         file_path = os.path.join(path, f"cpu0_offset_btb_{i}_sharing_over_time.json")
         print(f"\tPloting {file_path}")
@@ -39,6 +40,7 @@ def extract_single_workload(path):
                 if entry["ref_count"] == 0:
                     continue
                 idx_entries += entry["ref_count"] * entry["frequency"]
+                summary_results[entry["ref_count"]] += 1
                 offset_entries += entry["frequency"]
                 if max_shared_offset < entry["ref_count"]:
                     max_shared_offset = entry["ref_count"]
@@ -80,7 +82,7 @@ def extract_single_workload(path):
                 compression_factor_by_time,
             )
         )
-    return result_per_offset
+    return result_per_offset, summary_results
 
 
 result_names = ["num_offsets", "num_idx", "max_shared", "compression_factor"]
@@ -97,20 +99,22 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
     groups = set([label.split("_")[0] for label in data_per_workload.keys()])
 
     cm = 1 / 2.54
-    fig = plt.figure(figsize=(18 * cm, 8 * cm))
-    fig.subplots_adjust(bottom=0.39)
-    ax1 = fig.add_subplot(1, 1, 1)
+    violin_fig = plt.figure(figsize=(18 * cm, 8 * cm))
+    stacked_fig = plt.figure(figsize=(18 * cm, 8 * cm))
+    violin_fig.subplots_adjust(bottom=0.39)
+    stacked_fig.subplots_adjust(bottom=0.39)
+    ax1 = violin_fig.add_subplot(1, 1, 1)
     divider = make_axes_locatable(ax1)
 
     ax1.set_ylabel("Compression Factor")
     ax2 = divider.append_axes("right", size="400%", pad=0.05)
     ax2.sharey(ax1)
     ax2.yaxis.set_tick_params(labelleft=False)
-    fig.add_axes(ax2)
+    violin_fig.add_axes(ax2)
     ax3 = divider.append_axes("right", size="88%", pad=0.05)
     ax3.sharey(ax1)
     ax3.yaxis.set_tick_params(labelleft=False)
-    fig.add_axes(ax3)
+    violin_fig.add_axes(ax3)
 
     axes = [ax1, ax2, ax3]
 
@@ -118,9 +122,10 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
     for idx, group in enumerate(sorted(groups)):
         avg = []
         data_per_benchmark = {}
+        summary_per_benchmark = {}
         benchmarks = []
         for key, value in data_per_workload.items():
-            value = value.get()
+            value, summary = value.get()
             if not value:
                 continue
             if key.startswith(group):
@@ -129,7 +134,9 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
                 data_per_benchmark[key] = value
                 benchmarks.append(key.split(".", 1)[0])
                 if idx == 1:
-                    max_limit = max(max_limit, max(value))
+                    max_limit = max(max_limit, value)
+                summary_per_benchmark[key] = sorted({key: val/sum(summary.values()) for key, val in summary.items()})
+                assert(sum(summary_per_benchmark[key].values()) == 1.0)
         axes[idx].violinplot(data_per_benchmark.values(), showmeans=True, widths=0.9)
         axes[idx].bar(len(benchmarks) + 1, sum(avg) / len(avg), width=0.8)
         benchmarks.append(f"{group.upper()} AVG")
@@ -138,8 +145,8 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
     ax1.set_ylim(bottom=1.0, top=max_limit)
     ax2.set_ylim(bottom=1.0, top=max_limit)
     ax3.set_ylim(bottom=1.0, top=max_limit)
-    plt.savefig(os.path.join(graph_dir, f"{filename}_{offset_idx}.pdf"))
-    plt.close()
+    violin_fig.savefig(os.path.join(graph_dir, f"{filename}_{offset_idx}.pdf"))
+    violin_fig.close()
 
 
 def main(args):
