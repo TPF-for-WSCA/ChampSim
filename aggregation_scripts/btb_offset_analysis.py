@@ -146,25 +146,33 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
                 value = value[offset_idx][rv_idx]
                 avg.append(sum(value) / len(value))
                 data_per_benchmark[key] = value
-                benchmarks.append(key.split(".", 1)[0])
+                key = key.split(".", 1)[0]
+                benchmarks.append(key)
                 if idx == 1:
-                    max_limit = max(max_limit, value)
-                summary_per_benchmark[key] = sorted({sum_key: val/sum(summary.values()) for sum_key, val in summary.items()})
+                    max_limit = max(max_limit, max(value))
+                summary_per_benchmark[key] = {
+                    sum_key: (val / sum(summary.values()))
+                    for sum_key, val in summary.items()
+                }
+
                 ref_counts.update(summary.keys())
-                assert(sum(summary_per_benchmark[key].values()) == 1.0)
+                # assert sum(summary_per_benchmark[key].values()) == 1.0 # Floating point precision sometimes isn't good enough
 
         bottom = np.zeros(len(benchmarks))
         for ref_count in sorted(list(ref_counts)):
             frequency_list = []
             for offsets in summary_per_benchmark.values():
-                frequency_list.append(offsets.get(ref_count, default=0.0))
-            stacked_axed[idx].bar(benchmarks, frequency_list, label=f"{ref_count}", bottom=bottom)
+                frequency_list.append(offsets.get(ref_count, 0.0))
+            stacked_axed[idx].bar(
+                benchmarks, frequency_list, label=f"{ref_count}", bottom=bottom
+            )
             bottom += np.array(frequency_list)
-        
+
         stacked_axed[idx].legend(loc="upper right")
 
-
-        violin_axes[idx].violinplot(data_per_benchmark.values(), showmeans=True, widths=0.9)
+        violin_axes[idx].violinplot(
+            data_per_benchmark.values(), showmeans=True, widths=0.9
+        )
         violin_axes[idx].bar(len(benchmarks) + 1, sum(avg) / len(avg), width=0.8)
         benchmarks.append(f"{group.upper()} AVG")
         set_axis_style(violin_axes[idx], benchmarks)
@@ -173,12 +181,15 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
     violin_ax2.set_ylim(bottom=1.0, top=max_limit)
     violin_ax3.set_ylim(bottom=1.0, top=max_limit)
     violin_fig.savefig(os.path.join(graph_dir, f"{filename}_{offset_idx}.pdf"))
-    stacked_fig.savefig(os.path.join(graph_dir, f"{filename}_rel_offset_freq.pdf"))
-    plt.close()
+    stacked_fig.savefig(
+        os.path.join(graph_dir, f"{filename}_{offset_idx}_rel_offset_freq.pdf")
+    )
+    violin_fig.close()
+    stacked_fig.close()
 
 
 def main(args):
-    pool = mp.Pool(processes=28)
+    pool = mp.Pool(processes=7)
     results_by_application_by_config = defaultdict(lambda: defaultdict(lambda: 0))
     for benchmark in os.listdir(args.logdir):
         if benchmark not in ["ipc1_server", "ipc1_client", "ipc1_spec"]:
