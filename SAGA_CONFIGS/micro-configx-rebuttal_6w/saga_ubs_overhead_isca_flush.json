@@ -11,7 +11,7 @@
   "LDFLAGS": "-L/cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/lib",
   "ooo_cpu": [
     {
-      "frequency": 4000,
+      "frequency": 5300,
       "ifetch_buffer_size": 128,
       "decode_buffer_size": 32,
       "dispatch_buffer_size": 32,
@@ -176,7 +176,7 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "LLC": {
-    "frequency": 2000,
+    "frequency": 1000,
     "sets": 32768,
     "ways": 15,
     "rq_size": 32,
@@ -194,7 +194,7 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "physical_memory": {
-    "frequency": 1000,
+    "frequency": 800,
     "channels": 1,
     "ranks": 1,
     "banks": 8,
