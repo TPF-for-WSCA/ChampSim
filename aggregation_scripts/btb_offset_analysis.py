@@ -103,20 +103,33 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
     stacked_fig = plt.figure(figsize=(18 * cm, 8 * cm))
     violin_fig.subplots_adjust(bottom=0.39)
     stacked_fig.subplots_adjust(bottom=0.39)
-    ax1 = violin_fig.add_subplot(1, 1, 1)
-    divider = make_axes_locatable(ax1)
+    violin_ax1 = violin_fig.add_subplot(1, 1, 1)
+    stacked_ax1 = stacked_fig.add_subplot(1, 1, 1)
+    violin_divider = make_axes_locatable(violin_ax1)
+    stacked_divider = make_axes_locatable(stacked_ax1)
 
-    ax1.set_ylabel("Compression Factor")
-    ax2 = divider.append_axes("right", size="400%", pad=0.05)
-    ax2.sharey(ax1)
-    ax2.yaxis.set_tick_params(labelleft=False)
-    violin_fig.add_axes(ax2)
-    ax3 = divider.append_axes("right", size="88%", pad=0.05)
-    ax3.sharey(ax1)
-    ax3.yaxis.set_tick_params(labelleft=False)
-    violin_fig.add_axes(ax3)
+    stacked_ax1.set_ylabel("Relative Frequency of Reference Counts")
+    violin_ax1.set_ylabel("Compression Factor")
+    violin_ax2 = violin_divider.append_axes("right", size="400%", pad=0.05)
+    violin_ax2.sharey(violin_ax1)
+    violin_ax2.yaxis.set_tick_params(labelleft=False)
+    violin_fig.add_axes(violin_ax2)
+    violin_ax3 = violin_divider.append_axes("right", size="88%", pad=0.05)
+    violin_ax3.sharey(violin_ax1)
+    violin_ax3.yaxis.set_tick_params(labelleft=False)
+    violin_fig.add_axes(violin_ax3)
 
-    axes = [ax1, ax2, ax3]
+    stacked_ax2 = stacked_divider.append_axes("right", size="400%", pad=0.05)
+    stacked_ax2.sharey(stacked_ax1)
+    stacked_ax2.yaxis.set_tick_params(labelleft=False)
+    stacked_fig.add_axes(stacked_ax2)
+    stacked_ax3 = stacked_divider.append_axes("right", size="88%", pad=0.05)
+    stacked_ax3.sharey(stacked_ax1)
+    stacked_ax3.yaxis.set_tick_params(labelleft=False)
+    stacked_fig.add_axes(stacked_ax3)
+
+    violin_axes = [violin_ax1, violin_ax2, violin_ax3]
+    stacked_axed = [stacked_ax1, stacked_ax2, stacked_ax3]
 
     max_limit = 1.0
     for idx, group in enumerate(sorted(groups)):
@@ -124,6 +137,7 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
         data_per_benchmark = {}
         summary_per_benchmark = {}
         benchmarks = []
+        ref_counts = set()
         for key, value in data_per_workload.items():
             value, summary = value.get()
             if not value:
@@ -135,18 +149,32 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
                 benchmarks.append(key.split(".", 1)[0])
                 if idx == 1:
                     max_limit = max(max_limit, value)
-                summary_per_benchmark[key] = sorted({key: val/sum(summary.values()) for key, val in summary.items()})
+                summary_per_benchmark[key] = sorted({sum_key: val/sum(summary.values()) for sum_key, val in summary.items()})
+                ref_counts.update(summary.keys())
                 assert(sum(summary_per_benchmark[key].values()) == 1.0)
-        axes[idx].violinplot(data_per_benchmark.values(), showmeans=True, widths=0.9)
-        axes[idx].bar(len(benchmarks) + 1, sum(avg) / len(avg), width=0.8)
-        benchmarks.append(f"{group.upper()} AVG")
-        set_axis_style(axes[idx], benchmarks)
 
-    ax1.set_ylim(bottom=1.0, top=max_limit)
-    ax2.set_ylim(bottom=1.0, top=max_limit)
-    ax3.set_ylim(bottom=1.0, top=max_limit)
+        bottom = np.zeros(len(benchmarks))
+        for ref_count in sorted(list(ref_counts)):
+            frequency_list = []
+            for offsets in summary_per_benchmark.values():
+                frequency_list.append(offsets.get(ref_count, default=0.0))
+            stacked_axed[idx].bar(benchmarks, frequency_list, label=f"{ref_count}", bottom=bottom)
+            bottom += np.array(frequency_list)
+        
+        stacked_axed[idx].legend(loc="upper right")
+
+
+        violin_axes[idx].violinplot(data_per_benchmark.values(), showmeans=True, widths=0.9)
+        violin_axes[idx].bar(len(benchmarks) + 1, sum(avg) / len(avg), width=0.8)
+        benchmarks.append(f"{group.upper()} AVG")
+        set_axis_style(violin_axes[idx], benchmarks)
+
+    violin_ax1.set_ylim(bottom=1.0, top=max_limit)
+    violin_ax2.set_ylim(bottom=1.0, top=max_limit)
+    violin_ax3.set_ylim(bottom=1.0, top=max_limit)
     violin_fig.savefig(os.path.join(graph_dir, f"{filename}_{offset_idx}.pdf"))
-    violin_fig.close()
+    stacked_fig.savefig(os.path.join(graph_dir, f"{filename}_rel_offset_freq.pdf"))
+    plt.close()
 
 
 def main(args):
