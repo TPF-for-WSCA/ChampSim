@@ -22,8 +22,8 @@
       "decode_width": 6,
       "dispatch_width": 6,
       "execute_width": 8,
-      "lq_width": 2,
-      "sq_width": 2,
+      "lq_width": 3,
+      "sq_width": 4,
       "retire_width": 8,
       "mispredict_penalty": 4,
       "scheduler_size": 205,
@@ -33,8 +33,8 @@
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
       "btb": "conv_btb",
-      "btb_ways": 6,
-      "btb_non_indirect": 8,
+      "btb_ways": 12,
+      "btb_non_indirect": 12,
       "btb_sets": 1024,
       "align_bits": 5
     }
@@ -169,7 +169,7 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "physical_memory": {
-    "frequency": 3200,
+    "frequency": 1000,
     "channels": 1,
     "ranks": 1,
     "banks": 8,

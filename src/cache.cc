@@ -87,12 +87,13 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev
 {
   if (handle_pkt.size != 0) {
     // vaddr and ip should be the same for L1I, but lookup happens on address so we also operate on address
-    // assert(handle_pkt.address % BLOCK_SIZE == handle_pkt.v_address % BLOCK_SIZE); // not true in case of overlapping blocks
-    uint8_t offset = (uint8_t)(handle_pkt.v_address % BLOCK_SIZE);
+    // assert(handle_pkt.address & (BLOCK_SIZE - 1) == handle_pkt.v_address & (BLOCK_SIZE - 1)); // not true in case of overlapping blocks
+    uint8_t offset = (uint8_t)(handle_pkt.v_address & (BLOCK_SIZE - 1));
     uint8_t end = offset + handle_pkt.size - 1;
     set_accessed(&hit_block.bytes_accessed, offset, end);
     if (&prev_block != &hit_block)
       hit_block.accesses++;
+
     for (int i = offset; i <= end; i++) {
       if (!hit_block.accesses_per_bytes[i])
         hit_block.last_modified_access = hit_block.accesses;
@@ -1770,7 +1771,7 @@ void VCL_CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pk
       stat_halfword_call++;
     } else if (handle_pkt.branch_type == BRANCH_OTHER) {
       stat_halfword_branch++;
-    } else if (handle_pkt.branch_type == NOT_BRANCH and (handle_pkt.address % BLOCK_SIZE >= 57 or handle_pkt.v_address % BLOCK_SIZE >= 57)) {
+    } else if (handle_pkt.branch_type == NOT_BRANCH and ((handle_pkt.address & (BLOCK_SIZE - 1)) >= 57 or (handle_pkt.v_address & (BLOCK_SIZE - 1)) >= 57)) {
       stat_halfword_endofclaccess++;
     } else if (handle_pkt.type == PREFETCH) {
       stat_wrong_prefetch_filter++;
@@ -1787,8 +1788,8 @@ void VCL_CACHE::handle_fill()
     auto fill_mshr = MSHR.begin();
     if (fill_mshr == std::end(MSHR) || fill_mshr->event_cycle > current_cycle)
       return;
-    if ((fill_mshr->address % BLOCK_SIZE) + fill_mshr->size > BLOCK_SIZE) {
-      fill_mshr->size = 64 - fill_mshr->address % BLOCK_SIZE;
+    if ((fill_mshr->address & (BLOCK_SIZE - 1)) + fill_mshr->size > BLOCK_SIZE) {
+      fill_mshr->size = 64 - (fill_mshr->address & (BLOCK_SIZE - 1));
     }
     // VCL Impl: Immediately insert into buffer, search for address if evicted buffer entry has been used
     // find victim
@@ -1847,17 +1848,17 @@ void VCL_CACHE::handle_fill()
       if (!success)
         return;
 
-      uint8_t original_offset = std::min((uint8_t)(BLOCK_SIZE - way_sizes[way]), (uint8_t)(fill_packet.v_address % BLOCK_SIZE));
+      uint8_t original_offset = std::min((uint8_t)(BLOCK_SIZE - way_sizes[way]), (uint8_t)(fill_packet.v_address & (BLOCK_SIZE - 1)));
       uint8_t aligned_offset = (original_offset - original_offset % way_sizes[way]);
       if (!aligned && way_sizes[way] < fill_packet.size) {
         num_blocks_to_write++;
         fill_packet.address = fill_packet.address + way_sizes[way];
         fill_packet.v_address = fill_packet.v_address + way_sizes[way];
         fill_packet.size = fill_packet.size - way_sizes[way];
-      } else if (aligned && aligned_offset + way_sizes[way] < (fill_packet.v_address % BLOCK_SIZE) + fill_packet.size) {
-        assert((fill_packet.v_address % BLOCK_SIZE) + fill_packet.size <= 64);
+      } else if (aligned && aligned_offset + way_sizes[way] < (fill_packet.v_address & (BLOCK_SIZE - 1)) + fill_packet.size) {
+        assert((fill_packet.v_address & (BLOCK_SIZE - 1)) + fill_packet.size <= 64);
         num_blocks_to_write++;
-        int8_t diff = aligned_offset + way_sizes[way] - fill_mshr->v_address % BLOCK_SIZE;
+        int8_t diff = aligned_offset + way_sizes[way] - (fill_mshr->v_address & (BLOCK_SIZE - 1));
         fill_mshr->address += diff;
         fill_mshr->v_address += diff;
         fill_mshr->size = fill_mshr->size - diff;
@@ -1893,7 +1894,7 @@ void VCL_CACHE::handle_writeback()
 uint8_t VCL_CACHE::hit_check(uint32_t& set, uint32_t& way, uint64_t& address, uint64_t& size)
 {
   BLOCK b = block[set * NUM_WAY + way];
-  uint8_t access_offset = address % BLOCK_SIZE;
+  uint8_t access_offset = address & (BLOCK_SIZE - 1);
   // NON VCL ignores block boundary crossing accesses at this point - so do we
   if ((b.offset <= access_offset && access_offset < b.offset + b.size && (access_offset + size - 1) < b.offset + b.size) || (b.offset + b.size >= 64)) {
     return 0;
@@ -1931,7 +1932,7 @@ std::vector<uint32_t> VCL_CACHE::get_way(uint32_t tag, uint32_t set, bool is_vir
 
 uint32_t VCL_CACHE::get_way(PACKET& packet, uint32_t set)
 {
-  auto offset = packet.v_address % BLOCK_SIZE;
+  auto offset = packet.v_address & (BLOCK_SIZE - 1);
   // std::cout << "get_way(TAG: " << std::hex << std::setw(10) << ((packet.v_address >> OFFSET_BITS) >> lg2(NUM_SET)) << std::dec << ", SET: " << std::setw(3)
   //           << set << ", OFFSET: " << std::setw(3) << offset << ") @ " << std::setw(5) << current_cycle << std::endl;
   auto begin = std::next(block.begin(), set * NUM_WAY);
@@ -1979,7 +1980,7 @@ bool VCL_CACHE::hit_test(uint64_t addr, uint8_t size)
   }
   auto set = get_set(addr);
   auto way = get_way(get_tag(addr), set, true);
-  auto offset = addr % BLOCK_SIZE;
+  auto offset = addr & (BLOCK_SIZE - 1);
   for (auto w : way) {
     BLOCK& b = block[set * NUM_WAY + w];
     if (b.offset <= offset && offset < b.offset + b.size && offset + size - 1 < b.offset + b.size) {
@@ -2024,7 +2025,7 @@ void VCL_CACHE::handle_read()
       reads_available_this_cycle--;
       handle_pkt.data = b->data;
       if (BLOCK_ENDING_BRANCH(handle_pkt.branch_type)) {
-        b->block_ending_branches[(handle_pkt.address % BLOCK_SIZE) + handle_pkt.size - 1] = true;
+        b->block_ending_branches[(handle_pkt.address & (BLOCK_SIZE - 1)) + handle_pkt.size - 1] = true;
       }
       for (auto ret : handle_pkt.to_return)
         ret->return_data(&handle_pkt);
@@ -2063,7 +2064,7 @@ void VCL_CACHE::handle_read()
         assert(0);
       }
       assert(handle_pkt.size > 0 && handle_pkt.size < 64);
-      uint64_t diff = (newoffset - handle_pkt.v_address % BLOCK_SIZE);
+      uint64_t diff = (newoffset - (handle_pkt.v_address & (BLOCK_SIZE - 1)));
       handle_pkt.size = handle_pkt.size - diff;
       uint64_t mask = ~(BLOCK_SIZE - 1);
       handle_pkt.v_address = (handle_pkt.v_address & mask) + newoffset;
@@ -2117,7 +2118,7 @@ int VCL_CACHE::add_pq(PACKET* packet)
 
   // check for the latest wirtebacks in the write queue
   champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(
-      WQ.begin(), WQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, match_offset_bits ? 0 : (OFFSET_BITS)));
+      WQ.begin(), WQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address & (BLOCK_SIZE - 1), packet->size, match_offset_bits ? 0 : (OFFSET_BITS)));
 
   if (found_wq != WQ.end()) {
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_WQ" << std::endl;)
@@ -2131,7 +2132,7 @@ int VCL_CACHE::add_pq(PACKET* packet)
   }
 
   // check for duplicates in the PQ
-  auto found = std::find_if(PQ.begin(), PQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, (OFFSET_BITS)));
+  auto found = std::find_if(PQ.begin(), PQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address & (BLOCK_SIZE - 1), packet->size, (OFFSET_BITS)));
   if (found != PQ.end()) {
     DP(if (warmup_complete[packet->cpu]) std::cout << " MERGED_PQ" << std::endl;)
 
@@ -2173,7 +2174,7 @@ int VCL_CACHE::add_wq(PACKET* packet)
 
   // check for duplicates in the write queue
   champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(
-      WQ.begin(), WQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, match_offset_bits ? 0 : (OFFSET_BITS)));
+      WQ.begin(), WQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address & (BLOCK_SIZE - 1), packet->size, match_offset_bits ? 0 : (OFFSET_BITS)));
 
   if (found_wq != WQ.end()) {
 
@@ -2218,7 +2219,7 @@ int VCL_CACHE::add_rq(PACKET* packet)
 
   // check for the latest writebacks in the write queue
   champsim::delay_queue<PACKET>::iterator found_wq = std::find_if(
-      WQ.begin(), WQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address % BLOCK_SIZE, packet->size, match_offset_bits ? 0 : (OFFSET_BITS)));
+      WQ.begin(), WQ.end(), eq_vcl_addr<PACKET>(packet->address, packet->v_address & (BLOCK_SIZE - 1), packet->size, match_offset_bits ? 0 : (OFFSET_BITS)));
 
   if (found_wq != WQ.end()) {
 
@@ -2290,7 +2291,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   BLOCK& fill_block = block[set * NUM_WAY + way];
   way_hits[way]++;
   ooo_cpu[handle_block.cpu]->stall_on_miss = 0;
-  record_block_insert_removal(set, way, handle_block.address, warmup_complete[handle_block.cpu]);
+  // record_block_insert_removal(set, way, handle_block.address, warmup_complete[handle_block.cpu]);
   if (fill_block.valid && fill_block.accesses == 0) {
     USELESS_CACHELINE++;
   }
@@ -2364,7 +2365,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
 
   ooo_cpu[handle_pkt.cpu]->stall_on_miss = 0;
   bool bypass = (way == NUM_WAY);
-  record_block_insert_removal(set, way, handle_pkt.address, warmup_complete[handle_pkt.cpu]);
+  // record_block_insert_removal(set, way, handle_pkt.address, warmup_complete[handle_pkt.cpu]);
 
 #ifndef LLC_BYPASS
   assert(!bypass);
@@ -2424,19 +2425,19 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
     fill_block.instr_id = handle_pkt.instr_id;
     record_cacheline_accesses(handle_pkt, fill_block, *prev_access);
     if (aligned) {
-      uint8_t original_offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
+      uint8_t original_offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address & (BLOCK_SIZE - 1));
       fill_block.offset = (original_offset - original_offset % fill_block.size);
       // CHECK: do we need to adjust the addresses?
       fill_block.address = handle_pkt.address - original_offset % fill_block.size;
       fill_block.v_address = handle_pkt.v_address - original_offset % fill_block.size;
       // This is currently not guaranteed - but does it happen? (overlapping the just inserted block - do we need to insert two blocks?)
       // It also happens in the default implementation: access on byte 63, so we don't need to handle this specially
-      // if (fill_block.offset + fill_block.size < (handle_pkt.v_address % BLOCK_SIZE) + handle_pkt.size) {
+      // if (fill_block.offset + fill_block.size < (handle_pkt.v_address & (BLOCK_SIZE - 1)) + handle_pkt.size) {
       //   std::cout << handle_pkt.v_address << std::endl;
       //   assert(0);
       // }
     } else
-      fill_block.offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
+      fill_block.offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address & (BLOCK_SIZE - 1));
     // We already acounted for the evicted block on insert, so what we count here is the insertion of a new block
   }
 

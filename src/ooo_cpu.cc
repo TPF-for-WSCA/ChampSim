@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <csignal>
 #include <iostream>
+#include <set>
 #include <vector>
 
 #include "cache.h"
@@ -16,21 +17,12 @@ extern uint8_t MAX_INSTR_DESTINATIONS;
 
 std::ostream& operator<<(std::ostream& s, const ooo_model_instr& mi)
 {
-  return (s << "OOO_MODEL_INSTR"
-            << "(instr_id: " << mi.instr_id << ", ip: " << mi.ip << ")");
+  return (s << "OOO_MODEL_INSTR" << "(instr_id: " << mi.instr_id << ", ip: " << mi.ip << ")");
 }
 
-std::ostream& operator<<(std::ostream& s, const PACKET& p)
-{
-  return (s << "PACKET"
-            << "(instr_id: " << p.instr_id << ", ip: " << p.ip << ")");
-}
+std::ostream& operator<<(std::ostream& s, const PACKET& p) { return (s << "PACKET" << "(instr_id: " << p.instr_id << ", ip: " << p.ip << ")"); }
 
-std::ostream& operator<<(std::ostream& s, const BLOCK& b)
-{
-  return (s << "BLOCK"
-            << "(instr_id: " << b.instr_id << ", ip: " << b.ip << ")");
-}
+std::ostream& operator<<(std::ostream& s, const BLOCK& b) { return (s << "BLOCK" << "(instr_id: " << b.instr_id << ", ip: " << b.ip << ")"); }
 
 void O3_CPU::operate()
 {
@@ -305,8 +297,8 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   // Ensure no overlapping instructions
   bool overlap = false;
   ooo_model_instr overhang_instr = arch_instr;
-  if ((arch_instr.ip % BLOCK_SIZE) + arch_instr.size > BLOCK_SIZE) {
-    arch_instr.size = BLOCK_SIZE - (arch_instr.ip % BLOCK_SIZE);
+  if ((arch_instr.ip & (BLOCK_SIZE - 1)) + arch_instr.size > BLOCK_SIZE) {
+    arch_instr.size = BLOCK_SIZE - (arch_instr.ip & (BLOCK_SIZE - 1));
     overhang_instr.instr_id = ++instr_unique_id;
     overhang_instr.ip += arch_instr.size;
     overhang_instr.instruction_pa += arch_instr.size;
@@ -487,7 +479,6 @@ void O3_CPU::fetch_instruction()
     find_addr = x.instruction_pa;
     return (is_adjacent && is_same_block && is_monotonically_increasing);
   });
-  assert(l1i_req_begin != l1i_req_end);
   assert(l1i_req_end - l1i_req_begin <= FETCH_WIDTH);
   do_fetch_instruction(l1i_req_begin, l1i_req_end);
 }
@@ -505,19 +496,38 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
   fetch_packet.branch_type = begin->branch_type;
-  fetch_packet.size = 0;
   fetch_packet.type = LOAD;
   fetch_packet.asid[0] = 0;
   fetch_packet.asid[1] = 0;
   fetch_packet.trace = begin->trace;
   fetch_packet.to_return = {&L1I_bus};
+  fetch_packet.instr_depend_on_me.push_back(begin);
+  uint64_t min_addr = begin->instruction_pa;
+  uint64_t max_addr = min_addr + begin->size;
   for (; begin != end; ++begin) {
     if (begin->ip % 4 != 0) {
       continue; // Ignore dummy instructions in updated traces
     }
+
+    if (begin->instruction_pa < min_addr) {
+      min_addr = begin->instruction_pa;
+    }
+
+    if (max_addr < begin->instruction_pa + begin->size) {
+      max_addr = begin->instruction_pa + begin->size;
+    }
+
     fetch_packet.instr_depend_on_me.push_back(begin);
-    fetch_packet.size += begin->size;
+
+    if (begin->instruction_pa < fetch_packet.address) {
+      fetch_packet.address = begin->instruction_pa;
+      fetch_packet.data = begin->instruction_pa;
+      fetch_packet.v_address = begin->ip;
+      fetch_packet.ip = begin->ip;
+    }
   }
+
+  fetch_packet.size = max_addr - min_addr;
 
   // std::cout << "fetch: " << std::setw(16) << fetch_packet.ip << ", size: " << std::setw(3) << fetch_packet.size << std::endl;
   int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);

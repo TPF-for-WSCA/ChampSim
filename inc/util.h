@@ -86,7 +86,7 @@ struct eq_vcl_addr {
     if (!validtest(test)) {
       return false;
     }
-    auto testoffset = test.v_address % 64;
+    auto testoffset = test.v_address & 63;
     auto testendoffset = testoffset + test.size;
     bool same_base = (test.address >> shamt) == (val >> shamt);
     bool start_within_range = testoffset <= offset && offset < testendoffset;
