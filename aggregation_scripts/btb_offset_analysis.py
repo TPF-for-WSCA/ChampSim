@@ -17,8 +17,11 @@ plt.rcParams.update({"font.size": 7})
 
 
 def extract_single_workload(path):
+    def dd():
+        return defaultdict(int)
+
     result_per_offset = []
-    summary_results = defaultdict(int)
+    summary_results = defaultdict(dd)
     for i in range(4):
         file_path = os.path.join(path, f"cpu0_offset_btb_{i}_sharing_over_time.json")
         print(f"\tPloting {file_path}")
@@ -40,7 +43,7 @@ def extract_single_workload(path):
                 if entry["ref_count"] == 0:
                     continue
                 idx_entries += entry["ref_count"] * entry["frequency"]
-                summary_results[entry["ref_count"]] += 1
+                summary_results[i][entry["ref_count"]] += 1
                 offset_entries += entry["frequency"]
                 if max_shared_offset < entry["ref_count"]:
                     max_shared_offset = entry["ref_count"]
@@ -90,6 +93,7 @@ result_names = ["num_offsets", "num_idx", "max_shared", "compression_factor"]
 
 def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
+    import matplotlib.ticker as mtick
 
     def set_axis_style(ax, labels):
         ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels, rotation=90)
@@ -102,7 +106,7 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
     violin_fig = plt.figure(figsize=(18 * cm, 8 * cm))
     stacked_fig = plt.figure(figsize=(18 * cm, 8 * cm))
     violin_fig.subplots_adjust(bottom=0.39)
-    stacked_fig.subplots_adjust(bottom=0.39)
+    stacked_fig.subplots_adjust(left=0.06, bottom=0.39, right=0.65)
     violin_ax1 = violin_fig.add_subplot(1, 1, 1)
     stacked_ax1 = stacked_fig.add_subplot(1, 1, 1)
     violin_divider = make_axes_locatable(violin_ax1)
@@ -151,8 +155,8 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
                 if idx == 1:
                     max_limit = max(max_limit, max(value))
                 summary_per_benchmark[key] = {
-                    sum_key: (val / sum(summary.values()))
-                    for sum_key, val in summary.items()
+                    sum_key: (val / sum(summary[offset_idx].values()))
+                    for sum_key, val in summary[offset_idx].items()
                 }
 
                 ref_counts.update(summary.keys())
@@ -164,11 +168,24 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
             for offsets in summary_per_benchmark.values():
                 frequency_list.append(offsets.get(ref_count, 0.0))
             stacked_axed[idx].bar(
-                benchmarks, frequency_list, label=f"{ref_count}", bottom=bottom
+                benchmarks,
+                frequency_list,
+                label=f"{ref_count}",
+                bottom=bottom,
+                align="center",
             )
             bottom += np.array(frequency_list)
 
-        stacked_axed[idx].legend(loc="upper right")
+        stacked_axed[idx].yaxis.set_major_formatter(
+            mtick.PercentFormatter(xmax=1.0, decimals=0)
+        )
+        labels = stacked_axed[idx].get_xticklabels()
+        for l in labels:
+            l.set_rotation(90)
+
+        labels = stacked_axed[idx].get_yticklabels()
+        for l in labels:
+            l.set_rotation(90)
 
         violin_axes[idx].violinplot(
             data_per_benchmark.values(), showmeans=True, widths=0.9
@@ -177,6 +194,10 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
         benchmarks.append(f"{group.upper()} AVG")
         set_axis_style(violin_axes[idx], benchmarks)
 
+    stacked_axed[-1].legend(
+        title="", bbox_to_anchor=(0.95, 1), loc="upper left", ncol=4
+    )
+
     violin_ax1.set_ylim(bottom=1.0, top=max_limit)
     violin_ax2.set_ylim(bottom=1.0, top=max_limit)
     violin_ax3.set_ylim(bottom=1.0, top=max_limit)
@@ -184,8 +205,8 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
     stacked_fig.savefig(
         os.path.join(graph_dir, f"{filename}_{offset_idx}_rel_offset_freq.pdf")
     )
-    violin_fig.close()
-    stacked_fig.close()
+    plt.close(violin_fig)
+    plt.close(stacked_fig)
 
 
 def main(args):
