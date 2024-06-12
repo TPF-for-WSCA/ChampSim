@@ -16,9 +16,11 @@ plt.style.use("tableau-colorblind10")
 plt.rcParams.update({"font.size": 7})
 
 
+def dd():
+    return defaultdict(int)
+
+
 def extract_single_workload(path):
-    def dd():
-        return defaultdict(int)
 
     result_per_offset = []
     summary_results = defaultdict(dd)

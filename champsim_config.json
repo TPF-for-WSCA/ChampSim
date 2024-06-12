@@ -5,8 +5,8 @@
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
   "num_cores": 1,
-  "CFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O3 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-  "CXXFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O3 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+  "CFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O0 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+  "CXXFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O0 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
   "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
   "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib -fsanitize=bounds",
   "ooo_cpu": [
@@ -96,6 +96,7 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "ITLB": {
+    "perfect": true,
     "sets": 32,
     "ways": 8,
     "rq_size": 16,

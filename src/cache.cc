@@ -458,7 +458,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
   BLOCK& hit_block = block[set * NUM_WAY + way];
 
   record_cacheline_accesses(handle_pkt, hit_block, *prev_access);
-  handle_pkt.data = hit_block.data;
+  handle_pkt.data = (perfect_cache) ? handle_pkt.data : hit_block.data;
 
   // update prefetcher on load instruction
   if (should_activate_prefetcher(handle_pkt.type) && handle_pkt.pf_origin_level < fill_level) {
@@ -2266,8 +2266,7 @@ void CACHE::print_private_stats()
   if (this->buffer) {
     BUFFER_CACHE& bc = ((VCL_CACHE*)this)->buffer_cache;
     bc.print_private_stats();
-    std::cout << std::right << std::setw(3) << "merge register"
-              << ":\t" << bc.merge_hit << std::endl;
+    std::cout << std::right << std::setw(3) << "merge register" << ":\t" << bc.merge_hit << std::endl;
   }
 }
 
