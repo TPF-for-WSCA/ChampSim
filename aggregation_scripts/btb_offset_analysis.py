@@ -188,6 +188,7 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
         labels = stacked_axed[idx].get_yticklabels()
         for l in labels:
             l.set_rotation(90)
+            l.set_verticalalignment("center")
 
         violin_axes[idx].violinplot(
             data_per_benchmark.values(), showmeans=True, widths=0.9

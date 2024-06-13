@@ -23,7 +23,7 @@
       "dispatch_width": 6,
       "execute_width": 8,
       "lq_width": 3,
-      "sq_width": 4,
+      "sq_width": 2,
       "retire_width": 8,
       "mispredict_penalty": 5,
       "scheduler_size": 205,
