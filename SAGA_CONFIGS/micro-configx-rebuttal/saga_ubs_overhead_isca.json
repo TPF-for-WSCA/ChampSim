@@ -33,7 +33,6 @@
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "btb": "conv_btb",
-      "align_bits": 5,
       "btb_sets": 512,
       "btb_ways": 12,
       "btb_non_indirect": 12
