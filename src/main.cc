@@ -550,7 +550,7 @@ void write_offsets(O3_CPU* cpu, int cpu_id)
       std::cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
     }
   }
-
+  // TODO: Write out actual offset/refcount offsets so we can plot them as time series
   if (json_files_per_offset_btb.size() == cpu->BTB_WAYS - cpu->BTB_NON_INDIRECT) {
     for (auto const& [partition, sharing_in_partition] : cpu->sharing_in_btb_by_partition) {
       auto& json_file = json_files_per_offset_btb[partition];

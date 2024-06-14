@@ -648,6 +648,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
           }
         }
       sharing_in_btb_by_partition[i].push_back(reuse_frequency);
+      offset_refcounts_by_partition[i].push_back(refcounts_by_offset);
     }
   }
 
