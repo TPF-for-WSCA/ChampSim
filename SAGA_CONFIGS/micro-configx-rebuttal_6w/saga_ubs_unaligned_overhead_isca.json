@@ -23,21 +23,20 @@
       "dispatch_width": 6,
       "execute_width": 6,
       "lq_width": 3,
-      "sq_width": 4,
+      "sq_width": 2,
       "retire_width": 8,
       "mispredict_penalty": 5,
       "scheduler_size": 205,
-      "decode_latency": 2,
+      "decode_latency": 1,
       "dispatch_latency": 1,
-      "schedule_latency": 2,
+      "schedule_latency": 0,
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "btb": "conv_btb",
       "btb_max_loop_branch": 32,
       "btb_sets": 512,
       "btb_ways": 12,
-      "btb_non_indirect": 12,
-      "align_bits": 6
+      "btb_non_indirect": 12
     }
   ],
   "DIB": {
@@ -184,6 +183,7 @@
     "pq_size": 32,
     "mshr_size": 64,
     "latency": 42,
+    "fill_latency": 2,
     "max_read": 1,
     "max_write": 1,
     "prefetch_as_load": false,

@@ -29,7 +29,7 @@
       "scheduler_size": 128,
       "decode_latency": 2,
       "dispatch_latency": 1,
-      "schedule_latency": 2,
+      "schedule_latency": 0,
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "btb": "extended_basic_btb"
@@ -72,6 +72,7 @@
     "pq_size": 32,
     "mshr_size": 8,
     "latency": 4,
+    "fill_latency": 1,
     "max_read": 2,
     "max_write": 2,
     "prefetch_as_load": false,

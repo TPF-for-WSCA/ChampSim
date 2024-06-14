@@ -237,7 +237,7 @@ public:
   virtual void record_block_insert_removal(int set, uint32_t way, uint64_t newtag, bool warmup_completed);
 
   void record_cacheline_stats(uint32_t cpu, BLOCK& handle_block);
-  virtual void record_overlap(void){};
+  virtual void record_overlap(void) {};
 
   virtual void readlike_hit(PACKET& buffer_hit, PACKET& handle_pkt);
   virtual void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);

@@ -6,6 +6,8 @@
  * returns.
  */
 
+#include <bitset>
+
 #include "ooo_cpu.h"
 
 #define BASIC_BTB_SETS 4096
@@ -13,6 +15,8 @@
 #define BASIC_BTB_INDIRECT_SIZE 4096
 #define BASIC_BTB_RAS_SIZE 64
 #define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
+
+#define LOG_COMMONALITY_CUTOFF 100
 
 map<uint32_t, uint64_t> offset_reuse_freq;
 uint64_t offset_found_on_BTBmiss;
@@ -291,6 +295,12 @@ struct offsetBTB {
     assert(idx < numSets);
     assert(way < assoc);
     return theOffsetBTB[idx][way].target_offset;
+  }
+  uint64_t get_refcount_from_offsetBTB(uint32_t idx, uint32_t way)
+  {
+    assert(idx < numSets);
+    assert(way < assoc);
+    return theOffsetBTB[idx][way].ref_count;
   }
 };
 
@@ -587,6 +597,12 @@ uint64_t get_target_from_offset_btb_entry(BTBEntry* entry, uint64_t ip, int part
   int num_bits = offsetbtb_partition_sizes[entry->offsetBTB_partitionID];
   uint64_t mask = pow(2, num_bits + 2) - 1;
   auto target = (ip & ~mask) | (offset & mask);
+  if (offsetBTB_partition[entry->offsetBTB_partitionID]->get_refcount_from_offsetBTB(entry->offsetBTB_set, entry->offsetBTB_way) > LOG_COMMONALITY_CUTOFF) {
+    cout << "common offset: " << endl;
+    cout << "\tip:          " << ip << endl;
+    cout << "\toffset:      " << offset << endl;
+    cout << "\tprediction:  " << target << endl;
+  }
   return target;
 }
 
@@ -613,15 +629,23 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   }*/
 
-  if (warmup_complete[cpu] && 99997 <= current_cycle - last_stats_cycle) {
+  if (99997 <= current_cycle - last_stats_cycle) {
     std::cout << "Getting copy statistics - cycle: " << current_cycle << std::endl;
     last_stats_cycle = current_cycle;
     for (int i = 0; i < NUM_OFFSET_BTB_PARTITIONS; ++i) {
       std::map<uint32_t, uint16_t> reuse_frequency;
+      std::map<uint64_t, uint64_t> refcounts_by_offset;
       auto offsetBTB = offsetBTB_partition[i];
       for (auto& set : offsetBTB->theOffsetBTB)
         for (auto& entry : set) {
           reuse_frequency[entry.ref_count] += 1;
+          refcounts_by_offset[entry.target_offset] = entry.ref_count;
+          if (entry.ref_count > LOG_COMMONALITY_CUTOFF) {
+            std::cout << "Large shared refcount: " << endl;
+            cout << "\tTARGET OFFSET: " << std::bitset<64>(entry.target_offset) << endl;
+            cout << "\tREF COUNT:     " << entry.ref_count << endl;
+            cout << "\tPARTITION:     " << i << endl;
+          }
         }
       sharing_in_btb_by_partition[i].push_back(reuse_frequency);
     }
