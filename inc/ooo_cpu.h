@@ -65,6 +65,7 @@ public:
   std::array<std::map<uint64_t, uint64_t>, 64> offset_counts_by_size;
   std::vector<std::vector<uint64_t>> pc_bits_offset;
   std::map<uint32_t, std::vector<std::map<uint32_t, uint16_t>>> sharing_in_btb_by_partition;
+  std::map<uint32_t, std::vector<std::map<uint64_t, uint64_t>>> offset_refcounts_by_partition;
   size_t align_bits = LOG2_BLOCK_SIZE;
   // instruction
   uint64_t instr_unique_id = 0, completed_executions = 0, begin_sim_cycle = 0, begin_sim_instr = 0, last_sim_cycle = 0, last_sim_instr = 0,

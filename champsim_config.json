@@ -32,10 +32,21 @@
       "schedule_latency": 2,
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
-      "btb": "conv_btb",
-      "btb_ways": 12,
-      "btb_non_indirect": 12,
-      "btb_sets": 1024,
+      "btb": "xbtbx",
+      "btb_ways": 8,
+      "btb_non_indirect": 4,
+      "btb_sets": 512,
+      "btb_offset_sizes": [
+        0,
+        4,
+        5,
+        7,
+        9,
+        11,
+        19,
+        25,
+        64
+      ],
       "align_bits": 5
     }
   ],
