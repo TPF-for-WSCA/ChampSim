@@ -16,7 +16,7 @@
 #define BASIC_BTB_RAS_SIZE 64
 #define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
 
-#define LOG_COMMONALITY_CUTOFF 50
+#define LOG_COMMONALITY_CUTOFF 100
 
 map<uint32_t, uint64_t> offset_reuse_freq;
 uint64_t offset_found_on_BTBmiss;

@@ -439,7 +439,9 @@ void CACHE::handle_prefetch()
 
     // remove this entry from PQ
     PQ.pop_front();
-    reads_available_this_cycle--;
+    // We don't prefetch into the frontend, only into L1I
+    if (0 != this->NAME.compare(this->NAME.length() - 3, 3, "L1I"))
+      reads_available_this_cycle--;
   }
 }
 
