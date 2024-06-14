@@ -29,10 +29,6 @@ void O3_CPU::operate()
   // subtract 1, as we might insert two into the buffer (overlap)
   instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy()) - 1);
 
-  if (IFETCH_BUFFER.size() == IFETCH_BUFFER.occupancy()) {
-    cout << "IFETCHBUFFER FULL" << endl;
-  }
-
   retire_rob();                    // retire
   complete_inflight_instruction(); // finalize execution
   execute_instruction();           // execute instructions
