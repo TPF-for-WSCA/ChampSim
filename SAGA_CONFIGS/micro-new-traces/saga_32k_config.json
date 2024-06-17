@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/micro-new-traces/champsim32k_unaligned",
+    "executable_name": "bin/micro-new-traces/champsim32k",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
