@@ -1747,11 +1747,25 @@ void VCL_CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
 {
   pkt.type = LOAD; // we only insert on hit -- this is no longer a prefetch in the buffer
   if (buffer) {
-    if (!buffer_cache.fill_miss(pkt, *this))
+    if (!buffer_cache.fill_miss(pkt, *this)) {
+      // TODO: Why should this ever happen?
       return;
+    }
   } else {
     // TODO: Insert into main predictor way/cache arrary
-    assert(0);
+    // TODO: We assume uniform block size at this point
+    uint32_t set = get_set(pkt.address);
+    auto set_begin = std::next(std::begin(block), set * NUM_WAY);
+    auto set_end = std::next(set_begin, NUM_WAY);
+    auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
+
+    uint32_t way = std::distance(set_begin, first_inv);
+    if (way == NUM_WAY) {
+      way = impl_replacement_find_victim(pkt.cpu, pkt.instr_id, set, &block.data()[set * NUM_WAY], pkt.ip, pkt.address, LOAD);
+    }
+
+    bool success = filllike_miss(set, way, pkt);
+    assert(success);
   }
 }
 
@@ -1831,7 +1845,7 @@ void VCL_CACHE::handle_fill()
       // if aligned, we might have to write two blocks
 
       if (way == NUM_WAY) {
-        way = lru_victim(&block.data()[set * NUM_WAY], 8); // NOTE: THIS IS THE BUFFERLESS IMPLEMENTATION // TODO: CHANGE SIZE ACCORDING TO WAY SIZES
+        way = lru_victim(&block.data()[set * NUM_WAY], way_sizes[0]); // NOTE: THIS IS THE BUFFERLESS IMPLEMENTATION // TODO: CHANGE SIZE ACCORDING TO WAY SIZES
         // TODO: RECORD STATISTICS IF ANY
       }
       if (filter_inserts && way != NUM_WAY && conditional_insert_from_filter(fill_packet, block[set * NUM_WAY + way])) {
@@ -2265,8 +2279,7 @@ void CACHE::print_private_stats()
   if (this->buffer) {
     BUFFER_CACHE& bc = ((VCL_CACHE*)this)->buffer_cache;
     bc.print_private_stats();
-    std::cout << std::right << std::setw(3) << "merge register"
-              << ":\t" << bc.merge_hit << std::endl;
+    std::cout << std::right << std::setw(3) << "merge register" << ":\t" << bc.merge_hit << std::endl;
   }
 }
 
