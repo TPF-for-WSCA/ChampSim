@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/micro/champsim32k_32B",
+    "executable_name": "bin/micro/champsim_32B",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
@@ -32,7 +32,7 @@
         "execute_latency": 0,
         "branch_predictor": "hashed_perceptron",
         "btb": "extended_basic_btb",
-        "align_bits": 6
+        "align_bits": 5
     }],
     "DIB": {
         "window_size": 16,
