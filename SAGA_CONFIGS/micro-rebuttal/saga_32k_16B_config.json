@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/micro/champsim_16B",
+    "executable_name": "bin/micro-rebuttal/champsim_16B",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
