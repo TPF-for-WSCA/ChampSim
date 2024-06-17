@@ -1399,8 +1399,10 @@ void BUFFER_CACHE::print_private_stats()
     total_time += (time * count);
     total_evictions += count;
   }
-  std::cout << "AVERAGE Time Spent in Buffer: ";
-  std::cout << (total_time / total_evictions) << std::endl;
+  if (total_evictions) {
+    std::cout << "AVERAGE Time Spent in Buffer: ";
+    std::cout << (total_time / total_evictions) << std::endl;
+  }
   std::cout << NAME << " PARTIAL MISSES";
   std::cout << "\tUNDERRUNS: " << std::setw(10) << underruns << "\tOVERRUNS: " << std::setw(10) << overruns << "\tMERGES: " << std::setw(10) << mergeblocks
             << "\tNEW BLOCKS: " << std::setw(10) << newblock << std::endl;
