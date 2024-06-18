@@ -389,7 +389,7 @@ def write_predictor_accuracy(data, out_path="./"):
     with open(file_path, "w+") as outfile:
         for application_name, application_data in data["const"].items():
             outfile.write(f"{application_name}\t{application_data[1]}\n")
-            outfile.flush()
+        outfile.flush()
     return
 
 
