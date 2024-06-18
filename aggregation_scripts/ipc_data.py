@@ -380,6 +380,16 @@ def mutliple_sizes_run(out_dir=None):
     return ipc_by_cachesize_and_workload
 
 
+def write_predictor_accuracy(data, out_path="./"):
+    filename = "predictor_accuracy.tsv"
+    file_path = os.path.join(out_path, filename)
+    with open(file_path, "w+") as outfile:
+        for application_name, application_data in data.items():
+            outfile.write(f"{application_name}\t{application_data[1]}\n")
+            outfile.flush()
+    return
+
+
 def write_partial_misses(data, out_path="./"):
     base_filename = "partial_misses_"
     partial_miss_causes = ["UNDERRUNS", "OVERRUNS", "MERGES", "NEW BLOCKS"]
@@ -441,6 +451,8 @@ def write_tsv(data, out_path=None):
         filename = "branch_count"
     elif type == STATS.INSTRUCTION_COUNT:
         filename = "instruction_count"
+    elif type == STATS.PREDICTOR_ACCURACY:
+        filename = "prediction_accuracy"
     elif type == STATS.STALL_CYCLES:
         filename = "stall_cycles"
     elif type == STATS.ROB_AT_MISS:
@@ -537,5 +549,7 @@ if type == STATS.PARTIAL_MISSES:
     write_partial_misses(data, sys.argv[1])
 elif type == STATS.BRANCH_DISTANCES:
     write_series(data, sys.argv[1])
+elif type == STATS.PREDICTOR_ACCURACY:
+    write_predictor_accuracy(data, sys.argv[1])
 else:
     write_tsv(data, sys.argv[1])
