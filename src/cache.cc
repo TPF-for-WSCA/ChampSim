@@ -755,7 +755,7 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
   }
   int accessed_bytes_after_predictor = std::bitset<64>(handle_block.bytes_accessed_in_predictor).count();
   int accessed_bytes_at_eviction = std::bitset<64>(handle_block.bytes_accessed).count();
-  if (accessed_bytes_at_eviction != 0) {
+  if (accessed_bytes_at_eviction != 0 and accessed_bytes_after_predictor != 0) {
     float percentage_predicted = (double)accessed_bytes_after_predictor / accessed_bytes_at_eviction;
     assert(percentage_predicted <= 1.0);
     predictor_accuracy[percentage_predicted] += 1;
@@ -871,6 +871,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, 
       pf_fill++;
 
     fill_block.bytes_accessed = 0; // newly added to the cache thus no accesses yet
+    fill_block.bytes_accessed_in_predictor = 0;
     memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
 
     fill_block.valid = true;
@@ -1539,6 +1540,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   }
   update_duration();
   fill_block.bytes_accessed = 0;
+  fill_block.bytes_accessed_in_predictor = 0;
   memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
   /////
   uint32_t parent_set = parent.get_set(packet.address); // set of the VCL cache, not the buffer
