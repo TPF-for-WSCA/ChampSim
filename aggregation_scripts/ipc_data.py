@@ -80,14 +80,14 @@ def extract_predictor_accuracy(path):
     while line:
         match = accuracy_start.match(line)
         if match:
-            avg_accuracy = match.groups()[0]
+            avg_accuracy = float(match.groups()[0])
             break
         line = next(logs)
     while line:
         line = next(logs)
         match = accuracy_end.match(line)
         if match:
-            return (accuracy_histogram, float(match.groups()[0]))
+            return (accuracy_histogram, avg_accuracy)
         match = accuracy_data_point.match(line)
         accuracy_histogram[float(match.groups()[0])] = match.groups()[1]
 
