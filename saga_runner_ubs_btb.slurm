@@ -6,7 +6,7 @@
 #SBATCH --mem-per-cpu=8G
 #SBATCH --time=00-24:00:00
 #SBATCH --mail-user=romankb@ntnu.no
-#SBATCH --mail-type=ALL
+#SBATCH --mail-type=NONE
 #SBATCH -e /cluster/work/users/romankb/btb-perfect-%j.err
 #SBATCH -o /cluster/work/users/romankb/btb-perfect-%j.out
 

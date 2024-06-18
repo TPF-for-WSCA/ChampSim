@@ -6,7 +6,7 @@
 #SBATCH --mem-per-cpu=12G
 #SBATCH --time=01-00:00:00
 #SBATCH --mail-user=romankb@ntnu.no
-#SBATCH --mail-type=ALL
+#SBATCH --mail-type=NONE
 #SBATCH -e /cluster/work/users/romankb/0KB_grid-%j.err
 #SBATCH -o /cluster/work/users/romankb/0KB_grid-%j.out
 

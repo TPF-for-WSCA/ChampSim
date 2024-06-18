@@ -7,7 +7,7 @@
 #SBATCH --mem-per-cpu=32G
 #SBATCH --time=02-00:00:00
 #SBATCH --mail-user=romankb@ntnu.no
-#SBATCH --mail-type=ALL
+#SBATCH --mail-type=NONE
 #SBATCH -e /cluster/work/users/romankb/classifier_bigmem.err
 #SBATCH -o /cluster/work/users/romankb/classifier_bigmem.out
 
