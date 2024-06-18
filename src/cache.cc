@@ -1,6 +1,7 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <bit>
 #include <bitset>
 #include <cmath>
 #include <csignal>
@@ -752,7 +753,14 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
   if (!warmup_complete[cpu]) {
     return;
   }
-  // we onlu write to the file if warmup is complete
+  int accessed_bytes_after_predictor = std::bitset<64>(handle_block.bytes_accessed_in_predictor).count();
+  int accessed_bytes_at_eviction = std::bitset<64>(handle_block.bytes_accessed).count();
+  if (accessed_bytes_at_eviction != 0) {
+    float percentage_predicted = (double)accessed_bytes_after_predictor / accessed_bytes_at_eviction;
+    assert(percentage_predicted <= 1.0);
+    predictor_accuracy[percentage_predicted] += 1;
+  }
+  // we only write to the file if warmup is complete
   if (cl_accessmask_buffer.size() < WRITE_BUFFER_SIZE) {
     cl_accessmask_buffer.push_back(handle_block.bytes_accessed);
   } else {
@@ -798,6 +806,10 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
 
 bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, bool treat_like_hit)
 {
+  auto last_inserted_block = last_inserted[set];
+  if (last_inserted_block != NULL) {
+    last_inserted_block->bytes_accessed_in_predictor = last_inserted_block->bytes_accessed;
+  }
   DP(if (warmup_complete[handle_pkt.cpu]) {
     std::cout << "[" << NAME << "] " << __func__ << " miss";
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
@@ -875,6 +887,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, 
     fill_block.accesses = 0;
     fill_block.last_modified_access = 0;
     fill_block.time_present = 0;
+    last_inserted[set] = &fill_block;
     record_cacheline_accesses(handle_pkt, fill_block, *prev_access);
   }
 
@@ -2283,6 +2296,15 @@ void CACHE::print_private_stats()
     bc.print_private_stats();
     std::cout << std::right << std::setw(3) << "merge register" << ":\t" << bc.merge_hit << std::endl;
   }
+  std::cout << NAME << " PREDICTOR ACCURACY" << std::endl;
+  double average_accuracy = 0;
+  size_t num_evictions = 0;
+  for (auto it = predictor_accuracy.rbegin(); it != predictor_accuracy.rend(); it++) {
+    std::cout << std::right << std::setw(3) << it->first * 100 << "%:\t" << it->second << std::endl;
+    average_accuracy += it->first * (float)it->second;
+    num_evictions += it->second;
+  }
+  std::cout << "\t AVERAGE ACCURACY: " << average_accuracy / num_evictions << endl;
 }
 
 void VCL_CACHE::print_private_stats(void)

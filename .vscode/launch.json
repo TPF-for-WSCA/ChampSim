@@ -9,7 +9,7 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "-warmup_instructions",
-                "50000000",
+                "50000",
                 "-simulation_instructions",
                 "50000000",
                 "-result_dir",

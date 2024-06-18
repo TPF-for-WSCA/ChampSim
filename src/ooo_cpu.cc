@@ -16,21 +16,12 @@ extern uint8_t MAX_INSTR_DESTINATIONS;
 
 std::ostream& operator<<(std::ostream& s, const ooo_model_instr& mi)
 {
-  return (s << "OOO_MODEL_INSTR"
-            << "(instr_id: " << mi.instr_id << ", ip: " << mi.ip << ")");
+  return (s << "OOO_MODEL_INSTR" << "(instr_id: " << mi.instr_id << ", ip: " << mi.ip << ")");
 }
 
-std::ostream& operator<<(std::ostream& s, const PACKET& p)
-{
-  return (s << "PACKET"
-            << "(instr_id: " << p.instr_id << ", ip: " << p.ip << ")");
-}
+std::ostream& operator<<(std::ostream& s, const PACKET& p) { return (s << "PACKET" << "(instr_id: " << p.instr_id << ", ip: " << p.ip << ")"); }
 
-std::ostream& operator<<(std::ostream& s, const BLOCK& b)
-{
-  return (s << "BLOCK"
-            << "(instr_id: " << b.instr_id << ", ip: " << b.ip << ")");
-}
+std::ostream& operator<<(std::ostream& s, const BLOCK& b) { return (s << "BLOCK" << "(instr_id: " << b.instr_id << ", ip: " << b.ip << ")"); }
 
 void O3_CPU::operate()
 {

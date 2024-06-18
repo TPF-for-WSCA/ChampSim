@@ -154,6 +154,8 @@ public:
   const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
   uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
+  std::vector<BLOCK*> last_inserted{NUM_SET};
+  std::map<double, size_t> predictor_accuracy;
   std::vector<uint64_t> cl_accessmask_buffer;
   std::vector<uint64_t> used_bytes_in_cache;
   std::vector<uint64_t> cl_blocks_in_cache_buffer;
@@ -237,7 +239,7 @@ public:
   virtual void record_block_insert_removal(int set, uint32_t way, uint64_t newtag, bool warmup_completed);
 
   void record_cacheline_stats(uint32_t cpu, BLOCK& handle_block);
-  virtual void record_overlap(void){};
+  virtual void record_overlap(void) {};
 
   virtual void readlike_hit(PACKET& buffer_hit, PACKET& handle_pkt);
   virtual void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
