@@ -71,7 +71,7 @@ def extract_predictor_accuracy(path):
         logs = f.readlines()
     logs.reverse()
     accuracy_start = re.compile("cpu0_L1I PREDICTOR ACCURACY")
-    accuracy_data_point = re.compile("\s*(\d+\.*\d*)?)\%:\s+(\d+)")
+    accuracy_data_point = re.compile("\s*(\d+\.*\d*)\%:\s+(\d+)")
     accuracy_end = re.compile("\t+AVERAGE ACCURACY: (\d+\.*\d*)")
     logs = iter(logs)
     line = next(logs)
