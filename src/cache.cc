@@ -392,7 +392,6 @@ void CACHE::handle_read()
       readlike_hit(set, way, handle_pkt);
     } else if (filter_prefetches && prefetch_buffer_hit != PREFETCH_BUFFER.end()) { // miss check if in prefetch buffer
       PACKET p = *prefetch_buffer_hit;
-      PREFETCH_BUFFER.erase(prefetch_buffer_hit);
       pf_useful++;
       readlike_hit(p, handle_pkt);
       handle_packet_insert_from_buffer(p);
