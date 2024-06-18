@@ -387,7 +387,7 @@ def write_predictor_accuracy(data, out_path="./"):
     filename = "predictor_accuracy.tsv"
     file_path = os.path.join(out_path, filename)
     with open(file_path, "w+") as outfile:
-        for application_name, application_data in data.items():
+        for application_name, application_data in data["const"].items():
             outfile.write(f"{application_name}\t{application_data[1]}\n")
             outfile.flush()
     return
