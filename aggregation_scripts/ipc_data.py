@@ -21,6 +21,7 @@ class STATS(Enum):
     FETCH_COUNT = 12
     STALL_CYCLES = 13
     ROB_AT_MISS = 14
+    PREDICTOR_ACCURACY = 15
 
 
 type = STATS.IPC
@@ -62,6 +63,30 @@ def extract_instruction_count(path):
         matches = regex.match(line)
         if matches:
             return int(matches.groups()[0])
+
+
+def extract_predictor_accuracy(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    accuracy_start = re.compile("cpu0_L1I PREDICTOR ACCURACY")
+    accuracy_data_point = re.compile("\s*(\d+\.*\d*)?)\%:\s+(\d+)")
+    accuracy_end = re.compile("\t+AVERAGE ACCURACY: (\d+\.*\d*)")
+    logs = iter(logs)
+    line = next(logs)
+    accuracy_histogram = {}
+    while line:
+        if accuracy_start.match(line):
+            break
+        line = next(logs)
+    while line:
+        line = next(logs)
+        match = accuracy_end.match(line)
+        if match:
+            return (accuracy_histogram, float(match.groups()[0]))
+        match = accuracy_data_point.match(line)
+        accuracy_histogram[float(match.groups()[0])] = match.groups()[1]
 
 
 def extract_l1i_partial(path):
@@ -308,6 +333,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_instruction_count(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.PREDICTOR_ACCURACY:
+                stat_by_workload[workload] = extract_predictor_accuracy(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.ROB_AT_MISS:
                 stat_by_workload[workload] = extract_rob_at_stall(
                     f"{path}/{workload}/{logfile}"
@@ -492,6 +521,8 @@ elif sys.argv[3] == "BRANCH_COUNT":
     type = STATS.BRANCH_COUNT
 elif sys.argv[3] == "INSTRUCTION_COUNT":
     type = STATS.INSTRUCTION_COUNT
+elif sys.argv[3] == "PREDICTOR_ACCURACY":
+    type = STATS.PREDICTOR_ACCURACY
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
 if sys.argv[2] == "single":
