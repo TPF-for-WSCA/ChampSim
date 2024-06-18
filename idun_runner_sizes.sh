@@ -22,7 +22,7 @@ for dir in ${binary_dir[@]}
 do
     for bin in /cluster/home/romankb/ChampSim/bin/$dir/*
     do
-        srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=8G -n1 -c20 -t01:30:00 -o /cluster/work/users/romankb/latency-%j.out -e /cluster/work/users/romankb/latency-%j.err python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable ${bin} --nosub --traces_directory /cluster/work/romankb/dataset/dpc3/champsim-traces/speccpu --nosub --output_dir   /cluster/work/users/romankb/results/micro_new_1/spec/sizes_$(basename ${bin})/   >> /cluster/work/users/romankb/pyrunner_latency_fixed_spec_$(basename ${bin}).log &
+        srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=8G -n1 -c20 -t01:30:00 -o /cluster/work/romankb/latency-%j.out -e /cluster/work/romankb/latency-%j.err python /cluster/home/romankb/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable ${bin} --nosub --intel --traces_directory /cluster/work/romankb/dataset/dpc3/champsim-traces/speccpu --output_dir   /cluster/work/romankb/results/micro_new_1/spec/sizes_$(basename ${bin})/   >> /cluster/work/romankb/pyrunner_latency_fixed_spec_$(basename ${bin}).log &
     done
 done
 
