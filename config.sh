@@ -153,6 +153,7 @@ default_l1i = {
     "prefetch_buffer_size": 64,
     "extend_blocks_to_branch": False,
     "insertion_method": "UBS",
+    "replacement_strategy": "LRU",
     "word_size": 8,
 }
 default_l1d = {
