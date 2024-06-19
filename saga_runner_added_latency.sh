@@ -21,7 +21,7 @@ module load Python/3.10.4-GCCcore-11.3.0
 binaries=("champsim_line_distillation")
 #binaries=("ubs_overhead_isca_extend_lru" "ubs_overhead_isca_lru")
 
-for binary in /cluster/projects/nn4650k/workspace/ChampSim/bin/micro-rebuttal/${binaries[@]}
+for binary in /cluster/projects/nn4650k/workspace/ChampSim/bin/micro-rebuttal/*
 do
     srun --account=nn4650k -J num-collection-${binary} --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=8G -n1 -c20 -t01:00:00 -o /cluster/work/users/romankb/latency-%j.out -e /cluster/work/users/romankb/latency-%j.err python /cluster/projects/nn4650k/workspace/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable ${binary} --traces_directory /cluster/home/romankb/dataset/ipc1_new/spec --nosub --output_dir   /cluster/work/users/romankb/results/micro_rebuttal_16_32/ipc1_spec/sizes_$(basename ${binary})/   >> /cluster/work/users/romankb/pyrunner_latency_fixed_ipc1_spec_$(basename ${binary}).log &
     srun --account=nn4650k -J num-collection-${binary} --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=8G -n1 -c20 -t01:00:00 -o /cluster/work/users/romankb/latency-%j.out -e /cluster/work/users/romankb/latency-%j.err python /cluster/projects/nn4650k/workspace/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable ${binary} --traces_directory /cluster/home/romankb/dataset/ipc1_new/server --nosub --output_dir /cluster/work/users/romankb/results/micro_rebuttal_16_32/ipc1_server/sizes_$(basename ${binary})/ >> /cluster/work/users/romankb/pyrunner_latency_fixed_ipc1_server_$(basename ${binary}).log &
