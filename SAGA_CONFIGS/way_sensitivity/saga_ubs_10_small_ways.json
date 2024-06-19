@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/ubs_10_small_ways",
+  "executable_name": "bin/way_sensitivity/ubs_10_small_ways",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
