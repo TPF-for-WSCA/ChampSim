@@ -1748,7 +1748,19 @@ void VCL_CACHE::operate_buffer_evictions()
         block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
       }
       min_start = block_start + way_sizes[way];
-      filllike_miss(set, way, block_start, merge_block);
+      // TODO: ACIC
+      if (replacement_strategy == ReplacementStrategy.ACIC and ACIC_predictor) {
+        uint64_t old_tag = block[set * NUM_WAY + way].tag;
+        uint64_t new_tag = merge_block.tag;
+        CSHR_tag lookup_tag{new_tag, old_tag};
+        if (ACIC_predictor[lookup_tag] >= 0) {
+          filllike_miss(set, way, block_start, merge_block);
+        }
+        CSHR_new[new_tag] = old_tag;
+        CSHR_old[old_tag] = new_tag;
+      } else {
+        filllike_miss(set, way, block_start, merge_block);
+      }
       if (min_start >= 64)
         break; // There is no block left that could be outside as we went until the end
     }
@@ -1779,8 +1791,20 @@ void VCL_CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
     if (way == NUM_WAY) {
       way = impl_replacement_find_victim(pkt.cpu, pkt.instr_id, set, &block.data()[set * NUM_WAY], pkt.ip, pkt.address, LOAD);
     }
-
-    bool success = filllike_miss(set, way, pkt);
+    bool success = true;
+    // TODO: ACIC
+    if (replacement_strategy == ReplacementStrategy.ACIC and ACIC_predictor) {
+      uint64_t old_tag = block[set * NUM_WAY + way].tag;
+      uint64_t new_tag = get_tag(pkt.address);
+      CSHR_tag lookup_tag{new_tag, old_tag};
+      if (ACIC_predictor[lookup_tag] >= 0) {
+        success = filllike_miss(set, way, block_start, pkt);
+      }
+      CSHR_new[new_tag] = old_tag;
+      CSHR_old[old_tag] = new_tag;
+    } else {
+      success = filllike_miss(set, way, block_start, pkt);
+    }
     assert(success);
   }
 }
@@ -1871,8 +1895,20 @@ void VCL_CACHE::handle_fill()
       if (last_way > NUM_WAY)
         last_way = NUM_WAY;
       lru_subset = SUBSET(way, last_way);
-
-      bool success = filllike_miss(set, way, *fill_mshr);
+      bool success = true;
+      // TODO: ACIC
+      if (replacement_strategy == ReplacementStrategy.ACIC and ACIC_predictor) {
+        uint64_t old_tag = block[set * NUM_WAY + way].tag;
+        uint64_t new_tag = get_tag(*fill_mshr.address);
+        CSHR_tag lookup_tag{new_tag, old_tag};
+        if (ACIC_predictor[lookup_tag] >= 0) {
+          success = filllike_miss(set, way, block_start, *fill_mshr);
+        }
+        CSHR_new[new_tag] = old_tag;
+        CSHR_old[old_tag] = new_tag;
+      } else {
+        success = filllike_miss(set, way, block_start, *fill_mshr);
+      }
       if (!success)
         return;
 
@@ -2049,6 +2085,12 @@ void VCL_CACHE::handle_read()
     // HIT IN BUFFER/MERGE REGISTER / always use that first
     if (b) {
       // statistics in the buffer
+      if (replacement_strategy == ReplacementStrategy.ACIC) {
+        auto old_tag = get_tag(handle_pkt.address);
+        auto new_tag = CSHR_old[old_tag];
+        ACIC_predictor[{new_tag, old_tag}]--;
+        ACIC_predictor[{new_tag, old_tag}] = std::max(ACIC_predictor[{new_tag, old_tag}], -10);
+      }
       RQ.pop_front();
       reads_available_this_cycle--;
       handle_pkt.data = b->data;
@@ -2066,6 +2108,12 @@ void VCL_CACHE::handle_read()
 
     // HIT IN VCL CACHE
     if (way < NUM_WAY) {
+      if (replacement_strategy == ReplacementStrategy.ACIC) {
+        auto new_tag = get_tag(handle_pkt.address);
+        auto old_tag = CSHR_new[new_tag];
+        ACIC_predictor[{new_tag, old_tag}]++;
+        ACIC_predictor[{new_tag, old_tag}] = std::min(ACIC_predictor[{new_tag, old_tag}], 10);
+      }
       // TODO: if way sizes < 64 and aligned, push front with an additional cycle latency
       if (way_sizes[way] < 64 and not handle_pkt.delayed and ooo_cpu[handle_pkt.cpu]->align_bits < LOG2_BLOCK_SIZE) {
         RQ.update_front_delay(1);

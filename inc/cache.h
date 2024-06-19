@@ -379,6 +379,11 @@ public:
   bool fill_miss(PACKET& packet, VCL_CACHE& parent);
 };
 
+typedef struct CSHR_tag {
+  uint64_t contender_tag;
+  uint64_t victim_tag;
+} CSHR_tag;
+
 class VCL_CACHE : public CACHE
 {
 
@@ -393,7 +398,9 @@ private:
   CacheType cache_type;
   ReplacementStrategy replacement_strategy;
   uint8_t word_size;
-  std::map<> CSHR;
+  std::map<uint64_t, uint64_t> CSHR_new;
+  std::map<uint64_t, uint64_t> CSHR_old;
+  std::map<CSHR_tag, int> ACIC_predictor;
 
 protected:
   virtual void handle_packet_insert_from_buffer(PACKET& pkt) override;
