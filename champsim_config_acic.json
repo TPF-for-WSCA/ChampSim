@@ -44,6 +44,19 @@
   "L1I": {
     "sets": 64,
     "ways": 8,
+    "buffer": true,
+    "buffer_size": 16,
+    "buffer_organisation": "DIRECT_MAPPED",
+    "way_sizes": [
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64
+    ],
     "rq_size": 64,
     "wq_size": 64,
     "pq_size": 32,
@@ -58,7 +71,9 @@
     "filter_inserts": false,
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,
-    "counting_block_method": "SUM_ACCESSES"
+    "lru_modifier": "DEFAULT",
+    "counting_block_method": "SUM_ACCESSES",
+    "replacement_strategy": "ACIC"
   },
   "L1D": {
     "sets": 64,

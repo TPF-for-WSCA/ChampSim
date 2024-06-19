@@ -24,6 +24,16 @@ extern VirtualMemory vmem;
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t knob_stall_on_miss;
 
+bool operator<(const CSHR_tag& t1, const CSHR_tag& t2)
+{
+  if (t1.contender_tag != t2.contender_tag)
+    return t1.contender_tag < t2.contender_tag;
+  if (t1.victim_tag != t2.victim_tag) {
+    return t1.victim_tag < t2.victim_tag;
+  }
+  return false;
+}
+
 void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper)
 {
   if (upper > 63) {
@@ -1749,7 +1759,7 @@ void VCL_CACHE::operate_buffer_evictions()
       }
       min_start = block_start + way_sizes[way];
       // TODO: ACIC
-      if (replacement_strategy == ReplacementStrategy.ACIC and ACIC_predictor) {
+      if (replacement_strategy == ReplacementStrategy::ACIC) {
         uint64_t old_tag = block[set * NUM_WAY + way].tag;
         uint64_t new_tag = merge_block.tag;
         CSHR_tag lookup_tag{new_tag, old_tag};
@@ -1793,17 +1803,17 @@ void VCL_CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
     }
     bool success = true;
     // TODO: ACIC
-    if (replacement_strategy == ReplacementStrategy.ACIC and ACIC_predictor) {
+    if (replacement_strategy == ReplacementStrategy::ACIC) {
       uint64_t old_tag = block[set * NUM_WAY + way].tag;
       uint64_t new_tag = get_tag(pkt.address);
       CSHR_tag lookup_tag{new_tag, old_tag};
       if (ACIC_predictor[lookup_tag] >= 0) {
-        success = filllike_miss(set, way, block_start, pkt);
+        success = filllike_miss(set, way, pkt);
       }
       CSHR_new[new_tag] = old_tag;
       CSHR_old[old_tag] = new_tag;
     } else {
-      success = filllike_miss(set, way, block_start, pkt);
+      success = filllike_miss(set, way, pkt);
     }
     assert(success);
   }
@@ -1897,17 +1907,17 @@ void VCL_CACHE::handle_fill()
       lru_subset = SUBSET(way, last_way);
       bool success = true;
       // TODO: ACIC
-      if (replacement_strategy == ReplacementStrategy.ACIC and ACIC_predictor) {
+      if (replacement_strategy == ReplacementStrategy::ACIC) {
         uint64_t old_tag = block[set * NUM_WAY + way].tag;
-        uint64_t new_tag = get_tag(*fill_mshr.address);
+        uint64_t new_tag = get_tag(fill_mshr->address);
         CSHR_tag lookup_tag{new_tag, old_tag};
         if (ACIC_predictor[lookup_tag] >= 0) {
-          success = filllike_miss(set, way, block_start, *fill_mshr);
+          success = filllike_miss(set, way, *fill_mshr);
         }
         CSHR_new[new_tag] = old_tag;
         CSHR_old[old_tag] = new_tag;
       } else {
-        success = filllike_miss(set, way, block_start, *fill_mshr);
+        success = filllike_miss(set, way, *fill_mshr);
       }
       if (!success)
         return;
@@ -2085,11 +2095,13 @@ void VCL_CACHE::handle_read()
     // HIT IN BUFFER/MERGE REGISTER / always use that first
     if (b) {
       // statistics in the buffer
-      if (replacement_strategy == ReplacementStrategy.ACIC) {
+      if (replacement_strategy == ReplacementStrategy::ACIC) {
         auto old_tag = get_tag(handle_pkt.address);
         auto new_tag = CSHR_old[old_tag];
         ACIC_predictor[{new_tag, old_tag}]--;
         ACIC_predictor[{new_tag, old_tag}] = std::max(ACIC_predictor[{new_tag, old_tag}], -10);
+        CSHR_new.erase(new_tag);
+        CSHR_old.erase(old_tag);
       }
       RQ.pop_front();
       reads_available_this_cycle--;
@@ -2108,11 +2120,13 @@ void VCL_CACHE::handle_read()
 
     // HIT IN VCL CACHE
     if (way < NUM_WAY) {
-      if (replacement_strategy == ReplacementStrategy.ACIC) {
+      if (replacement_strategy == ReplacementStrategy::ACIC) {
         auto new_tag = get_tag(handle_pkt.address);
         auto old_tag = CSHR_new[new_tag];
         ACIC_predictor[{new_tag, old_tag}]++;
         ACIC_predictor[{new_tag, old_tag}] = std::min(ACIC_predictor[{new_tag, old_tag}], 10);
+        CSHR_new.erase(new_tag);
+        CSHR_old.erase(old_tag);
       }
       // TODO: if way sizes < 64 and aligned, push front with an additional cycle latency
       if (way_sizes[way] < 64 and not handle_pkt.delayed and ooo_cpu[handle_pkt.cpu]->align_bits < LOG2_BLOCK_SIZE) {
