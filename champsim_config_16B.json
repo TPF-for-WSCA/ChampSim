@@ -1,14 +1,14 @@
 {
-  "executable_name": "bin/micro-rebuttal/champsim_16B",
+  "executable_name": "bin/champsim",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
-  "heartbeat_frequency": 10000000,
+  "heartbeat_frequency": 1000000,
   "num_cores": 1,
-  "CFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include",
-  "CXXFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include",
+  "CFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O0 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+  "CXXFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O0 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
   "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
-  "LDFLAGS": "-L/cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/lib",
+  "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib -fsanitize=bounds",
   "ooo_cpu": [
     {
       "frequency": 4000,
@@ -32,7 +32,7 @@
       "schedule_latency": 2,
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
-      "btb": "extended_basic_btb",
+      "btb": "conv_btb",
       "align_bits": 4
     }
   ],

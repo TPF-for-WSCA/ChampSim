@@ -59,7 +59,8 @@
     "filter_inserts": false,
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,
-    "counting_block_method": "SUM_ACCESSES"
+    "counting_block_method": "SUM_ACCESSES",
+    "aligned": true
   },
   "L1D": {
     "sets": 64,
