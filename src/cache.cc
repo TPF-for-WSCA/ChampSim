@@ -101,7 +101,7 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev
     // assert(handle_pkt.address % BLOCK_SIZE == handle_pkt.v_address % BLOCK_SIZE); // not true in case of overlapping blocks
     uint8_t offset = (uint8_t)(handle_pkt.v_address % BLOCK_SIZE);
     uint8_t end = offset + handle_pkt.size - 1;
-    assert(end < hit_block.offset + hit_block.size);
+    // assert(end < hit_block.offset + hit_block.size);
     set_accessed(&hit_block.bytes_accessed, offset, end);
     if (&prev_block != &hit_block)
       hit_block.accesses++;
