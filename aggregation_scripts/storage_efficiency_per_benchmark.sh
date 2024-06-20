@@ -39,7 +39,7 @@ do
     for config in ${vcl_16_configs[@]}
     do
         echo "\tHandling ${config}"
-        python /cluster/projects/nn4650k/workspace/ChampSim/aggregation_scripts/apply_merge_strategies.py ./${benchmark}/${config} storage_efficiency arm --vcl-configuration 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 &
+        python /cluster/projects/nn4650k/workspace/ChampSim/aggregation_scripts/apply_merge_strategies.py ./${benchmark}/${config} storage_efficiency arm --sets 128 --vcl-configuration 16 16 16 16 16 16 16 16 16 16 16 16 16 16 16 &
     done
     for config in ${vcl_32_configs[@]}
     do

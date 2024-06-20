@@ -436,7 +436,7 @@ def apply_offset_bucket_analysis(worklad_name, tracefile_path):
 
 
 def apply_storage_efficiency_analysis(
-    workload_name, tracedirectory_path, vcl_config=None
+    workload_name, tracedirectory_path, vcl_config=None, sets=64
 ):
     # assuming 32k cache with S = 64
     tracefile_path = os.path.join(tracedirectory_path, "cpu0_L1I_cl_bytes_used.bin")
@@ -449,8 +449,8 @@ def apply_storage_efficiency_analysis(
     useful_bytes = 0
     total_cache_size = max_num_blocks * cacheline_size
     if vcl_config:
-        total_cache_size = sum(vcl_config) * 64
-        max_num_blocks = len(vcl_config) * 64
+        total_cache_size = sum(vcl_config) * sets
+        max_num_blocks = len(vcl_config) * sets
     storage_efficiency_timeseries = []
     max_efficiency = 0.0
     min_efficiency = 1.0
@@ -614,6 +614,7 @@ def main(args):
                     workload,
                     os.path.join(trace_directory, workload),
                     args.vcl_config,
+                    args.sets
                 )
                 if not results:
                     continue
@@ -841,6 +842,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("--vcl-configuration", dest="vcl_config", type=int, nargs="*")
+    parser.add_argument("--sets", dest="sets", type=int, nargs='?', default=64)
 
     args = parser.parse_args()
 
