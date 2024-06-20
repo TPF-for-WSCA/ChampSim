@@ -1,14 +1,14 @@
 {
-  "executable_name": "bin/champsim",
+  "executable_name": "bin/micro-acic/champsim32k_acic",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
-  "heartbeat_frequency": 1000000,
+  "heartbeat_frequency": 10000000,
   "num_cores": 1,
-  "CFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O3 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-  "CXXFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O3 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+  "CFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include",
+  "CXXFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include",
   "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
-  "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib -fsanitize=bounds",
+  "LDFLAGS": "-L/cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/lib",
   "ooo_cpu": [
     {
       "frequency": 4000,
@@ -32,7 +32,7 @@
       "schedule_latency": 2,
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
-      "btb": "conv_btb",
+      "btb": "extended_basic_btb",
       "align_bits": 4
     }
   ],
@@ -42,27 +42,20 @@
     "ways": 8
   },
   "L1I": {
-    "sets": 128,
-    "ways": 15,
-    "buffer": false,
-    "buffer_size": 64,
-    "buffer_organisation": "DIRECT_MAPPED",
+    "sets": 64,
+    "ways": 8,
+    "buffer": true,
+    "buffer_size": 16,
+    "buffer_organisation": "FULLY_ASSOCIATIVE",
     "way_sizes": [
-      16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64,
+      64
     ],
     "rq_size": 64,
     "wq_size": 64,
@@ -78,8 +71,9 @@
     "filter_inserts": false,
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,
+    "lru_modifier": "DEFAULT",
     "counting_block_method": "SUM_ACCESSES",
-    "aligned": true
+    "replacement_strategy": "ACIC"
   },
   "L1D": {
     "sets": 64,
