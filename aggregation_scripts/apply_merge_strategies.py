@@ -764,7 +764,9 @@ def main(args):
                 # axes[idx].hlines(sum(avg)/len(avg), 0.0, 100.0, linewidth=0.5, color='g', linestyles="dashed", label="AVG")
                 benchmarks = list(data_per_benchmark.keys())
                 # axes[idx].bar(len(benchmarks)+1, sum(avg)/len(avg), width=0.5)
-                axes[idx].plot(len(benchmarks) + 1, sum(avg)/len(avg), 'b+', markersize='4')
+
+                axes[idx].bar(len(benchmarks) + 1, sum(avg) / len(avg), width=0.8)
+                # axes[idx].plot(len(benchmarks) + 1, sum(avg)/len(avg), 'b+', markersize='4')
                 benchmarks.append(f" {group.upper()} AVG")
                 set_axis_style(axes[idx], benchmarks)
                 avg = []
