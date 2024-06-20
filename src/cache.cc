@@ -101,6 +101,7 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev
     // assert(handle_pkt.address % BLOCK_SIZE == handle_pkt.v_address % BLOCK_SIZE); // not true in case of overlapping blocks
     uint8_t offset = (uint8_t)(handle_pkt.v_address % BLOCK_SIZE);
     uint8_t end = offset + handle_pkt.size - 1;
+    // assert(end < hit_block.offset + hit_block.size);
     set_accessed(&hit_block.bytes_accessed, offset, end);
     if (&prev_block != &hit_block)
       hit_block.accesses++;
@@ -2522,7 +2523,6 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
     fill_block.cpu = handle_pkt.cpu;
     fill_block.tag = get_tag(handle_pkt.address);
     fill_block.instr_id = handle_pkt.instr_id;
-    record_cacheline_accesses(handle_pkt, fill_block, *prev_access);
     if (aligned) {
       uint8_t original_offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
       fill_block.offset = (original_offset - original_offset % fill_block.size);
@@ -2535,8 +2535,11 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
       //   std::cout << handle_pkt.v_address << std::endl;
       //   assert(0);
       // }
-    } else
+    } else {
       fill_block.offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
+    }
+    record_cacheline_accesses(handle_pkt, fill_block, *prev_access);
+
     // We already acounted for the evicted block on insert, so what we count here is the insertion of a new block
   }
 
