@@ -46,7 +46,7 @@
     "ways": 8,
     "buffer": true,
     "buffer_size": 16,
-    "buffer_organisation": "DIRECT_MAPPED",
+    "buffer_organisation": "FULLY_ASSOCIATIVE",
     "way_sizes": [
       64,
       64,
