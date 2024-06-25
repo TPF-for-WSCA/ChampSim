@@ -2381,7 +2381,7 @@ void CACHE::print_private_stats()
       average_accuracy += it->first * (float)it->second;
       num_evictions += it->second;
     }
-    std::cout << "\t AVERAGE ACCURACY " << i << " : " << average_accuracy / num_evictions << endl;
+    std::cout << "\t" << NAME << " AVERAGE ACCURACY " << i << " : " << average_accuracy / num_evictions << endl;
   }
 }
 
