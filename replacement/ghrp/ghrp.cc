@@ -5,8 +5,10 @@
 #include "cache.h"
 #include "util.h"
 
-#define NUM_PRED_TABLES = 3;
-#define NUM_COUNTS = 4096;
+#define NUM_PRED_TABLES 3
+#define NUM_COUNTS 4096
+#define BYPASS_THRESH 2
+#define DEAD_THRESH 2
 
 int cntrsNew[NUM_PRED_TABLES] = {0};
 int predTables[NUM_COUNTS][NUM_PRED_TABLES] = {0};
@@ -41,6 +43,35 @@ void update_indices(uint16_t signature)
       hash_map >>= 1;
     }
     indices[i] = index;
+  }
+}
+
+void get_counters(int* counters)
+{
+  for (int i = 0; i < NUM_PRED_TABLES; i++) {
+    counters[i] = predTables[indices[i]][i];
+  }
+}
+
+bool majority_vote(int* counters, int threshold)
+{
+  int vote = 0;
+  for (int i = 0; i < NUM_PRED_TABLES; i++) {
+    if (counters[i] > threshold) {
+      vote += 1;
+    }
+  }
+  return vote >= (NUM_PRED_TABLES / 2);
+}
+
+void updatePredTables(bool isDead)
+{
+  for (int i = 0; i < NUM_PRED_TABLES; i++) {
+    if (isDead) {
+      predTables[indices[i]][i]++;
+    } else {
+      predTables[indices[i]][i]--;
+    }
   }
 }
 
@@ -83,8 +114,13 @@ bool CACHE::is_default_lru(LruModifier lru_modifier)
 
 // find replacement victim
 uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
-{
+{ // TODO: GHRP
   // baseline LRU
+  for (int i = 0; i < NUM_WAY; i++) {
+    if (current_set[i].dead) {
+      return i;
+    }
+  }
   return std::distance(current_set, std::max_element(current_set, std::next(current_set, NUM_WAY), lru_comparator<BLOCK, BLOCK>()));
 }
 
@@ -96,6 +132,42 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
     return;
 
   auto signature = generate_signature(ip);
+  update_indices(signature);
+  int counters[NUM_PRED_TABLES];
+  get_counters(counters);
+
+  bool ghrp_active = false;
+  if (not hit) {
+    bool bypass = majority_vote(counters, BYPASS_THRESH);
+    if (not bypass) {
+      auto begin = std::next(block.begin(), set * NUM_WAY);
+      auto end = std::next(begin, NUM_WAY);
+      auto victim = block.end();
+      for (; begin != end; begin++) {
+        if (begin->dead) {
+          victim = begin;
+          break;
+        }
+      }
+      if (victim != block.end()) {
+        update_indices(victim->signature);
+        updatePredTables(true);
+        bool prediction = majority_vote(counters, DEAD_THRESH);
+        victim->dead = prediction;
+        victim->signature = signature;
+        ghrp_active = true;
+      }
+    }
+  } else {
+    auto hit_block = &block[set * NUM_WAY + way];
+    update_indices(hit_block->signature);
+    updatePredTables(false);
+    bool prediction = majority_vote(counters, DEAD_THRESH);
+    hit_block->dead = prediction;
+    hit_block->signature = signature;
+  }
+
+  update_path_hist(ip);
 
   uint32_t lru_pos = get_insert_pos(lru_modifier, set);
   if (hit)

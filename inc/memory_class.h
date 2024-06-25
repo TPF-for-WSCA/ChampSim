@@ -18,7 +18,9 @@
 class BLOCK
 {
 public:
-  bool valid = false, prefetch = false, dirty = false, trace = false;
+  bool valid = false, prefetch = false, dirty = false, trace = false, dead = false;
+
+  uint16_t signature = 0;
 
   uint8_t size = 64, offset = 0;
 

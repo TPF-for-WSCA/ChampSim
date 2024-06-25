@@ -2175,7 +2175,7 @@ void VCL_CACHE::handle_read()
       continue;
     } else if (filter_prefetches && prefetch_buffer_hit != PREFETCH_BUFFER.end()) {
       PACKET p = *prefetch_buffer_hit;
-      PREFETCH_BUFFER.erase(prefetch_buffer_hit);
+      // PREFETCH_BUFFER.erase(prefetch_buffer_hit);
       pf_useful++;
       CACHE::readlike_hit(p, handle_pkt);
       handle_packet_insert_from_buffer(p);
