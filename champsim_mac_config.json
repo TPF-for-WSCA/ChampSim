@@ -5,8 +5,8 @@
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
   "num_cores": 1,
-  "CFLAGS": "-Wall -Wno-reorder -ferror-limit=5 -DNLOG -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
-  "CXXFLAGS": "-Wall -Wno-reorder -ferror-limit=5 -DNLOG -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
+  "CFLAGS": "-Wall -Wno-reorder -ferror-limit=5 -DNLOG -g -O0 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
+  "CXXFLAGS": "-Wall -Wno-reorder -ferror-limit=5 -DNLOG -g -O0 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
   "LDLIBS": "-lxed -lz -lboost_system-mt -lboost_filesystem-mt -v",
   "LDFLAGS": "-L/Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/lib -L/opt/local/lib/boost/lib",
   "ooo_cpu": [

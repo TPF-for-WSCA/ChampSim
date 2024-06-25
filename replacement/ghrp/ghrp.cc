@@ -8,11 +8,11 @@
 #define NUM_PRED_TABLES 3
 #define NUM_COUNTS 4096
 #define BYPASS_THRESH 2
-#define DEAD_THRESH 2
+#define DEAD_THRESH 1
 
 int cntrsNew[NUM_PRED_TABLES] = {0};
 int predTables[NUM_COUNTS][NUM_PRED_TABLES] = {0};
-int indices[NUM_PRED_TABLES] = {0};
+int ghrp_indices[NUM_PRED_TABLES] = {0};
 int hash_functions[NUM_PRED_TABLES] = {0b0111, 0b1110, 0b1101};
 
 uint16_t history_reg = 0;
@@ -20,12 +20,12 @@ uint16_t history_reg = 0;
 void update_path_hist(uint64_t PC)
 {
   history_reg <<= 4;
-  history_reg |= (PC & 0b111);
+  history_reg |= ((PC >> 4) & 0b111);
 }
 
 int generate_signature(uint64_t PC)
 {
-  uint16_t signature = (0xF & PC) xor history_reg;
+  uint16_t signature = (0xF & (PC >> 4)) xor history_reg;
   return signature;
 }
 
@@ -42,14 +42,14 @@ void update_indices(uint16_t signature)
       }
       hash_map >>= 1;
     }
-    indices[i] = index;
+    ghrp_indices[i] = index;
   }
 }
 
 void get_counters(int* counters)
 {
   for (int i = 0; i < NUM_PRED_TABLES; i++) {
-    counters[i] = predTables[indices[i]][i];
+    counters[i] = predTables[ghrp_indices[i]][i];
   }
 }
 
@@ -68,49 +68,14 @@ void updatePredTables(bool isDead)
 {
   for (int i = 0; i < NUM_PRED_TABLES; i++) {
     if (isDead) {
-      predTables[indices[i]][i]++;
+      predTables[ghrp_indices[i]][i]++;
     } else {
-      predTables[indices[i]][i]--;
+      predTables[ghrp_indices[i]][i]--;
     }
   }
 }
 
 void CACHE::initialize_replacement() {}
-
-uint8_t CACHE::get_insert_pos(LruModifier lru_modifier, uint32_t set)
-{
-  if (lru_modifier >= 100000)
-    return NUM_WAY - active_inserts;
-  if (lru_modifier >= 10000)
-    return NUM_WAY - 4;
-  else if (lru_modifier >= 1000)
-    return NUM_WAY - 3;
-  else if (lru_modifier >= 100)
-    return NUM_WAY - 2;
-  else if (lru_modifier >= 10)
-    return NUM_WAY - 1;
-  return 0;
-}
-
-uint8_t CACHE::get_lru_offset(LruModifier lru_modifier)
-{
-  if (lru_modifier >= 10000)
-    return lru_modifier / 10000;
-  else if (lru_modifier >= 1000)
-    return lru_modifier / 1000;
-  else if (lru_modifier >= 100)
-    return lru_modifier / 100;
-  else if (lru_modifier >= 10)
-    return lru_modifier / 10;
-  return lru_modifier;
-}
-
-bool CACHE::is_default_lru(LruModifier lru_modifier)
-{
-  if (lru_modifier == DEFAULT or (lru_modifier > 10 and lru_modifier % 10 == 1))
-    return true;
-  return false;
-}
 
 // find replacement victim
 uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
@@ -118,6 +83,7 @@ uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const
   // baseline LRU
   for (int i = 0; i < NUM_WAY; i++) {
     if (current_set[i].dead) {
+      std::cout << "found dead block" << std::endl;
       return i;
     }
   }
@@ -136,7 +102,6 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
   int counters[NUM_PRED_TABLES];
   get_counters(counters);
 
-  bool ghrp_active = false;
   if (not hit) {
     bool bypass = majority_vote(counters, BYPASS_THRESH);
     if (not bypass) {
@@ -155,7 +120,6 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
         bool prediction = majority_vote(counters, DEAD_THRESH);
         victim->dead = prediction;
         victim->signature = signature;
-        ghrp_active = true;
       }
     }
   } else {
