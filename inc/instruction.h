@@ -31,7 +31,8 @@ struct ooo_model_instr {
 
   bool is_branch = 0, is_memory = 0, branch_taken = 0, branch_mispredicted = 0, trace = 0;
   std::array<bool, NUM_INSTR_SOURCES> destination_added{};
-  std::array<bool, NUM_INSTR_SOURCES> source_added{}, wrongpath = false;
+  std::array<bool, NUM_INSTR_SOURCES> source_added{};
+  bool wrongpath = false;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 

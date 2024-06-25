@@ -20,7 +20,7 @@
 
 uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, trace_ended[NUM_CPUS] = {}, all_warmup_complete = 0, all_simulation_complete = 0,
         MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_pintrace = 0, knob_cloudsuite = 0, knob_low_bandwidth = 0, knob_intel = 0, knob_stall_on_miss = 1,
-        knob_stop_at_completion = 1, knob_wrongpath = 0, knob_collect_offsets = 1, knob_min_50M = 0;
+        knob_stop_at_completion = 1, knob_wrongpath = 1, knob_collect_offsets = 1, knob_min_50M = 0;
 
 int8_t knob_ip_offset = 0;
 bool knob_no_detail_stats = false;
@@ -896,20 +896,13 @@ int main(int argc, char** argv)
       }
 #endif
       // read from trace
-<<<<<<< HEAD
       while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
         if (ooo_cpu[i]->IFETCH_BUFFER.occupancy() + ooo_cpu[i]->IFETCH_WRONGPATH.occupancy() > ooo_cpu[i]->IFETCH_BUFFER.size()) {
           ooo_cpu[i]->instrs_to_read_this_cycle = 0;
           continue; // We already have enough instructions in the FTQ
         }
-=======
-      while (not ooo_cpu[i]->fetch_stall and ooo_cpu[i]->instrs_to_read_this_cycle > 0 and not trace_ended[i]) {
-        // while (ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
-#ifdef LOG
-        cout << "\tfetch active\tfetch_stall: " << (int)ooo_cpu[i]->fetch_stall << ", current_cycle: " << ooo_cpu[i]->current_cycle
-             << ", fetch_resume_cycle: " << ooo_cpu[i]->fetch_resume_cycle << endl;
-#endif
-        >>>>>>> micro - rebuttal struct ooo_model_instr trace_inst;
+
+        struct ooo_model_instr trace_inst;
         try {
           trace_inst = traces[i]->get();
           ooo_cpu[i]->num_read++;

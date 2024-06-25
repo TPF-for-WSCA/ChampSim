@@ -12,4 +12,4 @@
 
 module load Boost/1.79.0-GCC-11.3.0
 # ~/ChampSim/idun_build.sh
-~/ChampSim/idun_grid_build.sh
+~/ChampSim/idun_grid_build.shs

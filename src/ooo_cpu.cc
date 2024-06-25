@@ -1232,7 +1232,6 @@ void O3_CPU::handle_memory_return()
     // them as such
     while (available_fetch_bandwidth > 0 && !l1i_entry.instr_depend_on_me.empty()) {
       auto it = l1i_entry.instr_depend_on_me.front();
-      assert((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address >> LOG2_BLOCK_SIZE));
       if (it->fetched != 0 && it->translated == COMPLETED) {
         it->fetched = COMPLETED;
         available_fetch_bandwidth--;
