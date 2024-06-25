@@ -47,7 +47,6 @@
     "buffer": false,
     "buffer_size": 64,
     "buffer_organisation": "FULLY_ASSOCIATIVE",
-    "buffer_fifo": true,
     "way_sizes": [
       16,
       16,
