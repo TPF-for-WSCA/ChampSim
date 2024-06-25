@@ -44,7 +44,7 @@
   "L1I": {
     "sets": 128,
     "ways": 16,
-    "buffer": true,
+    "buffer": false,
     "buffer_size": 64,
     "buffer_organisation": "FULLY_ASSOCIATIVE",
     "way_sizes": [
@@ -78,7 +78,7 @@
     "prefetcher": "fdip",
     "filter_inserts": false,
     "filter_prefetches": true,
-    "prefetch_buffer_size": 16,
+    "prefetch_buffer_size": 64,
     "counting_block_method": "SUM_ACCESSES",
     "aligned": true
   },
