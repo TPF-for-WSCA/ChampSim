@@ -107,7 +107,7 @@ enum BufferOrganisation {
   SET7_ASSOCIATIVE = 7,
   SET8_ASSOCIATIVE = 8
 };
-enum ReplacementStrategy { LRU, ACIC };
+enum ReplacementStrategy { LRU, ACIC, GHRP };
 enum CacheType { UBS, DISTILLATION };
 typedef struct cshr_entry_t {
   uint64_t victim_base_addr;
