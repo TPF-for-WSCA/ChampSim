@@ -7,7 +7,7 @@
 #build_configs=("saga_32k_config.json" "saga_vcl_buffer_8f_config.json" "saga_vcl_buffer_4f_config.json" "saga_vcl_buffer_128f_config.json" "saga_vcl_buffer_64f_config.json" "saga_vcl_buffer_32f_config.json" "saga_vcl_buffer_16f_config.json" "saga_vcl_buffer_256f_config.json") 
 #build_configs=("saga_4k_data_config.json" "saga_8k_data_config.json" "saga_16k_data_config.json" "saga_32k_data_config.json" "saga_64k_data_config.json" "saga_128k_data_config.json" "saga_256k_data_config.json") 
 #build_dir=("micro-new-traces" "micro-rebuttal" "size_sensitivity" "way_sensitivity" "ACIC")
-build_dir=("micro-rebuttal")
+build_dir=("predictor_sensitivity")
 
 old_dir=$(pwd)
 cd /cluster/projects/nn4650k/workspace/ChampSim/
