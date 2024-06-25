@@ -22,6 +22,7 @@ class STATS(Enum):
     STALL_CYCLES = 13
     ROB_AT_MISS = 14
     PREDICTOR_ACCURACY = 15
+    AVG_PREDICTOR_ACCURACY = 16
 
 
 type = STATS.IPC
@@ -64,6 +65,21 @@ def extract_instruction_count(path):
         if matches:
             return int(matches.groups()[0])
 
+
+def extract_average_accuracy(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    averages = []
+    for i in range(4):
+        average_accuracy = re.compile(f"\s+AVERAGE ACCURACY {i} : (\d+\.*\d*)")
+        for line in logs:
+            match = average_accuracy.match(line)
+            if match:
+                averages.append(float(match.groups()[0]))
+                break
+    return averages
 
 def extract_predictor_accuracy(path):
     logs = []
@@ -340,6 +356,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_predictor_accuracy(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.AVG_PREDICTOR_ACCURACY:
+                stat_by_workload[workload] = extract_average_accuracy(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.ROB_AT_MISS:
                 stat_by_workload[workload] = extract_rob_at_stall(
                     f"{path}/{workload}/{logfile}"
@@ -456,6 +476,8 @@ def write_tsv(data, out_path=None):
         filename = "instruction_count"
     elif type == STATS.PREDICTOR_ACCURACY:
         filename = "prediction_accuracy"
+    elif type == STATS.AVG_PREDICTOR_ACCURACY:
+        filename = "avg_predictor_accuracy"
     elif type == STATS.STALL_CYCLES:
         filename = "stall_cycles"
     elif type == STATS.ROB_AT_MISS:
@@ -538,6 +560,8 @@ elif sys.argv[3] == "INSTRUCTION_COUNT":
     type = STATS.INSTRUCTION_COUNT
 elif sys.argv[3] == "PREDICTOR_ACCURACY":
     type = STATS.PREDICTOR_ACCURACY
+elif sys.argv[3] == "AVG_PREDICTOR_ACCURACY":
+    type = STATS.AVG_PREDICTOR_ACCURACY
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
 if sys.argv[2] == "single":
