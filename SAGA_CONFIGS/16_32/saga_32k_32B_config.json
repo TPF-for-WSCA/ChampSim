@@ -45,7 +45,7 @@
     "sets": 64,
     "ways": 15,
     "buffer": false,
-    "buffer_size": 16,
+    "buffer_size": 64,
     "buffer_organisation": "FULLY_ASSOCIATIVE",
     "buffer_fifo": true,
     "way_sizes": [
