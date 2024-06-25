@@ -1,8 +1,10 @@
 #include "cache.h"
 
 #include <algorithm>
+#include <bit>
 #include <bitset>
 #include <cmath>
+#include <csignal>
 #include <cstdlib>
 #include <iterator>
 #include <set>
@@ -12,6 +14,7 @@
 #include "champsim_constants.h"
 #include "util.h"
 #include "vmem.h"
+#define TRACE_PREFIX "\n++++ TRACE INFO: ++++\n\t"
 
 #ifndef SANITY_CHECK
 #define NDEBUG
@@ -20,6 +23,16 @@
 extern VirtualMemory vmem;
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t knob_stall_on_miss;
+
+bool operator<(const CSHR_tag& t1, const CSHR_tag& t2)
+{
+  if (t1.contender_tag != t2.contender_tag)
+    return t1.contender_tag < t2.contender_tag;
+  if (t1.victim_tag != t2.victim_tag) {
+    return t1.victim_tag < t2.victim_tag;
+  }
+  return false;
+}
 
 void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper)
 {
@@ -88,6 +101,7 @@ void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev
     // assert(handle_pkt.address % BLOCK_SIZE == handle_pkt.v_address % BLOCK_SIZE); // not true in case of overlapping blocks
     uint8_t offset = (uint8_t)(handle_pkt.v_address % BLOCK_SIZE);
     uint8_t end = offset + handle_pkt.size - 1;
+    // assert(end < hit_block.offset + hit_block.size);
     set_accessed(&hit_block.bytes_accessed, offset, end);
     if (&prev_block != &hit_block)
       hit_block.accesses++;
@@ -341,9 +355,6 @@ bool CACHE::hit_test(uint64_t addr, uint8_t size)
   auto way = get_vway(addr, set);
   if (way == NUM_WAY) {
     way = get_way(addr, set);
-    if (way < NUM_WAY) {
-      std::cout << "oops this was a translated prefetch" << std::endl;
-    }
   }
   if (way == NUM_WAY) {
     for (auto it = PREFETCH_BUFFER.begin(); it != PREFETCH_BUFFER.end(); it++) {
@@ -392,7 +403,6 @@ void CACHE::handle_read()
       readlike_hit(set, way, handle_pkt);
     } else if (filter_prefetches && prefetch_buffer_hit != PREFETCH_BUFFER.end()) { // miss check if in prefetch buffer
       PACKET p = *prefetch_buffer_hit;
-      PREFETCH_BUFFER.erase(prefetch_buffer_hit);
       pf_useful++;
       readlike_hit(p, handle_pkt);
       handle_packet_insert_from_buffer(p);
@@ -755,7 +765,14 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
   if (!warmup_complete[cpu]) {
     return;
   }
-  // we onlu write to the file if warmup is complete
+  int accessed_bytes_after_predictor = std::bitset<64>(handle_block.bytes_accessed_in_predictor).count();
+  int accessed_bytes_at_eviction = std::bitset<64>(handle_block.bytes_accessed).count();
+  if (accessed_bytes_at_eviction != 0 and accessed_bytes_after_predictor != 0) {
+    float percentage_predicted = (double)accessed_bytes_after_predictor / accessed_bytes_at_eviction;
+    assert(percentage_predicted <= 1.0);
+    predictor_accuracy[percentage_predicted] += 1;
+  }
+  // we only write to the file if warmup is complete
   if (cl_accessmask_buffer.size() < WRITE_BUFFER_SIZE) {
     cl_accessmask_buffer.push_back(handle_block.bytes_accessed);
   } else {
@@ -801,6 +818,10 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
 
 bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, bool treat_like_hit)
 {
+  auto last_inserted_block = last_inserted[set];
+  if (last_inserted_block != NULL) {
+    last_inserted_block->bytes_accessed_in_predictor = last_inserted_block->bytes_accessed;
+  }
   DP(if (warmup_complete[handle_pkt.cpu]) {
     std::cout << "[" << NAME << "] " << __func__ << " miss";
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
@@ -862,6 +883,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, 
       pf_fill++;
 
     fill_block.bytes_accessed = 0; // newly added to the cache thus no accesses yet
+    fill_block.bytes_accessed_in_predictor = 0;
     memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
 
     fill_block.valid = true;
@@ -872,11 +894,13 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, 
     fill_block.data = handle_pkt.data;
     fill_block.ip = handle_pkt.ip;
     fill_block.cpu = handle_pkt.cpu;
+    fill_block.trace = handle_pkt.trace;
     fill_block.instr_id = handle_pkt.instr_id;
     fill_block.tag = get_tag(handle_pkt.address);
     fill_block.accesses = 0;
     fill_block.last_modified_access = 0;
     fill_block.time_present = 0;
+    last_inserted[set] = &fill_block;
     record_cacheline_accesses(handle_pkt, fill_block, *prev_access);
   }
 
@@ -1041,7 +1065,8 @@ int CACHE::add_rq(PACKET* packet)
   }
 
   // if there is no duplicate, add it to RQ
-  assert(packet->size < 64);
+  assert(packet->size <= 64);
+
   if (warmup_complete[cpu])
     RQ.push_back(*packet);
   else
@@ -1239,6 +1264,12 @@ void CACHE::return_data(PACKET* packet)
     assert(0);
   }
 
+#ifdef LOG
+  if (packet->trace) {
+    cout << TRACE_PREFIX << this->NAME << " MSHR RESOLVED\t" << *packet << endl;
+  }
+#endif
+
   // MSHR holds the most updated information about this request
   mshr_entry->data = packet->data;
   mshr_entry->pf_metadata = packet->pf_metadata;
@@ -1399,8 +1430,10 @@ void BUFFER_CACHE::print_private_stats()
     total_time += (time * count);
     total_evictions += count;
   }
-  std::cout << "AVERAGE Time Spent in Buffer: ";
-  std::cout << (total_time / total_evictions) << std::endl;
+  if (total_evictions) {
+    std::cout << "AVERAGE Time Spent in Buffer: ";
+    std::cout << (total_time / total_evictions) << std::endl;
+  }
   std::cout << NAME << " PARTIAL MISSES";
   std::cout << "\tUNDERRUNS: " << std::setw(10) << underruns << "\tOVERRUNS: " << std::setw(10) << overruns << "\tMERGES: " << std::setw(10) << mergeblocks
             << "\tNEW BLOCKS: " << std::setw(10) << newblock << std::endl;
@@ -1514,14 +1547,17 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
     }
   }
 
+  //  uint64_t evicting_address = 0;
   if (fill_block.valid) {
     // Record stats
     record_duration(fill_block);
+    //     evicting_address = fill_block.address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
     merge_block.push_back(fill_block, true);
     record_cacheline_stats(packet.cpu, fill_block);
   }
   update_duration();
   fill_block.bytes_accessed = 0;
+  fill_block.bytes_accessed_in_predictor = 0;
   memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
   /////
   uint32_t parent_set = parent.get_set(packet.address); // set of the VCL cache, not the buffer
@@ -1543,6 +1579,11 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
     invalidated = true;
   }
   parent.cl_invalid_blocks_in_cache_buffer.push_back(parent.num_invalid_blocks_in_cache);
+  if (parent.num_invalid_blocks_in_cache > 0) {
+    // make eip happy
+    impl_prefetcher_cache_fill((virtual_prefetch ? packet.v_address : packet.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), set, way,
+                               packet.type == PREFETCH, packet.v_address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), packet.pf_metadata);
+  }
 
   fill_block.old_bytes_accessed = 0;
   if (invalidated) {
@@ -1559,6 +1600,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   fill_block.address = packet.address;
   fill_block.v_address = packet.v_address;
   fill_block.data = packet.data;
+  fill_block.trace = packet.trace;
   fill_block.ip = packet.ip;
   fill_block.cpu = packet.cpu;
   fill_block.tag = parent.get_tag(packet.address);
@@ -1576,6 +1618,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   if (packet.partial) {
     sim_partial_miss[packet.cpu][packet.type]++;
   }
+
   sim_access[packet.cpu][packet.type]++;
   way_hits[way]++;
   return true;
@@ -1723,7 +1766,19 @@ void VCL_CACHE::operate_buffer_evictions()
         block_start = 64 - way_sizes[way]; // possible duplicate - can't prevent that TODO: track duplicates here
       }
       min_start = block_start + way_sizes[way];
-      filllike_miss(set, way, block_start, merge_block);
+      // TODO: ACIC
+      if (replacement_strategy == ReplacementStrategy::ACIC) {
+        uint64_t old_tag = block[set * NUM_WAY + way].tag;
+        uint64_t new_tag = merge_block.tag;
+        CSHR_tag lookup_tag{new_tag, old_tag};
+        if (ACIC_predictor[lookup_tag] >= 0) {
+          filllike_miss(set, way, block_start, merge_block);
+        }
+        CSHR_new[new_tag] = old_tag;
+        CSHR_old[old_tag] = new_tag;
+      } else {
+        filllike_miss(set, way, block_start, merge_block);
+      }
       if (min_start >= 64)
         break; // There is no block left that could be outside as we went until the end
     }
@@ -1738,11 +1793,37 @@ void VCL_CACHE::handle_packet_insert_from_buffer(PACKET& pkt)
 {
   pkt.type = LOAD; // we only insert on hit -- this is no longer a prefetch in the buffer
   if (buffer) {
-    if (!buffer_cache.fill_miss(pkt, *this))
+    if (!buffer_cache.fill_miss(pkt, *this)) {
+      // TODO: Why should this ever happen?
       return;
+    }
   } else {
     // TODO: Insert into main predictor way/cache arrary
-    assert(0);
+    // TODO: We assume uniform block size at this point
+    uint32_t set = get_set(pkt.address);
+    auto set_begin = std::next(std::begin(block), set * NUM_WAY);
+    auto set_end = std::next(set_begin, NUM_WAY);
+    auto first_inv = std::find_if_not(set_begin, set_end, is_valid<BLOCK>());
+
+    uint32_t way = std::distance(set_begin, first_inv);
+    if (way == NUM_WAY) {
+      way = impl_replacement_find_victim(pkt.cpu, pkt.instr_id, set, &block.data()[set * NUM_WAY], pkt.ip, pkt.address, LOAD);
+    }
+    bool success = true;
+    // TODO: ACIC
+    if (replacement_strategy == ReplacementStrategy::ACIC) {
+      uint64_t old_tag = block[set * NUM_WAY + way].tag;
+      uint64_t new_tag = get_tag(pkt.address);
+      CSHR_tag lookup_tag{new_tag, old_tag};
+      if (ACIC_predictor[lookup_tag] >= 0) {
+        success = filllike_miss(set, way, pkt);
+      }
+      CSHR_new[new_tag] = old_tag;
+      CSHR_old[old_tag] = new_tag;
+    } else {
+      success = filllike_miss(set, way, pkt);
+    }
+    assert(success);
   }
 }
 
@@ -1822,7 +1903,7 @@ void VCL_CACHE::handle_fill()
       // if aligned, we might have to write two blocks
 
       if (way == NUM_WAY) {
-        way = lru_victim(&block.data()[set * NUM_WAY], 8); // NOTE: THIS IS THE BUFFERLESS IMPLEMENTATION // TODO: CHANGE SIZE ACCORDING TO WAY SIZES
+        way = lru_victim(&block.data()[set * NUM_WAY], way_sizes[0]); // NOTE: THIS IS THE BUFFERLESS IMPLEMENTATION // TODO: CHANGE SIZE ACCORDING TO WAY SIZES
         // TODO: RECORD STATISTICS IF ANY
       }
       if (filter_inserts && way != NUM_WAY && conditional_insert_from_filter(fill_packet, block[set * NUM_WAY + way])) {
@@ -1832,8 +1913,20 @@ void VCL_CACHE::handle_fill()
       if (last_way > NUM_WAY)
         last_way = NUM_WAY;
       lru_subset = SUBSET(way, last_way);
-
-      bool success = filllike_miss(set, way, *fill_mshr);
+      bool success = true;
+      // TODO: ACIC
+      if (replacement_strategy == ReplacementStrategy::ACIC) {
+        uint64_t old_tag = block[set * NUM_WAY + way].tag;
+        uint64_t new_tag = get_tag(fill_mshr->address);
+        CSHR_tag lookup_tag{new_tag, old_tag};
+        if (ACIC_predictor[lookup_tag] >= 0) {
+          success = filllike_miss(set, way, *fill_mshr);
+        }
+        CSHR_new[new_tag] = old_tag;
+        CSHR_old[old_tag] = new_tag;
+      } else {
+        success = filllike_miss(set, way, *fill_mshr);
+      }
       if (!success)
         return;
 
@@ -2010,6 +2103,14 @@ void VCL_CACHE::handle_read()
     // HIT IN BUFFER/MERGE REGISTER / always use that first
     if (b) {
       // statistics in the buffer
+      if (replacement_strategy == ReplacementStrategy::ACIC) {
+        auto old_tag = get_tag(handle_pkt.address);
+        auto new_tag = CSHR_old[old_tag];
+        ACIC_predictor[{new_tag, old_tag}]--;
+        ACIC_predictor[{new_tag, old_tag}] = std::max(ACIC_predictor[{new_tag, old_tag}], -10);
+        CSHR_new.erase(new_tag);
+        CSHR_old.erase(old_tag);
+      }
       RQ.pop_front();
       reads_available_this_cycle--;
       handle_pkt.data = b->data;
@@ -2027,14 +2128,34 @@ void VCL_CACHE::handle_read()
 
     // HIT IN VCL CACHE
     if (way < NUM_WAY) {
+      if (replacement_strategy == ReplacementStrategy::ACIC) {
+        auto new_tag = get_tag(handle_pkt.address);
+        auto old_tag = CSHR_new[new_tag];
+        ACIC_predictor[{new_tag, old_tag}]++;
+        ACIC_predictor[{new_tag, old_tag}] = std::min(ACIC_predictor[{new_tag, old_tag}], 10);
+        CSHR_new.erase(new_tag);
+        CSHR_old.erase(old_tag);
+      }
+      // TODO: if way sizes < 64 and aligned, push front with an additional cycle latency
+      if (way_sizes[way] < 64 and not handle_pkt.delayed and ooo_cpu[handle_pkt.cpu]->align_bits < LOG2_BLOCK_SIZE) {
+        RQ.update_front_delay(1);
+        handle_pkt.delayed = true;
+        continue; // if front still is ready, we will still handle it - it had more time to be executed
+      }
+      handle_pkt.delayed = false;
       way_hits[way]++;
+      if (way_sizes[way] < 64) {
+        way_other_accesses++;
+      } else {
+        way_64_accesses++;
+      }
 
       // std::cout << "hit in SET: " << std::setw(3) << set << ", way: " << std::setw(3) << way << std::endl;
-      readlike_hit(set, way, handle_pkt);
       uint64_t newoffset = hit_check(set, way, handle_pkt.address, handle_pkt.size);
       if (!newoffset) {
         RQ.pop_front();
         reads_available_this_cycle--;
+        readlike_hit(set, way, handle_pkt);
         continue;
       }
       if (newoffset > 63) {
@@ -2054,6 +2175,9 @@ void VCL_CACHE::handle_read()
       pf_useful++;
       CACHE::readlike_hit(p, handle_pkt);
       handle_packet_insert_from_buffer(p);
+      RQ.pop_front();
+      reads_available_this_cycle--;
+      continue;
     }
 
     auto filter_buffer_hit = probe_filter_buffer(handle_pkt.address, FILTER_BUFFER_QUEUE);
@@ -2244,9 +2368,17 @@ void CACHE::print_private_stats()
   if (this->buffer) {
     BUFFER_CACHE& bc = ((VCL_CACHE*)this)->buffer_cache;
     bc.print_private_stats();
-    std::cout << std::right << std::setw(3) << "merge register"
-              << ":\t" << bc.merge_hit << std::endl;
+    std::cout << std::right << std::setw(3) << "merge register" << ":\t" << bc.merge_hit << std::endl;
   }
+  std::cout << NAME << " PREDICTOR ACCURACY" << std::endl;
+  double average_accuracy = 0;
+  size_t num_evictions = 0;
+  for (auto it = predictor_accuracy.rbegin(); it != predictor_accuracy.rend(); it++) {
+    std::cout << std::right << std::setw(3) << it->first * 100 << "%:\t" << it->second << std::endl;
+    average_accuracy += it->first * (float)it->second;
+    num_evictions += it->second;
+  }
+  std::cout << "\t AVERAGE ACCURACY: " << average_accuracy / num_evictions << endl;
 }
 
 void VCL_CACHE::print_private_stats(void)
@@ -2272,6 +2404,10 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   record_block_insert_removal(set, way, handle_block.address, warmup_complete[handle_block.cpu]);
   if (fill_block.valid && fill_block.accesses == 0) {
     USELESS_CACHELINE++;
+  }
+  uint64_t evicting_address = 0;
+  if (fill_block.valid) {
+    evicting_address = fill_block.address & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS);
   }
   if (0 == NAME.compare(NAME.length() - 3, 3, "L1I") && fill_block.valid) {
     record_cacheline_stats(handle_block.cpu, fill_block);
@@ -2312,10 +2448,14 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
   fill_block.tag = get_tag(handle_block.address);
   fill_block.instr_id = handle_block.instr_id;
   fill_block.accesses = 0;
+  fill_block.trace = handle_block.trace;
   fill_block.last_modified_access = 0;
   fill_block.time_present = 0;
   auto endidx = 64 - fill_block.offset - fill_block.size;
   fill_block.data = (handle_block.data << offset) >> offset >> endidx << endidx;
+
+  impl_prefetcher_cache_fill((virtual_prefetch ? handle_block.v_address : handle_block.address) & ~bitmask(match_offset_bits ? 0 : OFFSET_BITS), set, way,
+                             false, evicting_address, 0);
   // We already acounted for the evicted block on insert, so what we count here is the insertion of a new block
   impl_replacement_update_state(handle_block.cpu, set, way, handle_block.address, handle_block.ip, 0, FILL, 0);
   return true;
@@ -2393,7 +2533,6 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
     fill_block.cpu = handle_pkt.cpu;
     fill_block.tag = get_tag(handle_pkt.address);
     fill_block.instr_id = handle_pkt.instr_id;
-    record_cacheline_accesses(handle_pkt, fill_block, *prev_access);
     if (aligned) {
       uint8_t original_offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
       fill_block.offset = (original_offset - original_offset % fill_block.size);
@@ -2406,8 +2545,11 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
       //   std::cout << handle_pkt.v_address << std::endl;
       //   assert(0);
       // }
-    } else
+    } else {
       fill_block.offset = std::min((uint64_t)64 - fill_block.size, handle_pkt.v_address % BLOCK_SIZE);
+    }
+    record_cacheline_accesses(handle_pkt, fill_block, *prev_access);
+
     // We already acounted for the evicted block on insert, so what we count here is the insertion of a new block
   }
 

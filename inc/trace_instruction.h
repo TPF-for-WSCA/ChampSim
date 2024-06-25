@@ -17,34 +17,34 @@ class LSQ_ENTRY;
 
 struct input_instr {
   // instruction pointer or PC (Program Counter)
-  unsigned long long ip = 0;
+  uint64_t ip = 0;
 
   // branch info
-  unsigned char is_branch = 0;
-  unsigned char branch_taken = 0;
+  uint8_t is_branch = 0;
+  uint8_t branch_taken = 0;
 
-  unsigned char destination_registers[NUM_INSTR_DESTINATIONS] = {}; // output registers
-  unsigned char source_registers[NUM_INSTR_SOURCES] = {};           // input registers
+  uint8_t destination_registers[NUM_INSTR_DESTINATIONS] = {}; // output registers
+  uint8_t source_registers[NUM_INSTR_SOURCES] = {};           // input registers
 
-  unsigned long long destination_memory[NUM_INSTR_DESTINATIONS] = {}; // output memory
-  unsigned long long source_memory[NUM_INSTR_SOURCES] = {};           // input memory
+  uint64_t destination_memory[NUM_INSTR_DESTINATIONS] = {}; // output memory
+  uint64_t source_memory[NUM_INSTR_SOURCES] = {};           // input memory
 };
 
 struct cloudsuite_instr {
   // instruction pointer or PC (Program Counter)
-  unsigned long long ip = 0;
+  uint64_t ip = 0;
 
   // branch info
-  unsigned char is_branch = 0;
-  unsigned char branch_taken = 0;
+  uint8_t is_branch = 0;
+  uint8_t branch_taken = 0;
 
-  unsigned char destination_registers[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output registers
-  unsigned char source_registers[NUM_INSTR_SOURCES] = {};                 // input registers
+  uint8_t destination_registers[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output registers
+  uint8_t source_registers[NUM_INSTR_SOURCES] = {};                 // input registers
 
-  unsigned long long destination_memory[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output memory
-  unsigned long long source_memory[NUM_INSTR_SOURCES] = {};                 // input memory
+  uint64_t destination_memory[NUM_INSTR_DESTINATIONS_SPARC] = {}; // output memory
+  uint64_t source_memory[NUM_INSTR_SOURCES] = {};                 // input memory
 
-  unsigned char asid[2] = {std::numeric_limits<unsigned char>::max(), std::numeric_limits<unsigned char>::max()};
+  uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 };
 
 struct dynamorio_instr {
@@ -52,7 +52,7 @@ struct dynamorio_instr {
   unsigned short size;
   union {
     uintptr_t addr;
-    unsigned char length[sizeof(uintptr_t)];
+    uint8_t length[sizeof(uintptr_t)];
   };
 } __attribute__((__packed__));
 
@@ -62,16 +62,16 @@ struct pt_instr {
 
   xed_decoded_inst_t decoded_instruction;
 
-  unsigned char is_branch = 0;
-  unsigned char branch_taken = 0;
+  uint8_t is_branch = 0;
+  uint8_t branch_taken = 0;
 
   int mem_refs = 0;
 
-  unsigned char destination_registers[NUM_INSTR_DESTINATIONS_X86] = {};
-  unsigned char source_registers[NUM_INSTR_SOURCES] = {};
+  uint8_t destination_registers[NUM_INSTR_DESTINATIONS_X86] = {};
+  uint8_t source_registers[NUM_INSTR_SOURCES] = {};
 
-  unsigned long long destination_memory[NUM_INSTR_DESTINATIONS_X86] = {}; // output memory
-  unsigned long long source_memory[NUM_INSTR_SOURCES] = {};               // input memory
+  uint64_t destination_memory[NUM_INSTR_DESTINATIONS_X86] = {}; // output memory
+  uint64_t source_memory[NUM_INSTR_SOURCES] = {};               // input memory
 
   std::vector<uint8_t> inst_bytes;
 

@@ -265,6 +265,8 @@ def create_uniform_buckets_of_size(num_buckets):
         b / sum(BLOCK_SIZES_HISTOGRAM[strategies[CHOSEN_STRATEGY].name])
         for b in BLOCK_SIZES_HISTOGRAM[strategies[CHOSEN_STRATEGY].name]
     ]
+    filtered_histogram = [x for x in normalised_histogram if x != 0]
+    print(f"HISTOGRAM: {filtered_histogram}")
     target = 1.0 / num_buckets
     bucket_sizes = []
     bucket_percentages = []
@@ -342,7 +344,7 @@ def create_uniform_buckets_of_size(num_buckets):
 
 
 def apply_way_analysis(
-    workload_name, tracefile_path, num_sets=64
+    workload_name, tracefile_path, num_sets=256
 ):
     """ Apply way analysis to find optimal way size. This runs the selected merge
         strategies to find the optimal way size under the assumption of a given
@@ -362,13 +364,13 @@ def apply_way_analysis(
     # 64 b (arm: 16) per entry + 6b counter per entry (only for non-directmapped required) + 128B merge registers overall (merge registers might be optimised away)
     if not arm:
         buffer_bytes_per_set = (
-            8 + 64 + 2
+            8 + 64 + (128/num_sets)
         )  # 8 bytes for bytes accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
     else:
         buffer_bytes_per_set = (
-            2 + 64 + 2
+            2 + 64 + (126/num_sets)
         )  # 2 bytes for instruction accessed vector, 64 bytes for buffer entry, 2 bytes per set for merge register
-    target_size = 512 - buffer_bytes_per_set + overhead_allowance
+    target_size = 512 - buffer_bytes_per_set + overhead_allowance + (2048 / num_sets)
     error = target_size
     selected_waysizes = []
     local_overhead = 0
@@ -376,7 +378,9 @@ def apply_way_analysis(
     overhead = 0
     max_size = 0
     max_size_ways = []
-    for i in range(7, 64):
+    print(f"Current workload: {tracefile_path}")
+    # for i in range(7, 20):
+    for i in range(7,20):
         tag_overhead = (i - 7) * (26 + 1 + 3) / 8  # (tag bits, valid bit, lru bits)
         if arm:
             overhead = math.ceil(((4 + 26 + 4) * i) / 8)  # 6 bits per tag
@@ -432,7 +436,7 @@ def apply_offset_bucket_analysis(worklad_name, tracefile_path):
 
 
 def apply_storage_efficiency_analysis(
-    workload_name, tracedirectory_path, vcl_config=None
+    workload_name, tracedirectory_path, vcl_config=None, sets=64
 ):
     # assuming 32k cache with S = 64
     tracefile_path = os.path.join(tracedirectory_path, "cpu0_L1I_cl_bytes_used.bin")
@@ -445,8 +449,8 @@ def apply_storage_efficiency_analysis(
     useful_bytes = 0
     total_cache_size = max_num_blocks * cacheline_size
     if vcl_config:
-        total_cache_size = sum(vcl_config) * 64
-        max_num_blocks = len(vcl_config) * 64
+        total_cache_size = sum(vcl_config) * sets
+        max_num_blocks = len(vcl_config) * sets
     storage_efficiency_timeseries = []
     max_efficiency = 0.0
     min_efficiency = 1.0
@@ -610,6 +614,7 @@ def main(args):
                     workload,
                     os.path.join(trace_directory, workload),
                     args.vcl_config,
+                    args.sets
                 )
                 if not results:
                     continue
@@ -688,37 +693,95 @@ def main(args):
         fig = plt.figure(figsize=(18 * cm, 8 * cm))
         fig.subplots_adjust(bottom=0.39)
         ax1 = fig.add_subplot(1, 1, 1)
-        ax1.set_ylabel("Storage Efficiency")
-        ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+        ax1.yaxis.set_major_formatter(mtick.PercentFormatter(1.0, decimals=0))
         divider = make_axes_locatable(ax1)
-        graphs_dir = os.path.join(trace_directory, "graphs")
-        os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
-        ax2 = divider.append_axes("right", size="400%", pad=0.05)
-        ax2.sharey(ax1)
-        ax2.yaxis.set_tick_params(labelleft=False)
-        fig.add_axes(ax2)
-        ax3 = divider.append_axes("right", size="88%", pad=0.05)
-        ax3.sharey(ax1)
-        ax3.yaxis.set_tick_params(labelleft=False)
-        fig.add_axes(ax3)
-        ax1.set_ylim([0.27, 0.83])
-        ax2.set_ylim([0.27, 0.83])
-        ax3.set_ylim([0.27, 0.83])
-        axes = [ax1, ax2, ax3]
+        y_lower = 0.2
+        y_upper = 0.9
 
+        #y_lower = 0.2
+        #y_upper = 0.83
+        ax1.set_ylabel("Storage Efficiency")
+        if (arm):
+            graphs_dir = os.path.join(trace_directory, "graphs")
+            os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
+            ax2 = divider.append_axes("right", size="400%", pad=0.05)
+            ax2.sharey(ax1)
+            ax2.yaxis.set_tick_params(labelleft=False)
+            fig.add_axes(ax2)
+            ax3 = divider.append_axes("right", size="88%", pad=0.05)
+            ax3.sharey(ax1)
+            ax3.yaxis.set_tick_params(labelleft=False)
+            fig.add_axes(ax3)
+            ax1.set_ylim([y_lower, y_upper])
+            ax2.set_ylim([y_lower, y_upper])
+            ax3.set_ylim([y_lower, y_upper])
+            axes = [ax1, ax2, ax3]
+        else:
+            graphs_dir = os.path.join(trace_directory, "graphs")
+            os.makedirs(os.path.join(trace_directory, "graphs"), exist_ok=True)
+            ax2 = divider.append_axes("right", size="300%", pad=0.05)
+            ax3 = divider.append_axes("right", size="300%", pad=0.05)
+            ax4 = divider.append_axes("right", size="300%", pad=0.05)
+            ax1.set_ylim([y_lower, y_upper])
+            ax2.sharey(ax1)
+            ax2.yaxis.set_tick_params(labelleft=False)
+            ax2.xaxis.set_tick_params(labelbottom=False)
+            ax3.yaxis.set_tick_params(labelleft=False)
+            ax3.xaxis.set_tick_params(labelbottom=False)
+            ax4.xaxis.set_tick_params(labelbottom=False)
+            ax4.yaxis.set_tick_params(labelleft=False)
+            ax2.set_xticks([])
+            ax2.set_ylim([y_lower, y_upper])
+            ax3.set_xticks([])
+            ax3.set_ylim([y_lower, y_upper])
+            ax4.set_xticks([])
+            ax4.set_ylim([y_lower, y_upper])
+
+            fig.add_axes(ax2)
+            axes = [ax1]
+
+
+        avg = []
+        data_per_benchmark = {}
         for idx, group in enumerate(sorted(groups)):
-            avg = []
-            data_per_benchmark = {}
             for key, value in data_per_workload.items():
                 if key.startswith(group):
-                    data_per_benchmark[key] = value
-                    avg.append(sum(value) / len(value))
-            data_per_benchmark[f"{group.upper()} AVG"] = avg
-            print(f"{group.upper()} AVG: {sum(avg)/len(avg)}")
-            axes[idx].violinplot(
+                    if group in ['merced', 'delta', 'whiskey', 'charlie']:
+                        avg.extend(value)
+                    else:
+                        data_per_benchmark[key] = value
+                        avg.append(sum(value) / len(value))
+            print(f"{group.upper()} AVG: {sum(avg)/len(avg)}, MIN: {min(avg)}, MAX: {max(avg)}")
+            if group in ['merced', 'delta', 'whiskey', 'charlie']:
+                data_per_benchmark[group] = avg
+                avg = []
+            # else:
+            #     data_per_benchmark[f"{group.upper()} AVG"] = avg
+            if group not in ['merced', 'delta', 'whiskey', 'charlie']:
+                axes[idx].violinplot(
+                    data_per_benchmark.values(), showmeans=True, widths=0.9
+                )
+                # axes[idx].hlines(sum(avg)/len(avg), 0.0, 100.0, linewidth=0.5, color='g', linestyles="dashed", label="AVG")
+                benchmarks = list(data_per_benchmark.keys())
+                # axes[idx].bar(len(benchmarks)+1, sum(avg)/len(avg), width=0.5)
+
+                axes[idx].bar(len(benchmarks) + 1, sum(avg) / len(avg), width=0.8)
+                # axes[idx].plot(len(benchmarks) + 1, sum(avg)/len(avg), 'b+', markersize='4')
+                benchmarks.append(f" {group.upper()} AVG")
+                set_axis_style(axes[idx], benchmarks)
+                avg = []
+                data_per_benchmark = {}
+        if not arm:
+            avg = []
+            for _, v in data_per_benchmark.items():
+                avg.append(sum(v)/len(v))
+            data_per_benchmark["GOOGLE AVG"] = avg
+            print(f"GOOGLE AVG: {sum(avg)/len(avg)}, MIN: {min(avg)}, MAX: {max(avg)}")
+
+            axes[0].violinplot(
                 data_per_benchmark.values(), showmeans=True, widths=0.9
             )
-            set_axis_style(axes[idx], data_per_benchmark.keys())
+            set_axis_style(axes[0], data_per_benchmark.keys())
 
         plt.savefig(
             os.path.join(
@@ -781,6 +844,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("--vcl-configuration", dest="vcl_config", type=int, nargs="*")
+    parser.add_argument("--sets", dest="sets", type=int, nargs='?', default=64)
 
     args = parser.parse_args()
 

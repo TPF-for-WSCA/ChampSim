@@ -8,10 +8,19 @@
 #include <vector>
 
 #include <type_traits>
+#define TRACE_PREFIX "\n++++ TRACE INFO: ++++\n\t"
 
 namespace champsim
 {
 
+template <typename T>
+class circular_buffer;
+
+template <typename T>
+std::ostream& operator<<(std::ostream& s, const circular_buffer<T>& q)
+{
+  return (s << q._name << "(occupancy: " << q.occupancy() << ")");
+}
 template <typename T>
 class circular_buffer_iterator
 {
@@ -98,6 +107,9 @@ public:
 template <typename T>
 class circular_buffer
 {
+private:
+  std::string _name;
+
 protected:
   using buffer_t = std::vector<T>;
 
@@ -132,7 +144,8 @@ protected:
   static size_type circ_inc(size_type base, difference_type inc, const circular_buffer<T>& buf);
 
 public:
-  explicit circular_buffer(std::size_t N) : sz_(N), entry_(N + 1) {}
+  explicit circular_buffer(std::size_t N, std::string name) : sz_(N), entry_(N + 1), _name(name) {}
+  friend std::ostream& operator<< <>(std::ostream& out, const circular_buffer<T>& q);
 
   constexpr size_type size() const noexcept { return sz_; }
   size_type occupancy() const noexcept { return std::distance(begin(), end()); };
@@ -164,30 +177,49 @@ public:
   void push_back(T item, bool copy)
   {
     assert(!full());
+    if (item.trace) {
+      std::cout << TRACE_PREFIX << "[PUSH_BACK]\t" << (*this) << "\t" << item << std::endl;
+    }
     operator[](tail_) = item;
     tail_ = circ_inc(tail_, 1, *this);
   }
   void push_back(const T& item)
   {
     assert(!full());
+
+    if (item.trace) {
+      std::cout << TRACE_PREFIX << "[PUSH_BACK]\t" << (*this) << "\t" << item << std::endl;
+    }
     operator[](tail_) = item;
     tail_ = circ_inc(tail_, 1, *this);
   }
   void push_front(const T item)
   {
     assert(!full());
+
+    if (item.trace) {
+      std::cout << TRACE_PREFIX << "[PUSH_FRONT]\t" << (*this) << "\t" << item << std::endl;
+    }
     head_ = circ_inc(head_, -1, *this);
     operator[](head_) = item;
   }
   void push_back(const T&& item)
   {
     assert(!full());
+
+    if (item.trace) {
+      std::cout << TRACE_PREFIX << "[PUSH_BACK]\t" << (*this) << "\t" << item << std::endl;
+    }
     operator[](tail_) = std::move(item);
     tail_ = circ_inc(tail_, 1, *this);
   }
   void pop_front()
   {
     assert(!empty());
+
+    if (front().trace) {
+      std::cout << TRACE_PREFIX << "[POP_FRONT]\t" << (*this) << "\t" << front() << std::endl;
+    }
     head_ = circ_inc(head_, 1, *this);
   }
 };
@@ -215,7 +247,7 @@ auto circular_buffer_iterator<T>::operator-(const self_type& other) const -> dif
   difference_type diff = pos - other.pos;
 
   // Adjust for the cases where the tail has wrapped, but the head has not.
-  // In the positive direction
+  // In the positive directiosn
   if (pos < buf->head_ && buf->head_ <= other.pos)
     diff = buf->entry_.size() + diff;
 
@@ -225,7 +257,6 @@ auto circular_buffer_iterator<T>::operator-(const self_type& other) const -> dif
 
   return diff;
 }
-
 } // namespace champsim
 
 #endif

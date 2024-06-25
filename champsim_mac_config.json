@@ -5,8 +5,8 @@
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
   "num_cores": 1,
-  "CFLAGS": "-Wall -Wno-reorder -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
-  "CXXFLAGS": "-Wall -Wno-reorder -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
+  "CFLAGS": "-Wall -Wno-reorder -ferror-limit=5 -DNLOG -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
+  "CXXFLAGS": "-Wall -Wno-reorder -ferror-limit=5 -DNLOG -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
   "LDLIBS": "-lxed -lz -lboost_system-mt -lboost_filesystem-mt -v",
   "LDFLAGS": "-L/Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/lib -L/opt/local/lib/boost/lib",
   "ooo_cpu": [
@@ -21,7 +21,7 @@
       "fetch_width": 6,
       "decode_width": 6,
       "dispatch_width": 6,
-      "execute_width": 4,
+      "execute_width": 6,
       "lq_width": 2,
       "sq_width": 2,
       "retire_width": 5,
@@ -32,7 +32,8 @@
       "schedule_latency": 2,
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
-      "btb": "extended_basic_btb"
+      "btb": "extended_basic_btb",
+      "align_bits": 5
     }
   ],
   "DIB": {
@@ -47,8 +48,8 @@
     "wq_size": 64,
     "pq_size": 32,
     "mshr_size": 8,
-    "latency": 4,
-    "max_read": 2,
+    "hit_latency": 4,
+    "max_read": 1,
     "max_write": 2,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
@@ -66,14 +67,14 @@
     "wq_size": 64,
     "pq_size": 8,
     "mshr_size": 16,
-    "latency": 5,
+    "hit_latency": 5,
     "max_read": 2,
     "max_write": 2,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "no",
-    "counting_block_method": "EVICTION"
+    "prefetcher": "next_line",
+    "counting_block_method": "SUM_ACCESSES"
   },
   "L2C": {
     "sets": 1024,
@@ -82,14 +83,14 @@
     "wq_size": 32,
     "pq_size": 16,
     "mshr_size": 32,
-    "latency": 30,
+    "hit_latency": 30,
     "max_read": 1,
     "max_write": 1,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
     "prefetcher": "no",
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "ITLB": {
     "sets": 16,
@@ -98,11 +99,11 @@
     "wq_size": 16,
     "pq_size": 0,
     "mshr_size": 8,
-    "latency": 1,
+    "hit_latency": 0,
     "max_read": 2,
     "max_write": 2,
     "prefetch_as_load": false,
-    "counting_block_method": "EVICTION"
+    "counting_block_method": "SUM_ACCESSES"
   },
   "DTLB": {
     "sets": 16,
@@ -111,7 +112,7 @@
     "wq_size": 16,
     "pq_size": 0,
     "mshr_size": 8,
-    "latency": 1,
+    "hit_latency": 0,
     "max_read": 2,
     "max_write": 2,
     "prefetch_as_load": false,
@@ -153,7 +154,7 @@
     "wq_size": 32,
     "pq_size": 32,
     "mshr_size": 64,
-    "latency": 30,
+    "hit_latency": 42,
     "max_read": 1,
     "max_write": 1,
     "prefetch_as_load": false,

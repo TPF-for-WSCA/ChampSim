@@ -8,7 +8,7 @@
 
 #include "ooo_cpu.h"
 
-#define BASIC_BTB_SETS 4096
+#define BASIC_BTB_SETS 512
 #define BASIC_BTB_WAYS 4
 #define BASIC_BTB_INDIRECT_SIZE 4096
 #define BASIC_BTB_RAS_SIZE 64
@@ -151,7 +151,7 @@ void O3_CPU::initialize_btb()
   }
 }
 
-std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
+BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
 {
   uint8_t always_taken = false;
   if (branch_type != BRANCH_CONDITIONAL) {
@@ -185,7 +185,7 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
     always_taken = btb_entry->always_taken;
     basic_btb_update_lru(cpu, btb_entry);
 
-    return std::make_pair(btb_entry->target, always_taken);
+    return struct BTB_outcome({btb_entry->target, always_taken, branch_type, 0});
   }
 
   return std::make_pair(0, always_taken);

@@ -72,6 +72,7 @@ enum LruModifier {
   LRU1BOUND5 = 50,
   LRU1BOUND6 = 60,
   LRU2DEFAULT = 201,
+  LRU2PRECISE = 100,
   LRU2BOUND2 = 200,
   LRU2BOUND3 = 300,
   LRU2BOUND4 = 400,
@@ -106,6 +107,7 @@ enum BufferOrganisation {
   SET7_ASSOCIATIVE = 7,
   SET8_ASSOCIATIVE = 8
 };
+enum ReplacementStrategy { LRU, ACIC };
 enum CacheType { UBS, DISTILLATION };
 typedef struct cshr_entry_t {
   uint64_t victim_base_addr;
@@ -135,6 +137,7 @@ protected:
   virtual void handle_packet_insert_from_buffer(PACKET& pkt); // MIGHT NEED A VCL version
 
 public:
+  bool is_vcl = false;
   bool filter_inserts;
   bool filter_prefetches;
   virtual bool hit_test(uint64_t addr, uint8_t size);
@@ -152,6 +155,8 @@ public:
   const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
   uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
+  std::vector<BLOCK*> last_inserted{NUM_SET};
+  std::map<double, size_t> predictor_accuracy;
   std::vector<uint64_t> cl_accessmask_buffer;
   std::vector<uint64_t> used_bytes_in_cache;
   std::vector<uint64_t> cl_blocks_in_cache_buffer;
@@ -172,10 +177,10 @@ public:
   uint64_t pf_requested = 0, pf_issued = 0, pf_useful = 0, pf_useless = 0, pf_fill = 0, pf_not_issued = 0;
 
   // queues
-  champsim::delay_queue<PACKET> RQ{RQ_SIZE, HIT_LATENCY}, // read queue
-      PQ{PQ_SIZE, HIT_LATENCY},                           // prefetch queue
-      VAPQ{PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY},     // virtual address prefetch queue
-      WQ{WQ_SIZE, HIT_LATENCY};                           // write queue
+  champsim::delay_queue<PACKET> RQ, // read queue
+      PQ,                           // prefetch queue
+      VAPQ,                         // virtual address prefetch queue
+      WQ;                           // write queue
 
   std::list<PACKET> MSHR; // MSHR
 
@@ -185,7 +190,7 @@ public:
            holesize_hist[NUM_CPUS][BLOCK_SIZE] = {}, cl_bytesaccessed_hist[NUM_CPUS][BLOCK_SIZE + 1] = {},
            cl_bytesaccessed_hist_accesses[NUM_CPUS][BLOCK_SIZE + 1] = {}, blsize_hist[NUM_CPUS][BLOCK_SIZE] = {},
            blsize_hist_accesses[NUM_CPUS][BLOCK_SIZE] = {}, blsize_ignore_holes_hist[NUM_CPUS][BLOCK_SIZE] = {},
-           accesses_before_eviction[NUM_CPUS][BUCKET_SIZE] = {};
+           accesses_before_eviction[NUM_CPUS][BUCKET_SIZE] = {}, way_64_accesses = 0, way_other_accesses = 0;
 
   uint64_t RQ_ACCESS = 0, RQ_MERGED = 0, RQ_FULL = 0, RQ_TO_CACHE = 0, PQ_ACCESS = 0, PQ_MERGED = 0, PQ_FULL = 0, PQ_TO_CACHE = 0, WQ_ACCESS = 0, WQ_MERGED = 0,
            WQ_FULL = 0, WQ_FORWARD = 0, WQ_TO_CACHE = 0, USELESS_CACHELINE = 0, TOTAL_CACHELINES = 0;
@@ -235,7 +240,7 @@ public:
   virtual void record_block_insert_removal(int set, uint32_t way, uint64_t newtag, bool warmup_completed);
 
   void record_cacheline_stats(uint32_t cpu, BLOCK& handle_block);
-  virtual void record_overlap(void){};
+  virtual void record_overlap(void) {};
 
   virtual void readlike_hit(PACKET& buffer_hit, PACKET& handle_pkt);
   virtual void readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt);
@@ -258,11 +263,13 @@ public:
         uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
         unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, bool filter_inserts, bool filter_prefetches, size_t filter_buffer_size,
         size_t prefetch_buffer_size)
-      : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
-        perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat),
-        OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr),
-        virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref), count_method(CountBlockMethod::EVICTION),
-        filter_buffer_size(filter_buffer_size), prefetch_buffer_size(prefetch_buffer_size), filter_inserts(filter_inserts), filter_prefetches(filter_prefetches)
+      : RQ(RQ_SIZE, HIT_LATENCY, (v1 + "_RQ")), PQ(PQ_SIZE, HIT_LATENCY, (v1 + "_PQ")), VAPQ(PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY, (v1 + "_VAPQ")),
+        WQ(WQ_SIZE, HIT_LATENCY, (v1 + "_WQ")), champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1),
+        NUM_SET(v2), NUM_WAY(v3), perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat),
+        FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load),
+        match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref),
+        count_method(CountBlockMethod::EVICTION), filter_buffer_size(filter_buffer_size), prefetch_buffer_size(prefetch_buffer_size),
+        filter_inserts(filter_inserts), filter_prefetches(filter_prefetches)
   {
     if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
@@ -272,7 +279,7 @@ public:
     num_invalid_blocks_in_cache = NUM_SET * NUM_WAY;
     cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
     cl_invalid_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
-    way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
+    way_hits = (uint64_t*)calloc(NUM_WAY, sizeof(uint64_t));
     if (way_hits == NULL)
       std::cerr << "COULD NOT ALLOCATE WAY_HIT ARRAY" << std::endl;
   }
@@ -280,11 +287,13 @@ public:
         uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
         unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method, LruModifier lru_modifier, bool filter_inserts,
         bool filter_prefetches, size_t filter_buffer_size, size_t prefetch_buffer_size)
-      : champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1), NUM_SET(v2), NUM_WAY(v3),
-        perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat), FILL_LATENCY(fill_lat),
-        OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load), match_offset_bits(wq_full_addr),
-        virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref), count_method(method), lru_modifier(lru_modifier),
-        filter_buffer_size(filter_buffer_size), prefetch_buffer_size(prefetch_buffer_size), filter_inserts(filter_inserts), filter_prefetches(filter_prefetches)
+      : RQ(RQ_SIZE, HIT_LATENCY, (v1 + "_RQ")), PQ(PQ_SIZE, HIT_LATENCY, (v1 + "_PQ")), VAPQ(PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY, (v1 + "_VAPQ")),
+        WQ(WQ_SIZE, HIT_LATENCY, (v1 + "_WQ")), champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1),
+        NUM_SET(v2), NUM_WAY(v3), perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat),
+        FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load),
+        match_offset_bits(wq_full_addr), virtual_prefetch(va_pref), pref_activate_mask(pref_act_mask), repl_type(repl), pref_type(pref), count_method(method),
+        lru_modifier(lru_modifier), filter_buffer_size(filter_buffer_size), prefetch_buffer_size(prefetch_buffer_size), filter_inserts(filter_inserts),
+        filter_prefetches(filter_prefetches)
   {
     if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
@@ -292,7 +301,7 @@ public:
     cl_accesses_percentage_of_presence_covered.resize(100);
     cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
     cl_invalid_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
-    way_hits = (uint64_t*)malloc(NUM_WAY * sizeof(uint64_t));
+    way_hits = (uint64_t*)calloc(NUM_WAY, sizeof(uint64_t));
     if (way_hits == NULL)
       std::cerr << "COULD NOT ALLOCATE WAY_HIT ARRAY" << std::endl;
   }
@@ -325,7 +334,7 @@ private:
   uint64_t partial_without_hit = 0;
 
 public:
-  buffer_t<BLOCK> merge_block{MAX_WRITE};
+  buffer_t<BLOCK> merge_block{MAX_WRITE, NAME + "_merge_block"};
   uint64_t total_accesses;
   uint64_t hits;
   uint64_t merge_hit;
@@ -370,6 +379,11 @@ public:
   bool fill_miss(PACKET& packet, VCL_CACHE& parent);
 };
 
+typedef struct CSHR_tag {
+  uint64_t contender_tag;
+  uint64_t victim_tag;
+} CSHR_tag;
+
 class VCL_CACHE : public CACHE
 {
 
@@ -382,7 +396,11 @@ private:
   uint32_t buffer_ways = 0;
   BufferOrganisation organisation;
   CacheType cache_type;
+  ReplacementStrategy replacement_strategy;
   uint8_t word_size;
+  std::map<uint64_t, uint64_t> CSHR_new;
+  std::map<uint64_t, uint64_t> CSHR_old;
+  std::map<CSHR_tag, int> ACIC_predictor;
 
 protected:
   virtual void handle_packet_insert_from_buffer(PACKET& pkt) override;
@@ -396,7 +414,7 @@ public:
             uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref, unsigned pref_act_mask, MemoryRequestConsumer* ll,
             pref_t pref, repl_t repl, BufferOrganisation buffer_organisation, LruModifier lru_modifier, CountBlockMethod method, BufferHistory history,
             bool filter_inserts, bool filter_prefetches, size_t filter_buffer_size, size_t prefetch_buffer_size, bool extend_blocks_to_branch,
-            CacheType cache_type, uint8_t word_size)
+            CacheType cache_type, ReplacementStrategy replacement_strategy, uint8_t word_size)
       : CACHE(v1, freq_scale, fill_level, v2, v3, 0, v5, v6, v7, v8, hit_lat, fill_lat, max_read, max_write, offset_bits, pref_load, wq_full_addr, va_pref,
               pref_act_mask, ll, pref, repl, method, lru_modifier, filter_inserts, filter_prefetches, filter_buffer_size, prefetch_buffer_size),
         aligned(aligned), buffer_sets(buffer_sets), way_sizes(way_sizes), organisation(buffer_organisation), extend_blocks_to_branch(extend_blocks_to_branch),
@@ -405,7 +423,7 @@ public:
                                   (buffer_organisation == BufferOrganisation::FULLY_ASSOCIATIVE) ? buffer_sets : buffer_organisation, 0,
                                   std::min(buffer_sets, v5), std::min(v6, buffer_sets), std::min(buffer_sets, v7), std::min(v8, buffer_sets), 0, 0, max_read,
                                   max_write / 2, offset_bits, false, true, false, 0, ll, pref, repl_t::rreplacementDlru, method, buffer_fifo, history)),
-        cache_type(cache_type), word_size(word_size)
+        cache_type(cache_type), replacement_strategy(replacement_strategy), word_size(word_size)
   {
     CACHE::buffer = buffer;
     for (ulong i = 0; i < NUM_SET * NUM_WAY; ++i) {
@@ -422,6 +440,7 @@ public:
     CACHE::lru_modifier = lru_modifier;
     overlap_bytes_history.reserve(WRITE_BUFFER_SIZE);
     current_overlap = 0;
+    is_vcl = true;
   }
   virtual bool hit_test(uint64_t addr, uint8_t size) override;
 

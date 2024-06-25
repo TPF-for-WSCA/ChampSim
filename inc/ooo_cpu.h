@@ -22,13 +22,20 @@ struct BASIC_BTB_ENTRY {
   uint64_t lru;
 };
 
+struct BTB_outcome {
+  uint64_t target;
+  uint64_t always_taken;
+  uint64_t branch_type;
+  uint64_t sequetial_BTB_access;
+};
+
 class CACHE;
 
 class CacheBus : public MemoryRequestProducer
 {
 public:
   champsim::circular_buffer<PACKET> PROCESSED;
-  CacheBus(std::size_t q_size, MemoryRequestConsumer* ll) : MemoryRequestProducer(ll), PROCESSED(q_size) {}
+  CacheBus(std::size_t q_size, MemoryRequestConsumer* ll, std::string name) : MemoryRequestProducer(ll), PROCESSED(q_size, name + "_PROCESSED") {}
   void return_data(PACKET* packet);
 };
 
@@ -41,16 +48,22 @@ private:
   size_t EXTENDED_BTB_MAX_LOOP_BRANCH;
   BASIC_BTB_ENTRY* basic_btb;
   bool prev_was_branch = false;
+  bool perfect_btb;
+  bool perfect_branch_predict;
 
 public:
+  uint64_t rob_size_at_stall = 0;
   uint32_t cpu = 0;
   std::map<uint64_t, uint64_t> branch_distance;
   uint32_t branch_count;
   uint64_t total_branch_distance;
-
+  std::vector<std::pair<uint64_t, int8_t>> pc_offset_pairs;
+  std::vector<std::vector<uint64_t>> pc_bits_offset;
+  std::vector<uint64_t> offset_counts;
+  size_t align_bits = LOG2_BLOCK_SIZE;
   // instruction
-  uint64_t instr_unique_id = 1, completed_executions = 0, begin_sim_cycle = 0, begin_sim_instr = 0, last_sim_cycle = 0, last_sim_instr = 0,
-           finish_sim_cycle = 0, finish_sim_instr = 0, instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0,
+  uint64_t instr_unique_id = 0, completed_executions = 0, begin_sim_cycle = 0, begin_sim_instr = 0, last_sim_cycle = 0, last_sim_instr = 0,
+           finish_sim_cycle = 0, finish_sim_instr = 0, instrs_to_read_this_cycle = 0, instrs_to_fetch_this_cycle = 0, sim_fetched_instr = 0,
            next_print_instruction = STAT_PRINTING_PERIOD, num_retired = 0, num_read = 0, frontend_stall_cycles = 0, indirect_branches = 0;
   uint32_t inflight_reg_executions = 0, inflight_mem_executions = 0;
 
@@ -97,6 +110,7 @@ public:
   uint64_t fetch_resume_cycle = 0;
   uint64_t num_branch = 0, branch_mispredictions = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict;
+  uint64_t BTB_reads, BTB_writes, PageBTB_reads, PageBTB_writes, PageBTB_readsBeforeWrite, RegionBTB_reads, RegionBTB_writes, RegionBTB_readsBeforeWrite;
 
   uint64_t total_branch_types[8] = {};
   uint64_t branch_type_misses[8] = {};
@@ -146,6 +160,7 @@ public:
   void print_deadlock() override;
 
   int prefetch_code_line(uint64_t pf_v_addr);
+  void prefetcher_squash(uint64_t, uint64_t);
 
 #include "ooo_cpu_modules.inc"
 
@@ -158,14 +173,16 @@ public:
          unsigned decode_width, unsigned dispatch_width, unsigned schedule_width, unsigned execute_width, unsigned lq_width, unsigned sq_width,
          unsigned retire_width, unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency,
          unsigned execute_latency, MemoryRequestConsumer* itlb, MemoryRequestConsumer* dtlb, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
-         bpred_t bpred_type, btb_t btb_type, size_t btb_sets, size_t btb_ways, size_t btb_max_loop_branch, ipref_t ipref_type)
+         bpred_t bpred_type, btb_t btb_type, size_t btb_sets, size_t btb_ways, size_t btb_max_loop_branch, bool perfect_btb, bool perfect_branch_predict,
+         ipref_t ipref_type, size_t align_bits)
       : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window), IFETCH_BUFFER(ifetch_buffer_size * 2),
         IFETCH_WRONGPATH(ifetch_buffer_size * 2), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency), DECODE_BUFFER(decode_buffer_size, decode_latency),
         ROB(rob_size), LQ(lq_size), SQ(sq_size), FETCH_WIDTH(fetch_width), DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width),
         SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width), SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width),
         BRANCH_MISPREDICT_PENALTY(mispredict_penalty), SCHEDULING_LATENCY(schedule_latency), EXEC_LATENCY(execute_latency), ITLB_bus(rob_size, itlb),
         DTLB_bus(rob_size, dtlb), L1I_bus(rob_size, l1i), L1D_bus(rob_size, l1d), bpred_type(bpred_type), btb_type(btb_type), BTB_SETS(btb_sets),
-        BTB_WAYS(btb_ways), EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch), ipref_type(ipref_type)
+        BTB_WAYS(btb_ways), EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch), perfect_btb(perfect_btb), perfect_branch_predict(perfect_branch_predict),
+        ipref_type(ipref_type), pc_bits_offset(128, std::vector<uint64_t>(64)), offset_counts(128, 0), align_bits(align_bits)
   {
     basic_btb = (BASIC_BTB_ENTRY*)malloc(NUM_CPUS * BTB_SETS * BTB_WAYS * sizeof(BASIC_BTB_ENTRY));
     if (!basic_btb) {

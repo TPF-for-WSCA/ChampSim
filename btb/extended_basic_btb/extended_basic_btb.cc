@@ -12,7 +12,7 @@
 #include "ooo_cpu.h"
 
 #define idx(cpu, set, way, NUM_SETS, NUM_WAYS) (cpu * NUM_SETS * NUM_WAYS + set * NUM_WAYS + way)
-#define BASIC_BTB_INDIRECT_SIZE 4096
+#define BASIC_BTB_INDIRECT_SIZE 131072
 #define BASIC_BTB_RAS_SIZE 64
 #define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
 #define BASIC_BTB_BRANCH_TABLE 131072
@@ -213,7 +213,7 @@ void O3_CPU::btb_end_wrongpath(void)
   std::memcpy(basic_btb_ras_index, basic_btb_wrongpath_backup_ras_index, NUM_CPUS * sizeof *basic_btb_ras_index);
 }
 
-std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
+BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
 {
   uint8_t always_taken = false;
   if (branch_type != BRANCH_CONDITIONAL) {
@@ -231,9 +231,9 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
     // and adjust for the size of the call instr
     target += basic_btb_get_call_size(cpu, target);
 
-    return std::make_pair(target, always_taken);
+    return BTB_outcome({target, always_taken, branch_type, 0});
   } else if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
-    return std::make_pair(basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)], always_taken);
+    return BTB_outcome({basic_btb_indirect[cpu][basic_btb_indirect_hash(cpu, ip)], always_taken, branch_type, 0});
   } else {
     // use BTB for all other branches + direct calls
     auto btb_entry = basic_btb_find_entry(cpu, ip, BTB_SETS, BTB_WAYS, basic_btb);
@@ -241,16 +241,16 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_
     if (btb_entry == NULL) {
       // no prediction for this IP
       always_taken = false;
-      return std::make_pair(ip + 4, always_taken);
+      return BTB_outcome({ip + 4, always_taken, branch_type, 0});
     }
 
     always_taken = btb_entry->always_taken;
     basic_btb_update_lru(cpu, btb_entry);
 
-    return std::make_pair(btb_entry->target, always_taken);
+    return BTB_outcome({btb_entry->target, always_taken, branch_type, 0});
   }
 
-  return std::make_pair(0, always_taken);
+  return BTB_outcome({0, always_taken, branch_type, 0});
 }
 
 bool O3_CPU::is_not_block_ending(uint64_t ip)
@@ -295,6 +295,25 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   } else if ((branch_type != BRANCH_INDIRECT) && (branch_type != BRANCH_INDIRECT_CALL)) {
     // use BTB
+    uint64_t diff_bits = (branch_target >> 2) ^ (ip >> 2);
+    int num_bits = 0;
+    while (diff_bits != 0) {
+      diff_bits = diff_bits >> 1;
+      num_bits++;
+    }
+    extern uint8_t knob_collect_offsets;
+    if (knob_collect_offsets && num_bits < 7) {
+      pc_offset_pairs.push_back(std::make_pair(ip, (branch_target >> 2) - (ip >> 2)));
+      auto idx = (branch_target > ip) ? (branch_target >> 2) - (ip >> 2) + 64 : (ip >> 2) - (branch_target >> 2);
+      assert(idx <= 128);
+      offset_counts[idx]++;
+      for (uint64_t i = 0; i < 64; i++) {
+        uint64_t bitsel = 0x1ull << i;
+        if (bitsel & ip)
+          pc_bits_offset[idx][i]++;
+      }
+    }
+
     auto btb_entry = basic_btb_find_entry(cpu, ip, BTB_SETS, BTB_WAYS, basic_btb);
 
     if (btb_entry == NULL) {

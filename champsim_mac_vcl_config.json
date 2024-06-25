@@ -72,7 +72,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "fdip",
+    "prefetcher": "eip",
     "filter_inserts": false,
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,

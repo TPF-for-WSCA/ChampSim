@@ -1,6 +1,8 @@
 #include "ooo_cpu.h"
 
 #include <algorithm>
+#include <csignal>
+#include <iostream>
 #include <vector>
 
 #include "cache.h"
@@ -14,6 +16,14 @@ extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t MAX_INSTR_DESTINATIONS;
 
 #define BUFFER_SLOTS_AVAILABLE() (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy() - IFETCH_WRONGPATH.occupancy())
+std::ostream& operator<<(std::ostream& s, const ooo_model_instr& mi)
+{
+  return (s << "OOO_MODEL_INSTR" << "(instr_id: " << mi.instr_id << ", ip: " << mi.ip << ")");
+}
+
+std::ostream& operator<<(std::ostream& s, const PACKET& p) { return (s << "PACKET" << "(instr_id: " << p.instr_id << ", ip: " << p.ip << ")"); }
+
+std::ostream& operator<<(std::ostream& s, const BLOCK& b) { return (s << "BLOCK" << "(instr_id: " << b.instr_id << ", ip: " << b.ip << ")"); }
 
 void O3_CPU::operate()
 {
@@ -76,6 +86,14 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   instrs_to_read_this_cycle--;
 
   arch_instr.instr_id = instr_unique_id;
+
+  // if (instr_unique_id == 2598646 || instr_unique_id == 2598698 || instr_unique_id == 2598703)
+  //   raise(SIGINT);
+
+#ifdef LOG
+  if (true)
+    arch_instr.trace = true;
+#endif
 
   bool reads_sp = false;
   bool writes_sp = false;
@@ -248,10 +266,19 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
     num_branch++;
 
-    std::pair<uint64_t, uint8_t> btb_result = impl_btb_prediction(arch_instr.ip, arch_instr.branch_type);
-    predicted_branch_target = btb_result.first;
-    uint8_t always_taken = btb_result.second;
+    BTB_outcome btb_result = impl_btb_prediction(arch_instr.ip, arch_instr.branch_type);
+    predicted_branch_target = btb_result.target;
+    uint8_t always_taken = btb_result.always_taken;
     uint8_t branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch_type);
+
+    if (perfect_btb) {
+      predicted_branch_target = arch_instr.branch_target;
+    }
+
+    if (perfect_branch_predict) {
+      branch_prediction = arch_instr.branch_taken;
+    }
+
     if ((branch_prediction == 0) && (always_taken == 0)) {
       predicted_branch_target = 0;
     }
@@ -330,16 +357,14 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
 
 void O3_CPU::check_dib()
 {
-  // scan through IFETCH_BUFFER to find instructions that hit in the decoded
-  // instruction buffer
-  auto end = std::min(IFETCH_BUFFER.end(), std::next(IFETCH_BUFFER.begin(), FETCH_WIDTH));
-  for (auto it = IFETCH_BUFFER.begin(); it != end; ++it)
+  return; // deactivate dib
+  // scan through IFETCH_BUFFER to find instructions that hit in the
+  for (auto it = IFETCH_BUFFER.begin(); it != IFETCH_BUFFER.end(); ++it)
     do_check_dib(*it);
 }
 
 void O3_CPU::do_check_dib(ooo_model_instr& instr)
 {
-  return; // disable dib
   // Check DIB to see if we recently fetched this line
   auto dib_set_begin = std::next(DIB.begin(), ((instr.ip >> lg2(dib_window)) % dib_set) * dib_way);
   auto dib_set_end = std::next(dib_set_begin, dib_way);
@@ -401,6 +426,7 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
   trace_packet.asid[0] = 0;
   trace_packet.asid[1] = 0;
   trace_packet.to_return = {&ITLB_bus};
+  trace_packet.trace = begin->trace;
   for (; begin != end; ++begin)
     trace_packet.instr_depend_on_me.push_back(begin);
 
@@ -414,7 +440,7 @@ void O3_CPU::do_translate_fetch(champsim::circular_buffer<ooo_model_instr>::iter
     }
   }
 }
-
+//  __attribute__((optimize("O0")))
 void O3_CPU::fetch_instruction()
 {
   auto fetch_instruction_from_queue = [&](champsim::circular_buffer<ooo_model_instr>& QUEUE) -> bool {
@@ -481,6 +507,7 @@ void O3_CPU::fetch_instruction()
 void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
 {
   // add it to the L1-I's read queue
+  assert(begin->ip % 4 == 0);
   PACKET fetch_packet;
   fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
   fetch_packet.cpu = cpu;
@@ -491,16 +518,21 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
   fetch_packet.branch_type = begin->branch_type;
-  fetch_packet.size = begin->size;
+  fetch_packet.size = 0;
   fetch_packet.type = LOAD;
   fetch_packet.asid[0] = 0;
   fetch_packet.asid[1] = 0;
+  fetch_packet.trace = begin->trace;
   fetch_packet.to_return = {&L1I_bus};
   for (; begin != end; ++begin) {
+    if (begin->ip % 4 != 0) {
+      continue; // Ignore dummy instructions in updated traces
+    }
     fetch_packet.instr_depend_on_me.push_back(begin);
     // std::cout << "[fetch@" << fetch_packet.instr_id << "] instr_depend_on_me: " << begin->ip << std::endl;
     if (fetch_packet.address == begin->instruction_pa)
       continue;
+
     fetch_packet.size += begin->size;
   }
 
@@ -512,6 +544,9 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
 
   if (rq_index != -2) {
     // mark all instructions from this cache line as having been fetched
+    if (warmup_complete[cpu]) {
+      sim_fetched_instr++;
+    }
     for (auto dep_it : fetch_packet.instr_depend_on_me) {
       dep_it->fetched = INFLIGHT;
     }
@@ -837,7 +872,7 @@ struct sq_will_forward {
     return sq_test.fetched == COMPLETED && sq_test.instr_id == match_id && sq_test.virtual_address == match_addr;
   }
 };
-
+//__attribute__((optimize("O0")))
 void O3_CPU::add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_it, uint32_t data_index)
 {
   // search for an empty slot
@@ -847,6 +882,14 @@ void O3_CPU::add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator
   // add it to the load queue
   rob_it->lq_index[data_index] = lq_it;
   rob_it->source_added[data_index] = 1;
+  champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior_it{rob_it};
+  prior_it = std::find_if(prior_it, ROB.rend(), instr_mem_will_produce(rob_it->source_memory[data_index]));
+  // if (prior_it->instr_id == 2598646) {
+  //   raise(SIGINT);
+  // }
+  // if (prior_it->instr_id == 2598698) {
+  //   raise(SIGINT);
+  // }
   lq_it->instr_id = rob_it->instr_id;
   lq_it->virtual_address = rob_it->source_memory[data_index];
   lq_it->ip = rob_it->ip;
@@ -857,10 +900,8 @@ void O3_CPU::add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator
 
   // Mark RAW in the ROB since the producer might not be added in the store
   // queue yet
-  champsim::circular_buffer<ooo_model_instr>::reverse_iterator prior_it{rob_it};
-  prior_it = std::find_if(prior_it, ROB.rend(), instr_mem_will_produce(lq_it->virtual_address));
   if (prior_it != ROB.rend()) {
-    // this load cannot be executed until the prior store gets executed
+    //  this load cannot be executed until the prior store gets executed
     prior_it->memory_instrs_depend_on_me.push_back(rob_it);
     lq_it->producer_id = prior_it->instr_id;
     lq_it->translated = INFLIGHT;
@@ -875,13 +916,20 @@ void O3_CPU::add_load_queue(champsim::circular_buffer<ooo_model_instr>::iterator
   }
 }
 
+//__attribute__((optimize("O0")))
 void O3_CPU::add_store_queue(champsim::circular_buffer<ooo_model_instr>::iterator rob_it, uint32_t data_index)
 {
   auto sq_it = std::find_if_not(std::begin(SQ), std::end(SQ), is_valid<LSQ_ENTRY>());
   assert(sq_it->virtual_address == 0);
-
+  // if (rob_it->instr_id == 2598646) {
+  //   raise(SIGINT);
+  // }
+  // if (rob_it->instr_id == 2598698) {
+  //   raise(SIGINT);
+  // }
   // add it to the store queue
   rob_it->sq_index[data_index] = sq_it;
+
   sq_it->instr_id = rob_it->instr_id;
   sq_it->virtual_address = rob_it->destination_memory[data_index];
   sq_it->ip = rob_it->ip;
@@ -1002,12 +1050,15 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
     // check if dependent loads are already added in the load queue
     for (uint32_t j = 0; j < NUM_INSTR_SOURCES; j++) { // which one is dependent?
       if (dependent->source_memory[j] && dependent->source_added[j]) {
-        if (dependent->source_memory[j] == sq_it->virtual_address) { // this is required since a single
-                                                                     // instruction can issue multiple loads
+        if (dependent->source_memory[j] == sq_it->virtual_address) {
+          // TODO: FIX DEPENDNECY
+          // and dependent->lq_index[j]->producer_id == sq_it->instr_id) { // this is required since a single
+          // instruction can issue multiple loads
+          // and can have multiple producers. We only want the latest producer
 
           // TODO: Get rid of this check once we have data accesses in the trace
           if (dependent->lq_index[j]->producer_id == std::numeric_limits<uint64_t>::max()) {
-            cerr << "Uninitialized DTLB dependency detected / needs fixing later [data trace must be available]" << endl;
+            // cerr << "Uninitialized DTLB dependency detected / needs fixing later [data trace must be available]" << endl;
             continue; // after warmup it can happen that we see an uninitialized value -- ignore
           }
           if (dependent->lq_index[j]->producer_id != sq_it->instr_id) {
@@ -1015,7 +1066,7 @@ void O3_CPU::execute_store(std::vector<LSQ_ENTRY>::iterator sq_it)
             cerr << " does not match to the store instr_id: " << sq_it->instr_id << endl;
           }
           // now we can resolve RAW dependency
-          assert(dependent->lq_index[j]->producer_id == sq_it->instr_id);
+          assert(sq_it->instr_id < dependent->lq_index[j]->instr_id);
           // update corresponding LQ entry
           do_sq_forward_to_lq(*sq_it, *(dependent->lq_index[j]));
         }
@@ -1181,7 +1232,8 @@ void O3_CPU::handle_memory_return()
     // them as such
     while (available_fetch_bandwidth > 0 && !l1i_entry.instr_depend_on_me.empty()) {
       auto it = l1i_entry.instr_depend_on_me.front();
-      if ((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address >> LOG2_BLOCK_SIZE) && it->fetched != 0 && it->translated == COMPLETED) {
+      assert((it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address >> LOG2_BLOCK_SIZE));
+      if (it->fetched != 0 && it->translated == COMPLETED) {
         it->fetched = COMPLETED;
         available_fetch_bandwidth--;
       }
@@ -1190,8 +1242,9 @@ void O3_CPU::handle_memory_return()
     }
 
     // remove this entry if we have serviced all of its instructions
-    if (l1i_entry.instr_depend_on_me.empty())
+    if (l1i_entry.instr_depend_on_me.empty()) {
       L1I_bus.PROCESSED.pop_front();
+    }
     --to_read;
   }
 
@@ -1285,6 +1338,10 @@ void O3_CPU::retire_rob()
     // release ROB entry
     DP(if (warmup_complete[cpu]) { cout << "[ROB] " << __func__ << " instr_id: " << ROB.front().instr_id << " is retired" << endl; });
 
+#ifdef LOG
+    if (current_cycle < 10000)
+      cout << "instr_id: " << ROB.front().instr_id << ", committed @" << current_cycle << endl;
+#endif
     ROB.pop_front();
     completed_executions--;
     num_retired++;

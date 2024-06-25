@@ -22,8 +22,11 @@
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_019.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_009.champsimtrace.xz"
-                "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_020.champsimtrace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_020.champsimtrace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_035.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/cvp_test/srv_0.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
                 //"/home/robrunne/Downloads/tmp/champsim_traces/whiskey/champsim-1748052322638680856.267686.memtrace.gz"
@@ -48,9 +51,9 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "-warmup_instructions",
-                "50000",
+                "0",
                 "-simulation_instructions",
-                "50000",
+                "500",
                 "-result_dir",
                 "~/Downloads/results/vcl_clang/",
                 // "-ptrace",
@@ -60,9 +63,11 @@
                 "-traces",
                 // "/Users/robrunne/Workspace/traces/tanvir/clang/clang.gz",
                 // "/Users/robrunne/Workspace/traces/ipc1/client_001.champsimtrace.xz"
+                "/Users/robrunne/Workspace/traces/ipc1/server_022.champsimtrace.xz"
+                // "/Users/robrunne/Workspace/traces/ipc1/client_007.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/spec_gcc_001.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/server_014.champsimtrace.xz"
-                "/Users/robrunne/Workspace/traces/cvp1/srv_15.champsimtrace.xz"
+                // "/Users/robrunne/Workspace/traces/cvp1/srv_15.champsimtrace.xz"
                 //"/Users/robrunne/Workspace/traces/ipc1/server_009.champsimtrace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/crc2/astar_163B.trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"

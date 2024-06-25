@@ -19,8 +19,9 @@
 #include "vmem.h"
 
 uint8_t warmup_complete[NUM_CPUS] = {}, simulation_complete[NUM_CPUS] = {}, trace_ended[NUM_CPUS] = {}, all_warmup_complete = 0, all_simulation_complete = 0,
-        MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_pintrace = 0, knob_cloudsuite = 0, knob_low_bandwidth = 0, knob_intel = 0, knob_stall_on_miss = 0,
-        knob_stop_at_completion = 1, knob_wrongpath = 0;
+        MAX_INSTR_DESTINATIONS = NUM_INSTR_DESTINATIONS, knob_pintrace = 0, knob_cloudsuite = 0, knob_low_bandwidth = 0, knob_intel = 0, knob_stall_on_miss = 1,
+        knob_stop_at_completion = 1, knob_wrongpath = 0, knob_collect_offsets = 1, knob_min_50M = 0;
+
 int8_t knob_ip_offset = 0;
 bool knob_no_detail_stats = false;
 
@@ -225,6 +226,7 @@ void print_roi_stats(uint32_t cpu, CACHE* cache)
     cout << cache->NAME;
     cout << " TOTAL     ACCESS: " << setw(10) << TOTAL_ACCESS << "  HIT: " << setw(10) << TOTAL_HIT << "  MISS: " << setw(10) << TOTAL_MISS
          << "  PARTIAL MISS: " << setw(10) << TOTAL_PARTIAL_MISS << " ( " << fixed << setprecision(2) << miss_ratio << "%)" << endl;
+    cout << cache->NAME << " 64B WAY HITS: " << setw(10) << cache->way_64_accesses << "  OTHER WAYS HITS: " << setw(10) << cache->way_other_accesses << endl;
 
     miss_ratio = 0;
     if (cache->roi_miss[cpu][0] != 0 && cache->roi_partial_miss[cpu][0] != 0)
@@ -495,9 +497,54 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
   }
 }
 
+void write_offsets(O3_CPU* cpu, int cpu_id)
+{
+  std::ofstream csv_file;
+  std::filesystem::path csv_file_path = result_dir;
+  string filename = "cpu" + std::to_string(cpu_id) + "_pc_offset_mapping.tsv";
+  csv_file_path /= filename;
+  csv_file.open(csv_file_path, std::ios::out);
+  if (!csv_file) {
+    std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+    std::cerr << std::flush;
+  } else {
+    cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
+    for (auto elem : cpu->pc_offset_pairs) {
+      csv_file << elem.first << "\t" << elem.second << endl;
+    }
+    csv_file.close();
+  }
+
+  csv_file_path = result_dir;
+  filename = "cpu" + std::to_string(cpu_id) + "_pc_bits_offset.tsv";
+  csv_file_path /= filename;
+  csv_file.open(csv_file_path, std::ios::out);
+  if (!csv_file) {
+    std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+    std::cerr << std::flush;
+  } else {
+    cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
+    csv_file << "offset\t";
+    for (size_t i = 0; i < 64; i++) {
+      csv_file << "bit" << i + 1 << "\t";
+    }
+    csv_file << "total_observations" << endl;
+    for (size_t i = 0; i < cpu->pc_bits_offset.size(); i++) {
+      csv_file << ((int)i - 64) << "\t";
+      auto counts = cpu->pc_bits_offset[i];
+      for (size_t j = 0; j < 64; j++) {
+        csv_file << counts[j] << "\t";
+      }
+      csv_file << cpu->offset_counts[i] << endl;
+    }
+    csv_file.close();
+  }
+}
+
 void print_branch_stats()
 {
   for (uint32_t i = 0; i < NUM_CPUS; i++) {
+    write_offsets(ooo_cpu[i], i);
     cout << endl << "CPU " << i << " Branch Prediction Accuracy: ";
     cout << (100.0 * (ooo_cpu[i]->num_branch - ooo_cpu[i]->branch_mispredictions)) / ooo_cpu[i]->num_branch;
     cout << "% MPKI: " << (1000.0 * ooo_cpu[i]->branch_mispredictions) / (ooo_cpu[i]->num_retired - warmup_instructions);
@@ -537,13 +584,20 @@ void print_branch_stats()
     ooo_cpu[i]->begin_sim_instr) << "%" << endl << endl;
     */
 
-    cout << "Branch type MPKI" << endl;
-    cout << "BRANCH_DIRECT_JUMP: " << (1000.0 * ooo_cpu[i]->branch_type_misses[1] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << endl;
-    cout << "BRANCH_INDIRECT: " << (1000.0 * ooo_cpu[i]->branch_type_misses[2] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << endl;
-    cout << "BRANCH_CONDITIONAL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[3] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << endl;
-    cout << "BRANCH_DIRECT_CALL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[4] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << endl;
-    cout << "BRANCH_INDIRECT_CALL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[5] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << endl;
-    cout << "BRANCH_RETURN: " << (1000.0 * ooo_cpu[i]->branch_type_misses[6] / (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr)) << endl << endl;
+    uint64_t branch_mispredicts = 0;
+    for (int j = 1; j < 8; j++) {
+      branch_mispredicts += ooo_cpu[i]->branch_type_misses[j];
+    }
+    uint64_t total_instructions = (ooo_cpu[i]->num_retired - ooo_cpu[i]->begin_sim_instr);
+    cout << "BRANCH_MPKI: " << (1000.0 * branch_mispredicts / total_instructions) << endl;
+    cout << "BRANCH_DIRECT_JUMP: " << (1000.0 * ooo_cpu[i]->branch_type_misses[1] / total_instructions) << endl;
+    cout << "BRANCH_INDIRECT: " << (1000.0 * ooo_cpu[i]->branch_type_misses[2] / total_instructions) << endl;
+    cout << "BRANCH_CONDITIONAL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[3] / total_instructions) << endl;
+    cout << "BRANCH_DIRECT_CALL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[4] / total_instructions) << endl;
+    cout << "BRANCH_INDIRECT_CALL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[5] / total_instructions) << endl;
+    cout << "BRANCH_RETURN: " << (1000.0 * ooo_cpu[i]->branch_type_misses[6] / total_instructions) << endl << endl;
+
+    cout << "AVG ROB SIZE AT STALL: " << (1.0 * ooo_cpu[i]->rob_size_at_stall) / ooo_cpu[i]->frontend_stall_cycles << endl << endl;
   }
 }
 
@@ -618,6 +672,8 @@ void reset_cache_stats(uint32_t cpu, CACHE* cache)
   cache->pf_fill = 0;
   cache->USELESS_CACHELINE = 0;
   cache->TOTAL_CACHELINES = 0;
+  cache->way_64_accesses = 0;
+  cache->way_other_accesses = 0;
 
   cache->total_miss_latency = 0;
 
@@ -832,19 +888,37 @@ int main(int argc, char** argv)
     std::sort(std::begin(operables), std::end(operables), champsim::by_next_operate());
 
     for (std::size_t i = 0; i < ooo_cpu.size(); ++i) {
+#ifdef LOG
+      if ((ooo_cpu[i]->fetch_stall || ooo_cpu[i]->instrs_to_read_this_cycle == 0) and ooo_cpu[i]->current_cycle < 10000) {
+        std::string reason = (ooo_cpu[i]->fetch_stall) ? "FETCH_STALL" : "NO READS LEFT";
+        cout << "@" << ooo_cpu[i]->current_cycle << "\tFTQ TARGET INSERTION STALLED\tREASON: " << reason << endl;
+        cout << "\tRESUME CYCLE: " << ooo_cpu[i]->fetch_resume_cycle << endl;
+      }
+#endif
       // read from trace
+<<<<<<< HEAD
       while (ooo_cpu[i]->fetch_stall == 0 && ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
         if (ooo_cpu[i]->IFETCH_BUFFER.occupancy() + ooo_cpu[i]->IFETCH_WRONGPATH.occupancy() > ooo_cpu[i]->IFETCH_BUFFER.size()) {
           ooo_cpu[i]->instrs_to_read_this_cycle = 0;
           continue; // We already have enough instructions in the FTQ
         }
-        struct ooo_model_instr trace_inst;
+=======
+      while (not ooo_cpu[i]->fetch_stall and ooo_cpu[i]->instrs_to_read_this_cycle > 0 and not trace_ended[i]) {
+        // while (ooo_cpu[i]->instrs_to_read_this_cycle > 0 && !trace_ended[i]) {
+#ifdef LOG
+        cout << "\tfetch active\tfetch_stall: " << (int)ooo_cpu[i]->fetch_stall << ", current_cycle: " << ooo_cpu[i]->current_cycle
+             << ", fetch_resume_cycle: " << ooo_cpu[i]->fetch_resume_cycle << endl;
+#endif
+        >>>>>>> micro - rebuttal struct ooo_model_instr trace_inst;
         try {
           trace_inst = traces[i]->get();
           ooo_cpu[i]->num_read++;
         } catch (EndOfTraceException const& e) {
-          trace_ended[i] = 1;
-          break;
+          if (!knob_min_50M || ooo_cpu[i]->num_read >= (ooo_cpu[i]->begin_sim_instr + 50000000)) {
+            trace_ended[i] = 1;
+            break;
+          }
+          traces[i]->open();
         }
         ooo_cpu[i]->init_instruction(trace_inst);
       }
@@ -877,7 +951,7 @@ int main(int argc, char** argv)
 
       // check for warmup
       // warmup complete
-      if ((warmup_complete[i] == 0) && (ooo_cpu[i]->num_retired > warmup_instructions)) {
+      if ((warmup_complete[i] == 0) && (ooo_cpu[i]->num_retired >= warmup_instructions)) {
         warmup_complete[i] = 1;
         all_warmup_complete++;
       }
@@ -935,6 +1009,7 @@ int main(int argc, char** argv)
     cout << endl << "CPU " << i << " cumulative IPC: " << ((float)ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle);
     cout << " instructions: " << ooo_cpu[i]->finish_sim_instr << " cycles: " << ooo_cpu[i]->finish_sim_cycle << endl;
     cout << "CPU " << i << " FRONTEND STALLED CYCLES:\t" << ooo_cpu[i]->frontend_stall_cycles << endl;
+    cout << "CPU " << i << " FETCHED PACKETS:\t" << ooo_cpu[i]->sim_fetched_instr << endl;
     for (auto it = caches.rbegin(); it != caches.rend(); ++it)
       print_roi_stats(i, *it);
   }
