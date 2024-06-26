@@ -501,13 +501,16 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.asid[1] = 0;
   fetch_packet.trace = begin->trace;
   fetch_packet.to_return = {&L1I_bus};
+  // TODO: Backport size fix based on sets
+  std::set<uint64_t> ips;
   for (; begin != end; ++begin) {
     if (begin->ip % 4 != 0) {
       continue; // Ignore dummy instructions in updated traces
     }
     fetch_packet.instr_depend_on_me.push_back(begin);
-    fetch_packet.size += begin->size;
+    ips.insert(begin->ip);
   }
+  fetch_packet.size = ips.size() * 4;
 
   // std::cout << "fetch: " << std::setw(16) << fetch_packet.ip << ", size: " << std::setw(3) << fetch_packet.size << std::endl;
   int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);
