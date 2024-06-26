@@ -1661,6 +1661,11 @@ uint32_t VCL_CACHE::lru_victim(BLOCK* current_set, uint8_t min_size)
     std::cerr << "Couldn't find way that fits size" << std::endl;
     assert(0);
   }
+  for (; begin_way != end_way; begin_way++) {
+    if (begin_way->dead) {
+      return begin_way - current_set;
+    }
+  }
   uint32_t way = std::distance(
       current_set, std::max_element(begin_of_subset, endofset, [](BLOCK lhs, BLOCK rhs) { return !rhs.valid || (lhs.valid && lhs.lru < rhs.lru); }));
   return way;
