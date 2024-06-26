@@ -13,7 +13,6 @@ path = "/Users/robrunne/micro_new_1_accumulated"
 output_path = "/Users/robrunne/micro_new_1_accumulated"
 # TODO: Combine spec, client, CVP-1 FP and INT traces into one graph
 files_to_plot = [
-    "accumulated_all_applications_cvp1_new_compute.tsv",
     "accumulated_all_applications_ipc1_spec.tsv",
     "accumulated_all_applications_ipc1_client.tsv",
 ]
