@@ -73,13 +73,14 @@ def extract_average_accuracy(path):
     logs.reverse()
     averages = []
     for i in range(4):
-        average_accuracy = re.compile(f"\s+AVERAGE ACCURACY {i} : (\d+\.*\d*)")
+        average_accuracy = re.compile(f"\s+cpu0_L1I AVERAGE ACCURACY {i} : (\d+\.*\d*)")
         for line in logs:
             match = average_accuracy.match(line)
             if match:
                 averages.append(float(match.groups()[0]))
                 break
     return averages
+
 
 def extract_predictor_accuracy(path):
     logs = []
