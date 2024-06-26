@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/micro-rebuttal/champsim_line_distillation_16B",
+  "executable_name": "bin/micro-new-traces/champsim_line_distillation_16B",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
