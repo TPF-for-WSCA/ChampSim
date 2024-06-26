@@ -824,7 +824,7 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
 
 bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, bool treat_like_hit)
 {
-  for (int i = 0; i < last_inserted[set].size(); i++) {
+  for (size_t i = 0; i < last_inserted[set].size(); i++) {
     auto last_n_inserted_block = last_inserted[set][i];
     if (last_n_inserted_block != NULL)
       last_n_inserted_block->bytes_accessed_in_predictor[i] = last_n_inserted_block->bytes_accessed;

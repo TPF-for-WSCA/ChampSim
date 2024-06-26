@@ -82,7 +82,7 @@ void CACHE::initialize_replacement() {}
 uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
 { // TODO: GHRP
   // baseline LRU
-  for (int i = 0; i < NUM_WAY; i++) {
+  for (uint32_t i = 0; i < NUM_WAY; i++) {
     if (current_set[i].dead) {
       std::cout << "found dead block" << std::endl;
       return i;
