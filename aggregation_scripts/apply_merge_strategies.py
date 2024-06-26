@@ -455,9 +455,8 @@ def apply_storage_efficiency_analysis(
     max_efficiency = 0.0
     min_efficiency = 1.0
     for useful_bytes in get_uint64_t_from_tracefile(tracefile_path):
-        # assert useful_bytes <= total_cache_size
-        if useful_bytes > total_cache_size:
-            continue
+        useful_bytes = useful_bytes/2
+        assert useful_bytes <= total_cache_size
 
         if useful_bytes == 0:
             print("all useless...")
