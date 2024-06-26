@@ -900,6 +900,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, 
     memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
 
     fill_block.valid = true;
+    fill_block.accessed_after_insert = false;
     fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
     fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
     fill_block.address = handle_pkt.address;
@@ -1606,6 +1607,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   }
   ////
   fill_block.valid = true;
+  fill_block.accessed_after_insert = false;
   fill_block.prefetch = (packet.type == PREFETCH && packet.pf_origin_level == fill_level);
   fill_block.dirty = (packet.type == WRITEBACK || (packet.type == RFO && packet.to_return.empty()));
   fill_block.address = packet.address;
@@ -2458,6 +2460,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, size_t offset, B
 
   memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
   fill_block.valid = true;
+  fill_block.accessed_after_insert = false;
   fill_block.prefetch = false; // prefetches would go into the buffer and on merge be useless
   fill_block.dirty = handle_block.dirty;
   fill_block.address = handle_block.address;
@@ -2543,6 +2546,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
       pf_fill++;
 
     fill_block.valid = true;
+    fill_block.accessed_after_insert = false;
     fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
     fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
     fill_block.address = handle_pkt.address;
