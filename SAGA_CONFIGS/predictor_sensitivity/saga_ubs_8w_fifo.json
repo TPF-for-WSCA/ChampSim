@@ -47,6 +47,7 @@
     "buffer": true,
     "buffer_size": 64,
     "buffer_organisation": "SET8_ASSOCIATIVE",
+    "buffer_fifo": true,
     "way_sizes": [
       4,
       4,
