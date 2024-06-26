@@ -13,19 +13,19 @@
 int cntrsNew[NUM_PRED_TABLES] = {0};
 int predTables[NUM_COUNTS][NUM_PRED_TABLES] = {0};
 int ghrp_indices[NUM_PRED_TABLES] = {0};
-int hash_functions[NUM_PRED_TABLES] = {0b0111, 0b1110, 0b1101};
+int hash_functions[NUM_PRED_TABLES] = {0b0111, 0b1110, 0b1011};
 
 uint16_t history_reg = 0;
 
 void update_path_hist(uint64_t PC)
 {
   history_reg <<= 4;
-  history_reg |= ((PC >> 4) & 0b111);
+  history_reg |= ((PC >> 2) & 0b111);
 }
 
 int generate_signature(uint64_t PC)
 {
-  uint16_t signature = (0xF & (PC >> 4)) xor history_reg;
+  uint16_t signature = (0xFFFF & (PC >> 2)) xor history_reg;
   return signature;
 }
 
@@ -37,7 +37,7 @@ void update_indices(uint16_t signature)
     int shift_counter = 0;
     for (int j = 0; j < 4; j++) {
       if (hash_map & 0b1) {
-        index |= (((signature >> (j * 4)) & 0xFF) << (shift_counter * 4));
+        index |= (((signature >> (j * 4)) & 0xF) << (shift_counter * 4));
         shift_counter++;
       }
       hash_map >>= 1;
@@ -70,8 +70,14 @@ void updatePredTables(bool isDead)
   for (int i = 0; i < NUM_PRED_TABLES; i++) {
     if (isDead) {
       predTables[ghrp_indices[i]][i]++;
+      if (predTables[ghrp_indices[i]][i] > 3) {
+        predTables[ghrp_indices[i]][i] = 3;
+      }
     } else {
       predTables[ghrp_indices[i]][i]--;
+      if (predTables[ghrp_indices[i]][i] < -3) {
+        predTables[ghrp_indices[i]][i] = -3;
+      }
     }
   }
 }
@@ -84,7 +90,6 @@ uint32_t CACHE::find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const
   // baseline LRU
   for (uint32_t i = 0; i < NUM_WAY; i++) {
     if (current_set[i].dead) {
-      std::cout << "found dead block" << std::endl;
       return i;
     }
   }
@@ -106,22 +111,14 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
   if (not hit) {
     bool bypass = majority_vote(counters, BYPASS_THRESH);
     if (not bypass) {
-      auto begin = std::next(block.begin(), set * NUM_WAY);
-      auto end = std::next(begin, NUM_WAY);
-      auto victim = block.end();
-      for (; begin != end; begin++) {
-        if (begin->dead) {
-          victim = begin;
-          break;
-        }
-      }
-      if (victim != block.end()) {
-        update_indices(victim->signature);
-        updatePredTables(true);
-        bool prediction = majority_vote(counters, DEAD_THRESH);
-        victim->dead = prediction;
-        victim->signature = signature;
-      }
+      auto victim_index = find_victim(cpu, 0, set, &block[set * NUM_WAY], ip, 0, 0);
+
+      auto victim = &block[set * NUM_WAY + victim_index];
+      update_indices(victim->signature);
+      updatePredTables(true);
+      bool prediction = majority_vote(counters, DEAD_THRESH);
+      victim->dead = prediction;
+      victim->signature = signature;
     }
   } else {
     auto hit_block = &block[set * NUM_WAY + way];
@@ -131,8 +128,8 @@ void CACHE::update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, u
     hit_block->dead = prediction;
     hit_block->signature = signature;
   }
-
-  update_path_hist(ip);
+  if (type != NOT_BRANCH)
+    update_path_hist(ip);
 
   uint32_t lru_pos = get_insert_pos(lru_modifier, set);
   if (hit)

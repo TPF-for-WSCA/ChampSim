@@ -259,7 +259,7 @@ void O3_CPU::initialize_btb()
 
 BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
 {
-  BTBEntry* btb_entry;
+  BTBEntry* btb_entry = NULL;
 
   for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
     btb_entry = btb_partition[i]->get_BTBentry(ip);
@@ -344,7 +344,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   if (not taken)
     return;
 
-  BTBEntry* btb_entry;
+  BTBEntry* btb_entry = NULL;
   int partitionID = -1;
   for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
     btb_entry = btb_partition[i]->get_BTBentry(ip);
