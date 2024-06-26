@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/micro-rebuttal-predictor/ubs_8w",
+  "executable_name": "bin/micro-rebuttal-predictor/ubs_8w_fifo",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
