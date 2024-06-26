@@ -42,6 +42,7 @@ void update_indices(uint16_t signature)
       }
       hash_map >>= 1;
     }
+    index &= 0xFFF;
     ghrp_indices[i] = index;
   }
 }

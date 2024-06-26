@@ -770,6 +770,8 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
     int accessed_bytes_at_eviction = std::bitset<64>(handle_block.bytes_accessed).count();
     if (accessed_bytes_at_eviction != 0 and accessed_bytes_after_predictor != 0) {
       float percentage_predicted = (double)accessed_bytes_after_predictor / accessed_bytes_at_eviction;
+      if (percentage_predicted > 1.0)
+        break;
       percentage_predicted -= prev_sum;
       // assert(percentage_predicted <= 1.0 and percentage_predicted >= 0);
       predictor_accuracy[i][percentage_predicted] += 1;
