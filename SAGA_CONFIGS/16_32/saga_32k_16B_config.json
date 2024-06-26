@@ -43,7 +43,7 @@
   },
   "L1I": {
     "sets": 128,
-    "ways": 12,
+    "ways": 15,
     "buffer": false,
     "buffer_size": 64,
     "buffer_organisation": "FULLY_ASSOCIATIVE",
