@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/micro-new-traces/champsim_line_distillation_16B",
+  "executable_name": "bin/micro-ubs-vs-linedistill/champsim32k",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -44,20 +44,6 @@
   "L1I": {
     "sets": 64,
     "ways": 8,
-    "buffer": true,
-    "buffer_size": 384,
-    "buffer_organisation": "SET6_ASSOCIATIVE",
-    "buffer_fifo": false,
-    "way_sizes": [
-      16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16
-    ],
     "rq_size": 64,
     "wq_size": 64,
     "pq_size": 32,
@@ -69,12 +55,10 @@
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
     "prefetcher": "fdip",
+    "filter_inserts": false,
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,
-    "lru_modifier": "DEFAULT",
-    "counting_block_method": "SUM_ACCESSES",
-    "insertion_method": "DISTILLATION",
-    "word_size": 16
+    "counting_block_method": "SUM_ACCESSES"
   },
   "L1D": {
     "sets": 64,

@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/micro-new-traces/champsim_line_distillation_16B",
+  "executable_name": "bin/micro-ubs-vs-linedistill/ubs_overhead_isca",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -33,7 +33,7 @@
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "btb": "extended_basic_btb",
-      "align_bits": 4
+      "btb_max_loop_branch": 32
     }
   ],
   "DIB": {
@@ -43,20 +43,29 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 8,
+    "ways": 18,
     "buffer": true,
-    "buffer_size": 384,
-    "buffer_organisation": "SET6_ASSOCIATIVE",
-    "buffer_fifo": false,
+    "buffer_size": 64,
+    "buffer_organisation": "DIRECT_MAPPED",
     "way_sizes": [
+      4,
+      4,
+      4,
+      4,
+      8,
+      8,
+      8,
+      8,
+      12,
       16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16,
-      16
+      20,
+      32,
+      36,
+      36,
+      48,
+      64,
+      64,
+      64
     ],
     "rq_size": 64,
     "wq_size": 64,
@@ -69,12 +78,12 @@
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
     "prefetcher": "fdip",
+    "filter_inserts": false,
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,
-    "lru_modifier": "DEFAULT",
+    "lru_modifier": "LRU2BOUND4",
     "counting_block_method": "SUM_ACCESSES",
-    "insertion_method": "DISTILLATION",
-    "word_size": 16
+    "extend_blocks_to_branch": false
   },
   "L1D": {
     "sets": 64,

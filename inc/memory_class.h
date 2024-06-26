@@ -19,6 +19,7 @@ class BLOCK
 {
 public:
   bool valid = false, prefetch = false, dirty = false, trace = false, dead = false;
+  bool accessed_after_insert = false;
 
   uint16_t signature = 0;
 

@@ -156,6 +156,7 @@ public:
   uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
   std::vector<std::deque<BLOCK*>> last_inserted{NUM_SET};
+  std::pair<uint64_t, uint64_t> accessed_block;
   std::map<double, size_t> predictor_accuracy[4];
   std::vector<uint64_t> cl_accessmask_buffer;
   std::vector<uint64_t> used_bytes_in_cache;

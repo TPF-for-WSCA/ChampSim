@@ -467,6 +467,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
   if (perfect_cache)
     way = 0; // we attribute everything to the first way to ensure no out-of-bounds
   BLOCK& hit_block = block[set * NUM_WAY + way];
+  hit_block.accessed_after_insert = true;
 
   record_cacheline_accesses(handle_pkt, hit_block, *prev_access);
   handle_pkt.data = hit_block.data;
@@ -778,6 +779,10 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
       prev_sum += percentage_predicted;
     }
   }
+  if (handle_block.accessed_after_insert) {
+    accessed_block.first += 1;
+  }
+  accessed_block.second += 1;
   // we only write to the file if warmup is complete
   if (cl_accessmask_buffer.size() < WRITE_BUFFER_SIZE) {
     cl_accessmask_buffer.push_back(handle_block.bytes_accessed);
@@ -2379,6 +2384,8 @@ void CACHE::print_private_stats()
     bc.print_private_stats();
     std::cout << std::right << std::setw(3) << "merge register" << ":\t" << bc.merge_hit << std::endl;
   }
+
+  std::cout << NAME << " USEFUL BLOCKS RATIO: " << (float)accessed_block.first / (float)accessed_block.second * 100.0 << "%" << std::endl;
 
   for (int i = 0; i < 4; i++) {
     std::cout << NAME << " PREDICTOR ACCURACY AFTER " << i << std::endl;
