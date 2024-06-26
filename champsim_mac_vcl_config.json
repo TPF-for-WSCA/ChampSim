@@ -75,13 +75,14 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "eip",
+    "prefetcher": "fdip",
     "filter_inserts": false,
     "filter_prefetches": true,
     "prefetch_buffer_size": 16,
     "lru_modifier": "LRU2BOUND4",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": true
+    "extend_blocks_to_branch": true,
+    "replacement": "ghrp"
   },
   "L1D": {
     "perfect": false,
