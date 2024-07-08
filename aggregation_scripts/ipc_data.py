@@ -21,6 +21,7 @@ class STATS(Enum):
     FETCH_COUNT = 12
     STALL_CYCLES = 13
     ROB_AT_MISS = 14
+    BIG_TARGET_COUNT = 15
 
 
 type = STATS.IPC
@@ -45,6 +46,18 @@ def extract_branch_count(path):
     with open(path) as f:
         logs = f.readlines()
     regex = re.compile("\tTOTAL BRANCHES: (\d+)")
+    logs.reverse()
+    for line in logs:
+        matches = regex.match(line)
+        if matches:
+            return int(matches.groups()[0])
+
+
+def extract_big_offset_counts(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile("XXX Big offset targets total: (\d+)")
     logs.reverse()
     for line in logs:
         matches = regex.match(line)
@@ -304,6 +317,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_branch_count(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.BIG_TARGET_COUNT:
+                stat_by_workload[workload] = extract_big_offset_counts(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.INSTRUCTION_COUNT:
                 stat_by_workload[workload] = extract_instruction_count(
                     f"{path}/{workload}/{logfile}"
@@ -410,6 +427,8 @@ def write_tsv(data, out_path=None):
         filename = "branch_distances"
     elif type == STATS.BRANCH_COUNT:
         filename = "branch_count"
+    elif type == STATS.BIG_TARGET_COUNT:
+        filename = "big_target"
     elif type == STATS.INSTRUCTION_COUNT:
         filename = "instruction_count"
     elif type == STATS.STALL_CYCLES:
@@ -490,6 +509,8 @@ elif sys.argv[3] == "BRANCH_DISTANCES":
     type = STATS.BRANCH_DISTANCES
 elif sys.argv[3] == "BRANCH_COUNT":
     type = STATS.BRANCH_COUNT
+elif sys.argv[3] == "BIG_TARGET_COUNT":
+    type = STATS.BIG_TARGET_COUNT
 elif sys.argv[3] == "INSTRUCTION_COUNT":
     type = STATS.INSTRUCTION_COUNT
 if len(sys.argv) == 5 and sys.argv[4]:
