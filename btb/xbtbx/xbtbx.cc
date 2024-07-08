@@ -19,6 +19,7 @@
 #define LOG_COMMONALITY_CUTOFF 100
 
 map<uint32_t, uint64_t> offset_reuse_freq;
+map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 uint64_t offset_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBhit;
@@ -720,6 +721,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
     BTBEntry* btb_entry = btb_partition[partition]->update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu]);
     if (is_offset_ref(btb_entry, partition)) {
+      offset_sizes_by_target[branch_target].insert(num_bits);
       update_offsetbtb(branch_target, num_bits, btb_entry, basic_btb_lru_counter[cpu], 1);
     }
 
@@ -733,6 +735,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     BTBEntry* btb_entry = btb_partition[partitionID]->update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu]);
 
     if (partitionID >= NUM_NON_INDIRECT_PARTITIONS && partitionID != LAST_BTB_PARTITION_ID && branch_type != BRANCH_RETURN) {
+      offset_sizes_by_target[branch_target].insert(num_bits);
       update_offsetbtb(branch_target, num_bits, btb_entry, basic_btb_lru_counter[cpu], 0);
     }
     basic_btb_lru_counter[cpu]++;
@@ -756,6 +759,21 @@ void O3_CPU::btb_final_stats()
     offsetBTB_evictions += it->second;
   }
   std::cout << "XXX reuseM" << " " << (total_offsetBTB_evictions - offsetBTB_evictions) << '\n';
+
+  cout << "XXX Big offset counts and presence in smaller offset btbs: " << endl;
+  uint32_t count_big_targets = 0;
+  for (auto const& target_stats : offset_sizes_by_target) {
+    if (*(target_stats.second.rbegin()) < 19) {
+      continue;
+    }
+    count_big_targets++;
+    cout << "0x" << hex << uppercase << target_stats.first << dec << ":\t";
+    for (auto const& offset_size : target_stats.second) {
+      cout << ((uint32_t)offset_size) << ", ";
+    }
+    cout << endl;
+  }
+  cout << "XXX Big offset targets total: " << count_big_targets << endl;
 }
 
 bool O3_CPU::is_not_block_ending(uint64_t ip) { return true; }
