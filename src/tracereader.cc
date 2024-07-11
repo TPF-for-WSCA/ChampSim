@@ -111,6 +111,8 @@ tracereader::tracereader(uint8_t cpu, std::string _ts) : cpu(cpu), trace_string(
 
 tracereader::~tracereader() { close(); }
 
+extern uint64_t trap_instrs, eret_instrs, total_instr;
+
 template <typename T>
 ooo_model_instr tracereader::read_single_instr()
 {
@@ -118,9 +120,10 @@ ooo_model_instr tracereader::read_single_instr()
 
   // filter out faulty instructions (ipc1 contains a few of those)
   while (((input_instr*)&trace_read_instr)->ip == 0) {
+    total_instr++;
     while (!fread(&trace_read_instr, sizeof(T), 1, trace_file)) {
       // reached end of file for this trace
-      std::cout << "*** Reached end of trace: " << trace_string << std::endl;
+      std::cout << "*** Reached end of trace: " << trace_string << std::endl; // print in any case further up
 
       if (knob_stop_at_completion) {
         throw EndOfTraceException("End of trace reached");
@@ -200,6 +203,8 @@ public:
 };
 */
 
+bool is_kernel(uint64_t ip) { return (bool)(ip >> 48) & 0xFFFF; }
+bool is_stack(uint64_t ip) { return (bool)(ip >> 32) & 0xFFFF; }
 class cloudsuite_tracereader : public tracereader
 {
   ooo_model_instr last_instr;
@@ -217,6 +222,19 @@ public:
       last_instr = trace_read_instr;
       initialized = true;
       trace_read_instr = read_single_instr<cloudsuite_instr>();
+    }
+
+    if (is_kernel(trace_read_instr.ip) and not is_kernel(last_instr.ip)) {
+      std::cout << "Kernel entry" << std::endl;
+    }
+    if (not is_kernel(trace_read_instr.ip) and is_kernel(last_instr.ip)) {
+      std::cout << "Kernel exit" << std::endl;
+    }
+    if (not is_stack(trace_read_instr.ip) and is_stack(last_instr.ip)) {
+      std::cout << "Stack entry" << std::endl;
+    }
+    if (not is_stack(trace_read_instr.ip) and is_stack(last_instr.ip)) {
+      std::cout << "Stack exit" << std::endl;
     }
 
     last_instr.branch_target = trace_read_instr.ip;
@@ -265,6 +283,22 @@ public:
     }
 
     last_instr.branch_target = trace_read_instr.ip;
+
+    // adjust to test context crossing speedup improvements
+    if (is_kernel(trace_read_instr.ip) and not is_kernel(last_instr.ip)) {
+      std::cout << "Kernel entry" << std::endl;
+      trap_instrs++;
+    }
+    if (not is_kernel(trace_read_instr.ip) and is_kernel(last_instr.ip)) {
+      std::cout << "Kernel exit" << std::endl;
+      eret_instrs++;
+    }
+    if (not is_stack(trace_read_instr.ip) and is_stack(last_instr.ip)) {
+      std::cout << "Stack entry" << std::endl;
+    }
+    if (not is_stack(trace_read_instr.ip) and is_stack(last_instr.ip)) {
+      std::cout << "Stack exit" << std::endl;
+    }
 
     if (knob_intel) {
       if (last_instr.is_branch

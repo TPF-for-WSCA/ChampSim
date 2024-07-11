@@ -26,6 +26,8 @@ bool knob_no_detail_stats = false;
 
 uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
 
+uint64_t trap_instrs = 0, eret_instrs = 0, total_instr = 0;
+
 std::string result_dir;
 
 auto start_time = time(NULL);
@@ -665,6 +667,18 @@ void print_branch_stats()
     cout << "BRANCH_INDIRECT_CALL: " << (1000.0 * ooo_cpu[i]->branch_type_misses[5] / total_instructions) << endl;
     cout << "BRANCH_RETURN: " << (1000.0 * ooo_cpu[i]->branch_type_misses[6] / total_instructions) << endl << endl;
 
+    uint64_t branch_count = 0;
+    for (int j = 1; j < 8; j++) {
+      branch_count += ooo_cpu[i]->total_branch_types[j];
+    }
+    cout << "BRANCH COUNT: " << branch_count << endl;
+    cout << "BRANCH_DIRECT_JUMP: " << ooo_cpu[i]->total_branch_types[1] << endl;
+    cout << "BRANCH_INDIRECT: " << ooo_cpu[i]->total_branch_types[2] << endl;
+    cout << "BRANCH_CONDITIONAL: " << ooo_cpu[i]->total_branch_types[3] << endl;
+    cout << "BRANCH_DIRECT_CALL: " << ooo_cpu[i]->total_branch_types[4] << endl;
+    cout << "BRANCH_INDIRECT_CALL: " << ooo_cpu[i]->total_branch_types[5] << endl;
+    cout << "BRANCH_RETURN: " << ooo_cpu[i]->total_branch_types[6] << endl << endl;
+
     cout << "AVG ROB SIZE AT STALL: " << (1.0 * ooo_cpu[i]->rob_size_at_stall) / ooo_cpu[i]->frontend_stall_cycles << endl << endl;
   }
 }
@@ -1062,6 +1076,10 @@ int main(int argc, char** argv)
         print_sim_stats(i, *it);
     }
   }
+
+  cout << endl << "\tSVC:\t" << trap_instrs << endl;
+  cout << "\tERET:\t" << eret_instrs << endl;
+  cout << "\tTotal Instrs:\t" << total_instr << endl;
 
   cout << endl << "Region of Interest Statistics" << endl;
   for (uint32_t i = 0; i < NUM_CPUS; i++) {

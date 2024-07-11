@@ -614,8 +614,15 @@ void print_map(std::map<uint32_t, uint16_t>& pm)
   }
 }
 
-uint64_t last_stats_cycle = 0;
+extern bool is_kernel(uint64_t ip);
+extern bool is_stack(uint64_t ip);
 
+std::map<uint8_t, uint32_t> kernel_enter_branch_types;
+std::map<uint8_t, uint32_t> kernel_exit_branch_types;
+std::map<uint8_t, uint32_t> stack_enter_branch_types;
+std::map<uint8_t, uint32_t> stack_exit_branch_types;
+
+uint64_t last_stats_cycle = 0;
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   // updates for indirect branches
@@ -666,6 +673,30 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
   if (taken == false)
     return;
+
+  // Exit kernel
+  if (is_kernel(ip) and not is_kernel(branch_target)) {
+    kernel_exit_branch_types[branch_type]++;
+    cout << "kernel exit" << endl;
+  }
+
+  // Enter kernel
+  if (is_kernel(branch_target) and not is_kernel(ip)) {
+    kernel_enter_branch_types[branch_type]++;
+    cout << "kernel enter" << endl;
+  }
+
+  // Enter stack
+  if (is_stack(branch_target) and not is_stack(ip)) {
+    stack_enter_branch_types[branch_type]++;
+    cout << "stack enter" << endl;
+  }
+
+  // Exit stack
+  if (is_stack(ip) and not is_stack(branch_target)) {
+    stack_exit_branch_types[branch_type]++;
+    cout << "stack exit" << endl;
+  }
 
   BTBEntry* btb_entry = NULL;
   int partitionID = -1;
@@ -759,6 +790,21 @@ void O3_CPU::btb_final_stats()
     offsetBTB_evictions += it->second;
   }
   std::cout << "XXX reuseM" << " " << (total_offsetBTB_evictions - offsetBTB_evictions) << '\n';
+
+  cout << "XXX Kernel target histogram: " << endl;
+  uint32_t kernel_targets_total = 0;
+  for (auto const& target_stats : offset_sizes_by_target) {
+    if ((target_stats.first >> 48) != 0xFFFF) {
+      continue;
+    }
+    kernel_targets_total++;
+    cout << "0x" << hex << uppercase << target_stats.first << dec << ":\t";
+    for (auto const& offset_size : target_stats.second) {
+      cout << ((uint32_t)offset_size) << ", ";
+    }
+    cout << endl;
+  }
+  cout << "XXX Kernel offset targets total: " << kernel_targets_total << endl;
 
   cout << "XXX Big offset counts and presence in smaller offset btbs: " << endl;
   uint32_t count_big_targets = 0;
