@@ -26,7 +26,7 @@ bool knob_no_detail_stats = false;
 
 uint64_t warmup_instructions = 1000000, simulation_instructions = 10000000;
 
-uint64_t trap_instrs = 0, eret_instrs = 0, total_instr = 0;
+uint64_t trap_instrs = 0, eret_instrs = 0, stack_entry = 0, stack_exits = 0, total_instr = 0;
 
 std::string result_dir;
 
@@ -1077,10 +1077,6 @@ int main(int argc, char** argv)
     }
   }
 
-  cout << endl << "\tSVC:\t" << trap_instrs << endl;
-  cout << "\tERET:\t" << eret_instrs << endl;
-  cout << "\tTotal Instrs:\t" << total_instr << endl;
-
   cout << endl << "Region of Interest Statistics" << endl;
   for (uint32_t i = 0; i < NUM_CPUS; i++) {
     cout << endl << "CPU " << i << " cumulative IPC: " << ((float)ooo_cpu[i]->finish_sim_instr / ooo_cpu[i]->finish_sim_cycle);
@@ -1090,6 +1086,12 @@ int main(int argc, char** argv)
     for (auto it = caches.rbegin(); it != caches.rend(); ++it)
       print_roi_stats(i, *it);
   }
+
+  cout << endl << "\tSVC:\t" << trap_instrs << endl;
+  cout << "\tERET:\t" << eret_instrs << endl;
+  cout << "\tStack Entries: " << stack_entry << endl;
+  cout << "\tStack Exits: " << stack_exits << endl;
+  cout << "\tTotal Instrs:\t" << total_instr << endl;
 
   for (auto it = caches.rbegin(); it != caches.rend(); ++it)
     (*it)->impl_prefetcher_final_stats();
