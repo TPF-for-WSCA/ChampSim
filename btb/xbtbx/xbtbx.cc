@@ -101,10 +101,12 @@ struct BTB {
 
     int idx = index(ip);
     uint64_t tag = get_tag(ip);
-    for (uint32_t i = 0; i < theBTB[idx].size(); i++) {
+    uint32_t i = 0;
+    while (i < theBTB[idx].size()) {
       if (theBTB[idx][i].tag == tag) {
         return &(theBTB[idx][i]);
       }
+      i++;
     }
 
     return entry;
