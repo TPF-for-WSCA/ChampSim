@@ -103,6 +103,7 @@ struct BTB {
     uint64_t tag = get_tag(ip);
     uint32_t i = 0;
     while (i < theBTB[idx].size()) {
+      // std::cout << "BTB SIZE: " << theBTB[idx].size() << endl;
       if (theBTB[idx][i].tag == tag) {
         return &(theBTB[idx][i]);
       }
@@ -447,7 +448,7 @@ void O3_CPU::initialize_btb()
   NUM_OFFSET_BTB_PARTITIONS = (NUM_BTB_PARTITIONS - NUM_NON_INDIRECT_PARTITIONS - 1);
   LAST_BTB_PARTITION_ID = BTB_WAYS;
   btb_partition = (BTB**)malloc(NUM_BTB_PARTITIONS * sizeof(BTB*));
-  offsetBTB_partition = (offsetBTB**)malloc(NUM_NON_INDIRECT_PARTITIONS * sizeof(offsetBTB**));
+  offsetBTB_partition = (offsetBTB**)malloc(NUM_OFFSET_BTB_PARTITIONS * sizeof(offsetBTB**));
 
   for (uint32_t i = 0; i < BASIC_BTB_RAS_SIZE; i++) {
     basic_btb_ras[cpu][i] = 0;
@@ -472,7 +473,7 @@ void O3_CPU::initialize_btb()
     small_btb_sets = 1;
   btb_partition[BTB_WAYS] = new BTB(small_btb_sets, 1);
 
-  for (int i = 0; i < NUM_BTB_PARTITIONS; i++)
+  for (int i = 0; i < NUM_OFFSET_BTB_PARTITIONS; i++)
     offsetBTB_partition[i] = new offsetBTB(1, NUM_OFFSET_BTB_PARTITIONS * NUM_SETS); // TODO: make sets/ways configurable
 }
 

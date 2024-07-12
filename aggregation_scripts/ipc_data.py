@@ -22,6 +22,7 @@ class STATS(Enum):
     STALL_CYCLES = 13
     ROB_AT_MISS = 14
     BIG_TARGET_COUNT = 15
+    CONTEXT_SWITCH = 16
 
 
 type = STATS.IPC
@@ -75,6 +76,14 @@ def extract_instruction_count(path):
         matches = regex.match(line)
         if matches:
             return int(matches.groups()[0])
+
+
+def extract_context_switch_count(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    kernel_enters = re.compile()
 
 
 def extract_l1i_partial(path):
@@ -325,6 +334,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_instruction_count(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.CONTEXT_SWITCH:
+                stat_by_workload[workload] = extract_context_switch_count(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.ROB_AT_MISS:
                 stat_by_workload[workload] = extract_rob_at_stall(
                     f"{path}/{workload}/{logfile}"
@@ -431,6 +444,8 @@ def write_tsv(data, out_path=None):
         filename = "big_target"
     elif type == STATS.INSTRUCTION_COUNT:
         filename = "instruction_count"
+    elif type == STATS.CONTEXT_SWITCH:
+        filename = "context_switches"
     elif type == STATS.STALL_CYCLES:
         filename = "stall_cycles"
     elif type == STATS.ROB_AT_MISS:
@@ -513,6 +528,8 @@ elif sys.argv[3] == "BIG_TARGET_COUNT":
     type = STATS.BIG_TARGET_COUNT
 elif sys.argv[3] == "INSTRUCTION_COUNT":
     type = STATS.INSTRUCTION_COUNT
+elif sys.argv[3] == "CONTEXT_SWITCH":
+    type = STATS.CONTEXT_SWITCH
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
 if sys.argv[2] == "single":
