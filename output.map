@@ -1,0 +1,1788 @@
+# Path: bin/champsim
+# Arch: arm64
+# Object files:
+[  0] linker synthesized
+[  1] inits-file
+[  2] /Users/robrunne/Workspace/NTNU/ChampSim/src/cache.o
+[  3] /Users/robrunne/Workspace/NTNU/ChampSim/src/core_inst.o
+[  4] /Users/robrunne/Workspace/NTNU/ChampSim/src/dram_controller.o
+[  5] /Users/robrunne/Workspace/NTNU/ChampSim/src/main.o
+[  6] /Users/robrunne/Workspace/NTNU/ChampSim/src/ooo_cpu.o
+[  7] /Users/robrunne/Workspace/NTNU/ChampSim/src/ptw.o
+[  8] /Users/robrunne/Workspace/NTNU/ChampSim/src/tracereader.o
+[  9] /Users/robrunne/Workspace/NTNU/ChampSim/src/vmem.o
+[ 10] obj/repl_rreplacementDlru.a[2](lru.o)
+[ 11] obj/pref_pprefetcherDno.a[2](no.o)
+[ 12] obj/pref_pprefetcherDfdip.a[2](fdip.o)
+[ 13] obj/pref_pprefetcherDnext_line.a[2](next_line.o)
+[ 14] obj/bpred_bbranchDhashed_perceptron.a[2](hashed_perceptron.o)
+[ 15] obj/btb_bbtbDconv_btb.a[2](conv_btb.o)
+[ 16] /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/lib/libxed.dylib
+[ 17] /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libz.1.tbd
+[ 18] /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libc++.1.tbd
+[ 19] /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/system/libcompiler_rt.tbd
+[ 20] /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/system/libsystem_c.tbd
+[ 21] /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/system/libsystem_malloc.tbd
+[ 22] /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/system/libunwind.tbd
+# Sections:
+# Address	Size    	Segment	Section
+0x100001E3C	0x0003C0B8	__TEXT	__text
+0x10003DEF4	0x000004EC	__TEXT	__stubs
+0x10003E3E0	0x0000000C	__TEXT	__init_offsets
+0x10003E3EC	0x000022C4	__TEXT	__gcc_except_tab
+0x1000406B0	0x00000290	__TEXT	__const
+0x100040940	0x00002C83	__TEXT	__cstring
+0x1000435C4	0x00000A00	__TEXT	__unwind_info
+0x100043FC8	0x00000038	__TEXT	__eh_frame
+0x100044000	0x00000428	__DATA_CONST	__got
+0x100044428	0x00001070	__DATA_CONST	__const
+0x100048000	0x000000EC	__DATA	__data
+0x1000480F0	0x00000199	__DATA	__bss
+0x100048290	0x0005B880	__DATA	__common
+# Symbols:
+# Address	Size    	File  Name
+0x100001E3C	0x00000058	[  2] __Z12set_accessedPyhh
+0x100001E94	0x000005E8	[  2] __Z29get_blockboundaries_from_maskRKy
+0x10000247C	0x000000DC	[  2] __Z25record_cacheline_accessesR6PACKETR5BLOCKS2_
+0x100002558	0x00000154	[  2] __ZN5CACHE32handle_packet_insert_from_bufferER6PACKET
+0x1000026AC	0x00000044	[  2] __ZN5CACHE7get_setEy
+0x1000026F0	0x000001F4	[  2] __ZN5CACHE22insert_prefetch_bufferER6PACKET
+0x1000028E4	0x000000F4	[  2] __ZNSt3__15dequeI6PACKETNS_9allocatorIS1_EEE8pop_backEv
+0x1000029D8	0x0000043C	[  2] __ZN5CACHE11handle_fillEv
+0x100002E14	0x00000268	[  2] __ZN5CACHE30conditional_insert_from_filterER6PACKETR5BLOCK
+0x10000307C	0x00000084	[  2] __ZNSt3__14listI6PACKETNS_9allocatorIS1_EEE5eraseENS_21__list_const_iteratorIS1_PvEE
+0x100003100	0x00000344	[  2] __ZN5CACHE16handle_writebackEv
+0x100003444	0x0000015C	[  2] __ZN8champsim11delay_queueI6PACKETE9pop_frontEv
+0x1000035A0	0x000003D8	[  2] __ZN5CACHE11update_cshrEy
+0x100003978	0x00000034	[  2] __ZNSt3__1lsB8ue170006INS_11char_traitsIcEEEERNS_13basic_ostreamIcT_EES6_PKc
+0x1000039AC	0x00000090	[  2] __ZNSt3__14endlB8ue170006IcNS_11char_traitsIcEEEERNS_13basic_ostreamIT_T0_EES7_
+0x100003A3C	0x0000045C	[  2] __ZNSt3__15dequeI12cshr_entry_tNS_9allocatorIS1_EEE5eraseENS_16__deque_iteratorIS1_PKS1_RS6_PKS7_lLl170EEE
+0x100003E98	0x000000D4	[  2] __ZN5CACHE19probe_filter_bufferEyi
+0x100003F6C	0x00000190	[  2] __ZN5CACHE8hit_testEyh
+0x1000040FC	0x0000000C	[  2] __ZN5CACHE7get_tagEy
+0x100004108	0x000004FC	[  2] __ZN5CACHE11handle_readEv
+0x100004604	0x000005A8	[  2] __ZNSt3__15dequeI6PACKETNS_9allocatorIS1_EEE5eraseENS_16__deque_iteratorIS1_PKS1_RS6_PKS7_lLl21EEE
+0x100004BAC	0x00000060	[  2] __ZN6PACKETD1Ev
+0x100004C0C	0x000001F8	[  2] __ZN5CACHE15handle_prefetchEv
+0x100004E04	0x000002CC	[  2] __ZN5CACHE12readlike_hitEmmR6PACKET
+0x1000050D0	0x00000010	[  2] __ZN5CACHE26should_activate_prefetcherEi
+0x1000050E0	0x000000B0	[  2] __ZN5CACHE29impl_prefetcher_cache_operateEyyhhj
+0x100005190	0x00000120	[  2] __ZN5CACHE12readlike_hitER6PACKETS1_
+0x1000052B0	0x00000438	[  2] __ZN5CACHE13readlike_missER6PACKET
+0x1000056E8	0x000002B0	[  2] __Z16packet_dep_mergeINSt3__16vectorINS0_11__wrap_iterIP9LSQ_ENTRYEENS0_9allocatorIS5_EEEEEvRT_SA_
+0x100005998	0x00000294	[  2] __Z16packet_dep_mergeINSt3__16vectorIN8champsim24circular_buffer_iteratorINS2_15circular_bufferI15ooo_model_instrEEEENS0_9allocatorIS7_EEEEEvRT_SC_
+0x100005C2C	0x00000238	[  2] __Z16packet_dep_mergeINSt3__16vectorIP21MemoryRequestProducerNS0_9allocatorIS3_EEEEEvRT_S8_
+0x100005E64	0x000008D0	[  2] __ZN5CACHE27record_block_insert_removalEijyb
+0x100006734	0x00000F18	[  2] __ZN5CACHE21write_buffers_to_diskEv
+0x10000764C	0x00000108	[  2] __ZNSt3__114basic_ofstreamIcNS_11char_traitsIcEEEC1EPKcj
+0x100007754	0x00000058	[  2] __ZNSt3__114basic_ofstreamIcNS_11char_traitsIcEEED1Ev
+0x1000077AC	0x0000014C	[  2] __ZN5CACHE27record_remainder_cachelinesEj
+0x1000078F8	0x000004D4	[  2] __ZN5CACHE22record_cacheline_statsEjR5BLOCK
+0x100007DCC	0x00000618	[  2] __ZN5CACHE13filllike_missEmmR6PACKETb
+0x1000083E4	0x0000009C	[  2] __ZN5CACHE26impl_prefetcher_cache_fillEyjjhyj
+0x100008480	0x000002EC	[  2] __ZN5CACHE7operateEv
+0x10000876C	0x0000005C	[  2] __ZN5CACHE13operate_readsEv
+0x1000087C8	0x0000009C	[  2] __ZN5CACHE29impl_prefetcher_cycle_operateEv
+0x100008864	0x00000044	[  2] __ZN5CACHE14operate_writesEv
+0x1000088A8	0x00000214	[  2] __ZN8champsim11delay_queueI6PACKETE7operateEv
+0x100008ABC	0x00000154	[  2] __ZN5CACHE23va_translate_prefetchesEv
+0x100008C10	0x000000A0	[  2] __ZN5CACHE8get_vwayEyj
+0x100008CB0	0x000000A0	[  2] __ZN5CACHE7get_wayEyj
+0x100008D50	0x00000010	[  2] __ZN5CACHE7get_wayER6PACKETj
+0x100008D60	0x000004D0	[  2] __ZN5CACHE6add_rqEP6PACKET
+0x100009230	0x0000016C	[  2] __ZNSt3__17find_ifB8ue170006IN8champsim24circular_buffer_iteratorINS1_15circular_bufferI6PACKETEEEE7eq_addrIS4_EEET_S9_S9_T0_
+0x10000939C	0x00000114	[  2] __ZN8champsim11delay_queueI6PACKETE9push_backERKS1_
+0x1000094B0	0x00000110	[  2] __ZN8champsim11delay_queueI6PACKETE15push_back_readyERKS1_
+0x1000095C0	0x00000008	[  2] __ZThn32_N5CACHE6add_rqEP6PACKET
+0x1000095C8	0x0000024C	[  2] __ZN5CACHE6add_wqEP6PACKET
+0x100009814	0x00000008	[  2] __ZThn32_N5CACHE6add_wqEP6PACKET
+0x10000981C	0x000001A0	[  2] __ZN5CACHE13prefetch_lineEybj
+0x1000099BC	0x00000168	[  2] __ZN5CACHE13prefetch_lineEyyybj
+0x100009B24	0x0000043C	[  2] __ZN5CACHE6add_pqEP6PACKET
+0x100009F60	0x00000008	[  2] __ZThn32_N5CACHE6add_pqEP6PACKET
+0x100009F68	0x00000154	[  2] __ZN5CACHE11return_dataEP6PACKET
+0x10000A0BC	0x0000001C	[  2] __ZNSt3__1lsB8ue170006IcNS_11char_traitsIcEENS_9allocatorIcEEEERNS_13basic_ostreamIT_T0_EES9_RKNS_12basic_stringIS6_S7_T1_EE
+0x10000A0D8	0x00000008	[  2] __ZThn48_N5CACHE11return_dataEP6PACKET
+0x10000A0E0	0x000000E4	[  2] __ZN5CACHE13get_occupancyEhy
+0x10000A1C4	0x000000E4	[  2] __ZThn32_N5CACHE13get_occupancyEhy
+0x10000A2A8	0x0000004C	[  2] __ZN5CACHE8get_sizeEhy
+0x10000A2F4	0x0000004C	[  2] __ZThn32_N5CACHE8get_sizeEhy
+0x10000A340	0x00000388	[  2] __ZN5CACHE14print_deadlockEv
+0x10000A6C8	0x00000004	[  2] __ZN12BUFFER_CACHE22initialize_replacementEv
+0x10000A6CC	0x00000108	[  2] __ZN12BUFFER_CACHE11find_victimEjyjPK5BLOCKyyj
+0x10000A7D4	0x00000180	[  2] __ZN12BUFFER_CACHE24update_replacement_stateEjjjyyyjh
+0x10000A954	0x00000004	[  2] __ZN12BUFFER_CACHE23replacement_final_statsEv
+0x10000A958	0x00000234	[  2] __ZN12BUFFER_CACHE12probe_bufferER6PACKET
+0x10000AB8C	0x000001DC	[  2] __ZN12BUFFER_CACHE11probe_mergeER6PACKET
+0x10000AD68	0x00000808	[  2] __ZN12BUFFER_CACHE19print_private_statsEv
+0x10000B570	0x00000414	[  2] __ZN5CACHE19print_private_statsEv
+0x10000B984	0x000000E4	[  2] __ZN12BUFFER_CACHE15record_durationER5BLOCK
+0x10000BA68	0x00000034	[  2] __ZN12BUFFER_CACHE15update_durationEv
+0x10000BA9C	0x00000B40	[  2] __ZN12BUFFER_CACHE9fill_missER6PACKETR9VCL_CACHE
+0x10000C5DC	0x0000023C	[  2] __ZN8champsim15circular_bufferI5BLOCKE9push_backES1_b
+0x10000C818	0x000002C0	[  2] __ZN9VCL_CACHE7get_wayEjjb
+0x10000CAD8	0x00000174	[  2] __ZN9VCL_CACHE10lru_victimEP5BLOCKh
+0x10000CC4C	0x00000084	[  2] __ZN9VCL_CACHE7operateEv
+0x10000CCD0	0x00000060	[  2] __ZN9VCL_CACHE14operate_writesEv
+0x10000CD30	0x0000083C	[  2] __ZN9VCL_CACHE24operate_buffer_evictionsEv
+0x10000D56C	0x00000258	[  2] __ZN8champsim15circular_bufferI5BLOCKE9pop_frontEv
+0x10000D7C4	0x0000002C	[  2] __ZN9VCL_CACHE32handle_packet_insert_from_bufferER6PACKET
+0x10000D7F0	0x00000100	[  2] __ZN9VCL_CACHE12readlike_hitEmmR6PACKET
+0x10000D8F0	0x00000504	[  2] __ZN9VCL_CACHE11handle_fillEv
+0x10000DDF4	0x00000004	[  2] __Z14record_overlapv
+0x10000DDF8	0x00000084	[  2] __ZN9VCL_CACHE16handle_writebackEv
+0x10000DE7C	0x00000090	[  2] __ZN9VCL_CACHE9hit_checkERjS0_RyS1_
+0x10000DF0C	0x000000CC	[  2] __ZN9VCL_CACHE7get_wayER6PACKETj
+0x10000DFD8	0x00000400	[  2] __ZN9VCL_CACHE8hit_testEyh
+0x10000E3D8	0x00000744	[  2] __ZN9VCL_CACHE11handle_readEv
+0x10000EB1C	0x00000328	[  2] __ZN8champsim11delay_queueI6PACKETE18update_front_delayEx
+0x10000EE44	0x00000468	[  2] __ZN9VCL_CACHE6add_pqEP6PACKET
+0x10000F2AC	0x0000018C	[  2] __ZNSt3__17find_ifB8ue170006IN8champsim24circular_buffer_iteratorINS1_15circular_bufferI6PACKETEEEE11eq_vcl_addrIS4_EEET_S9_S9_T0_
+0x10000F438	0x00000008	[  2] __ZThn32_N9VCL_CACHE6add_pqEP6PACKET
+0x10000F440	0x00000260	[  2] __ZN9VCL_CACHE6add_wqEP6PACKET
+0x10000F6A0	0x00000008	[  2] __ZThn32_N9VCL_CACHE6add_wqEP6PACKET
+0x10000F6A8	0x000002DC	[  2] __ZN9VCL_CACHE6add_rqEP6PACKET
+0x10000F984	0x00000008	[  2] __ZThn32_N9VCL_CACHE6add_rqEP6PACKET
+0x10000F98C	0x000003A4	[  2] __ZN9VCL_CACHE19print_private_statsEv
+0x10000FD30	0x0000040C	[  2] __ZN9VCL_CACHE13filllike_missEmmmR5BLOCK
+0x10001013C	0x000005E4	[  2] __ZN9VCL_CACHE13filllike_missEmmR6PACKETb
+0x100010720	0x00000004	[  2] __ZN5CACHE14record_overlapEv
+0x100010724	0x00000024	[  2] __ZNSt16invalid_argumentC1B8ue170006EPKc
+0x100010748	0x00000144	[  2] __ZNSt3__16vectorINS_11__wrap_iterIP9LSQ_ENTRYEENS_9allocatorIS4_EEE18__assign_with_sizeB8ue170006IPS4_S9_EEvT_T0_l
+0x10001088C	0x0000000C	[  2] ___clang_call_terminate
+0x100010898	0x00000014	[  2] __ZNKSt3__16vectorINS_11__wrap_iterIP9LSQ_ENTRYEENS_9allocatorIS4_EEE20__throw_length_errorB8ue170006Ev
+0x1000108AC	0x00000050	[  2] __ZNSt3__120__throw_length_errorB8ue170006EPKc
+0x1000108FC	0x00000024	[  2] __ZNSt12length_errorC1B8ue170006EPKc
+0x100010920	0x00000028	[  2] __ZSt28__throw_bad_array_new_lengthB8ue170006v
+0x100010948	0x000002F4	[  2] __ZNSt3__16vectorIN8champsim24circular_buffer_iteratorINS1_15circular_bufferI15ooo_model_instrEEEENS_9allocatorIS6_EEE18__assign_with_sizeB8ue170006IPS6_SB_EEvT_T0_l
+0x100010C3C	0x00000014	[  2] __ZNKSt3__16vectorIN8champsim24circular_buffer_iteratorINS1_15circular_bufferI15ooo_model_instrEEEENS_9allocatorIS6_EEE20__throw_length_errorB8ue170006Ev
+0x100010C50	0x00000144	[  2] __ZNSt3__16vectorIP21MemoryRequestProducerNS_9allocatorIS2_EEE18__assign_with_sizeB8ue170006IPS2_S7_EEvT_T0_l
+0x100010D94	0x00000014	[  2] __ZNKSt3__16vectorIP21MemoryRequestProducerNS_9allocatorIS2_EEE20__throw_length_errorB8ue170006Ev
+0x100010DA8	0x00000310	[  2] __ZN6PACKETC2ERKS_
+0x1000110B8	0x00000014	[  2] __ZNKSt3__16vectorI5BLOCKNS_9allocatorIS1_EEE20__throw_out_of_rangeB8ue170006Ev
+0x1000110CC	0x00000050	[  2] __ZNSt3__120__throw_out_of_rangeB8ue170006EPKc
+0x10001111C	0x00000024	[  2] __ZNSt12out_of_rangeC1B8ue170006EPKc
+0x100011140	0x00000014	[  2] __ZNKSt3__16vectorIyNS_9allocatorIyEEE20__throw_length_errorB8ue170006Ev
+0x100011154	0x00000014	[  2] __ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE20__throw_length_errorB8ue170006Ev
+0x100011168	0x00000014	[  2] __ZNKSt3__16vectorIjNS_9allocatorIjEEE20__throw_length_errorB8ue170006Ev
+0x10001117C	0x00000164	[  2] __ZNSt3__124__put_character_sequenceB8ue170006IcNS_11char_traitsIcEEEERNS_13basic_ostreamIT_T0_EES7_PKS4_m
+0x1000112E0	0x00000194	[  2] __ZNSt3__116__pad_and_outputB8ue170006IcNS_11char_traitsIcEEEENS_19ostreambuf_iteratorIT_T0_EES6_PKS4_S8_S8_RNS_8ios_baseES4_
+0x100011474	0x00000014	[  2] __ZNKSt3__16vectorINS_4pairIhhEENS_9allocatorIS2_EEE20__throw_length_errorB8ue170006Ev
+0x100011488	0x000003BC	[  2] __ZNSt3__15dequeI6PACKETNS_9allocatorIS1_EEE20__add_front_capacityEv
+0x100011844	0x0000019C	[  2] __ZNSt3__114__split_bufferIP6PACKETNS_9allocatorIS2_EEE10push_frontERKS2_
+0x1000119E0	0x0000019C	[  2] __ZNSt3__114__split_bufferIP6PACKETNS_9allocatorIS2_EEE10push_frontEOS2_
+0x100011B7C	0x00000190	[  2] __ZNSt3__114__split_bufferIP6PACKETNS_9allocatorIS2_EEE9push_backEOS2_
+0x100011D0C	0x00000014	[  2] __ZNKSt3__16vectorI6PACKETNS_9allocatorIS1_EEE20__throw_out_of_rangeB8ue170006Ev
+0x100011D20	0x000000B4	[  2] __ZN8champsimlsI6PACKETEERNSt3__113basic_ostreamIcNS2_11char_traitsIcEEEES7_RKNS_11delay_queueIT_EE
+0x100011DD4	0x00000238	[  2] __ZN8champsim15circular_bufferI6PACKETE9pop_frontEv
+0x10001200C	0x000001E4	[  2] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEE9pop_frontEv
+0x1000121F0	0x00000014	[  2] __ZNKSt3__16vectorIN8champsim15traceable_valueIxEENS_9allocatorIS3_EEE20__throw_out_of_rangeB8ue170006Ev
+0x100012204	0x000003BC	[  2] __ZNSt3__15dequeI12cshr_entry_tNS_9allocatorIS1_EEE20__add_front_capacityEv
+0x1000125C0	0x0000019C	[  2] __ZNSt3__114__split_bufferIP12cshr_entry_tNS_9allocatorIS2_EEE10push_frontERKS2_
+0x10001275C	0x0000019C	[  2] __ZNSt3__114__split_bufferIP12cshr_entry_tNS_9allocatorIS2_EEE10push_frontEOS2_
+0x1000128F8	0x00000190	[  2] __ZNSt3__114__split_bufferIP12cshr_entry_tNS_9allocatorIS2_EEE9push_backEOS2_
+0x100012A88	0x000001B4	[  2] __ZNSt3__127__tree_balance_after_insertB8ue170006IPNS_16__tree_node_baseIPvEEEEvT_S5_
+0x100012C3C	0x000002D0	[  2] __ZNKSt3__120__move_backward_loopINS_17_ClassicAlgPolicyEEclB8ue170006INS_16__deque_iteratorI12cshr_entry_tPS5_RS5_PS6_lLl170EEES9_Li0EEENS_4pairIT_T0_EESB_SB_SC_
+0x100012F0C	0x000002D0	[  2] __ZNSt3__118__for_each_segmentB8ue170006INS_16__deque_iteratorI12cshr_entry_tPS2_RS2_PS3_lLl170EEENS_11__move_loopINS_17_ClassicAlgPolicyEE12_MoveSegmentIS6_S6_EEEEvT_SC_T0_
+0x1000131DC	0x000000D8	[  2] __ZNKSt3__120__move_backward_loopINS_17_ClassicAlgPolicyEEclB8ue170006INS_16__deque_iteratorI6PACKETPS5_RS5_PS6_lLl21EEES9_Li0EEENS_4pairIT_T0_EESB_SB_SC_
+0x1000132B4	0x00000208	[  2] __ZNKSt3__120__move_backward_loopINS_17_ClassicAlgPolicyEEclB8ue170006IP6PACKETNS_16__deque_iteratorIS4_S5_RS4_PS5_lLl21EEELi0EEENS_4pairIT_T0_EESB_SB_SC_
+0x1000134BC	0x00000130	[  2] __ZN6PACKETaSEOS_
+0x1000135EC	0x00000090	[  2] __ZNSt3__118__for_each_segmentB8ue170006INS_16__deque_iteratorI6PACKETPS2_RS2_PS3_lLl21EEENS_11__move_loopINS_17_ClassicAlgPolicyEE12_MoveSegmentIS6_S6_EEEEvT_SC_T0_
+0x10001367C	0x000001DC	[  2] __ZNKSt3__111__move_loopINS_17_ClassicAlgPolicyEEclB8ue170006IP6PACKETNS_16__deque_iteratorIS4_S5_RS4_PS5_lLl21EEELi0EEENS_4pairIT_T0_EESB_SB_SC_
+0x100013858	0x000003BC	[  2] __ZNSt3__16vectorINS_11__wrap_iterIP9LSQ_ENTRYEENS_9allocatorIS4_EEE18__insert_with_sizeB8ue170006INS1_IPS4_EESA_EESA_NS1_IPKS4_EET_T0_l
+0x100013C14	0x00000620	[  2] __ZNSt3__115__inplace_mergeINS_17_ClassicAlgPolicyERNS_6__lessIvvEENS_11__wrap_iterIPNS5_IP9LSQ_ENTRYEEEEEEvT1_SB_SB_OT0_NS_15iterator_traitsISB_E15difference_typeESG_PNSF_10value_typeEl
+0x100014234	0x000006B0	[  2] __ZNSt3__16vectorIN8champsim24circular_buffer_iteratorINS1_15circular_bufferI15ooo_model_instrEEEENS_9allocatorIS6_EEE18__insert_with_sizeB8ue170006INS_11__wrap_iterIPS6_EESD_EESD_NSB_IPKS6_EET_T0_l
+0x1000148E4	0x00000390	[  2] __ZNSt3__115__inplace_mergeINS_17_ClassicAlgPolicyERNS_6__lessIvvEENS_11__wrap_iterIPN8champsim24circular_buffer_iteratorINS6_15circular_bufferI15ooo_model_instrEEEEEEEEvT1_SE_SE_OT0_NS_15iterator_traitsISE_E15difference_typeESJ_PNSI_10value_typeEl
+0x100014C74	0x000003C0	[  2] __ZNSt3__124__buffered_inplace_mergeB8ue170006INS_17_ClassicAlgPolicyERNS_6__lessIvvEENS_11__wrap_iterIPN8champsim24circular_buffer_iteratorINS6_15circular_bufferI15ooo_model_instrEEEEEEEEvT1_SE_SE_OT0_NS_15iterator_traitsISE_E15difference_typeESJ_PNSI_10value_typeE
+0x100015034	0x000001CC	[  2] __ZNSt3__18__rotateB8ue170006INS_17_ClassicAlgPolicyENS_11__wrap_iterIPN8champsim24circular_buffer_iteratorINS3_15circular_bufferI15ooo_model_instrEEEEEESA_EENS_4pairIT0_SC_EESC_SC_T1_
+0x100015200	0x00000204	[  2] __ZNSt3__18__uniqueB8ue170006INS_17_ClassicAlgPolicyENS_11__wrap_iterIPN8champsim24circular_buffer_iteratorINS3_15circular_bufferI15ooo_model_instrEEEEEESA_RNS_10__equal_toEEENS_4pairIT0_SE_EESE_T1_OT2_
+0x100015404	0x00000330	[  2] __ZNSt3__16vectorIP21MemoryRequestProducerNS_9allocatorIS2_EEE18__insert_with_sizeB8ue170006INS_11__wrap_iterIPS2_EES9_EES9_NS7_IPKS2_EET_T0_l
+0x100015734	0x000005A0	[  2] __ZNSt3__115__inplace_mergeINS_17_ClassicAlgPolicyERNS_6__lessIvvEENS_11__wrap_iterIPP21MemoryRequestProducerEEEEvT1_SA_SA_OT0_NS_15iterator_traitsISA_E15difference_typeESF_PNSE_10value_typeEl
+0x100015CD4	0x00000040	[  2] __ZNSt3__16__treeIyNS_4lessIyEENS_9allocatorIyEEE7destroyEPNS_11__tree_nodeIyPvEE
+0x100015D14	0x00000250	[  2] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendB8ue170006IPKcLi0EEERS5_T_SA_
+0x100015F64	0x00000168	[  2] __ZNSt3__115partition_pointB8ue170006IN8champsim24circular_buffer_iteratorINS1_15circular_bufferINS1_15traceable_valueIxEEEEEEZNS1_11delay_queueI6PACKETE7operateEvEUlS5_E_EET_SC_SC_T0_
+0x1000160CC	0x000002AC	[  2] __ZN8champsim15circular_bufferI6PACKETE9push_backERKS1_
+0x100016378	0x000001D8	[  2] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEE9push_backEOKS2_
+0x100016550	0x00000138	[  2] __ZNSt3__14swapB8ue170006I6PACKETEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
+0x100016688	0x000001D8	[  2] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEE10push_frontES2_
+0x100016860	0x00000168	[  2] __ZNSt3__115partition_pointB8ue170006IN8champsim24circular_buffer_iteratorINS1_15circular_bufferINS1_15traceable_valueIxEEEEEEZNS1_11delay_queueI6PACKETE18update_front_delayExEUlS5_E_EET_SC_SC_T0_
+0x1000169C8	0x00000008	[  2] _OUTLINED_FUNCTION_0
+0x1000169D0	0x00000008	[  2] _OUTLINED_FUNCTION_1
+0x1000169D8	0x0000000C	[  2] _OUTLINED_FUNCTION_2
+0x1000169E4	0x00000040	[  3] __ZN13VirtualMemoryD1Ev
+0x100016A24	0x00000060	[  3] __ZN17MEMORY_CONTROLLERD1Ev
+0x100016A84	0x00000004	[  3] __ZN5CACHED1Ev
+0x100016A88	0x00000004	[  3] __ZN15PageTableWalkerD1Ev
+0x100016A8C	0x00000004	[  3] __ZN6O3_CPUD1Ev
+0x100016A90	0x000000C4	[  3] __ZNSt3__15dequeIyNS_9allocatorIyEEED2B8ue170006Ev
+0x100016B54	0x00000040	[  3] __ZNSt3__16__treeINS_12__value_typeINS_5tupleIJjyjEEEyEENS_19__map_value_compareIS3_S4_NS_4lessIS3_EELb1EEENS_9allocatorIS4_EEE7destroyEPNS_11__tree_nodeIS4_PvEE
+0x100016B94	0x00000040	[  3] __ZNSt3__16__treeINS_12__value_typeINS_4pairIjyEEyEENS_19__map_value_compareIS3_S4_NS_4lessIS3_EELb1EEENS_9allocatorIS4_EEE7destroyEPNS_11__tree_nodeIS4_PvEE
+0x100016BD4	0x00000228	[  3] __ZN12DRAM_CHANNELC2Ev
+0x100016DFC	0x00000014	[  3] __ZNKSt3__16vectorI6PACKETNS_9allocatorIS1_EEE20__throw_length_errorB8ue170006Ev
+0x100016E10	0x000000D4	[  3] __ZNSt3__16vectorI6PACKETNS_9allocatorIS1_EEE16__destroy_vectorclB8ue170006Ev
+0x100016EE4	0x00000F64	[  3] __ZN5CACHEC2ENSt3__112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEEdjjihjjjjjjjjmbbbjP21MemoryRequestConsumerNS_6pref_tENS_6repl_tE16CountBlockMethod11LruModifierbbmm
+0x100017E48	0x000000B0	[  3] __ZN8champsim11delay_queueI6PACKETED1Ev
+0x100017EF8	0x00000074	[  3] __ZNSt3__15dequeI6PACKETNS_9allocatorIS1_EEED1B8ue170006Ev
+0x100017F6C	0x000002C4	[  3] __ZN8champsim11delay_queueI6PACKETEC2EmjNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEE
+0x100018230	0x00000050	[  3] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEED1Ev
+0x100018280	0x0000005C	[  3] __ZN8champsim15circular_bufferI6PACKETED1Ev
+0x1000182DC	0x0000019C	[  3] __ZN8champsim15circular_bufferI6PACKETEC2EmNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEE
+0x100018478	0x00000140	[  3] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEEC2EmNSt3__112basic_stringIcNS4_11char_traitsIcEENS4_9allocatorIcEEEE
+0x1000185B8	0x00000014	[  3] __ZNKSt3__16vectorIN8champsim15traceable_valueIxEENS_9allocatorIS3_EEE20__throw_length_errorB8ue170006Ev
+0x1000185CC	0x000001A4	[  3] __ZNSt3__16vectorIyNS_9allocatorIyEEE8__appendEm
+0x100018770	0x000000AC	[  3] __ZNSt3__110__list_impI6PACKETNS_9allocatorIS1_EEE5clearEv
+0x10001881C	0x00000040	[  3] __ZNSt3__16__treeINS_12__value_typeIyhEENS_19__map_value_compareIyS2_NS_4lessIyEELb1EEENS_9allocatorIS2_EEE7destroyEPNS_11__tree_nodeIS2_PvEE
+0x10001885C	0x000000C4	[  3] __ZNSt3__15dequeI12cshr_entry_tNS_9allocatorIS1_EEED2B8ue170006Ev
+0x100018920	0x0000017C	[  3] __ZNSt3__15dequeI6PACKETNS_9allocatorIS1_EEE5clearEv
+0x100018A9C	0x000004E0	[  3] __ZN5CACHED2Ev
+0x100018F7C	0x000001B0	[  3] __ZN15PageTableWalkerD2Ev
+0x10001912C	0x00000040	[  3] __ZNSt3__16__treeINS_12__value_typeINS_4pairIymEEyEENS_19__map_value_compareIS3_S4_NS_4lessIS3_EELb1EEENS_9allocatorIS4_EEE7destroyEPNS_11__tree_nodeIS4_PvEE
+0x10001916C	0x00000904	[  3] __ZN6O3_CPUC2EjdmmmmmmmmmjjjjjjjjjjjjjP21MemoryRequestConsumerS1_S1_S1_NS_7bpred_tENS_5btb_tEmmPhmmbbNS_7ipref_tEm
+0x100019A70	0x0000006C	[  3] __ZN8CacheBusD1Ev
+0x100019ADC	0x000000A8	[  3] __ZN8champsim15circular_bufferI15ooo_model_instrED1Ev
+0x100019B84	0x00000074	[  3] __ZNSt3__16vectorINS0_IyNS_9allocatorIyEEEENS1_IS3_EEED1B8ue170006Ev
+0x100019BF8	0x0000039C	[  3] __ZNSt3__15arrayINS_3setINS_4pairIyyEENS_4lessIS3_EENS_9allocatorIS3_EEEELm64EEC2Ev
+0x100019F94	0x0000039C	[  3] __ZNSt3__15arrayINS_3mapIyyNS_4lessIyEENS_9allocatorINS_4pairIKyyEEEEEELm64EEC2Ev
+0x10001A330	0x00000170	[  3] __ZNSt3__16vectorINS0_IyNS_9allocatorIyEEEENS1_IS3_EEEC2EmRKS3_
+0x10001A4A0	0x00000098	[  3] __ZNSt3__128__exception_guard_exceptionsINS_6vectorINS1_IyNS_9allocatorIyEEEENS2_IS4_EEE16__destroy_vectorEED1B8ue170006Ev
+0x10001A538	0x00000014	[  3] __ZNKSt3__16vectorINS0_IyNS_9allocatorIyEEEENS1_IS3_EEE20__throw_length_errorB8ue170006Ev
+0x10001A54C	0x00000014	[  3] __ZNKSt3__16vectorIN6O3_CPU11dib_entry_tENS_9allocatorIS2_EEE20__throw_length_errorB8ue170006Ev
+0x10001A560	0x000000E4	[  3] __ZNSt3__16vectorI15ooo_model_instrNS_9allocatorIS1_EEEC1Em
+0x10001A644	0x00000014	[  3] __ZNKSt3__16vectorI15ooo_model_instrNS_9allocatorIS1_EEE20__throw_length_errorB8ue170006Ev
+0x10001A658	0x00000350	[  3] __ZN8champsim11delay_queueI15ooo_model_instrEC2EmjNSt3__112basic_stringIcNS3_11char_traitsIcEENS3_9allocatorIcEEEE
+0x10001A9A8	0x00000014	[  3] __ZNKSt3__16vectorI9LSQ_ENTRYNS_9allocatorIS1_EEE20__throw_length_errorB8ue170006Ev
+0x10001A9BC	0x00000144	[  3] __ZN8CacheBusC2EmP21MemoryRequestConsumerNSt3__112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEE
+0x10001AB00	0x000000C4	[  3] __ZNSt3__15dequeINS_11__wrap_iterIP9LSQ_ENTRYEENS_9allocatorIS4_EEED2B8ue170006Ev
+0x10001ABC4	0x000000C4	[  3] __ZNSt3__15dequeIN8champsim24circular_buffer_iteratorINS1_15circular_bufferI15ooo_model_instrEEEENS_9allocatorIS6_EEED2B8ue170006Ev
+0x10001AC88	0x00000104	[  3] __ZN8champsim11delay_queueI15ooo_model_instrED2Ev
+0x10001AD8C	0x00000088	[  3] __ZNSt3__16__treeINS_12__value_typeIjNS_6vectorINS_3mapIyyNS_4lessIyEENS_9allocatorINS_4pairIKyyEEEEEENS6_ISB_EEEEEENS_19__map_value_compareIjSE_NS4_IjEELb1EEENS6_ISE_EEE7destroyEPNS_11__tree_nodeISE_PvEE
+0x10001AE14	0x00000088	[  3] __ZNSt3__16__treeINS_12__value_typeIjNS_6vectorINS_3mapIjtNS_4lessIjEENS_9allocatorINS_4pairIKjtEEEEEENS6_ISB_EEEEEENS_19__map_value_compareIjSE_S5_Lb1EEENS6_ISE_EEE7destroyEPNS_11__tree_nodeISE_PvEE
+0x10001AE9C	0x00000040	[  3] __ZNSt3__16__treeINS_12__value_typeIjtEENS_19__map_value_compareIjS2_NS_4lessIjEELb1EEENS_9allocatorIS2_EEE7destroyEPNS_11__tree_nodeIS2_PvEE
+0x10001AEDC	0x00000320	[  3] __ZNSt3__15arrayINS_3mapIyyNS_4lessIyEENS_9allocatorINS_4pairIKyyEEEEEELm64EED2Ev
+0x10001B1FC	0x00000320	[  3] __ZNSt3__15arrayINS_3setINS_4pairIyyEENS_4lessIS3_EENS_9allocatorIS3_EEEELm64EED2Ev
+0x10001B51C	0x00000040	[  3] __ZNSt3__16__treeINS_4pairIyyEENS_4lessIS2_EENS_9allocatorIS2_EEE7destroyEPNS_11__tree_nodeIS2_PvEE
+0x10001B55C	0x00000040	[  3] __ZNSt3__16__treeINS_12__value_typeIyyEENS_19__map_value_compareIyS2_NS_4lessIyEELb1EEENS_9allocatorIS2_EEE7destroyEPNS_11__tree_nodeIS2_PvEE
+0x10001B59C	0x00000314	[  3] __ZN6O3_CPUD2Ev
+0x10001B8B0	0x000007D4	[  3] __GLOBAL__sub_I_core_inst.cc
+0x10001C084	0x000008D0	[  4] __ZN17MEMORY_CONTROLLER7operateEv
+0x10001C954	0x00000008	[  4] __ZN17MEMORY_CONTROLLER13dram_get_rankEy
+0x10001C95C	0x00000008	[  4] __ZN17MEMORY_CONTROLLER13dram_get_bankEy
+0x10001C964	0x00000008	[  4] __ZN17MEMORY_CONTROLLER12dram_get_rowEy
+0x10001C96C	0x00000254	[  4] __ZN17MEMORY_CONTROLLER6add_rqEP6PACKET
+0x10001CBC0	0x00000008	[  4] __ZN17MEMORY_CONTROLLER16dram_get_channelEy
+0x10001CBC8	0x00000008	[  4] __ZThn32_N17MEMORY_CONTROLLER6add_rqEP6PACKET
+0x10001CBD0	0x00000188	[  4] __ZN17MEMORY_CONTROLLER6add_wqEP6PACKET
+0x10001CD58	0x00000008	[  4] __ZThn32_N17MEMORY_CONTROLLER6add_wqEP6PACKET
+0x10001CD60	0x0000000C	[  4] __ZN17MEMORY_CONTROLLER6add_pqEP6PACKET
+0x10001CD6C	0x0000000C	[  4] __ZThn32_N17MEMORY_CONTROLLER6add_pqEP6PACKET
+0x10001CD78	0x00000008	[  4] __ZN17MEMORY_CONTROLLER15dram_get_columnEy
+0x10001CD80	0x000001C0	[  4] __ZN17MEMORY_CONTROLLER13get_occupancyEhy
+0x10001CF40	0x000001C0	[  4] __ZThn32_N17MEMORY_CONTROLLER13get_occupancyEhy
+0x10001D100	0x00000068	[  4] __ZN17MEMORY_CONTROLLER8get_sizeEhy
+0x10001D168	0x00000068	[  4] __ZThn32_N17MEMORY_CONTROLLER8get_sizeEhy
+0x10001D1D0	0x00000004	[  4] __ZN8champsim8operable14print_deadlockEv
+0x10001D1D4	0x00000030	[  5] __ZNSt3__16vectorIP11tracereaderNS_9allocatorIS2_EEED1B8ue170006Ev
+0x10001D204	0x00000148	[  5] __ZN8champsim22deprecated_clock_cycleixEm
+0x10001D34C	0x000003A0	[  5] __Z16record_roi_statsjP5CACHE
+0x10001D6EC	0x00002440	[  5] __Z17print_block_statsjP5CACHE
+0x10001FB2C	0x00001BDC	[  5] __Z15print_roi_statsjP5CACHE
+0x100021708	0x00000B60	[  5] __Z15print_sim_statsjP5CACHE
+0x100022268	0x0000180C	[  5] __Z13write_offsetsP6O3_CPUi
+0x100023A74	0x00000110	[  5] __ZNSt3__14__fs10filesystemdvB8ue170006ERKNS1_4pathES4_
+0x100023B84	0x00000A4C	[  5] __Z18print_branch_statsv
+0x1000245D0	0x00000480	[  5] __Z16print_dram_statsv
+0x100024A50	0x00000178	[  5] __Z17reset_cache_statsjP5CACHE
+0x100024BC8	0x000008DC	[  5] __Z13finish_warmupv
+0x1000254A4	0x00000038	[  5] __Z14signal_handleri
+0x1000254DC	0x000025CC	[  5] _main
+0x100027AA8	0x0000009C	[  5] __ZN5CACHE26impl_prefetcher_initializeEv
+0x100027B44	0x00000040	[  5] __ZN15ooo_model_instrD1Ev
+0x100027B84	0x0000009C	[  5] __ZN5CACHE27impl_prefetcher_final_statsEv
+0x100027C20	0x00000104	[  5] __ZNSt3__115__quoted_outputB8ue170006IcNS_11char_traitsIcEEEERNS_13basic_ostreamIT_T0_EES7_PKS4_S9_S4_S4_
+0x100027D24	0x00000258	[  5] __ZNSt3__16vectorINS_14basic_ofstreamIcNS_11char_traitsIcEEEENS_9allocatorIS4_EEE21__push_back_slow_pathIS4_EEvOT_
+0x100027F7C	0x00000058	[  5] __ZNSt3__114__split_bufferINS_14basic_ofstreamIcNS_11char_traitsIcEEEERNS_9allocatorIS4_EEED1Ev
+0x100027FD4	0x00000014	[  5] __ZNKSt3__16vectorINS_14basic_ofstreamIcNS_11char_traitsIcEEEENS_9allocatorIS4_EEE20__throw_length_errorB8ue170006Ev
+0x100027FE8	0x000001C0	[  5] __ZNSt3__142__uninitialized_allocator_move_if_noexceptB8ue170006INS_9allocatorINS_14basic_ofstreamIcNS_11char_traitsIcEEEEEENS_16reverse_iteratorIPS5_EES9_S9_EET2_RT_T0_T1_SA_
+0x1000281A8	0x00000014	[  5] __ZNKSt3__16vectorIP11tracereaderNS_9allocatorIS2_EEE20__throw_length_errorB8ue170006Ev
+0x1000281BC	0x00000830	[  5] __ZNSt3__111__introsortINS_17_ClassicAlgPolicyERN8champsim15by_next_operateEPPNS2_8operableELb0EEEvT1_S8_T0_NS_15iterator_traitsIS8_E15difference_typeEb
+0x1000289EC	0x00000368	[  5] __ZNSt3__127__insertion_sort_incompleteB8ue170006INS_17_ClassicAlgPolicyERN8champsim15by_next_operateEPPNS2_8operableEEEbT1_S8_T0_
+0x100028D54	0x0000019C	[  5] __ZNSt3__17__sort5B8ue170006INS_17_ClassicAlgPolicyERN8champsim15by_next_operateEPPNS2_8operableEEEvT1_S8_S8_S8_S8_T0_
+0x100028EF0	0x000003B4	[  5] __ZNSt3__119__partial_sort_implB8ue170006INS_17_ClassicAlgPolicyERN8champsim15by_next_operateEPPNS2_8operableES7_EET1_S8_S8_T2_OT0_
+0x1000292A4	0x0000006C	[  5] __GLOBAL__sub_I_main.cc
+0x100029310	0x00000068	[  6] __ZlsRNSt3__113basic_ostreamIcNS_11char_traitsIcEEEERK15ooo_model_instr
+0x100029378	0x00000068	[  6] __ZlsRNSt3__113basic_ostreamIcNS_11char_traitsIcEEEERK6PACKET
+0x1000293E0	0x00000068	[  6] __ZlsRNSt3__113basic_ostreamIcNS_11char_traitsIcEEEERK5BLOCK
+0x100029448	0x000000D8	[  6] __ZN6O3_CPU7operateEv
+0x100029520	0x000003B4	[  6] __ZN6O3_CPU10retire_robEv
+0x1000298D4	0x00000330	[  6] __ZN6O3_CPU29complete_inflight_instructionEv
+0x100029C04	0x00000124	[  6] __ZN6O3_CPU19execute_instructionEv
+0x100029D28	0x000002AC	[  6] __ZN6O3_CPU20schedule_instructionEv
+0x100029FD4	0x00000668	[  6] __ZN6O3_CPU20handle_memory_returnEv
+0x10002A63C	0x00000318	[  6] __ZN6O3_CPU11operate_lsqEv
+0x10002A954	0x00000204	[  6] __ZN6O3_CPU27schedule_memory_instructionEv
+0x10002AB58	0x00000234	[  6] __ZN6O3_CPU20dispatch_instructionEv
+0x10002AD8C	0x0000026C	[  6] __ZN6O3_CPU18decode_instructionEv
+0x10002AFF8	0x00000304	[  6] __ZN6O3_CPU17promote_to_decodeEv
+0x10002B2FC	0x00000548	[  6] __ZN6O3_CPU17fetch_instructionEv
+0x10002B844	0x00000450	[  6] __ZN6O3_CPU15translate_fetchEv
+0x10002BC94	0x00000004	[  6] __ZN6O3_CPU9check_dibEv
+0x10002BC98	0x00000218	[  6] __ZN8champsim11delay_queueI15ooo_model_instrE7operateEv
+0x10002BEB0	0x00000098	[  6] __ZN6O3_CPU15initialize_coreEv
+0x10002BF48	0x000009D4	[  6] __ZN6O3_CPU16init_instructionE15ooo_model_instr
+0x10002C91C	0x00000310	[  6] __ZN8champsim15circular_bufferI15ooo_model_instrE9push_backERKS1_
+0x10002CC2C	0x0000017C	[  6] __ZN6O3_CPU12do_check_dibER15ooo_model_instr
+0x10002CDA8	0x00000560	[  6] __ZN6O3_CPU18do_translate_fetchEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEES5_
+0x10002D308	0x00000768	[  6] __ZN6O3_CPU20do_fetch_instructionEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEES5_
+0x10002DA70	0x00000158	[  6] __ZN8champsim11delay_queueI15ooo_model_instrE15push_back_readyERKS1_
+0x10002DBC8	0x0000015C	[  6] __ZN8champsim11delay_queueI15ooo_model_instrE9push_backERKS1_
+0x10002DD24	0x000002A4	[  6] __ZN8champsim15circular_bufferI15ooo_model_instrE9pop_frontEv
+0x10002DFC8	0x00000004	[  6] __ZN8champsim8deadlockD1Ev
+0x10002DFCC	0x000001E0	[  6] __ZN6O3_CPU13do_dib_updateERK15ooo_model_instr
+0x10002E1AC	0x000001B8	[  6] __ZN8champsim11delay_queueI15ooo_model_instrE9pop_frontEv
+0x10002E364	0x00000028	[  6] __ZN6O3_CPU18prefetch_code_lineEy
+0x10002E38C	0x00000540	[  6] __ZN6O3_CPU13do_schedulingEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEE
+0x10002E8CC	0x00000210	[  6] __ZNSt3__17find_ifB8ue170006INS_16reverse_iteratorIN8champsim24circular_buffer_iteratorINS2_15circular_bufferI15ooo_model_instrEEEEEE22instr_reg_will_produceEET_SA_SA_T0_
+0x10002EADC	0x0000008C	[  6] __ZN6O3_CPU12do_executionEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEE
+0x10002EB68	0x000003F8	[  6] __ZN6O3_CPU20do_memory_schedulingEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEE
+0x10002EF60	0x000006A4	[  6] __ZN6O3_CPU14add_load_queueEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEEj
+0x10002F604	0x00000258	[  6] __ZN6O3_CPU15add_store_queueEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEEj
+0x10002F85C	0x000000BC	[  6] __ZN6O3_CPU19do_sq_forward_to_lqER9LSQ_ENTRYS1_
+0x10002F918	0x000001CC	[  6] __ZNSt3__17find_ifB8ue170006INS_16reverse_iteratorIN8champsim24circular_buffer_iteratorINS2_15circular_bufferI15ooo_model_instrEEEEEE22instr_mem_will_produceEET_SA_SA_T0_
+0x10002FAE4	0x00000160	[  6] __ZN6O3_CPU18do_translate_storeENSt3__111__wrap_iterIP9LSQ_ENTRYEE
+0x10002FC44	0x00000398	[  6] __ZN6O3_CPU13execute_storeENSt3__111__wrap_iterIP9LSQ_ENTRYEE
+0x10002FFDC	0x0000015C	[  6] __ZN6O3_CPU17do_translate_loadENSt3__111__wrap_iterIP9LSQ_ENTRYEE
+0x100030138	0x0000015C	[  6] __ZN6O3_CPU12execute_loadENSt3__111__wrap_iterIP9LSQ_ENTRYEE
+0x100030294	0x00000140	[  6] __ZN6O3_CPU21do_complete_executionEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEE
+0x1000303D4	0x000002B0	[  6] __ZN8CacheBus11return_dataEP6PACKET
+0x100030684	0x00000C6C	[  6] __ZN6O3_CPU14print_deadlockEv
+0x1000312F0	0x00000308	[  6] __ZN15ooo_model_instrC2ERKS_
+0x1000315F8	0x00000014	[  6] __ZN8champsim8deadlockD0Ev
+0x10003160C	0x00000014	[  6] __ZNKSt3__16vectorI15ooo_model_instrNS_9allocatorIS1_EEE20__throw_out_of_rangeB8ue170006Ev
+0x100031620	0x00000168	[  6] __ZNSt3__115partition_pointB8ue170006IN8champsim24circular_buffer_iteratorINS1_15circular_bufferINS1_15traceable_valueIxEEEEEEZNS1_11delay_queueI15ooo_model_instrE7operateEvEUlS5_E_EET_SC_SC_T0_
+0x100031788	0x000005A8	[  6] __ZNSt3__15dequeIyNS_9allocatorIyEEE19__add_back_capacityEv
+0x100031D30	0x00000190	[  6] __ZNSt3__114__split_bufferIPyNS_9allocatorIS1_EEE9push_backEOS1_
+0x100031EC0	0x0000019C	[  6] __ZNSt3__114__split_bufferIPyNS_9allocatorIS1_EEE10push_frontEOS1_
+0x10003205C	0x000000BC	[  6] __ZN8champsimlsI15ooo_model_instrEERNSt3__113basic_ostreamIcNS2_11char_traitsIcEEEES7_RKNS_11delay_queueIT_EE
+0x100032118	0x000005A8	[  6] __ZNSt3__15dequeIN8champsim24circular_buffer_iteratorINS1_15circular_bufferI15ooo_model_instrEEEENS_9allocatorIS6_EEE19__add_back_capacityEv
+0x1000326C0	0x00000190	[  6] __ZNSt3__114__split_bufferIPN8champsim24circular_buffer_iteratorINS1_15circular_bufferI15ooo_model_instrEEEENS_9allocatorIS7_EEE9push_backEOS7_
+0x100032850	0x0000019C	[  6] __ZNSt3__114__split_bufferIPN8champsim24circular_buffer_iteratorINS1_15circular_bufferI15ooo_model_instrEEEENS_9allocatorIS7_EEE10push_frontEOS7_
+0x1000329EC	0x000005A8	[  6] __ZNSt3__15dequeINS_11__wrap_iterIP9LSQ_ENTRYEENS_9allocatorIS4_EEE19__add_back_capacityEv
+0x100032F94	0x00000190	[  6] __ZNSt3__114__split_bufferIPNS_11__wrap_iterIP9LSQ_ENTRYEENS_9allocatorIS5_EEE9push_backEOS5_
+0x100033124	0x0000019C	[  6] __ZNSt3__114__split_bufferIPNS_11__wrap_iterIP9LSQ_ENTRYEENS_9allocatorIS5_EEE10push_frontEOS5_
+0x1000332C0	0x00000008	[  6] _OUTLINED_FUNCTION_0
+0x1000332C8	0x00000008	[  6] _OUTLINED_FUNCTION_1
+0x1000332D0	0x0000037C	[  7] __ZN15PageTableWalkerC2ENSt3__112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEEjjjjjjjjjjjjjjjP21MemoryRequestConsumer
+0x10003364C	0x00000050	[  7] __ZN20PagingStructureCacheD1Ev
+0x10003369C	0x0000003C	[  7] __ZN15PageTableWalkerC1ENSt3__112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEEjjjjjjjjjjjjjjjP21MemoryRequestConsumer
+0x1000336D8	0x00000764	[  7] __ZN15PageTableWalker11handle_readEv
+0x100033E3C	0x00000140	[  7] __ZN20PagingStructureCache9check_hitEy
+0x100033F7C	0x00000920	[  7] __ZN15PageTableWalker11handle_fillEv
+0x10003489C	0x000001AC	[  7] __ZN20PagingStructureCache10fill_cacheEyy
+0x100034A48	0x0000002C	[  7] __ZN15PageTableWalker7operateEv
+0x100034A74	0x000001C8	[  7] __ZN15PageTableWalker6add_rqEP6PACKET
+0x100034C3C	0x00000008	[  7] __ZThn32_N15PageTableWalker6add_rqEP6PACKET
+0x100034C44	0x00000074	[  7] __ZN15PageTableWalker11return_dataEP6PACKET
+0x100034CB8	0x00000074	[  7] __ZThn48_N15PageTableWalker11return_dataEP6PACKET
+0x100034D2C	0x00000074	[  7] __ZN15PageTableWalker13get_occupancyEhy
+0x100034DA0	0x00000074	[  7] __ZThn32_N15PageTableWalker13get_occupancyEhy
+0x100034E14	0x00000024	[  7] __ZN15PageTableWalker8get_sizeEhy
+0x100034E38	0x00000024	[  7] __ZThn32_N15PageTableWalker8get_sizeEhy
+0x100034E5C	0x00000398	[  7] __ZN15PageTableWalker14print_deadlockEv
+0x1000351F4	0x00000134	[  7] __ZN20PagingStructureCacheC2ENSt3__112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEEhjj
+0x100035328	0x00000230	[  7] __ZNSt3__14listI6PACKETNS_9allocatorIS1_EEE6__sortI15ord_event_cycleIS1_S1_EEENS_15__list_iteratorIS1_PvEESA_SA_mRT_
+0x100035558	0x0000001C	[  8] __Z12offset_checkyyh
+0x100035574	0x00000010	[  8] __Z15XedRegEnumToStrh
+0x100035584	0x00000648	[  8] __ZN11tracereaderC2EhNSt3__112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE
+0x100035BCC	0x00000118	[  8] __ZNSt3__114basic_ifstreamIcNS_11char_traitsIcEEEC1ERKNS_12basic_stringIcS2_NS_9allocatorIcEEEEj
+0x100035CE4	0x00000058	[  8] __ZNSt3__114basic_ifstreamIcNS_11char_traitsIcEEED1Ev
+0x100035D3C	0x000000EC	[  8] __ZN11tracereader4openENSt3__112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE
+0x100035E28	0x0000008C	[  8] __ZN11tracereaderD2Ev
+0x100035EB4	0x00000010	[  8] __ZN11tracereader5closeEv
+0x100035EC4	0x00000004	[  8] __ZN11tracereaderD1Ev
+0x100035EC8	0x000000EC	[  8] __ZN11tracereader4openEv
+0x100035FB4	0x00000290	[  8] __Z15get_tracereaderNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEhbb
+0x100036244	0x00000144	[  8] __ZN22cloudsuite_tracereaderC2EhNSt3__112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE
+0x100036388	0x0000036C	[  8] __ZN22cloudsuite_tracereader3getEv
+0x1000366F4	0x000003C0	[  8] __ZN11tracereader17read_single_instrI16cloudsuite_instrEE15ooo_model_instrv
+0x100036AB4	0x00000024	[  8] __ZN19EndOfTraceExceptionCI1St13runtime_errorEPKc
+0x100036AD8	0x00000004	[  8] __ZN19EndOfTraceExceptionD1Ev
+0x100036ADC	0x00000014	[  8] __ZN19EndOfTraceExceptionD0Ev
+0x100036AF0	0x00000188	[  8] __ZN15ooo_model_instrC2Eh16cloudsuite_instr
+0x100036C78	0x00000184	[  8] __ZN14pt_tracereaderC2EhNSt3__112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE
+0x100036DFC	0x00000058	[  8] __ZN14pt_tracereader11reopen_fileEv
+0x100036E54	0x00000ABC	[  8] __ZN14pt_tracereader3getEv
+0x100037910	0x000000A0	[  8] __ZN14pt_tracereader8make_nopEy
+0x1000379B0	0x0000034C	[  8] __ZN8pt_instrC2EPc
+0x100037CFC	0x000002BC	[  8] __ZNSt3__16vectorIhNS_9allocatorIhEEE8__appendEmRKh
+0x100037FB8	0x00000014	[  8] __ZNKSt3__16vectorIhNS_9allocatorIhEEE20__throw_length_errorB8ue170006Ev
+0x100037FCC	0x00000144	[  8] __ZN17input_tracereaderC2EhNSt3__112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE
+0x100038110	0x0000036C	[  8] __ZN17input_tracereader3getEv
+0x10003847C	0x000003B8	[  8] __ZN11tracereader17read_single_instrI11input_instrEE15ooo_model_instrv
+0x100038834	0x00000184	[  8] __ZN15ooo_model_instrC2Eh11input_instr
+0x1000389B8	0x00000014	[  8] __ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE20__throw_out_of_rangeB8ue170006Ev
+0x1000389CC	0x0000000C	[  8] _OUTLINED_FUNCTION_0
+0x1000389D8	0x0000000C	[  8] _OUTLINED_FUNCTION_1
+0x1000389E4	0x00000344	[  9] __ZN13VirtualMemoryC2Eyyjyy
+0x100038D28	0x00000004	[  9] __ZN13VirtualMemoryC1Eyyjyy
+0x100038D2C	0x0000003C	[  9] __ZNK13VirtualMemory5shamtEj
+0x100038D68	0x0000006C	[  9] __ZNK13VirtualMemory10get_offsetEyj
+0x100038DD4	0x00000158	[  9] __ZN13VirtualMemory8va_to_paEjy
+0x100038F2C	0x00000270	[  9] __ZN13VirtualMemory10get_pte_paEjyj
+0x10003919C	0x000001E0	[  9] __ZNSt3__15dequeIyNS_9allocatorIyEEE8__appendEmRKy
+0x10003937C	0x00000968	[  9] __ZNSt3__15dequeIyNS_9allocatorIyEEE19__add_back_capacityEm
+0x100039CE4	0x00000174	[  9] __ZNSt3__19__shuffleB8ue170006INS_17_ClassicAlgPolicyENS_16__deque_iteratorIyPyRyPS3_lLl512EEES6_NS_23mersenne_twister_engineIyLm64ELm312ELm156ELm31ELy13043109905998158313ELm29ELy6148914691236517205ELm17ELy8202884508482404352ELm37ELy18444473444759240704ELm43ELy6364136223846793005EEEEET0_S9_T1_OT2_
+0x100039E58	0x000001B8	[  9] __ZNSt3__124uniform_int_distributionIlEclINS_23mersenne_twister_engineIyLm64ELm312ELm156ELm31ELy13043109905998158313ELm29ELy6148914691236517205ELm17ELy8202884508482404352ELm37ELy18444473444759240704ELm43ELy6364136223846793005EEEEElRT_RKNS1_10param_typeE
+0x10003A010	0x00000004	[ 10] __ZN5CACHE32repl_rreplacementDlru_initializeEv
+0x10003A014	0x00000090	[ 10] __ZN5CACHE14get_insert_posE11LruModifierj
+0x10003A0A4	0x0000006C	[ 10] __ZN5CACHE14get_lru_offsetE11LruModifier
+0x10003A110	0x00000038	[ 10] __ZN5CACHE14is_default_lruE11LruModifier
+0x10003A148	0x00000074	[ 10] __ZN5CACHE28repl_rreplacementDlru_victimEjyjPK5BLOCKyyj
+0x10003A1BC	0x0000022C	[ 10] __ZN5CACHE28repl_rreplacementDlru_updateEjjjyyyjh
+0x10003A3E8	0x00000004	[ 10] __ZN5CACHE33repl_rreplacementDlru_final_statsEv
+0x10003A3EC	0x00000004	[ 11] __ZN5CACHE30pref_pprefetcherDno_initializeEv
+0x10003A3F0	0x00000008	[ 11] __ZN5CACHE33pref_pprefetcherDno_cache_operateEyyhhj
+0x10003A3F8	0x00000008	[ 11] __ZN5CACHE30pref_pprefetcherDno_cache_fillEyjjhyj
+0x10003A400	0x00000004	[ 11] __ZN5CACHE33pref_pprefetcherDno_cycle_operateEv
+0x10003A404	0x00000004	[ 11] __ZN5CACHE31pref_pprefetcherDno_final_statsEv
+0x10003A408	0x00000004	[ 12] __ZNSt3__15dequeINS_5tupleIJyyhEEENS_9allocatorIS2_EEED1B8ue170006Ev
+0x10003A40C	0x00000004	[ 12] __ZNSt3__15dequeIyNS_9allocatorIyEEED1B8ue170006Ev
+0x10003A410	0x00000004	[ 12] __ZN6O3_CPU32pref_pprefetcherDfdip_initializeEv
+0x10003A414	0x00000290	[ 12] __ZN6O3_CPU36pref_pprefetcherDfdip_branch_operateEyhyh
+0x10003A6A4	0x00000144	[ 12] __ZN6O3_CPU35pref_pprefetcherDfdip_cache_operateEyhhj
+0x10003A7E8	0x000003DC	[ 12] __ZN6O3_CPU35pref_pprefetcherDfdip_cycle_operateEv
+0x10003ABC4	0x00000008	[ 12] __ZN6O3_CPU32pref_pprefetcherDfdip_cache_fillEyjjhyj
+0x10003ABCC	0x00000004	[ 12] __ZN6O3_CPU33pref_pprefetcherDfdip_final_statsEv
+0x10003ABD0	0x000000C4	[ 12] __ZNSt3__15dequeINS_5tupleIJyyhEEENS_9allocatorIS2_EEED2B8ue170006Ev
+0x10003AC94	0x000005A8	[ 12] __ZNSt3__15dequeINS_5tupleIJyyhEEENS_9allocatorIS2_EEE19__add_back_capacityEv
+0x10003B23C	0x00000190	[ 12] __ZNSt3__114__split_bufferIPNS_5tupleIJyyhEEENS_9allocatorIS3_EEE9push_backEOS3_
+0x10003B3CC	0x0000019C	[ 12] __ZNSt3__114__split_bufferIPNS_5tupleIJyyhEEENS_9allocatorIS3_EEE10push_frontEOS3_
+0x10003B568	0x00000064	[ 12] __GLOBAL__sub_I_fdip.cc
+0x10003B5CC	0x000000C8	[ 13] __ZN5CACHE37pref_pprefetcherDnext_line_initializeEv
+0x10003B694	0x0000003C	[ 13] __ZN5CACHE40pref_pprefetcherDnext_line_cache_operateEyyhhj
+0x10003B6D0	0x00000008	[ 13] __ZN5CACHE37pref_pprefetcherDnext_line_cache_fillEyjjhyj
+0x10003B6D8	0x00000004	[ 13] __ZN5CACHE40pref_pprefetcherDnext_line_cycle_operateEv
+0x10003B6DC	0x00000004	[ 13] __ZN5CACHE38pref_pprefetcherDnext_line_final_statsEv
+0x10003B6E0	0x00000044	[ 14] __ZN6O3_CPU42bpred_bbranchDhashed_perceptron_initializeEv
+0x10003B724	0x0000019C	[ 14] __ZN6O3_CPU39bpred_bbranchDhashed_perceptron_predictEyyhh
+0x10003B8C0	0x000006C4	[ 14] __ZN6O3_CPU43bpred_bbranchDhashed_perceptron_last_resultEyyhh
+0x10003BF84	0x00000010	[ 15] __Z23basic_btb_abs_addr_distyy
+0x10003BF94	0x00000038	[ 15] __Z18push_basic_btb_rashy
+0x10003BFCC	0x00000024	[ 15] __Z18peek_basic_btb_rash
+0x10003BFF0	0x00000044	[ 15] __Z17pop_basic_btb_rash
+0x10003C034	0x00000008	[ 15] __Z32basic_btb_call_size_tracker_hashy
+0x10003C03C	0x0000001C	[ 15] __Z23basic_btb_get_call_sizehy
+0x10003C058	0x00000008	[ 15] __Z33convert_offsetBits_to_partitionIDi
+0x10003C060	0x00000120	[ 15] __Z17get_lru_partitioniy
+0x10003C180	0x00000254	[ 15] __ZN6O3_CPU28btb_bbtbDconv_btb_initializeEv
+0x10003C3D4	0x000000F0	[ 15] __ZN3BTBC1Eii
+0x10003C4C4	0x000001C8	[ 15] __ZN6O3_CPU25btb_bbtbDconv_btb_predictEyh
+0x10003C68C	0x000003EC	[ 15] __ZN6O3_CPU24btb_bbtbDconv_btb_updateEyyhh
+0x10003CA78	0x0000037C	[ 15] __ZN3BTB10update_BTBEyhyhy
+0x10003CDF4	0x00000008	[ 15] __ZN6O3_CPU37btb_bbtbDconv_btb_is_not_block_endingEy
+0x10003CDFC	0x000001F0	[ 15] __ZNSt3__16vectorINS0_I8BTBEntryNS_9allocatorIS1_EEEENS2_IS4_EEE8__appendEm
+0x10003CFEC	0x00000014	[ 15] __ZNKSt3__16vectorINS0_I8BTBEntryNS_9allocatorIS1_EEEENS2_IS4_EEE20__throw_length_errorB8ue170006Ev
+0x10003D000	0x00000014	[ 15] __ZNKSt3__16vectorI8BTBEntryNS_9allocatorIS1_EEE20__throw_length_errorB8ue170006Ev
+0x10003D014	0x00000018	[ 15] _OUTLINED_FUNCTION_0
+0x10003D02C	0x00000028	[  2] __ZN5CACHE13readlike_missER6PACKET.cold.1
+0x10003D054	0x00000028	[  2] __ZN5CACHE13filllike_missEmmR6PACKETb.cold.1
+0x10003D07C	0x00000028	[  2] __ZN5CACHE6add_rqEP6PACKET.cold.1
+0x10003D0A4	0x00000028	[  2] __ZN5CACHE6add_rqEP6PACKET.cold.2
+0x10003D0CC	0x00000028	[  2] __ZN5CACHE6add_pqEP6PACKET.cold.1
+0x10003D0F4	0x00000140	[  2] __ZN5CACHE11return_dataEP6PACKET.cold.1
+0x10003D234	0x00000028	[  2] __ZN12BUFFER_CACHE9fill_missER6PACKETR9VCL_CACHE.cold.1
+0x10003D25C	0x00000028	[  2] __ZN8champsim15circular_bufferI5BLOCKE9push_backES1_b.cold.1
+0x10003D284	0x00000040	[  2] __ZN9VCL_CACHE10lru_victimEP5BLOCKh.cold.1
+0x10003D2C4	0x00000024	[  2] __ZN8champsim15circular_bufferI5BLOCKE9pop_frontEv.cold.1
+0x10003D2E8	0x00000028	[  2] __ZN9VCL_CACHE32handle_packet_insert_from_bufferER6PACKET.cold.1
+0x10003D310	0x00000028	[  2] __ZN9VCL_CACHE11handle_fillEv.cold.1
+0x10003D338	0x00000040	[  2] __ZN9VCL_CACHE16handle_writebackEv.cold.1
+0x10003D378	0x00000028	[  2] __ZN9VCL_CACHE7get_wayER6PACKETj.cold.1
+0x10003D3A0	0x00000028	[  2] __ZN9VCL_CACHE11handle_readEv.cold.1
+0x10003D3C8	0x00000028	[  2] __ZN9VCL_CACHE11handle_readEv.cold.2
+0x10003D3F0	0x00000028	[  2] __ZN9VCL_CACHE6add_pqEP6PACKET.cold.1
+0x10003D418	0x00000028	[  2] __ZN9VCL_CACHE6add_rqEP6PACKET.cold.1
+0x10003D440	0x00000028	[  2] __ZN9VCL_CACHE6add_rqEP6PACKET.cold.2
+0x10003D468	0x00000028	[  2] __ZN9VCL_CACHE13filllike_missEmmR6PACKETb.cold.1
+0x10003D490	0x00000024	[  2] __ZN8champsim15circular_bufferI6PACKETE9pop_frontEv.cold.1
+0x10003D4B4	0x00000024	[  2] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEE9pop_frontEv.cold.1
+0x10003D4D8	0x00000028	[  2] __ZN8champsim15circular_bufferI6PACKETE9push_backERKS1_.cold.1
+0x10003D500	0x00000028	[  2] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEE9push_backEOKS2_.cold.1
+0x10003D528	0x00000028	[  2] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEE10push_frontES2_.cold.1
+0x10003D550	0x00000014	[  3] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEEC2EmNSt3__112basic_stringIcNS4_11char_traitsIcEENS4_9allocatorIcEEEE.cold.1
+0x10003D564	0x0000007C	[  3] __ZNSt3__16vectorI15ooo_model_instrNS_9allocatorIS1_EEEC1Em.cold.1
+0x10003D5E0	0x00000028	[  5] __Z16record_roi_statsjP5CACHE.cold.1
+0x10003D608	0x00000034	[  5] _main.cold.1
+0x10003D63C	0x0000005C	[  5] _main.cold.2
+0x10003D698	0x00000034	[  5] _main.cold.3
+0x10003D6CC	0x00000028	[  6] __ZN6O3_CPU29complete_inflight_instructionEv.cold.1
+0x10003D6F4	0x00000028	[  6] __ZN6O3_CPU20schedule_instructionEv.cold.1
+0x10003D71C	0x00000028	[  6] __ZN6O3_CPU20handle_memory_returnEv.cold.1
+0x10003D744	0x00000028	[  6] __ZN6O3_CPU17fetch_instructionEv.cold.1
+0x10003D76C	0x00000028	[  6] __ZN6O3_CPU16init_instructionE15ooo_model_instr.cold.1
+0x10003D794	0x00000028	[  6] __ZN8champsim15circular_bufferI15ooo_model_instrE9push_backERKS1_.cold.1
+0x10003D7BC	0x00000028	[  6] __ZN6O3_CPU20do_fetch_instructionEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEES5_.cold.1
+0x10003D7E4	0x00000024	[  6] __ZN8champsim15circular_bufferI15ooo_model_instrE9pop_frontEv.cold.1
+0x10003D808	0x00000028	[  6] __ZN6O3_CPU13do_dib_updateERK15ooo_model_instr.cold.1
+0x10003D830	0x00000028	[  6] __ZN6O3_CPU20do_memory_schedulingEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEE.cold.1
+0x10003D858	0x00000028	[  6] __ZN6O3_CPU14add_load_queueEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEEj.cold.1
+0x10003D880	0x00000024	[  6] __ZN6O3_CPU14add_load_queueEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEEj.cold.2
+0x10003D8A4	0x00000028	[  6] __ZN6O3_CPU15add_store_queueEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEEj.cold.1
+0x10003D8CC	0x00000024	[  6] __ZN6O3_CPU19do_sq_forward_to_lqER9LSQ_ENTRYS1_.cold.1
+0x10003D8F0	0x00000028	[  6] __ZN6O3_CPU13execute_storeENSt3__111__wrap_iterIP9LSQ_ENTRYEE.cold.1
+0x10003D918	0x00000024	[  6] __ZN6O3_CPU13execute_storeENSt3__111__wrap_iterIP9LSQ_ENTRYEE.cold.2
+0x10003D93C	0x00000028	[  6] __ZN6O3_CPU13execute_storeENSt3__111__wrap_iterIP9LSQ_ENTRYEE.cold.3
+0x10003D964	0x00000028	[  6] __ZN6O3_CPU21do_complete_executionEN8champsim24circular_buffer_iteratorINS0_15circular_bufferI15ooo_model_instrEEEE.cold.1
+0x10003D98C	0x00000024	[  6] __ZN8champsim15circular_bufferI6PACKETE9pop_frontEv.cold.1
+0x10003D9B0	0x00000028	[  6] __ZN8champsim15circular_bufferI6PACKETE9push_backERKS1_.cold.1
+0x10003D9D8	0x00000028	[  6] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEE9push_backEOKS2_.cold.1
+0x10003DA00	0x00000024	[  6] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEE9pop_frontEv.cold.1
+0x10003DA24	0x00000028	[  7] __ZN15PageTableWalker6add_wqEP6PACKET
+0x10003DA4C	0x00000028	[  7] __ZN15PageTableWalker6add_pqEP6PACKET
+0x10003DA74	0x00000028	[  7] __ZThn32_N15PageTableWalker6add_wqEP6PACKET
+0x10003DA9C	0x00000028	[  7] __ZThn32_N15PageTableWalker6add_pqEP6PACKET
+0x10003DAC4	0x00000028	[  7] __ZN15PageTableWalker6add_rqEP6PACKET.cold.1
+0x10003DAEC	0x00000028	[  7] __ZN15PageTableWalker6add_rqEP6PACKET.cold.2
+0x10003DB14	0x00000028	[  7] __ZN15PageTableWalker6add_rqEP6PACKET.cold.3
+0x10003DB3C	0x00000014	[  7] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEEC2EmNSt3__112basic_stringIcNS4_11char_traitsIcEENS4_9allocatorIcEEEE.cold.1
+0x10003DB50	0x00000028	[  7] __ZN8champsim15circular_bufferI6PACKETE9pop_frontEv.cold.1
+0x10003DB78	0x00000028	[  7] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEE9pop_frontEv.cold.1
+0x10003DBA0	0x00000028	[  7] __ZN8champsim15circular_bufferI6PACKETE9push_backERKS1_.cold.1
+0x10003DBC8	0x00000028	[  7] __ZN8champsim15circular_bufferINS_15traceable_valueIxEEE9push_backEOKS2_.cold.1
+0x10003DBF0	0x00000060	[  8] __ZN11tracereader4openENSt3__112basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEE.cold.1
+0x10003DC50	0x00000050	[  8] __ZN14pt_tracereader11reopen_fileEv.cold.1
+0x10003DCA0	0x0000004C	[  8] __ZN14pt_tracereader8make_nopEy.cold.1
+0x10003DCEC	0x0000004C	[  8] __ZN14pt_tracereader8make_nopEy.cold.2
+0x10003DD38	0x00000028	[ 12] __ZN6O3_CPU36pref_pprefetcherDfdip_branch_operateEyhyh.cold.1
+0x10003DD60	0x00000028	[ 12] __ZN6O3_CPU35pref_pprefetcherDfdip_cache_operateEyhhj.cold.1
+0x10003DD88	0x00000028	[ 15] __Z17get_lru_partitioniy.cold.1
+0x10003DDB0	0x00000028	[ 15] __Z17get_lru_partitioniy.cold.2
+0x10003DDD8	0x00000028	[ 15] __ZN6O3_CPU28btb_bbtbDconv_btb_initializeEv.cold.1
+0x10003DE00	0x00000054	[ 15] __ZN6O3_CPU28btb_bbtbDconv_btb_initializeEv.cold.2
+0x10003DE54	0x00000050	[ 15] __ZN3BTBC1Eii.cold.1
+0x10003DEA4	0x00000028	[ 15] __ZN6O3_CPU24btb_bbtbDconv_btb_updateEyyhh.cold.1
+0x10003DECC	0x00000028	[ 15] __ZN6O3_CPU24btb_bbtbDconv_btb_updateEyyhh.cold.2
+0x10003DEF4	0x0000000C	[ 22] __Unwind_Resume.stub
+0x10003DF00	0x0000000C	[ 18] __ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7compareEmmPKc.stub
+0x10003DF0C	0x0000000C	[ 18] __ZNKSt3__14__fs10filesystem4path10__filenameEv.stub
+0x10003DF18	0x0000000C	[ 18] __ZNKSt3__14__fs10filesystem4path16__root_directoryEv.stub
+0x10003DF24	0x0000000C	[ 18] __ZNKSt3__16locale9use_facetERNS0_2idE.stub
+0x10003DF30	0x0000000C	[ 18] __ZNKSt3__18ios_base6getlocEv.stub
+0x10003DF3C	0x0000000C	[ 18] __ZNSt11logic_errorC2EPKc.stub
+0x10003DF48	0x0000000C	[ 18] __ZNSt13runtime_errorC2EPKc.stub
+0x10003DF54	0x0000000C	[ 18] __ZNSt13runtime_errorD2Ev.stub
+0x10003DF60	0x0000000C	[ 18] __ZNSt20bad_array_new_lengthC1Ev.stub
+0x10003DF6C	0x0000000C	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5eraseEmm.stub
+0x10003DF78	0x0000000C	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendEPKc.stub
+0x10003DF84	0x0000000C	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendEPKcm.stub
+0x10003DF90	0x0000000C	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6assignEPKc.stub
+0x10003DF9C	0x0000000C	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6insertEmPKc.stub
+0x10003DFA8	0x0000000C	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__grow_byEmmmmmm.stub
+0x10003DFB4	0x0000000C	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9push_backEc.stub
+0x10003DFC0	0x0000000C	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEaSERKS5_.stub
+0x10003DFCC	0x0000000C	[ 18] __ZNSt3__113basic_filebufIcNS_11char_traitsIcEEE4openEPKcj.stub
+0x10003DFD8	0x0000000C	[ 18] __ZNSt3__113basic_filebufIcNS_11char_traitsIcEEE4swapERS3_.stub
+0x10003DFE4	0x0000000C	[ 18] __ZNSt3__113basic_filebufIcNS_11char_traitsIcEEE5closeEv.stub
+0x10003DFF0	0x0000000C	[ 18] __ZNSt3__113basic_filebufIcNS_11char_traitsIcEEEC1EOS3_.stub
+0x10003DFFC	0x0000000C	[ 18] __ZNSt3__113basic_filebufIcNS_11char_traitsIcEEEC1Ev.stub
+0x10003E008	0x0000000C	[ 18] __ZNSt3__113basic_filebufIcNS_11char_traitsIcEEED1Ev.stub
+0x10003E014	0x0000000C	[ 18] __ZNSt3__113basic_istreamIcNS_11char_traitsIcEEED2Ev.stub
+0x10003E020	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE3putEc.stub
+0x10003E02C	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE5flushEv.stub
+0x10003E038	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE5writeEPKcl.stub
+0x10003E044	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_.stub
+0x10003E050	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryD1Ev.stub
+0x10003E05C	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEED2Ev.stub
+0x10003E068	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEd.stub
+0x10003E074	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEe.stub
+0x10003E080	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEf.stub
+0x10003E08C	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEi.stub
+0x10003E098	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEj.stub
+0x10003E0A4	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEl.stub
+0x10003E0B0	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEm.stub
+0x10003E0BC	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEt.stub
+0x10003E0C8	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEx.stub
+0x10003E0D4	0x0000000C	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEy.stub
+0x10003E0E0	0x0000000C	[ 18] __ZNSt3__114basic_ofstreamIcNS_11char_traitsIcEEE4openEPKcj.stub
+0x10003E0EC	0x0000000C	[ 18] __ZNSt3__16localeD1Ev.stub
+0x10003E0F8	0x0000000C	[ 18] __ZNSt3__18ios_base33__set_badbit_and_consider_rethrowEv.stub
+0x10003E104	0x0000000C	[ 18] __ZNSt3__18ios_base4initEPv.stub
+0x10003E110	0x0000000C	[ 18] __ZNSt3__18ios_base4moveERS0_.stub
+0x10003E11C	0x0000000C	[ 18] __ZNSt3__18ios_base4swapERS0_.stub
+0x10003E128	0x0000000C	[ 18] __ZNSt3__18ios_base5clearEj.stub
+0x10003E134	0x0000000C	[ 18] __ZNSt3__19basic_iosIcNS_11char_traitsIcEEED2Ev.stub
+0x10003E140	0x0000000C	[ 18] __ZNSt3__19to_stringEi.stub
+0x10003E14C	0x0000000C	[ 18] __ZNSt3__19to_stringEm.stub
+0x10003E158	0x0000000C	[ 18] __ZNSt9exceptionD2Ev.stub
+0x10003E164	0x0000000C	[ 18] __ZSt9terminatev.stub
+0x10003E170	0x0000000C	[ 18] __ZdlPv.stub
+0x10003E17C	0x0000000C	[ 18] __Znwm.stub
+0x10003E188	0x0000000C	[ 18] __ZnwmRKSt9nothrow_t.stub
+0x10003E194	0x0000000C	[ 20] ___assert_rtn.stub
+0x10003E1A0	0x0000000C	[ 18] ___cxa_allocate_exception.stub
+0x10003E1AC	0x0000000C	[ 20] ___cxa_atexit.stub
+0x10003E1B8	0x0000000C	[ 18] ___cxa_begin_catch.stub
+0x10003E1C4	0x0000000C	[ 18] ___cxa_end_catch.stub
+0x10003E1D0	0x0000000C	[ 18] ___cxa_free_exception.stub
+0x10003E1DC	0x0000000C	[ 18] ___cxa_guard_acquire.stub
+0x10003E1E8	0x0000000C	[ 18] ___cxa_guard_release.stub
+0x10003E1F4	0x0000000C	[ 18] ___cxa_rethrow.stub
+0x10003E200	0x0000000C	[ 18] ___cxa_throw.stub
+0x10003E20C	0x0000000C	[ 20] ___stack_chk_fail.stub
+0x10003E218	0x0000000C	[ 20] _abort.stub
+0x10003E224	0x0000000C	[ 20] _atoi.stub
+0x10003E230	0x0000000C	[ 20] _atol.stub
+0x10003E23C	0x0000000C	[ 20] _bzero.stub
+0x10003E248	0x0000000C	[ 21] _calloc.stub
+0x10003E254	0x0000000C	[ 20] _exit.stub
+0x10003E260	0x0000000C	[ 20] _fread.stub
+0x10003E26C	0x0000000C	[ 21] _free.stub
+0x10003E278	0x0000000C	[ 20] _getopt_long_only.stub
+0x10003E284	0x0000000C	[ 17] _gzclose.stub
+0x10003E290	0x0000000C	[ 17] _gzgets.stub
+0x10003E29C	0x0000000C	[ 17] _gzopen.stub
+0x10003E2A8	0x0000000C	[ 21] _malloc.stub
+0x10003E2B4	0x0000000C	[ 20] _memchr.stub
+0x10003E2C0	0x0000000C	[ 20] _memcpy.stub
+0x10003E2CC	0x0000000C	[ 20] _memmove.stub
+0x10003E2D8	0x0000000C	[ 20] _memset.stub
+0x10003E2E4	0x0000000C	[ 20] _memset_pattern16.stub
+0x10003E2F0	0x0000000C	[ 20] _pclose.stub
+0x10003E2FC	0x0000000C	[ 20] _popen.stub
+0x10003E308	0x0000000C	[ 20] _puts.stub
+0x10003E314	0x0000000C	[ 20] _sigaction.stub
+0x10003E320	0x0000000C	[ 20] _sprintf.stub
+0x10003E32C	0x0000000C	[ 20] _strlen.stub
+0x10003E338	0x0000000C	[ 20] _strtoul.stub
+0x10003E344	0x0000000C	[ 20] _time.stub
+0x10003E350	0x0000000C	[ 16] _xed_decode.stub
+0x10003E35C	0x0000000C	[ 16] _xed_decoded_inst_dump.stub
+0x10003E368	0x0000000C	[ 16] _xed_decoded_inst_get_reg.stub
+0x10003E374	0x0000000C	[ 16] _xed_decoded_inst_operand_action.stub
+0x10003E380	0x0000000C	[ 16] _xed_decoded_inst_zero.stub
+0x10003E38C	0x0000000C	[ 16] _xed_encode_nop.stub
+0x10003E398	0x0000000C	[ 16] _xed_error_enum_t2str.stub
+0x10003E3A4	0x0000000C	[ 16] _xed_get_largest_enclosing_register.stub
+0x10003E3B0	0x0000000C	[ 16] _xed_iform_to_category.stub
+0x10003E3BC	0x0000000C	[ 16] _xed_inst_operand.stub
+0x10003E3C8	0x0000000C	[ 16] _xed_operand_values_set_mode.stub
+0x10003E3D4	0x0000000C	[ 16] _xed_tables_init.stub
+0x10003E3E0	0x00000004	[  1] anon
+0x10003E3E4	0x00000004	[  1] anon
+0x10003E3E8	0x00000004	[  1] anon
+0x10003E3EC	0x00000024	[  2] GCC_except_table1
+0x10003E410	0x00000014	[  2] GCC_except_table3
+0x10003E424	0x00000014	[  2] GCC_except_table7
+0x10003E438	0x00000020	[  2] GCC_except_table10
+0x10003E458	0x00000014	[  2] GCC_except_table11
+0x10003E46C	0x00000018	[  2] GCC_except_table12
+0x10003E484	0x00000010	[  2] GCC_except_table14
+0x10003E494	0x00000018	[  2] GCC_except_table19
+0x10003E4AC	0x00000014	[  2] GCC_except_table23
+0x10003E4C0	0x00000014	[  2] GCC_except_table25
+0x10003E4D4	0x00000018	[  2] GCC_except_table27
+0x10003E4EC	0x00000018	[  2] GCC_except_table28
+0x10003E504	0x00000018	[  2] GCC_except_table29
+0x10003E51C	0x00000018	[  2] GCC_except_table30
+0x10003E534	0x0000003C	[  2] GCC_except_table31
+0x10003E570	0x000000E4	[  2] GCC_except_table32
+0x10003E654	0x0000001C	[  2] GCC_except_table33
+0x10003E670	0x00000014	[  2] GCC_except_table36
+0x10003E684	0x00000020	[  2] GCC_except_table37
+0x10003E6A4	0x00000014	[  2] GCC_except_table38
+0x10003E6B8	0x00000014	[  2] GCC_except_table41
+0x10003E6CC	0x00000014	[  2] GCC_except_table50
+0x10003E6E0	0x00000014	[  2] GCC_except_table51
+0x10003E6F4	0x00000018	[  2] GCC_except_table55
+0x10003E70C	0x00000020	[  2] GCC_except_table56
+0x10003E72C	0x00000038	[  2] GCC_except_table66
+0x10003E764	0x00000084	[  2] GCC_except_table73
+0x10003E7E8	0x00000044	[  2] GCC_except_table74
+0x10003E82C	0x00000024	[  2] GCC_except_table77
+0x10003E850	0x00000018	[  2] GCC_except_table78
+0x10003E868	0x0000001C	[  2] GCC_except_table79
+0x10003E884	0x00000050	[  2] GCC_except_table83
+0x10003E8D4	0x00000018	[  2] GCC_except_table84
+0x10003E8EC	0x00000014	[  2] GCC_except_table92
+0x10003E900	0x00000018	[  2] GCC_except_table93
+0x10003E918	0x00000020	[  2] GCC_except_table94
+0x10003E938	0x00000020	[  2] GCC_except_table102
+0x10003E958	0x00000020	[  2] GCC_except_table103
+0x10003E978	0x00000020	[  2] GCC_except_table104
+0x10003E998	0x00000010	[  2] GCC_except_table110
+0x10003E9A8	0x00000048	[  2] GCC_except_table117
+0x10003E9F0	0x00000010	[  2] GCC_except_table119
+0x10003EA00	0x00000044	[  2] GCC_except_table124
+0x10003EA44	0x00000018	[  2] GCC_except_table125
+0x10003EA5C	0x00000034	[  2] GCC_except_table127
+0x10003EA90	0x00000018	[  2] GCC_except_table133
+0x10003EAA8	0x00000018	[  2] GCC_except_table134
+0x10003EAC0	0x00000034	[  2] GCC_except_table136
+0x10003EAF4	0x00000018	[  2] GCC_except_table158
+0x10003EB0C	0x00000018	[  2] GCC_except_table160
+0x10003EB24	0x00000018	[  2] GCC_except_table161
+0x10003EB3C	0x00000018	[  2] GCC_except_table163
+0x10003EB54	0x00000018	[  3] GCC_except_table9
+0x10003EB6C	0x00000010	[  3] GCC_except_table11
+0x10003EB7C	0x000000D4	[  3] GCC_except_table15
+0x10003EC50	0x0000003C	[  3] GCC_except_table20
+0x10003EC8C	0x00000018	[  3] GCC_except_table23
+0x10003ECA4	0x00000020	[  3] GCC_except_table24
+0x10003ECC4	0x00000044	[  3] GCC_except_table28
+0x10003ED08	0x00000018	[  3] GCC_except_table29
+0x10003ED20	0x00000010	[  3] GCC_except_table34
+0x10003ED30	0x00000070	[  3] GCC_except_table37
+0x10003EDA0	0x00000028	[  3] GCC_except_table43
+0x10003EDC8	0x00000010	[  3] GCC_except_table47
+0x10003EDD8	0x00000050	[  3] GCC_except_table49
+0x10003EE28	0x00000014	[  3] GCC_except_table51
+0x10003EE3C	0x00000044	[  3] GCC_except_table63
+0x10003EE80	0x00000018	[  4] GCC_except_table6
+0x10003EE98	0x00000018	[  4] GCC_except_table7
+0x10003EEB0	0x00000018	[  4] GCC_except_table8
+0x10003EEC8	0x00000010	[  4] GCC_except_table22
+0x10003EED8	0x0000001C	[  5] GCC_except_table1
+0x10003EEF4	0x00000010	[  5] GCC_except_table3
+0x10003EF04	0x000002DC	[  5] GCC_except_table5
+0x10003F1E0	0x000000F0	[  5] GCC_except_table7
+0x10003F2D0	0x00000054	[  5] GCC_except_table8
+0x10003F324	0x000001BC	[  5] GCC_except_table9
+0x10003F4E0	0x00000014	[  5] GCC_except_table10
+0x10003F4F4	0x000000BC	[  5] GCC_except_table11
+0x10003F5B0	0x00000058	[  5] GCC_except_table12
+0x10003F608	0x00000044	[  5] GCC_except_table14
+0x10003F64C	0x00000200	[  5] GCC_except_table16
+0x10003F84C	0x00000014	[  5] GCC_except_table17
+0x10003F860	0x00000014	[  5] GCC_except_table20
+0x10003F874	0x00000010	[  5] GCC_except_table22
+0x10003F884	0x00000044	[  5] GCC_except_table27
+0x10003F8C8	0x00000018	[  5] GCC_except_table28
+0x10003F8E0	0x00000018	[  5] GCC_except_table29
+0x10003F8F8	0x0000001C	[  5] GCC_except_table30
+0x10003F914	0x00000024	[  5] GCC_except_table31
+0x10003F938	0x00000018	[  5] GCC_except_table34
+0x10003F950	0x00000020	[  6] GCC_except_table4
+0x10003F970	0x00000028	[  6] GCC_except_table13
+0x10003F998	0x0000001C	[  6] GCC_except_table18
+0x10003F9B4	0x00000058	[  6] GCC_except_table19
+0x10003FA0C	0x00000018	[  6] GCC_except_table20
+0x10003FA24	0x00000028	[  6] GCC_except_table23
+0x10003FA4C	0x0000004C	[  6] GCC_except_table25
+0x10003FA98	0x00000014	[  6] GCC_except_table26
+0x10003FAAC	0x00000014	[  6] GCC_except_table27
+0x10003FAC0	0x00000018	[  6] GCC_except_table28
+0x10003FAD8	0x00000014	[  6] GCC_except_table31
+0x10003FAEC	0x0000001C	[  6] GCC_except_table41
+0x10003FB08	0x00000018	[  6] GCC_except_table42
+0x10003FB20	0x0000001C	[  6] GCC_except_table43
+0x10003FB3C	0x0000001C	[  6] GCC_except_table44
+0x10003FB58	0x00000018	[  6] GCC_except_table46
+0x10003FB70	0x0000002C	[  6] GCC_except_table47
+0x10003FB9C	0x00000018	[  6] GCC_except_table48
+0x10003FBB4	0x0000007C	[  6] GCC_except_table49
+0x10003FC30	0x00000020	[  6] GCC_except_table51
+0x10003FC50	0x00000010	[  6] GCC_except_table54
+0x10003FC60	0x00000010	[  6] GCC_except_table59
+0x10003FC70	0x00000044	[  6] GCC_except_table61
+0x10003FCB4	0x00000018	[  6] GCC_except_table62
+0x10003FCCC	0x00000040	[  6] GCC_except_table66
+0x10003FD0C	0x00000018	[  6] GCC_except_table73
+0x10003FD24	0x00000018	[  6] GCC_except_table74
+0x10003FD3C	0x00000040	[  6] GCC_except_table75
+0x10003FD7C	0x00000040	[  6] GCC_except_table78
+0x10003FDBC	0x00000034	[  7] GCC_except_table0
+0x10003FDF0	0x00000034	[  7] GCC_except_table4
+0x10003FE24	0x00000014	[  7] GCC_except_table6
+0x10003FE38	0x0000001C	[  7] GCC_except_table8
+0x10003FE54	0x00000014	[  7] GCC_except_table15
+0x10003FE68	0x00000038	[  7] GCC_except_table23
+0x10003FEA0	0x00000014	[  7] GCC_except_table28
+0x10003FEB4	0x00000010	[  7] GCC_except_table30
+0x10003FEC4	0x00000048	[  7] GCC_except_table36
+0x10003FF0C	0x0000003C	[  7] GCC_except_table41
+0x10003FF48	0x00000018	[  7] GCC_except_table42
+0x10003FF60	0x00000020	[  7] GCC_except_table44
+0x10003FF80	0x00000010	[  7] GCC_except_table47
+0x10003FF90	0x00000018	[  7] GCC_except_table51
+0x10003FFA8	0x00000018	[  7] GCC_except_table52
+0x10003FFC0	0x00000018	[  7] GCC_except_table56
+0x10003FFD8	0x00000018	[  7] GCC_except_table57
+0x10003FFF0	0x00000044	[  7] GCC_except_table60
+0x100040034	0x00000018	[  7] GCC_except_table61
+0x10004004C	0x00000074	[  8] GCC_except_table2
+0x1000400C0	0x00000010	[  8] GCC_except_table4
+0x1000400D0	0x0000001C	[  8] GCC_except_table5
+0x1000400EC	0x00000014	[  8] GCC_except_table12
+0x100040100	0x00000054	[  8] GCC_except_table14
+0x100040154	0x00000018	[  8] GCC_except_table15
+0x10004016C	0x00000030	[  8] GCC_except_table16
+0x10004019C	0x00000038	[  8] GCC_except_table17
+0x1000401D4	0x00000010	[  8] GCC_except_table22
+0x1000401E4	0x00000010	[  8] GCC_except_table25
+0x1000401F4	0x00000020	[  8] GCC_except_table28
+0x100040214	0x0000001C	[  8] GCC_except_table29
+0x100040230	0x000000B8	[  8] GCC_except_table31
+0x1000402E8	0x0000001C	[  8] GCC_except_table33
+0x100040304	0x00000018	[  8] GCC_except_table37
+0x10004031C	0x00000030	[  8] GCC_except_table38
+0x10004034C	0x00000038	[  8] GCC_except_table39
+0x100040384	0x00000010	[  8] GCC_except_table40
+0x100040394	0x00000010	[  8] GCC_except_table43
+0x1000403A4	0x00000044	[  8] GCC_except_table45
+0x1000403E8	0x00000018	[  8] GCC_except_table46
+0x100040400	0x0000001C	[  9] GCC_except_table0
+0x10004041C	0x00000068	[  9] GCC_except_table8
+0x100040484	0x00000018	[ 12] GCC_except_table5
+0x10004049C	0x00000044	[ 12] GCC_except_table10
+0x1000404E0	0x00000018	[ 12] GCC_except_table11
+0x1000404F8	0x00000010	[ 12] GCC_except_table13
+0x100040508	0x00000040	[ 12] GCC_except_table17
+0x100040548	0x00000040	[ 12] GCC_except_table20
+0x100040588	0x00000014	[ 13] GCC_except_table0
+0x10004059C	0x00000044	[ 13] GCC_except_table5
+0x1000405E0	0x00000018	[ 13] GCC_except_table6
+0x1000405F8	0x00000010	[ 13] GCC_except_table9
+0x100040608	0x0000002C	[ 15] GCC_except_table8
+0x100040634	0x00000010	[ 15] GCC_except_table9
+0x100040644	0x00000010	[ 15] GCC_except_table17
+0x100040654	0x00000044	[ 15] GCC_except_table21
+0x100040698	0x00000018	[ 15] GCC_except_table22
+0x1000406B0	0x00000010	[  2] anon
+0x1000406C0	0x00000004	[  2] lJTI62_0
+0x1000406C4	0x00000004	[  2] lJTI63_0
+0x1000406C8	0x00000004	[  2] lJTI64_0
+0x1000406CC	0x00000004	[  2] lJTI65_0
+0x1000406D0	0x00000008	[  2] lJTI86_0
+0x1000406D8	0x00000007	[  2] __ZTS5CACHE
+0x1000406DF	0x00000015	[  2] __ZTSN8champsim8operableE
+0x1000406F4	0x00000018	[  2] __ZTS21MemoryRequestConsumer
+0x10004070C	0x00000018	[  2] __ZTS21MemoryRequestProducer
+0x100040724	0x0000000F	[  2] __ZTS12BUFFER_CACHE
+0x100040733	0x0000000B	[  2] __ZTS9VCL_CACHE
+0x100040740	0x00000008	[  2] anon
+0x100040750	0x00000010	[  3] anon
+0x100040760	0x00000008	[  4] anon
+0x100040768	0x00000014	[  4] __ZTS17MEMORY_CONTROLLER
+0x10004077C	0x0000002C	[  5] lJTI16_0
+0x1000407A8	0x00000006	[  5] lJTI36_0
+0x1000407AE	0x00000006	[  5] lJTI37_0
+0x1000407B4	0x00000015	[  5] __ZTSN8champsim8deadlockE
+0x1000407C9	0x00000016	[  5] __ZTS19EndOfTraceException
+0x1000407E0	0x00000010	[  6] anon
+0x1000407F0	0x0000001B	[  6] lJTI19_0
+0x10004080B	0x0000001B	[  6] lJTI19_1
+0x100040826	0x0000001B	[  6] lJTI19_2
+0x100040841	0x0000001B	[  6] lJTI19_3
+0x10004085C	0x0000000A	[  6] __ZTS8CacheBus
+0x100040866	0x00000008	[  6] __ZTS6O3_CPU
+0x10004086E	0x00000012	[  7] __ZTS15PageTableWalker
+0x100040880	0x00000008	[  8] anon
+0x100040888	0x0000000E	[  8] __ZTS11tracereader
+0x100040896	0x00000019	[  8] __ZTS22cloudsuite_tracereader
+0x1000408AF	0x00000011	[  8] __ZTS14pt_tracereader
+0x1000408C0	0x00000014	[  8] __ZTS17input_tracereader
+0x1000408E0	0x00000010	[  9] anon
+0x1000408F0	0x00000008	[ 15] anon
+0x100040900	0x00000010	[ 15] anon
+0x100040910	0x00000010	[ 15] anon
+0x100040920	0x00000020	[ 15] l___const._ZN6O3_CPU25btb_bbtbDconv_btb_predictEyh.outcome
+0x100040940	0x0000002F	[  2] literal string: "SHOUOLD ONLY BE PRESENT IN A SINGLE CSHR ENTRY"
+0x10004096F	0x00000004	[  2] literal string: "L1I"
+0x100040973	0x0000000E	[  2] literal string: "readlike_miss"
+0x100040981	0x00000009	[  2] literal string: "cache.cc"
+0x10004098A	0x00000016	[  2] literal string: "handle_pkt.size <= 64"
+0x1000409A0	0x0000001C	[  2] literal string: "record_block_insert_removal"
+0x1000409BC	0x00000028	[  2] literal string: "addresses.size() == num_blocks_in_cache"
+0x1000409E4	0x00000007	[  2] literal string: "FOUND "
+0x1000409EB	0x0000001B	[  2] literal string: " DISTINCT VALID CACHELINES"
+0x100040A06	0x00000002	[  2] literal string: "0"
+0x100040A08	0x00000015	[  2] literal string: "_cl_access_masks.bin"
+0x100040A1D	0x00000013	[  2] literal string: "_cl_bytes_used.bin"
+0x100040A30	0x00000026	[  2] literal string: "_cl_num_accesses_to_full_coverage.bin"
+0x100040A56	0x00000013	[  2] literal string: "_cl_num_blocks.bin"
+0x100040A69	0x0000001B	[  2] literal string: "_cl_num_invalid_blocks.bin"
+0x100040A84	0x00000017	[  2] literal string: "record_cacheline_stats"
+0x100040A9B	0x00000017	[  2] literal string: "size >= 0 && size < 64"
+0x100040AB2	0x0000000E	[  2] literal string: "filllike_miss"
+0x100040AC0	0x00000028	[  2] literal string: "handle_pkt.type != WRITEBACK || !bypass"
+0x100040AE8	0x00000007	[  2] literal string: "add_rq"
+0x100040AEF	0x00000015	[  2] literal string: "packet->address != 0"
+0x100040B04	0x00000013	[  2] literal string: "packet->size <= 64"
+0x100040B17	0x00000080	[  2] literal string: "WARNING: The extended signature CACHE::prefetch_line(ip, base_addr, pf_addr, fill_this_level, prefetch_metadata) is deprecated."
+0x100040B97	0x00000058	[  2] literal string: "WARNING: Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead."
+0x100040BEF	0x00000007	[  2] literal string: "add_pq"
+0x100040BF6	0x00000002	[  2] literal string: "["
+0x100040BF8	0x00000008	[  2] literal string: "_MSHR] "
+0x100040C00	0x0000000C	[  2] literal string: "return_data"
+0x100040C0C	0x0000000C	[  2] literal string: " instr_id: "
+0x100040C18	0x0000001F	[  2] literal string: " cannot find a matching entry!"
+0x100040C37	0x0000000B	[  2] literal string: " address: "
+0x100040C42	0x0000000D	[  2] literal string: " v_address: "
+0x100040C4F	0x00000009	[  2] literal string: " event: "
+0x100040C58	0x0000000B	[  2] literal string: " current: "
+0x100040C63	0x0000000C	[  2] literal string: " MSHR Entry"
+0x100040C6F	0x0000000F	[  2] literal string: " MSHR] entry: "
+0x100040C7E	0x0000000D	[  2] literal string: " full_addr: "
+0x100040C8B	0x00000008	[  2] literal string: " type: "
+0x100040C93	0x0000000E	[  2] literal string: " fill_level: "
+0x100040CA1	0x0000000F	[  2] literal string: " event_cycle: "
+0x100040CB0	0x0000000C	[  2] literal string: " MSHR empty"
+0x100040CBC	0x00000025	[  2] literal string: "Time Spent in Buffer by #Cachelines:"
+0x100040CE1	0x00000002	[  2] literal string: "\t"
+0x100040CE3	0x00000003	[  2] literal string: ":\t"
+0x100040CE6	0x0000001F	[  2] literal string: "AVERAGE Time Spent in Buffer: "
+0x100040D05	0x00000010	[  2] literal string: " PARTIAL MISSES"
+0x100040D15	0x0000000D	[  2] literal string: "\tUNDERRUNS: "
+0x100040D22	0x0000000C	[  2] literal string: "\tOVERRUNS: "
+0x100040D2E	0x0000000A	[  2] literal string: "\tMERGES: "
+0x100040D38	0x0000000E	[  2] literal string: "\tNEW BLOCKS: "
+0x100040D46	0x00000010	[  2] literal string: " UNDERRUN SIZE:"
+0x100040D56	0x0000000F	[  2] literal string: " OVERRUN SIZE:"
+0x100040D65	0x00000012	[  2] literal string: " NEW BLOCKS SIZE:"
+0x100040D77	0x00000020	[  2] literal string: "PARTIAL WITHOUT HIT ON INSERT: "
+0x100040D97	0x0000000A	[  2] literal string: "fill_miss"
+0x100040DA1	0x00000021	[  2] literal string: "Couldn't find way that fits size"
+0x100040DC2	0x0000000B	[  2] literal string: "lru_victim"
+0x100040DCD	0x00000019	[  2] literal string: "operate_buffer_evictions"
+0x100040DE6	0x0000000E	[  2] literal string: "way < NUM_WAY"
+0x100040DF4	0x00000021	[  2] literal string: "handle_packet_insert_from_buffer"
+0x100040E15	0x0000000C	[  2] literal string: "handle_fill"
+0x100040E21	0x00000044	[  2] literal string: "(fill_packet.v_address & (BLOCK_SIZE - 1)) + fill_packet.size <= 64"
+0x100040E65	0x0000002D	[  2] literal string: "Did not expect that we see writebacks in L1I"
+0x100040E92	0x00000011	[  2] literal string: "handle_writeback"
+0x100040EA3	0x00000008	[  2] literal string: "get_way"
+0x100040EAB	0x0000001E	[  2] literal string: "way_sizes[way] == begin->size"
+0x100040EC9	0x00000019	[  2] literal string: "GOT A 0 BYTE INSTRUCTION"
+0x100040EE2	0x0000000C	[  2] literal string: "handle_read"
+0x100040EEE	0x0000002C	[  2] literal string: "handle_pkt.size > 0 && handle_pkt.size < 64"
+0x100040F1A	0x00000012	[  2] literal string: "packet->size < 64"
+0x100040F2C	0x00000017	[  2] literal string: " LINES HANDLED PER WAY"
+0x100040F43	0x0000001E	[  2] literal string: " ALL BYTES ACCESSED COVERAGE "
+0x100040F61	0x0000000F	[  2] literal string: "merge register"
+0x100040F70	0x00000013	[  2] literal string: " single jump stats"
+0x100040F83	0x0000001C	[  2] literal string: "\tSINGLE_INSTR_BLOCKS_TOTAL:"
+0x100040F9F	0x0000000D	[  2] literal string: "\tJUMP_COUNT:"
+0x100040FAC	0x0000000F	[  2] literal string: "\tRETURN_COUNT:"
+0x100040FBB	0x00000014	[  2] literal string: "\tCONDITIONAL_COUNT:"
+0x100040FCF	0x0000000D	[  2] literal string: "\tCALL_COUNT:"
+0x100040FDC	0x00000015	[  2] literal string: "\tBRANCH_OTHER_COUNT:"
+0x100040FF1	0x00000016	[  2] literal string: "\tACCESS_AT_END_OF_CL:"
+0x100041007	0x00000017	[  2] literal string: "\tPREFETCH_PARTIAL_HIT:"
+0x10004101E	0x0000001A	[  2] literal string: "\tUNEXPLAINED_4B_ACCESSES:"
+0x100041038	0x00000024	[  2] literal string: "Replacement policy module not found"
+0x10004105C	0x00000007	[  2] literal string: "vector"
+0x100041063	0x00000021	[  2] literal string: "Data prefetcher module not found"
+0x100041084	0x00000026	[  2] literal string: "Branch target buffer module not found"
+0x1000410AA	0x0000000D	[  2] literal string: "basic_string"
+0x1000410B7	0x00000019	[  2] literal string: "\n++++ TRACE INFO: ++++\n\t"
+0x1000410D0	0x0000000D	[  2] literal string: "[POP_FRONT]\t"
+0x1000410DD	0x0000000D	[  2] literal string: "(occupancy: "
+0x1000410EA	0x0000000C	[  2] literal string: ", latency: "
+0x1000410F6	0x0000000A	[  2] literal string: ", cycle: "
+0x100041100	0x00000002	[  2] literal string: ")"
+0x100041102	0x0000000A	[  2] literal string: "pop_front"
+0x10004110C	0x00000014	[  2] literal string: "circular_buffer.hpp"
+0x100041120	0x00000009	[  2] literal string: "!empty()"
+0x100041129	0x0000000D	[  2] literal string: "[PUSH_BACK]\t"
+0x100041136	0x0000000A	[  2] literal string: "push_back"
+0x100041140	0x00000008	[  2] literal string: "!full()"
+0x100041148	0x00000013	[  2] literal string: "[PUSH_BACK_READY]\t"
+0x10004115B	0x00000010	[  2] literal string: "[UPDATE_DELAY]\t"
+0x10004116B	0x00000007	[  2] literal string: "\tfrom "
+0x100041172	0x00000005	[  2] literal string: " to "
+0x100041177	0x0000000B	[  2] literal string: "push_front"
+0x100041182	0x0000000E	[  2] literal string: "[PUSH_FRONT]\t"
+0x100041190	0x00000004	[  3] literal string: "LLC"
+0x100041194	0x0000000A	[  3] literal string: "cpu0_STLB"
+0x10004119E	0x0000000A	[  3] literal string: "cpu0_ITLB"
+0x1000411A8	0x0000000A	[  3] literal string: "cpu0_DTLB"
+0x1000411B2	0x00000004	[  3] literal string: "_RQ"
+0x1000411B6	0x00000004	[  3] literal string: "_PQ"
+0x1000411BA	0x00000006	[  3] literal string: "_VAPQ"
+0x1000411C0	0x00000004	[  3] literal string: "_WQ"
+0x1000411C4	0x00000021	[  3] literal string: "COULD NOT ALLOCATE WAY_HIT ARRAY"
+0x1000411E5	0x00000008	[  3] literal string: "_delays"
+0x1000411ED	0x0000000E	[  3] literal string: "IFETCH_BUFFER"
+0x1000411FB	0x00000010	[  3] literal string: "DISPATCH_BUFFER"
+0x10004120B	0x0000000E	[  3] literal string: "DECODE_BUFFER"
+0x100041219	0x00000008	[  3] literal string: "L1I_bus"
+0x100041221	0x00000008	[  3] literal string: "L1D_bus"
+0x100041229	0x00000007	[  3] literal string: "O3_CPU"
+0x100041230	0x0000000A	[  3] literal string: "ooo_cpu.h"
+0x10004123A	0x0000000B	[  3] literal string: "_PROCESSED"
+0x100041245	0x0000003D	[  5] literal string: "WARNING: The use of 'current_core_cycle[cpu]' is deprecated."
+0x100041282	0x0000002C	[  5] literal string: "WARNING: Use 'this->current_cycle' instead."
+0x1000412AE	0x00000011	[  5] literal string: "record_roi_stats"
+0x1000412BF	0x00000008	[  5] literal string: "main.cc"
+0x1000412C7	0x0000004E	[  5] literal string: "cache->roi_access[cpu][i] == cache->roi_hit[cpu][i] + cache->roi_miss[cpu][i]"
+0x100041315	0x0000001B	[  5] literal string: " #CACHELINES WITH #HOLES: "
+0x100041330	0x0000001B	[  5] literal string: "_num_cl_with_num_holes.tsv"
+0x10004134B	0x00000019	[  5] literal string: "FILE SUCCESSFULLY OPENED"
+0x100041364	0x0000001C	[  5] literal string: "COULD NOT CREATE/OPEN FILE "
+0x100041380	0x0000001E	[  5] literal string: " #CACHELINES WITH HOLE SIZE: "
+0x10004139E	0x0000001B	[  5] literal string: "_num_cl_with_hole_size.tsv"
+0x1000413B9	0x0000001F	[  5] literal string: " #CACHELINES WITH BLOCK SIZE: "
+0x1000413D8	0x0000001C	[  5] literal string: "_num_cl_with_block_size.tsv"
+0x1000413F4	0x00000030	[  5] literal string: " #CACHELINES WITH BLOCK SIZE SCALED BY ACCESS: "
+0x100041424	0x0000002C	[  5] literal string: "_num_cl_with_block_size_accesses_scaled.tsv"
+0x100041450	0x00000024	[  5] literal string: " #CACHELINES WITH #BYTES ACCESSED: "
+0x100041474	0x00000020	[  5] literal string: "_num_cl_with_bytes_accessed.tsv"
+0x100041494	0x00000037	[  5] literal string: " #CACHELINES WITH #BYTES ACCESSED SCALED BY ACCESSES: "
+0x1000414CB	0x00000030	[  5] literal string: "_num_cl_with_bytes_accessed_accesses_scaled.tsv"
+0x1000414FB	0x0000002E	[  5] literal string: " #CACHELINES WITH BLOCK SIZE IGNORING HOLES: "
+0x100041529	0x00000024	[  5] literal string: "_num_cl_with_first_to_last_size.tsv"
+0x10004154D	0x00000014	[  5] literal string: " TOTAL     ACCESS: "
+0x100041561	0x00000008	[  5] literal string: "  HIT: "
+0x100041569	0x00000009	[  5] literal string: "  MISS: "
+0x100041572	0x00000011	[  5] literal string: "  PARTIAL MISS: "
+0x100041583	0x00000004	[  5] literal string: " ( "
+0x100041587	0x00000003	[  5] literal string: "%)"
+0x10004158A	0x00000010	[  5] literal string: " 64B WAY HITS: "
+0x10004159A	0x00000014	[  5] literal string: "  OTHER WAYS HITS: "
+0x1000415AE	0x00000014	[  5] literal string: " LOAD      ACCESS: "
+0x1000415C2	0x00000014	[  5] literal string: " RFO       ACCESS: "
+0x1000415D6	0x00000014	[  5] literal string: " PREFETCH  ACCESS: "
+0x1000415EA	0x00000014	[  5] literal string: " WRITEBACK ACCESS: "
+0x1000415FE	0x00000016	[  5] literal string: " TRANSLATION ACCESS: "
+0x100041614	0x00000017	[  5] literal string: " PREFETCH  REQUESTED: "
+0x10004162B	0x0000000B	[  5] literal string: "  ISSUED: "
+0x100041636	0x0000000B	[  5] literal string: "  USEFUL: "
+0x100041641	0x0000000C	[  5] literal string: "  USELESS: "
+0x10004164D	0x0000000E	[  5] literal string: " NOT ISSUED: "
+0x10004165B	0x0000000D	[  5] literal string: " EVICTIONS: "
+0x100041668	0x00000016	[  5] literal string: " LOAD        ACCESS: "
+0x10004167E	0x00000016	[  5] literal string: " RFO         ACCESS: "
+0x100041694	0x00000016	[  5] literal string: " PREFETCH    ACCESS: "
+0x1000416AA	0x00000016	[  5] literal string: " WRITEBACK   ACCESS: "
+0x1000416C0	0x00000018	[  5] literal string: " AVERAGE MISS LATENCY: "
+0x1000416D8	0x00000008	[  5] literal string: " cycles"
+0x1000416E0	0x00000008	[  5] literal string: " MPKI: "
+0x1000416E8	0x0000001B	[  5] literal string: "+++ BUFFER BLOCK STATS +++"
+0x100041703	0x00000004	[  5] literal string: "cpu"
+0x100041707	0x00000006	[  5] literal string: "_size"
+0x10004170D	0x00000017	[  5] literal string: "_pc_offset_mapping.tsv"
+0x100041724	0x00000012	[  5] literal string: "_offset_count.tsv"
+0x100041736	0x0000000D	[  5] literal string: "_offset_btb_"
+0x100041743	0x00000018	[  5] literal string: "_sharing_over_time.json"
+0x10004175B	0x00000009	[  5] literal string: "\n\t\t]\n\t},"
+0x100041764	0x00000003	[  5] literal string: "\t{"
+0x100041767	0x00000009	[  5] literal string: "\t\t\"id\": "
+0x100041770	0x00000002	[  5] literal string: ","
+0x100041772	0x00000017	[  5] literal string: "\t\t\"ref_frequencies\": ["
+0x100041789	0x00000013	[  5] literal string: "\t\t\t{ \"ref_count\": "
+0x10004179C	0x00000010	[  5] literal string: ", \"frequency\": "
+0x1000417AC	0x00000002	[  5] literal string: "}"
+0x1000417AE	0x00000015	[  5] literal string: ",\n\t\t\t{ \"ref_count\": "
+0x1000417C3	0x00000008	[  5] literal string: "\n\t\t]\n\t}"
+0x1000417CB	0x00000002	[  5] literal string: "]"
+0x1000417CD	0x00000020	[  5] literal string: "Not all files have been created"
+0x1000417ED	0x00000005	[  5] literal string: "CPU "
+0x1000417F2	0x0000001E	[  5] literal string: " Branch Prediction Accuracy: "
+0x100041810	0x00000009	[  5] literal string: "% MPKI: "
+0x100041819	0x00000027	[  5] literal string: " Average ROB Occupancy at Mispredict: "
+0x100041840	0x00000016	[  5] literal string: "BRANCH DISTANCE STATS"
+0x100041856	0x0000000B	[  5] literal string: "\tAVERAGE: "
+0x100041861	0x00000012	[  5] literal string: "\tTOTAL BRANCHES: "
+0x100041873	0x00000003	[  5] literal string: ": "
+0x100041876	0x0000000E	[  5] literal string: "BRANCH_MPKI: "
+0x100041884	0x00000015	[  5] literal string: "BRANCH_DIRECT_JUMP: "
+0x100041899	0x00000012	[  5] literal string: "BRANCH_INDIRECT: "
+0x1000418AB	0x00000015	[  5] literal string: "BRANCH_CONDITIONAL: "
+0x1000418C0	0x00000015	[  5] literal string: "BRANCH_DIRECT_CALL: "
+0x1000418D5	0x00000017	[  5] literal string: "BRANCH_INDIRECT_CALL: "
+0x1000418EC	0x00000010	[  5] literal string: "BRANCH_RETURN: "
+0x1000418FC	0x00000018	[  5] literal string: "AVG ROB SIZE AT STALL: "
+0x100041914	0x00000010	[  5] literal string: "DRAM Statistics"
+0x100041924	0x0000000A	[  5] literal string: " CHANNEL "
+0x10004192E	0x00000015	[  5] literal string: " RQ ROW_BUFFER_HIT: "
+0x100041943	0x00000002	[  5] literal string: " "
+0x100041945	0x00000013	[  5] literal string: " ROW_BUFFER_MISS: "
+0x100041958	0x0000001C	[  5] literal string: " DBUS AVG_CONGESTED_CYCLE: "
+0x100041974	0x00000002	[  5] literal string: "-"
+0x100041976	0x00000015	[  5] literal string: " WQ ROW_BUFFER_HIT: "
+0x10004198B	0x00000008	[  5] literal string: " FULL: "
+0x100041993	0x00000015	[  5] literal string: "Warmup complete CPU "
+0x1000419A8	0x00000010	[  5] literal string: " instructions: "
+0x1000419B8	0x0000000A	[  5] literal string: " cycles: "
+0x1000419C2	0x00000014	[  5] literal string: " (Simulation time: "
+0x1000419D6	0x00000005	[  5] literal string: " hr "
+0x1000419DB	0x00000006	[  5] literal string: " min "
+0x1000419E1	0x00000007	[  5] literal string: " sec) "
+0x1000419E8	0x00000012	[  5] literal string: " Failed decodes: "
+0x1000419FA	0x00000009	[  5] literal string: " out of "
+0x100041A03	0x00000016	[  5] literal string: " decoded instructions"
+0x100041A19	0x00000014	[  5] literal string: "Decode error rate: "
+0x100041A2D	0x00000002	[  5] literal string: "%"
+0x100041A2F	0x00000010	[  5] literal string: "Caught signal: "
+0x100041A3F	0x00000032	[  5] literal string: "*** ChampSim Multicore Out-of-Order Simulator ***"
+0x100041A71	0x00000014	[  5] literal string: "warmup_instructions"
+0x100041A85	0x00000018	[  5] literal string: "simulation_instructions"
+0x100041A9D	0x0000000F	[  5] literal string: "hide_heartbeat"
+0x100041AAC	0x0000000B	[  5] literal string: "cloudsuite"
+0x100041AB7	0x00000007	[  5] literal string: "ptrace"
+0x100041ABE	0x00000006	[  5] literal string: "intel"
+0x100041AC4	0x00000006	[  5] literal string: "ipoff"
+0x100041ACA	0x0000000E	[  5] literal string: "nostallonmiss"
+0x100041AD8	0x0000000B	[  5] literal string: "result_dir"
+0x100041AE3	0x00000010	[  5] literal string: "no_detail_stats"
+0x100041AF3	0x00000007	[  5] literal string: "traces"
+0x100041AFA	0x00000008	[  5] literal string: "w:i:hcp"
+0x100041B02	0x00000016	[  5] literal string: "Warmup Instructions: "
+0x100041B18	0x0000001A	[  5] literal string: "Simulation Instructions: "
+0x100041B32	0x00000011	[  5] literal string: "Number of CPUs: "
+0x100041B43	0x00000015	[  5] literal string: "Off-chip DRAM Size: "
+0x100041B58	0x00000005	[  5] literal string: " GiB"
+0x100041B5D	0x0000000C	[  5] literal string: " Channels: "
+0x100041B69	0x00000009	[  5] literal string: " Width: "
+0x100041B72	0x00000011	[  5] literal string: "-bit Data Rate: "
+0x100041B83	0x00000006	[  5] literal string: " MT/s"
+0x100041B89	0x00000022	[  5] literal string: "VirtualMemory physical capacity: "
+0x100041BAB	0x0000000E	[  5] literal string: " num_ppages: "
+0x100041BB9	0x0000001A	[  5] literal string: "VirtualMemory page size: "
+0x100041BD3	0x00000012	[  5] literal string: " log2_page_size: "
+0x100041BE5	0x00000007	[  5] literal string: " runs "
+0x100041BEC	0x00000005	[  5] literal string: "main"
+0x100041BF1	0x0000000F	[  5] literal string: "Heartbeat CPU "
+0x100041C00	0x00000011	[  5] literal string: " heartbeat IPC: "
+0x100041C11	0x00000012	[  5] literal string: " cumulative IPC: "
+0x100041C23	0x0000000E	[  5] literal string: "Finished CPU "
+0x100041C31	0x00000014	[  5] literal string: "Indirect branches: "
+0x100041C45	0x0000001C	[  5] literal string: "ChampSim completed all CPUs"
+0x100041C61	0x0000001E	[  5] literal string: "Region of Interest Statistics"
+0x100041C7F	0x0000001B	[  5] literal string: " FRONTEND STALLED CYCLES:\t"
+0x100041C9A	0x00000013	[  5] literal string: " FETCHED PACKETS:\t"
+0x100041CAD	0x0000003F	[  5] literal string: "\n*** Not enough traces for the configured number of cores ***\n"
+0x100041CEC	0x0000003D	[  5] literal string: "\n*** Too many traces for the configured number of cores ***\n"
+0x100041D29	0x00000010	[  6] literal string: "OOO_MODEL_INSTR"
+0x100041D39	0x0000000C	[  6] literal string: "(instr_id: "
+0x100041D45	0x00000007	[  6] literal string: ", ip: "
+0x100041D4C	0x00000007	[  6] literal string: "PACKET"
+0x100041D53	0x00000006	[  6] literal string: "BLOCK"
+0x100041D59	0x00000011	[  6] literal string: "init_instruction"
+0x100041D6A	0x0000000B	[  6] literal string: "ooo_cpu.cc"
+0x100041D75	0x00000037	[  6] literal string: "STA.size() < ROB.size() * NUM_INSTR_DESTINATIONS_SPARC"
+0x100041DAC	0x00000018	[  6] literal string: "overhang_instr.size > 0"
+0x100041DC4	0x00000012	[  6] literal string: "fetch_instruction"
+0x100041DD6	0x0000002B	[  6] literal string: "l1i_req_end - l1i_req_begin <= FETCH_WIDTH"
+0x100041E01	0x00000015	[  6] literal string: "do_fetch_instruction"
+0x100041E16	0x00000013	[  6] literal string: "begin->ip % 4 == 0"
+0x100041E29	0x0000000E	[  6] literal string: "do_dib_update"
+0x100041E37	0x00000013	[  6] literal string: "way != dib_set_end"
+0x100041E4A	0x00000015	[  6] literal string: "schedule_instruction"
+0x100041E5F	0x00000025	[  6] literal string: "ready_to_execute.size() < ROB.size()"
+0x100041E84	0x00000015	[  6] literal string: "do_memory_scheduling"
+0x100041E99	0x00000019	[  6] literal string: "num_added <= num_mem_ops"
+0x100041EB2	0x00000014	[  6] literal string: "do_sq_forward_to_lq"
+0x100041EC6	0x00000025	[  6] literal string: "lq_entry.rob_index->num_mem_ops >= 0"
+0x100041EEB	0x0000000F	[  6] literal string: "add_load_queue"
+0x100041EFA	0x00000016	[  6] literal string: "lq_it != std::end(LQ)"
+0x100041F10	0x00000010	[  6] literal string: "add_store_queue"
+0x100041F20	0x0000001C	[  6] literal string: "sq_it->virtual_address == 0"
+0x100041F3C	0x0000000E	[  6] literal string: "execute_store"
+0x100041F4A	0x00000023	[  6] literal string: "sq_it->rob_index->num_mem_ops >= 0"
+0x100041F6D	0x00000007	[  6] literal string: "[SQ2] "
+0x100041F74	0x0000000C	[  6] literal string: " lq_index: "
+0x100041F80	0x0000000F	[  6] literal string: " producer_id: "
+0x100041F8F	0x00000028	[  6] literal string: " does not match to the store instr_id: "
+0x100041FB7	0x00000033	[  6] literal string: "sq_it->instr_id < dependent->lq_index[j]->instr_id"
+0x100041FEA	0x00000016	[  6] literal string: "do_complete_execution"
+0x100042000	0x00000022	[  6] literal string: "dependent->num_reg_dependent >= 0"
+0x100042022	0x0000001E	[  6] literal string: "complete_inflight_instruction"
+0x100042040	0x00000015	[  6] literal string: "handle_memory_return"
+0x100042055	0x00000052	[  6] literal string: "(it->instruction_pa >> LOG2_BLOCK_SIZE) == (l1i_entry.address >> LOG2_BLOCK_SIZE)"
+0x1000420A7	0x00000016	[  6] literal string: "PROCESSED Occupancy: "
+0x1000420BD	0x00000011	[  6] literal string: "FRONT instr_id: "
+0x1000420CE	0x00000014	[  6] literal string: "FRONT event_cycle: "
+0x1000420E2	0x0000000F	[  6] literal string: "DEADLOCK! CPU "
+0x1000420F1	0x00000008	[  6] literal string: " cycle "
+0x1000420F9	0x00000013	[  6] literal string: "IFETCH_BUFFER head"
+0x10004210C	0x0000000E	[  6] literal string: " translated: "
+0x10004211A	0x0000000B	[  6] literal string: " fetched: "
+0x100042125	0x0000000D	[  6] literal string: " scheduled: "
+0x100042132	0x0000000C	[  6] literal string: " executed: "
+0x10004213E	0x0000000D	[  6] literal string: " is_memory: "
+0x10004214B	0x00000015	[  6] literal string: " num_reg_dependent: "
+0x100042160	0x00000014	[  6] literal string: "IFETCH_BUFFER empty"
+0x100042174	0x00000009	[  6] literal string: "ROB head"
+0x10004217D	0x0000000A	[  6] literal string: "ROB empty"
+0x100042187	0x00000011	[  6] literal string: "Load Queue Entry"
+0x100042198	0x0000000D	[  6] literal string: "[LQ] entry: "
+0x1000421A5	0x00000012	[  6] literal string: "Store Queue Entry"
+0x1000421B7	0x0000000D	[  6] literal string: "[SQ] entry: "
+0x1000421C4	0x00000022	[  6] literal string: "Branch predictor module not found"
+0x1000421E6	0x00000028	[  6] literal string: "Instruction prefetcher module not found"
+0x10004220E	0x00000006	[  7] literal string: "PTWRQ"
+0x100042214	0x00000006	[  7] literal string: "PSCL5"
+0x10004221A	0x00000006	[  7] literal string: "PSCL4"
+0x100042220	0x00000006	[  7] literal string: "PSCL3"
+0x100042226	0x00000006	[  7] literal string: "PSCL2"
+0x10004222C	0x00000007	[  7] literal string: "ptw.cc"
+0x100042233	0x00000012	[  7] literal string: "packet.size <= 64"
+0x100042245	0x00000015	[  7] literal string: "found_rq == RQ.end()"
+0x10004225A	0x00000015	[  7] literal string: " translation_level: "
+0x10004226F	0x00000007	[  7] literal string: "add_wq"
+0x100042276	0x00000006	[  7] literal string: "ptw.h"
+0x10004227C	0x00000005	[  8] literal string: "http"
+0x100042281	0x00000014	[  8] literal string: "wget -q --spider %s"
+0x100042295	0x00000002	[  8] literal string: "r"
+0x100042297	0x00000015	[  8] literal string: "TRACE FILE NOT FOUND"
+0x1000422AC	0x0000000C	[  8] literal string: "tracereader"
+0x1000422B8	0x0000000F	[  8] literal string: "tracereader.cc"
+0x1000422C7	0x00000027	[  8] literal string: "wget -qO- -o /dev/null %2$s | %1$s -dc"
+0x1000422EE	0x0000000E	[  8] literal string: "%1$s -dc %2$s"
+0x1000422FC	0x00000005	[  8] literal string: "gzip"
+0x100042301	0x00000003	[  8] literal string: "xz"
+0x100042304	0x00000042	[  8] literal string: "ChampSim does not support traces other than gz or xz compression!"
+0x100042346	0x0000001D	[  8] literal string: "*** CANNOT OPEN TRACE FILE: "
+0x100042363	0x00000005	[  8] literal string: " ***"
+0x100042368	0x00000005	[  8] literal string: "open"
+0x10004236D	0x00000010	[  8] literal string: "XED_REG_INVALID"
+0x10004237D	0x00000010	[  8] literal string: "XED_REG_BNDCFGU"
+0x10004238D	0x00000012	[  8] literal string: "XED_REG_BNDSTATUS"
+0x10004239F	0x0000000D	[  8] literal string: "XED_REG_BND0"
+0x1000423AC	0x0000000D	[  8] literal string: "XED_REG_BND1"
+0x1000423B9	0x0000000D	[  8] literal string: "XED_REG_BND2"
+0x1000423C6	0x0000000D	[  8] literal string: "XED_REG_BND3"
+0x1000423D3	0x0000000C	[  8] literal string: "XED_REG_CR0"
+0x1000423DF	0x0000000C	[  8] literal string: "XED_REG_CR1"
+0x1000423EB	0x0000000C	[  8] literal string: "XED_REG_CR2"
+0x1000423F7	0x0000000C	[  8] literal string: "XED_REG_CR3"
+0x100042403	0x0000000C	[  8] literal string: "XED_REG_CR4"
+0x10004240F	0x0000000C	[  8] literal string: "XED_REG_CR5"
+0x10004241B	0x0000000C	[  8] literal string: "XED_REG_CR6"
+0x100042427	0x0000000C	[  8] literal string: "XED_REG_CR7"
+0x100042433	0x0000000C	[  8] literal string: "XED_REG_CR8"
+0x10004243F	0x0000000C	[  8] literal string: "XED_REG_CR9"
+0x10004244B	0x0000000D	[  8] literal string: "XED_REG_CR10"
+0x100042458	0x0000000D	[  8] literal string: "XED_REG_CR11"
+0x100042465	0x0000000D	[  8] literal string: "XED_REG_CR12"
+0x100042472	0x0000000D	[  8] literal string: "XED_REG_CR13"
+0x10004247F	0x0000000D	[  8] literal string: "XED_REG_CR14"
+0x10004248C	0x0000000D	[  8] literal string: "XED_REG_CR15"
+0x100042499	0x0000000C	[  8] literal string: "XED_REG_DR0"
+0x1000424A5	0x0000000C	[  8] literal string: "XED_REG_DR1"
+0x1000424B1	0x0000000C	[  8] literal string: "XED_REG_DR2"
+0x1000424BD	0x0000000C	[  8] literal string: "XED_REG_DR3"
+0x1000424C9	0x0000000C	[  8] literal string: "XED_REG_DR4"
+0x1000424D5	0x0000000C	[  8] literal string: "XED_REG_DR5"
+0x1000424E1	0x0000000C	[  8] literal string: "XED_REG_DR6"
+0x1000424ED	0x0000000C	[  8] literal string: "XED_REG_DR7"
+0x1000424F9	0x0000000E	[  8] literal string: "XED_REG_FLAGS"
+0x100042507	0x0000000F	[  8] literal string: "XED_REG_EFLAGS"
+0x100042516	0x0000000F	[  8] literal string: "XED_REG_RFLAGS"
+0x100042525	0x0000000B	[  8] literal string: "XED_REG_AX"
+0x100042530	0x0000000B	[  8] literal string: "XED_REG_CX"
+0x10004253B	0x0000000B	[  8] literal string: "XED_REG_DX"
+0x100042546	0x0000000B	[  8] literal string: "XED_REG_BX"
+0x100042551	0x0000000B	[  8] literal string: "XED_REG_SP"
+0x10004255C	0x0000000B	[  8] literal string: "XED_REG_BP"
+0x100042567	0x0000000B	[  8] literal string: "XED_REG_SI"
+0x100042572	0x0000000B	[  8] literal string: "XED_REG_DI"
+0x10004257D	0x0000000C	[  8] literal string: "XED_REG_R8W"
+0x100042589	0x0000000C	[  8] literal string: "XED_REG_R9W"
+0x100042595	0x0000000D	[  8] literal string: "XED_REG_R10W"
+0x1000425A2	0x0000000D	[  8] literal string: "XED_REG_R11W"
+0x1000425AF	0x0000000D	[  8] literal string: "XED_REG_R12W"
+0x1000425BC	0x0000000D	[  8] literal string: "XED_REG_R13W"
+0x1000425C9	0x0000000D	[  8] literal string: "XED_REG_R14W"
+0x1000425D6	0x0000000D	[  8] literal string: "XED_REG_R15W"
+0x1000425E3	0x0000000C	[  8] literal string: "XED_REG_EAX"
+0x1000425EF	0x0000000C	[  8] literal string: "XED_REG_ECX"
+0x1000425FB	0x0000000C	[  8] literal string: "XED_REG_EDX"
+0x100042607	0x0000000C	[  8] literal string: "XED_REG_EBX"
+0x100042613	0x0000000C	[  8] literal string: "XED_REG_ESP"
+0x10004261F	0x0000000C	[  8] literal string: "XED_REG_EBP"
+0x10004262B	0x0000000C	[  8] literal string: "XED_REG_ESI"
+0x100042637	0x0000000C	[  8] literal string: "XED_REG_EDI"
+0x100042643	0x0000000C	[  8] literal string: "XED_REG_R8D"
+0x10004264F	0x0000000C	[  8] literal string: "XED_REG_R9D"
+0x10004265B	0x0000000D	[  8] literal string: "XED_REG_R10D"
+0x100042668	0x0000000D	[  8] literal string: "XED_REG_R11D"
+0x100042675	0x0000000D	[  8] literal string: "XED_REG_R12D"
+0x100042682	0x0000000D	[  8] literal string: "XED_REG_R13D"
+0x10004268F	0x0000000D	[  8] literal string: "XED_REG_R14D"
+0x10004269C	0x0000000D	[  8] literal string: "XED_REG_R15D"
+0x1000426A9	0x0000000C	[  8] literal string: "XED_REG_RAX"
+0x1000426B5	0x0000000C	[  8] literal string: "XED_REG_RCX"
+0x1000426C1	0x0000000C	[  8] literal string: "XED_REG_RDX"
+0x1000426CD	0x0000000C	[  8] literal string: "XED_REG_RBX"
+0x1000426D9	0x0000000C	[  8] literal string: "XED_REG_RSP"
+0x1000426E5	0x0000000C	[  8] literal string: "XED_REG_RBP"
+0x1000426F1	0x0000000C	[  8] literal string: "XED_REG_RSI"
+0x1000426FD	0x0000000C	[  8] literal string: "XED_REG_RDI"
+0x100042709	0x0000000B	[  8] literal string: "XED_REG_R8"
+0x100042714	0x0000000B	[  8] literal string: "XED_REG_R9"
+0x10004271F	0x0000000C	[  8] literal string: "XED_REG_R10"
+0x10004272B	0x0000000C	[  8] literal string: "XED_REG_R11"
+0x100042737	0x0000000C	[  8] literal string: "XED_REG_R12"
+0x100042743	0x0000000C	[  8] literal string: "XED_REG_R13"
+0x10004274F	0x0000000C	[  8] literal string: "XED_REG_R14"
+0x10004275B	0x0000000C	[  8] literal string: "XED_REG_R15"
+0x100042767	0x0000000B	[  8] literal string: "XED_REG_AL"
+0x100042772	0x0000000B	[  8] literal string: "XED_REG_CL"
+0x10004277D	0x0000000B	[  8] literal string: "XED_REG_DL"
+0x100042788	0x0000000B	[  8] literal string: "XED_REG_BL"
+0x100042793	0x0000000C	[  8] literal string: "XED_REG_SPL"
+0x10004279F	0x0000000C	[  8] literal string: "XED_REG_BPL"
+0x1000427AB	0x0000000C	[  8] literal string: "XED_REG_SIL"
+0x1000427B7	0x0000000C	[  8] literal string: "XED_REG_DIL"
+0x1000427C3	0x0000000C	[  8] literal string: "XED_REG_R8B"
+0x1000427CF	0x0000000C	[  8] literal string: "XED_REG_R9B"
+0x1000427DB	0x0000000D	[  8] literal string: "XED_REG_R10B"
+0x1000427E8	0x0000000D	[  8] literal string: "XED_REG_R11B"
+0x1000427F5	0x0000000D	[  8] literal string: "XED_REG_R12B"
+0x100042802	0x0000000D	[  8] literal string: "XED_REG_R13B"
+0x10004280F	0x0000000D	[  8] literal string: "XED_REG_R14B"
+0x10004281C	0x0000000D	[  8] literal string: "XED_REG_R15B"
+0x100042829	0x0000000B	[  8] literal string: "XED_REG_AH"
+0x100042834	0x0000000B	[  8] literal string: "XED_REG_CH"
+0x10004283F	0x0000000B	[  8] literal string: "XED_REG_DH"
+0x10004284A	0x0000000B	[  8] literal string: "XED_REG_BH"
+0x100042855	0x0000000E	[  8] literal string: "XED_REG_ERROR"
+0x100042863	0x0000000C	[  8] literal string: "XED_REG_RIP"
+0x10004286F	0x0000000C	[  8] literal string: "XED_REG_EIP"
+0x10004287B	0x0000000B	[  8] literal string: "XED_REG_IP"
+0x100042886	0x0000000B	[  8] literal string: "XED_REG_K0"
+0x100042891	0x0000000B	[  8] literal string: "XED_REG_K1"
+0x10004289C	0x0000000B	[  8] literal string: "XED_REG_K2"
+0x1000428A7	0x0000000B	[  8] literal string: "XED_REG_K3"
+0x1000428B2	0x0000000B	[  8] literal string: "XED_REG_K4"
+0x1000428BD	0x0000000B	[  8] literal string: "XED_REG_K5"
+0x1000428C8	0x0000000B	[  8] literal string: "XED_REG_K6"
+0x1000428D3	0x0000000B	[  8] literal string: "XED_REG_K7"
+0x1000428DE	0x0000000D	[  8] literal string: "XED_REG_MMX0"
+0x1000428EB	0x0000000D	[  8] literal string: "XED_REG_MMX1"
+0x1000428F8	0x0000000D	[  8] literal string: "XED_REG_MMX2"
+0x100042905	0x0000000D	[  8] literal string: "XED_REG_MMX3"
+0x100042912	0x0000000D	[  8] literal string: "XED_REG_MMX4"
+0x10004291F	0x0000000D	[  8] literal string: "XED_REG_MMX5"
+0x10004292C	0x0000000D	[  8] literal string: "XED_REG_MMX6"
+0x100042939	0x0000000D	[  8] literal string: "XED_REG_MMX7"
+0x100042946	0x0000000C	[  8] literal string: "XED_REG_SSP"
+0x100042952	0x00000013	[  8] literal string: "XED_REG_IA32_U_CET"
+0x100042965	0x0000000E	[  8] literal string: "XED_REG_MXCSR"
+0x100042973	0x00000012	[  8] literal string: "XED_REG_STACKPUSH"
+0x100042985	0x00000011	[  8] literal string: "XED_REG_STACKPOP"
+0x100042996	0x0000000D	[  8] literal string: "XED_REG_GDTR"
+0x1000429A3	0x0000000D	[  8] literal string: "XED_REG_LDTR"
+0x1000429B0	0x0000000D	[  8] literal string: "XED_REG_IDTR"
+0x1000429BD	0x0000000B	[  8] literal string: "XED_REG_TR"
+0x1000429C8	0x0000000C	[  8] literal string: "XED_REG_TSC"
+0x1000429D4	0x0000000F	[  8] literal string: "XED_REG_TSCAUX"
+0x1000429E3	0x0000000D	[  8] literal string: "XED_REG_MSRS"
+0x1000429F0	0x0000000F	[  8] literal string: "XED_REG_FSBASE"
+0x1000429FF	0x0000000F	[  8] literal string: "XED_REG_GSBASE"
+0x100042A0E	0x00000013	[  8] literal string: "XED_REG_TILECONFIG"
+0x100042A21	0x00000013	[  8] literal string: "XED_REG_X87CONTROL"
+0x100042A34	0x00000012	[  8] literal string: "XED_REG_X87STATUS"
+0x100042A46	0x0000000F	[  8] literal string: "XED_REG_X87TAG"
+0x100042A55	0x00000010	[  8] literal string: "XED_REG_X87PUSH"
+0x100042A65	0x0000000F	[  8] literal string: "XED_REG_X87POP"
+0x100042A74	0x00000010	[  8] literal string: "XED_REG_X87POP2"
+0x100042A84	0x00000012	[  8] literal string: "XED_REG_X87OPCODE"
+0x100042A96	0x00000012	[  8] literal string: "XED_REG_X87LASTCS"
+0x100042AA8	0x00000012	[  8] literal string: "XED_REG_X87LASTIP"
+0x100042ABA	0x00000012	[  8] literal string: "XED_REG_X87LASTDS"
+0x100042ACC	0x00000012	[  8] literal string: "XED_REG_X87LASTDP"
+0x100042ADE	0x0000000B	[  8] literal string: "XED_REG_ES"
+0x100042AE9	0x0000000B	[  8] literal string: "XED_REG_CS"
+0x100042AF4	0x0000000B	[  8] literal string: "XED_REG_SS"
+0x100042AFF	0x0000000B	[  8] literal string: "XED_REG_DS"
+0x100042B0A	0x0000000B	[  8] literal string: "XED_REG_FS"
+0x100042B15	0x0000000B	[  8] literal string: "XED_REG_GS"
+0x100042B20	0x0000000D	[  8] literal string: "XED_REG_TMP0"
+0x100042B2D	0x0000000D	[  8] literal string: "XED_REG_TMP1"
+0x100042B3A	0x0000000D	[  8] literal string: "XED_REG_TMP2"
+0x100042B47	0x0000000D	[  8] literal string: "XED_REG_TMP3"
+0x100042B54	0x0000000D	[  8] literal string: "XED_REG_TMP4"
+0x100042B61	0x0000000D	[  8] literal string: "XED_REG_TMP5"
+0x100042B6E	0x0000000D	[  8] literal string: "XED_REG_TMP6"
+0x100042B7B	0x0000000D	[  8] literal string: "XED_REG_TMP7"
+0x100042B88	0x0000000D	[  8] literal string: "XED_REG_TMP8"
+0x100042B95	0x0000000D	[  8] literal string: "XED_REG_TMP9"
+0x100042BA2	0x0000000E	[  8] literal string: "XED_REG_TMP10"
+0x100042BB0	0x0000000E	[  8] literal string: "XED_REG_TMP11"
+0x100042BBE	0x0000000E	[  8] literal string: "XED_REG_TMP12"
+0x100042BCC	0x0000000E	[  8] literal string: "XED_REG_TMP13"
+0x100042BDA	0x0000000E	[  8] literal string: "XED_REG_TMP14"
+0x100042BE8	0x0000000E	[  8] literal string: "XED_REG_TMP15"
+0x100042BF6	0x0000000D	[  8] literal string: "XED_REG_TMM0"
+0x100042C03	0x0000000D	[  8] literal string: "XED_REG_TMM1"
+0x100042C10	0x0000000D	[  8] literal string: "XED_REG_TMM2"
+0x100042C1D	0x0000000D	[  8] literal string: "XED_REG_TMM3"
+0x100042C2A	0x0000000D	[  8] literal string: "XED_REG_TMM4"
+0x100042C37	0x0000000D	[  8] literal string: "XED_REG_TMM5"
+0x100042C44	0x0000000D	[  8] literal string: "XED_REG_TMM6"
+0x100042C51	0x0000000D	[  8] literal string: "XED_REG_TMM7"
+0x100042C5E	0x0000000C	[  8] literal string: "XED_REG_UIF"
+0x100042C6A	0x0000000C	[  8] literal string: "XED_REG_ST0"
+0x100042C76	0x0000000C	[  8] literal string: "XED_REG_ST1"
+0x100042C82	0x0000000C	[  8] literal string: "XED_REG_ST2"
+0x100042C8E	0x0000000C	[  8] literal string: "XED_REG_ST3"
+0x100042C9A	0x0000000C	[  8] literal string: "XED_REG_ST4"
+0x100042CA6	0x0000000C	[  8] literal string: "XED_REG_ST5"
+0x100042CB2	0x0000000C	[  8] literal string: "XED_REG_ST6"
+0x100042CBE	0x0000000C	[  8] literal string: "XED_REG_ST7"
+0x100042CCA	0x0000000D	[  8] literal string: "XED_REG_XCR0"
+0x100042CD7	0x0000000D	[  8] literal string: "XED_REG_XMM0"
+0x100042CE4	0x0000000D	[  8] literal string: "XED_REG_XMM1"
+0x100042CF1	0x0000000D	[  8] literal string: "XED_REG_XMM2"
+0x100042CFE	0x0000000D	[  8] literal string: "XED_REG_XMM3"
+0x100042D0B	0x0000000D	[  8] literal string: "XED_REG_XMM4"
+0x100042D18	0x0000000D	[  8] literal string: "XED_REG_XMM5"
+0x100042D25	0x0000000D	[  8] literal string: "XED_REG_XMM6"
+0x100042D32	0x0000000D	[  8] literal string: "XED_REG_XMM7"
+0x100042D3F	0x0000000D	[  8] literal string: "XED_REG_XMM8"
+0x100042D4C	0x0000000D	[  8] literal string: "XED_REG_XMM9"
+0x100042D59	0x0000000E	[  8] literal string: "XED_REG_XMM10"
+0x100042D67	0x0000000E	[  8] literal string: "XED_REG_XMM11"
+0x100042D75	0x0000000E	[  8] literal string: "XED_REG_XMM12"
+0x100042D83	0x0000000E	[  8] literal string: "XED_REG_XMM13"
+0x100042D91	0x0000000E	[  8] literal string: "XED_REG_XMM14"
+0x100042D9F	0x0000000E	[  8] literal string: "XED_REG_XMM15"
+0x100042DAD	0x0000000E	[  8] literal string: "XED_REG_XMM16"
+0x100042DBB	0x0000000E	[  8] literal string: "XED_REG_XMM17"
+0x100042DC9	0x0000000E	[  8] literal string: "XED_REG_XMM18"
+0x100042DD7	0x0000000E	[  8] literal string: "XED_REG_XMM19"
+0x100042DE5	0x0000000E	[  8] literal string: "XED_REG_XMM20"
+0x100042DF3	0x0000000E	[  8] literal string: "XED_REG_XMM21"
+0x100042E01	0x0000000E	[  8] literal string: "XED_REG_XMM22"
+0x100042E0F	0x0000000E	[  8] literal string: "XED_REG_XMM23"
+0x100042E1D	0x0000000E	[  8] literal string: "XED_REG_XMM24"
+0x100042E2B	0x0000000E	[  8] literal string: "XED_REG_XMM25"
+0x100042E39	0x0000000E	[  8] literal string: "XED_REG_XMM26"
+0x100042E47	0x0000000E	[  8] literal string: "XED_REG_XMM27"
+0x100042E55	0x0000000E	[  8] literal string: "XED_REG_XMM28"
+0x100042E63	0x0000000E	[  8] literal string: "XED_REG_XMM29"
+0x100042E71	0x0000000E	[  8] literal string: "XED_REG_XMM30"
+0x100042E7F	0x0000000E	[  8] literal string: "XED_REG_XMM31"
+0x100042E8D	0x0000000D	[  8] literal string: "XED_REG_YMM0"
+0x100042E9A	0x0000000D	[  8] literal string: "XED_REG_YMM1"
+0x100042EA7	0x0000000D	[  8] literal string: "XED_REG_YMM2"
+0x100042EB4	0x0000000D	[  8] literal string: "XED_REG_YMM3"
+0x100042EC1	0x0000000D	[  8] literal string: "XED_REG_YMM4"
+0x100042ECE	0x0000000D	[  8] literal string: "XED_REG_YMM5"
+0x100042EDB	0x0000000D	[  8] literal string: "XED_REG_YMM6"
+0x100042EE8	0x0000000D	[  8] literal string: "XED_REG_YMM7"
+0x100042EF5	0x0000000D	[  8] literal string: "XED_REG_YMM8"
+0x100042F02	0x0000000D	[  8] literal string: "XED_REG_YMM9"
+0x100042F0F	0x0000000E	[  8] literal string: "XED_REG_YMM10"
+0x100042F1D	0x0000000E	[  8] literal string: "XED_REG_YMM11"
+0x100042F2B	0x0000000E	[  8] literal string: "XED_REG_YMM12"
+0x100042F39	0x0000000E	[  8] literal string: "XED_REG_YMM13"
+0x100042F47	0x0000000E	[  8] literal string: "XED_REG_YMM14"
+0x100042F55	0x0000000E	[  8] literal string: "XED_REG_YMM15"
+0x100042F63	0x0000000E	[  8] literal string: "XED_REG_YMM16"
+0x100042F71	0x0000000E	[  8] literal string: "XED_REG_YMM17"
+0x100042F7F	0x0000000E	[  8] literal string: "XED_REG_YMM18"
+0x100042F8D	0x0000000E	[  8] literal string: "XED_REG_YMM19"
+0x100042F9B	0x0000000E	[  8] literal string: "XED_REG_YMM20"
+0x100042FA9	0x0000000E	[  8] literal string: "XED_REG_YMM21"
+0x100042FB7	0x0000000E	[  8] literal string: "XED_REG_YMM22"
+0x100042FC5	0x0000000E	[  8] literal string: "XED_REG_YMM23"
+0x100042FD3	0x0000000E	[  8] literal string: "XED_REG_YMM24"
+0x100042FE1	0x0000000E	[  8] literal string: "XED_REG_YMM25"
+0x100042FEF	0x0000000E	[  8] literal string: "XED_REG_YMM26"
+0x100042FFD	0x0000000E	[  8] literal string: "XED_REG_YMM27"
+0x10004300B	0x0000000E	[  8] literal string: "XED_REG_YMM28"
+0x100043019	0x0000000E	[  8] literal string: "XED_REG_YMM29"
+0x100043027	0x0000000E	[  8] literal string: "XED_REG_YMM30"
+0x100043035	0x0000000E	[  8] literal string: "XED_REG_YMM31"
+0x100043043	0x0000000D	[  8] literal string: "XED_REG_ZMM0"
+0x100043050	0x0000000D	[  8] literal string: "XED_REG_ZMM1"
+0x10004305D	0x0000000D	[  8] literal string: "XED_REG_ZMM2"
+0x10004306A	0x0000000D	[  8] literal string: "XED_REG_ZMM3"
+0x100043077	0x0000000D	[  8] literal string: "XED_REG_ZMM4"
+0x100043084	0x0000000D	[  8] literal string: "XED_REG_ZMM5"
+0x100043091	0x0000000D	[  8] literal string: "XED_REG_ZMM6"
+0x10004309E	0x0000000D	[  8] literal string: "XED_REG_ZMM7"
+0x1000430AB	0x0000000D	[  8] literal string: "XED_REG_ZMM8"
+0x1000430B8	0x0000000D	[  8] literal string: "XED_REG_ZMM9"
+0x1000430C5	0x0000000E	[  8] literal string: "XED_REG_ZMM10"
+0x1000430D3	0x0000000E	[  8] literal string: "XED_REG_ZMM11"
+0x1000430E1	0x0000000E	[  8] literal string: "XED_REG_ZMM12"
+0x1000430EF	0x0000000E	[  8] literal string: "XED_REG_ZMM13"
+0x1000430FD	0x0000000E	[  8] literal string: "XED_REG_ZMM14"
+0x10004310B	0x0000000E	[  8] literal string: "XED_REG_ZMM15"
+0x100043119	0x0000000E	[  8] literal string: "XED_REG_ZMM16"
+0x100043127	0x0000000E	[  8] literal string: "XED_REG_ZMM17"
+0x100043135	0x0000000E	[  8] literal string: "XED_REG_ZMM18"
+0x100043143	0x0000000E	[  8] literal string: "XED_REG_ZMM19"
+0x100043151	0x0000000E	[  8] literal string: "XED_REG_ZMM20"
+0x10004315F	0x0000000E	[  8] literal string: "XED_REG_ZMM21"
+0x10004316D	0x0000000E	[  8] literal string: "XED_REG_ZMM22"
+0x10004317B	0x0000000E	[  8] literal string: "XED_REG_ZMM23"
+0x100043189	0x0000000E	[  8] literal string: "XED_REG_ZMM24"
+0x100043197	0x0000000E	[  8] literal string: "XED_REG_ZMM25"
+0x1000431A5	0x0000000E	[  8] literal string: "XED_REG_ZMM26"
+0x1000431B3	0x0000000E	[  8] literal string: "XED_REG_ZMM27"
+0x1000431C1	0x0000000E	[  8] literal string: "XED_REG_ZMM28"
+0x1000431CF	0x0000000E	[  8] literal string: "XED_REG_ZMM29"
+0x1000431DD	0x0000000E	[  8] literal string: "XED_REG_ZMM30"
+0x1000431EB	0x0000000E	[  8] literal string: "XED_REG_ZMM31"
+0x1000431F9	0x0000000D	[  8] literal string: "XED_REG_LAST"
+0x100043206	0x00000004	[  8] literal string: "get"
+0x10004320A	0x0000004B	[  8] literal string: "trace_read_instr.ip % 4 == 0 || trace_read_instr.ip % 2 == 0 || knob_intel"
+0x100043255	0x00000017	[  8] literal string: "last_instr.ip % 2 == 0"
+0x10004326C	0x00000011	[  8] literal string: "retval.size < 65"
+0x10004327D	0x0000001B	[  8] literal string: "*** Reached end of trace: "
+0x100043298	0x00000015	[  8] literal string: "End of trace reached"
+0x1000432AD	0x00000010	[  8] literal string: "ooo_model_instr"
+0x1000432BD	0x0000000E	[  8] literal string: "instruction.h"
+0x1000432CB	0x00000027	[  8] literal string: "this->ip % 4 == 0 || this->ip % 2 == 0"
+0x1000432F2	0x00000003	[  8] literal string: "rb"
+0x1000432F5	0x00000018	[  8] literal string: "\nCANNT OPEN TRACE FILE "
+0x10004330D	0x0000000C	[  8] literal string: "reopen_file"
+0x100043319	0x00000017	[  8] literal string: "REACHED END OF TRACE: "
+0x100043330	0x0000000C	[  8] literal string: "Processing "
+0x10004333C	0x00000007	[  8] literal string: "inreg "
+0x100043343	0x00000008	[  8] literal string: "outreg "
+0x10004334B	0x00000018	[  8] literal string: "XED NOP encoder error: "
+0x100043363	0x00000009	[  8] literal string: "make_nop"
+0x10004336C	0x00000017	[  8] literal string: "XED NOP decode error: "
+0x100043383	0x0000000E	[  9] literal string: "VirtualMemory"
+0x100043391	0x00000008	[  9] literal string: "vmem.cc"
+0x100043399	0x0000001A	[  9] literal string: "capacity % PAGE_SIZE == 0"
+0x1000433B3	0x00000033	[  9] literal string: "pg_size == (1ul << lg2(pg_size)) && pg_size > 1024"
+0x1000433E6	0x00000025	[ 12] literal string: "pref_pprefetcherDfdip_branch_operate"
+0x10004340B	0x00000008	[ 12] literal string: "fdip.cc"
+0x100043413	0x00000027	[ 12] literal string: "ip % 4 == 0 and branch_target % 4 == 0"
+0x10004343A	0x00000024	[ 12] literal string: "pref_pprefetcherDfdip_cache_operate"
+0x10004345E	0x00000010	[ 12] literal string: "v_addr % 4 == 0"
+0x10004346E	0x00000045	[ 12] literal string: "recent prefetch skip -- something failed when inserting into the pfq"
+0x1000434B3	0x00000016	[ 13] literal string: " next line prefetcher"
+0x1000434C9	0x00000011	[ 15] literal string: "Basic BTB sets: "
+0x1000434DA	0x00000008	[ 15] literal string: " ways: "
+0x1000434E2	0x00000018	[ 15] literal string: " indirect buffer size: "
+0x1000434FA	0x0000000C	[ 15] literal string: " RAS size: "
+0x100043506	0x0000001D	[ 15] literal string: "btb_bbtbDconv_btb_initialize"
+0x100043523	0x0000000C	[ 15] literal string: "conv_btb.cc"
+0x10004352F	0x0000000E	[ 15] literal string: "btb_partition"
+0x10004353D	0x00000019	[ 15] literal string: "btb_bbtbDconv_btb_update"
+0x100043556	0x00000021	[ 15] literal string: "num_bits <= 64 and 1 <= num_bits"
+0x100043577	0x0000001F	[ 15] literal string: "partition < NUM_BTB_PARTITIONS"
+0x100043596	0x0000000E	[ 15] literal string: "get_lru_value"
+0x1000435A4	0x00000004	[ 15] literal string: "BTB"
+0x1000435A8	0x0000001B	[ 15] literal string: "((Sets - 1) & (Sets)) == 0"
+0x100043FC8	0x00000014	[  2] anon
+0x100043FDC	0x00000024	[  2] FDE for: ___clang_call_terminate
+0x100044000	0x00000008	[ 22] __Unwind_Resume.got
+0x100044008	0x00000008	[ 18] __ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE7compareEmmPKc.got
+0x100044010	0x00000008	[ 18] __ZNKSt3__14__fs10filesystem4path10__filenameEv.got
+0x100044018	0x00000008	[ 18] __ZNKSt3__14__fs10filesystem4path16__root_directoryEv.got
+0x100044020	0x00000008	[ 18] __ZNKSt3__16locale9use_facetERNS0_2idE.got
+0x100044028	0x00000008	[ 18] __ZNKSt3__18ios_base6getlocEv.got
+0x100044030	0x00000008	[ 18] __ZNSt11logic_errorC2EPKc.got
+0x100044038	0x00000008	[ 18] __ZNSt12length_errorD1Ev.got
+0x100044040	0x00000008	[ 18] __ZNSt12out_of_rangeD1Ev.got
+0x100044048	0x00000008	[ 18] __ZNSt13runtime_errorC2EPKc.got
+0x100044050	0x00000008	[ 18] __ZNSt13runtime_errorD2Ev.got
+0x100044058	0x00000008	[ 18] __ZNSt16invalid_argumentD1Ev.got
+0x100044060	0x00000008	[ 18] __ZNSt20bad_array_new_lengthC1Ev.got
+0x100044068	0x00000008	[ 18] __ZNSt20bad_array_new_lengthD1Ev.got
+0x100044070	0x00000008	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5eraseEmm.got
+0x100044078	0x00000008	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendEPKc.got
+0x100044080	0x00000008	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6appendEPKcm.got
+0x100044088	0x00000008	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6assignEPKc.got
+0x100044090	0x00000008	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6insertEmPKc.got
+0x100044098	0x00000008	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__grow_byEmmmmmm.got
+0x1000440A0	0x00000008	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9push_backEc.got
+0x1000440A8	0x00000008	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEED1Ev.got
+0x1000440B0	0x00000008	[ 18] __ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEaSERKS5_.got
+0x1000440B8	0x00000008	[ 18] __ZNSt3__113basic_filebufIcNS_11char_traitsIcEEE4openEPKcj.got
+0x1000440C0	0x00000008	[ 18] __ZNSt3__113basic_filebufIcNS_11char_traitsIcEEE4swapERS3_.got
+0x1000440C8	0x00000008	[ 18] __ZNSt3__113basic_filebufIcNS_11char_traitsIcEEE5closeEv.got
+0x1000440D0	0x00000008	[ 18] __ZNSt3__113basic_filebufIcNS_11char_traitsIcEEEC1EOS3_.got
+0x1000440D8	0x00000008	[ 18] __ZNSt3__113basic_filebufIcNS_11char_traitsIcEEEC1Ev.got
+0x1000440E0	0x00000008	[ 18] __ZNSt3__113basic_filebufIcNS_11char_traitsIcEEED1Ev.got
+0x1000440E8	0x00000008	[ 18] __ZNSt3__113basic_istreamIcNS_11char_traitsIcEEED2Ev.got
+0x1000440F0	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE3putEc.got
+0x1000440F8	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE5flushEv.got
+0x100044100	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE5writeEPKcl.got
+0x100044108	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_.got
+0x100044110	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryD1Ev.got
+0x100044118	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEED2Ev.got
+0x100044120	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEd.got
+0x100044128	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEe.got
+0x100044130	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEf.got
+0x100044138	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEi.got
+0x100044140	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEj.got
+0x100044148	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEl.got
+0x100044150	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEm.got
+0x100044158	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEt.got
+0x100044160	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEx.got
+0x100044168	0x00000008	[ 18] __ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEElsEy.got
+0x100044170	0x00000008	[ 18] __ZNSt3__114basic_ofstreamIcNS_11char_traitsIcEEE4openEPKcj.got
+0x100044178	0x00000008	[ 18] __ZNSt3__14cerrE.got
+0x100044180	0x00000008	[ 18] __ZNSt3__14coutE.got
+0x100044188	0x00000008	[ 18] __ZNSt3__15ctypeIcE2idE.got
+0x100044190	0x00000008	[ 18] __ZNSt3__16localeD1Ev.got
+0x100044198	0x00000008	[ 18] __ZNSt3__18ios_base33__set_badbit_and_consider_rethrowEv.got
+0x1000441A0	0x00000008	[ 18] __ZNSt3__18ios_base4initEPv.got
+0x1000441A8	0x00000008	[ 18] __ZNSt3__18ios_base4moveERS0_.got
+0x1000441B0	0x00000008	[ 18] __ZNSt3__18ios_base4swapERS0_.got
+0x1000441B8	0x00000008	[ 18] __ZNSt3__18ios_base5clearEj.got
+0x1000441C0	0x00000008	[ 18] __ZNSt3__19basic_iosIcNS_11char_traitsIcEEED2Ev.got
+0x1000441C8	0x00000008	[ 18] __ZNSt3__19to_stringEi.got
+0x1000441D0	0x00000008	[ 18] __ZNSt3__19to_stringEm.got
+0x1000441D8	0x00000008	[ 18] __ZNSt9exceptionD2Ev.got
+0x1000441E0	0x00000008	[ 18] __ZSt7nothrow.got
+0x1000441E8	0x00000008	[ 18] __ZSt9terminatev.got
+0x1000441F0	0x00000008	[  5] __ZTI19EndOfTraceException.got
+0x1000441F8	0x00000008	[  5] __ZTIN8champsim8deadlockE.got
+0x100044200	0x00000008	[ 18] __ZTISt12length_error.got
+0x100044208	0x00000008	[ 18] __ZTISt12out_of_range.got
+0x100044210	0x00000008	[ 18] __ZTISt16invalid_argument.got
+0x100044218	0x00000008	[ 18] __ZTISt20bad_array_new_length.got
+0x100044220	0x00000008	[ 18] __ZTTNSt3__114basic_ifstreamIcNS_11char_traitsIcEEEE.got
+0x100044228	0x00000008	[ 18] __ZTTNSt3__114basic_ofstreamIcNS_11char_traitsIcEEEE.got
+0x100044230	0x00000008	[ 18] __ZTVNSt3__114basic_ifstreamIcNS_11char_traitsIcEEEE.got
+0x100044238	0x00000008	[ 18] __ZTVNSt3__114basic_ofstreamIcNS_11char_traitsIcEEEE.got
+0x100044240	0x00000008	[ 18] __ZTVNSt3__19basic_iosIcNS_11char_traitsIcEEEE.got
+0x100044248	0x00000008	[ 18] __ZTVSt12length_error.got
+0x100044250	0x00000008	[ 18] __ZTVSt12out_of_range.got
+0x100044258	0x00000008	[ 18] __ZTVSt16invalid_argument.got
+0x100044260	0x00000008	[ 18] __ZdlPv.got
+0x100044268	0x00000008	[ 18] __Znwm.got
+0x100044270	0x00000008	[ 18] __ZnwmRKSt9nothrow_t.got
+0x100044278	0x00000008	[ 20] ___assert_rtn.got
+0x100044280	0x00000008	[ 19] ___chkstk_darwin.got
+0x100044288	0x00000008	[ 18] ___cxa_allocate_exception.got
+0x100044290	0x00000008	[ 20] ___cxa_atexit.got
+0x100044298	0x00000008	[ 18] ___cxa_begin_catch.got
+0x1000442A0	0x00000008	[ 18] ___cxa_end_catch.got
+0x1000442A8	0x00000008	[ 18] ___cxa_free_exception.got
+0x1000442B0	0x00000008	[ 18] ___cxa_guard_acquire.got
+0x1000442B8	0x00000008	[ 18] ___cxa_guard_release.got
+0x1000442C0	0x00000008	[ 18] ___cxa_rethrow.got
+0x1000442C8	0x00000008	[ 18] ___cxa_throw.got
+0x1000442D0	0x00000008	[ 18] ___gxx_personality_v0.got
+0x1000442D8	0x00000008	[ 20] ___stack_chk_fail.got
+0x1000442E0	0x00000008	[ 20] ___stack_chk_guard.got
+0x1000442E8	0x00000008	[ 20] _abort.got
+0x1000442F0	0x00000008	[ 20] _atoi.got
+0x1000442F8	0x00000008	[ 20] _atol.got
+0x100044300	0x00000008	[ 20] _bzero.got
+0x100044308	0x00000008	[ 21] _calloc.got
+0x100044310	0x00000008	[ 20] _exit.got
+0x100044318	0x00000008	[ 20] _fread.got
+0x100044320	0x00000008	[ 21] _free.got
+0x100044328	0x00000008	[ 20] _getopt_long_only.got
+0x100044330	0x00000008	[ 17] _gzclose.got
+0x100044338	0x00000008	[ 17] _gzgets.got
+0x100044340	0x00000008	[ 17] _gzopen.got
+0x100044348	0x00000008	[ 21] _malloc.got
+0x100044350	0x00000008	[ 20] _memchr.got
+0x100044358	0x00000008	[ 20] _memcpy.got
+0x100044360	0x00000008	[ 20] _memmove.got
+0x100044368	0x00000008	[ 20] _memset.got
+0x100044370	0x00000008	[ 20] _memset_pattern16.got
+0x100044378	0x00000008	[ 20] _optarg.got
+0x100044380	0x00000008	[ 20] _optind.got
+0x100044388	0x00000008	[ 20] _pclose.got
+0x100044390	0x00000008	[ 20] _popen.got
+0x100044398	0x00000008	[ 20] _puts.got
+0x1000443A0	0x00000008	[ 20] _sigaction.got
+0x1000443A8	0x00000008	[ 20] _sprintf.got
+0x1000443B0	0x00000008	[ 20] _strlen.got
+0x1000443B8	0x00000008	[ 20] _strtoul.got
+0x1000443C0	0x00000008	[ 20] _time.got
+0x1000443C8	0x00000008	[ 16] _xed_decode.got
+0x1000443D0	0x00000008	[ 16] _xed_decoded_inst_dump.got
+0x1000443D8	0x00000008	[ 16] _xed_decoded_inst_get_reg.got
+0x1000443E0	0x00000008	[ 16] _xed_decoded_inst_operand_action.got
+0x1000443E8	0x00000008	[ 16] _xed_decoded_inst_zero.got
+0x1000443F0	0x00000008	[ 16] _xed_encode_nop.got
+0x1000443F8	0x00000008	[ 16] _xed_error_enum_t2str.got
+0x100044400	0x00000008	[ 16] _xed_get_largest_enclosing_register.got
+0x100044408	0x00000008	[ 16] _xed_iform_to_category.got
+0x100044410	0x00000008	[ 16] _xed_inst_operand.got
+0x100044418	0x00000008	[ 16] _xed_operand_values_set_mode.got
+0x100044420	0x00000008	[ 16] _xed_tables_init.got
+0x100044428	0x00000130	[  2] __ZTV5CACHE
+0x100044558	0x00000010	[  2] __ZTIN8champsim8operableE
+0x100044568	0x00000010	[  2] __ZTI21MemoryRequestConsumer
+0x100044578	0x00000010	[  2] __ZTI21MemoryRequestProducer
+0x100044588	0x00000048	[  2] __ZTI5CACHE
+0x1000445D0	0x00000130	[  2] __ZTV12BUFFER_CACHE
+0x100044700	0x00000018	[  2] __ZTI12BUFFER_CACHE
+0x100044718	0x00000140	[  2] __ZTV9VCL_CACHE
+0x100044858	0x00000018	[  2] __ZTI9VCL_CACHE
+0x100044870	0x00000080	[  4] __ZTV17MEMORY_CONTROLLER
+0x1000448F0	0x00000038	[  4] __ZTI17MEMORY_CONTROLLER
+0x100044928	0x00000018	[  5] __ZTIN8champsim8deadlockE
+0x100044940	0x00000018	[  5] __ZTI19EndOfTraceException
+0x100044958	0x00000018	[  6] __ZTV8CacheBus
+0x100044970	0x00000018	[  6] __ZTI8CacheBus
+0x100044988	0x00000020	[  6] __ZTV6O3_CPU
+0x1000449A8	0x00000018	[  6] __ZTI6O3_CPU
+0x1000449C0	0x00000028	[  6] __ZTVN8champsim8deadlockE
+0x1000449E8	0x000000A0	[  7] __ZTV15PageTableWalker
+0x100044A88	0x00000048	[  7] __ZTI15PageTableWalker
+0x100044AD0	0x000008E8	[  8] __ZL11XED_REG_STR
+0x1000453B8	0x00000018	[  8] __ZTV11tracereader
+0x1000453D0	0x00000010	[  8] __ZTI11tracereader
+0x1000453E0	0x00000018	[  8] __ZTV22cloudsuite_tracereader
+0x1000453F8	0x00000018	[  8] __ZTI22cloudsuite_tracereader
+0x100045410	0x00000028	[  8] __ZTV19EndOfTraceException
+0x100045438	0x00000018	[  8] __ZTV14pt_tracereader
+0x100045450	0x00000018	[  8] __ZTI14pt_tracereader
+0x100045468	0x00000018	[  8] __ZTV17input_tracereader
+0x100045480	0x00000018	[  8] __ZTI17input_tracereader
+0x100048000	0x00000008	[  3] _ooo_cpu
+0x100048008	0x00000038	[  3] _caches
+0x100048040	0x00000050	[  3] _operables
+0x100048090	0x00000001	[  5] _MAX_INSTR_DESTINATIONS
+0x100048091	0x00000001	[  5] _knob_stall_on_miss
+0x100048092	0x00000001	[  5] _knob_stop_at_completion
+0x100048093	0x00000005	[  5] _knob_collect_offsets
+0x100048098	0x00000008	[  5] _warmup_instructions
+0x1000480A0	0x00000008	[  5] _simulation_instructions
+0x1000480A8	0x00000040	[ 14] _history_lengths
+0x1000480E8	0x00000004	[ 15] _NUM_BTB_PARTITIONS
+0x1000480F0	0x00000001	[  2] __ZZN5CACHE13prefetch_lineEyyybjE17deprecate_printed
+0x1000480F8	0x00000008	[  5] __ZZN8champsim22deprecated_clock_cycleixEmE17deprecate_printed
+0x100048100	0x00000188	[  5] __MergedGlobals
+0x100048288	0x00000001	[  8] __ZL14xedInitialized
+0x100048290	0x00000078	[  3] _vmem
+0x100048308	0x00000198	[  3] _DRAM
+0x1000484A0	0x00002420	[  3] _LLC
+0x10004A8C0	0x00002420	[  3] _cpu0_L2C
+0x10004CCE0	0x00002420	[  3] _cpu0_L1D
+0x10004F100	0x00000278	[  3] _cpu0_PTW
+0x10004F378	0x00002420	[  3] _cpu0_STLB
+0x100051798	0x00002420	[  3] _cpu0_L1I
+0x100053BB8	0x00002420	[  3] _cpu0_ITLB
+0x100055FD8	0x00002420	[  3] _cpu0_DTLB
+0x1000583F8	0x00000008	[  3] _btb_offset_sizes
+0x100058400	0x000013A0	[  3] _cpu0
+0x1000597A0	0x00000001	[  5] _warmup_complete
+0x1000597A1	0x00000001	[  5] _simulation_complete
+0x1000597A2	0x00000001	[  5] _trace_ended
+0x1000597A3	0x00000001	[  5] _all_warmup_complete
+0x1000597A4	0x00000001	[  5] _all_simulation_complete
+0x1000597A5	0x00000001	[  5] _knob_pintrace
+0x1000597A6	0x00000001	[  5] _knob_cloudsuite
+0x1000597A7	0x00000001	[  5] _knob_low_bandwidth
+0x1000597A8	0x00000001	[  5] _knob_intel
+0x1000597A9	0x00000001	[  5] _knob_min_50M
+0x1000597AA	0x00000001	[  5] _knob_ip_offset
+0x1000597AB	0x00000005	[  5] _knob_no_detail_stats
+0x1000597B0	0x00000018	[  5] _result_dir
+0x1000597C8	0x00000008	[  5] _start_time
+0x1000597D0	0x00000008	[  5] _current_core_cycle
+0x1000597D8	0x00000018	[  5] _traces
+0x1000597F0	0x00000030	[ 12] _prefetch_queue
+0x100059820	0x00000030	[ 12] _recent_prefetches
+0x100059850	0x00040000	[ 14] _tables
+0x100099850	0x00000050	[ 14] _ghist_words
+0x1000998A0	0x00000040	[ 14] _indices
+0x1000998E0	0x00000004	[ 14] _theta
+0x1000998E4	0x00000004	[ 14] _tc
+0x1000998E8	0x00000004	[ 14] _yout
+0x1000998F0	0x00000008	[ 15] _btb_partition
+0x1000998F8	0x00000008	[ 15] _basic_btb_lru_counter
+0x100099900	0x00008000	[ 15] _basic_btb_indirect
+0x1000A1900	0x00000008	[ 15] _basic_btb_conditional_history
+0x1000A1908	0x00000200	[ 15] _basic_btb_ras
+0x1000A1B08	0x00000008	[ 15] _basic_btb_ras_index
+0x1000A1B10	0x00002000	[ 15] _basic_btb_call_instr_sizes
