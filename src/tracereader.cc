@@ -1,5 +1,6 @@
 #include "tracereader.h"
 
+#include <bitset>
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -203,8 +204,8 @@ public:
 };
 */
 
-bool is_kernel(uint64_t ip) { return (bool)((ip >> 48) & 0xFFFF); }
-bool is_stack(uint64_t ip) { return (bool)((ip >> 32) & 0xFFFF); }
+bool is_kernel(uint64_t ip) { return std::bitset<64>(((ip >> 48) & 0xFFFF)).count() == 16; }
+bool is_stack(uint64_t ip) { return (bool)((ip >> 32) & 0xFFFF); } // TODO: Where are trap vectors or syscal jump tables?
 class cloudsuite_tracereader : public tracereader
 {
   ooo_model_instr last_instr;

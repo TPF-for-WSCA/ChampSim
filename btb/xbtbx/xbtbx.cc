@@ -24,6 +24,8 @@ uint64_t offset_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBhit;
 
+enum BTB_ReplacementStrategy { LRU, REF };
+
 struct BTBEntry {
   uint64_t tag;
   uint64_t target_ip;
@@ -192,6 +194,7 @@ struct offsetBTB {
   uint32_t assoc;
   uint64_t indexMask;
   uint32_t numIndexBits;
+  BTB_ReplacementStrategy strategy;
 
   offsetBTB() {}
 
@@ -202,6 +205,7 @@ struct offsetBTB {
     theOffsetBTB.resize(Sets);
     indexMask = Sets - 1;
     numIndexBits = (uint32_t)log2((double)Sets);
+    strategy = REF;
   }
 
   void init_offsetbtb(int32_t Sets, int32_t Assoc)
@@ -213,6 +217,43 @@ struct offsetBTB {
     theOffsetBTB.resize(Sets);
     indexMask = Sets - 1;
     numIndexBits = (uint32_t)log2((double)Sets);
+    strategy = REF;
+  }
+
+  int get_replacement_candidate(int set)
+  {
+    size_t way = 0;
+    size_t j = 0;
+    uint64_t lru_count = theOffsetBTB[set][0].lru;
+    uint64_t ref_count = theOffsetBTB[set][0].ref_count;
+    switch (strategy) {
+    case LRU:
+      for (uint32_t i = 1; i < theOffsetBTB[set].size(); i++) {
+        if (theOffsetBTB[set][i].lru < lru_count) {
+          lru_count = theOffsetBTB[set][i].lru;
+          way = i;
+        }
+      }
+      break;
+    case REF:
+      while (ref_count != 0 and j < theOffsetBTB[set].size()) {
+        if (ref_count > theOffsetBTB[set][j].ref_count) {
+          ref_count = theOffsetBTB[set][j].ref_count;
+          way = j;
+        }
+        j++;
+      }
+      // TODO: make this configurable: right now we only filter 0 entries
+      if (ref_count != 0) {
+        strategy = LRU;
+        way = get_replacement_candidate(set);
+        strategy = REF;
+      }
+      break;
+    default:
+      assert(0);
+    }
+    return way;
   }
 
   int32_t index(uint64_t target) { return ((target >> 2) & indexMask); }
@@ -263,14 +304,7 @@ struct offsetBTB {
           way = theOffsetBTB[idx].size();
           theOffsetBTB[idx].push_back(entry);
         } else {
-          way = 0;
-          uint64_t lru_count = theOffsetBTB[idx][0].lru;
-          for (uint32_t i = 1; i < theOffsetBTB[idx].size(); i++) {
-            if (theOffsetBTB[idx][i].lru < lru_count) {
-              lru_count = theOffsetBTB[idx][i].lru;
-              way = i;
-            }
-          }
+          way = get_replacement_candidate(idx);
 
           uint32_t ref_count = theOffsetBTB[idx][way].ref_count;
           map<uint32_t, uint64_t>::iterator it;
@@ -281,7 +315,7 @@ struct offsetBTB {
             offset_reuse_freq[ref_count] = 1;
           }
 
-          theOffsetBTB[idx][way] = entry;
+          theOffsetBTB[idx][way] = entry; // TODO: add refcount of LRU element? as we have pointers to the lru elem
         }
         assert(theOffsetBTB[idx].size() <= assoc);
       }
@@ -640,8 +674,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   }*/
 
-  if (99997 <= current_cycle - last_stats_cycle) {
-    std::cout << "Getting copy statistics - cycle: " << current_cycle << std::endl;
+  if (99998 <= current_cycle - last_stats_cycle) {
+    // std::cout << "Getting copy statistics - cycle: " << current_cycle << std::endl;
     last_stats_cycle = current_cycle;
     for (int i = 0; i < NUM_OFFSET_BTB_PARTITIONS; ++i) {
       std::map<uint32_t, uint16_t> reuse_frequency;
@@ -696,7 +730,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
 
   // Exit stack
-  if (is_stack(ip) and not is_stack(branch_target)) {
+  if (is_stack(ip) and not(is_stack(branch_target) or is_kernel(branch_target))) {
     stack_exit_branch_types[branch_type]++;
     cout << "stack exit" << endl;
   }
@@ -722,6 +756,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       num_bits++;
     }
   }
+
+  assert_refcounts();
   assert(num_bits >= 0 && num_bits < 66);
   uint64_t predicted_target = 0;
   if (btb_entry != NULL)
@@ -736,7 +772,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
 
   if (btb_entry == NULL) {
-
     BTB_writes++;
 
     int smallest_offset_partition_id = convert_offsetBits_to_btb_partitionID(num_bits);
@@ -758,6 +793,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       offset_sizes_by_target[branch_target].insert(num_bits);
       update_offsetbtb(branch_target, num_bits, btb_entry, basic_btb_lru_counter[cpu], 1);
     }
+    assert_refcounts();
 
     basic_btb_lru_counter[cpu]++;
 
