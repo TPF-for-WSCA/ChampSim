@@ -15,6 +15,8 @@ import multiprocessing as mp
 plt.style.use("tableau-colorblind10")
 plt.rcParams.update({"font.size": 7})
 
+# TODO: move configuration flags up to the beginning of the file
+
 
 def dd():
     return defaultdict(int)
@@ -233,7 +235,7 @@ def main(args):
     graph_dir = os.path.join(args.logdir, "graphs")
     os.makedirs(graph_dir, exist_ok=True)
     for rv_idx, name in enumerate(result_names):
-        for offset_btb_idx in range(4):
+        for offset_btb_idx in range(2):
             for (
                 config,
                 results,
