@@ -147,9 +147,10 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
         benchmarks = []
         ref_counts = set()
         for key, value in data_per_workload.items():
-            value, summary = value.get()
+            value = value.get()
             if not value:
                 continue
+            value, summary = value
             if key.startswith(group):
                 value = value[offset_idx][rv_idx]
                 avg.append(sum(value) / len(value))
