@@ -84,7 +84,7 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
   string filename = cache->NAME + "_num_cl_with_num_holes.tsv";
   csv_file_path /= filename;
   csv_file.open(csv_file_path, std::ios::out);
-  cout << cache->NAME << "FILE SUCCESSFULLY OPENED" << endl;
+  // cout << cache->NAME << "FILE SUCCESSFULLY OPENED" << endl;
   if (!csv_file) {
     std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
     std::cerr << std::flush;
@@ -93,7 +93,7 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
       if (csv_file) {
         csv_file << i << "\t" << cache->holecount_hist[cpu][i] << endl;
       }
-      cout << setw(10) << i << setw(10) << cache->holecount_hist[cpu][i] << endl;
+      // cout << setw(10) << i << setw(10) << cache->holecount_hist[cpu][i] << endl;
     }
     csv_file.close();
   }
@@ -111,7 +111,7 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
       if (csv_file) {
         csv_file << i + 1 << "\t" << cache->holesize_hist[cpu][i] << endl;
       }
-      cout << setw(10) << i << setw(10) << cache->holesize_hist[cpu][i] << endl;
+      // cout << setw(10) << i << setw(10) << cache->holesize_hist[cpu][i] << endl;
     }
     csv_file.close();
   }
@@ -129,7 +129,7 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
     if (csv_file) {
       csv_file << i + 1 << "\t" << cache->blsize_hist[cpu][i] << endl;
     }
-    cout << setw(10) << i << setw(10) << cache->blsize_hist[cpu][i] << endl;
+    // cout << setw(10) << i << setw(10) << cache->blsize_hist[cpu][i] << endl;
   }
   csv_file.close();
 
@@ -146,7 +146,7 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
     if (csv_file) {
       csv_file << i + 1 << "\t" << cache->blsize_hist_accesses[cpu][i] << endl;
     }
-    cout << setw(10) << i << setw(10) << cache->blsize_hist_accesses[cpu][i] << endl;
+    // cout << setw(10) << i << setw(10) << cache->blsize_hist_accesses[cpu][i] << endl;
   }
   csv_file.close();
 
@@ -162,7 +162,7 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
     if (csv_file) {
       csv_file << i + 1 << "\t" << cache->cl_bytesaccessed_hist[cpu][i] << endl;
     }
-    cout << setw(10) << i << setw(10) << cache->cl_bytesaccessed_hist[cpu][i] << endl;
+    // cout << setw(10) << i << setw(10) << cache->cl_bytesaccessed_hist[cpu][i] << endl;
   }
   csv_file.close();
 
@@ -178,7 +178,7 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
     if (csv_file) {
       csv_file << i + 1 << "\t" << cache->cl_bytesaccessed_hist_accesses[cpu][i] << endl;
     }
-    cout << setw(10) << i << setw(10) << cache->cl_bytesaccessed_hist_accesses[cpu][i] << endl;
+    // cout << setw(10) << i << setw(10) << cache->cl_bytesaccessed_hist_accesses[cpu][i] << endl;
   }
   csv_file.close();
 
@@ -194,7 +194,7 @@ void print_block_stats(uint32_t cpu, CACHE* cache)
     if (csv_file) {
       csv_file << i + 1 << "\t" << cache->blsize_ignore_holes_hist[cpu][i] << endl;
     }
-    cout << setw(10) << i << setw(10) << cache->blsize_ignore_holes_hist[cpu][i] << endl;
+    // cout << setw(10) << i << setw(10) << cache->blsize_ignore_holes_hist[cpu][i] << endl;
   }
   csv_file.close();
 }
@@ -510,7 +510,7 @@ void write_offsets(O3_CPU* cpu, int cpu_id)
       std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
       std::cerr << std::flush;
     } else {
-      std::cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
+      // std::cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
       for (auto elem : (cpu->pc_offset_pairs_by_size)[i]) {
         csv_file << elem.first << "\t" << elem.second << endl;
       }
@@ -526,7 +526,7 @@ void write_offsets(O3_CPU* cpu, int cpu_id)
       std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
       std::cerr << std::flush;
     } else {
-      std::cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
+      // std::cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
       for (auto elem : cpu->offset_counts_by_size[i]) {
         csv_file << elem.first << "\t" << elem.second << endl;
       }
@@ -549,7 +549,7 @@ void write_offsets(O3_CPU* cpu, int cpu_id)
       std::cerr << std::flush;
     } else {
       json_files_per_offset_btb.push_back(std::move(csv_file));
-      std::cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
+      // std::cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
     }
   }
   // TODO: Write out actual offset/refcount offsets so we can plot them as time series
@@ -622,10 +622,17 @@ void print_branch_stats()
          << endl;
     cout << "BRANCH DISTANCE STATS" << endl;
     cout << "\tAVERAGE: " << ooo_cpu[i]->total_branch_distance / ooo_cpu[i]->branch_count << endl;
-    cout << "\tTOTAL BRANCHES: " << ooo_cpu[i]->branch_count << std::endl;
+    uint32_t median_branch_count = 0;
     for (auto it = ooo_cpu[i]->branch_distance.begin(); it != ooo_cpu[i]->branch_distance.end(); it++) {
-      cout << std::right << std::setw(9) << it->first << ": " << std::setw(6) << it->second << endl;
+      median_branch_count += it->second;
+      if (median_branch_count > (ooo_cpu[i]->branch_count / 2)) {
+        cout << "\tMEDIAN: " << it->first << endl;
+        break;
+      }
+      // cout << std::right << std::setw(9) << it->first << ": " << std::setw(6) << it->second << endl;
     }
+    cout << "\tTOTAL BRANCHES: " << ooo_cpu[i]->branch_count << std::endl;
+
     /*
     cout << "Branch types" << endl;
     cout << "NOT_BRANCH: " << ooo_cpu[i]->total_branch_types[0] << " " <<

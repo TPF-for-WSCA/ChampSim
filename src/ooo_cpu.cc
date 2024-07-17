@@ -1,6 +1,7 @@
 #include "ooo_cpu.h"
 
 #include <algorithm>
+#include <bitset>
 #include <csignal>
 #include <iostream>
 #include <set>
@@ -227,9 +228,10 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   uint64_t predicted_branch_target = 0;
   if (arch_instr.is_branch) {
 
-    branch_count++;
-    if (arch_instr.branch_target > 0 && MIGHT_LOOP_BRANCH(arch_instr.branch_type) && arch_instr.branch_target < arch_instr.ip) {
-      uint64_t branch_diff = arch_instr.ip - arch_instr.branch_target;
+    if (arch_instr.branch_target > 0 && arch_instr.branch_type != BRANCH_OTHER) {
+      branch_count++;
+      uint64_t diff_bits = (arch_instr.ip >> 2) ^ (arch_instr.branch_target >> 2);
+      uint64_t branch_diff = std::bitset<64>(diff_bits).count();
       branch_distance[branch_diff]++;
       total_branch_distance += branch_diff;
     }

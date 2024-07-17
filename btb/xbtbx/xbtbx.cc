@@ -24,7 +24,7 @@ uint64_t offset_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBhit;
 
-enum BTB_ReplacementStrategy { LRU, REF };
+enum BTB_ReplacementStrategy { LRU, REF0, REF };
 
 struct BTBEntry {
   uint64_t tag;
@@ -235,7 +235,7 @@ struct offsetBTB {
         }
       }
       break;
-    case REF:
+    case REF0:
       while (ref_count != 0 and j < theOffsetBTB[set].size()) {
         if (ref_count > theOffsetBTB[set][j].ref_count) {
           ref_count = theOffsetBTB[set][j].ref_count;
@@ -247,7 +247,16 @@ struct offsetBTB {
       if (ref_count != 0) {
         strategy = LRU;
         way = get_replacement_candidate(set);
-        strategy = REF;
+        strategy = REF0;
+      }
+      break;
+    case REF:
+      while (ref_count != 0 and j < theOffsetBTB[set].size()) {
+        if (ref_count > theOffsetBTB[set][j].ref_count) {
+          ref_count = theOffsetBTB[set][j].ref_count;
+          way = j;
+        }
+        j++;
       }
       break;
     default:
