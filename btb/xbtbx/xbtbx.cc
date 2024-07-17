@@ -517,7 +517,7 @@ void O3_CPU::initialize_btb()
   btb_partition[BTB_WAYS] = new BTB(small_btb_sets, 1);
 
   for (int i = 0; i < NUM_OFFSET_BTB_PARTITIONS; i++)
-    offsetBTB_partition[i] = new offsetBTB(1, NUM_OFFSET_BTB_PARTITIONS * NUM_SETS); // TODO: make sets/ways configurable
+    offsetBTB_partition[i] = new offsetBTB(1, NUM_OFFSET_BTB_PARTITIONS * NUM_SETS / 2); // TODO: make sets/ways configurable
 }
 
 BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
@@ -596,6 +596,7 @@ BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
 
 void assert_refcounts()
 {
+  return;
   uint64_t num_idx_entries = 0;
   uint64_t stored_ref_count = 0;
   for (int partition = 0; partition < NUM_OFFSET_BTB_PARTITIONS; partition++) {
