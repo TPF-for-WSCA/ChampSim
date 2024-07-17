@@ -24,7 +24,7 @@ def extract_single_workload(path):
 
     result_per_offset = []
     summary_results = defaultdict(dd)
-    for i in range(4):
+    for i in range(2):
         file_path = os.path.join(path, f"cpu0_offset_btb_{i}_sharing_over_time.json")
         print(f"\tPloting {file_path}")
         try:
@@ -220,7 +220,7 @@ def main(args):
             continue
         benchmark_path = os.path.join(args.logdir, benchmark)
         for config in os.listdir(benchmark_path):
-            if not config.endswith("offset_btb"):
+            if not config.endswith("offset_btbx"):
                 continue
             config_path = os.path.join(benchmark_path, config)
             results_by_application = {}
