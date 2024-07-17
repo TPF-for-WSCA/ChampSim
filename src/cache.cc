@@ -131,7 +131,10 @@ void CACHE::insert_prefetch_buffer(PACKET& p)
     PREFETCH_BUFFER.push_front(p);
   }
   if (PREFETCH_BUFFER.size() > prefetch_buffer_size) {
-    pf_useless++;
+    if (PREFETCH_BUFFER.back().type == PREFETCH)
+      pf_useless++;
+    else
+      cout << "was accessed" << endl;
     PREFETCH_BUFFER.pop_back();
   }
 }
@@ -357,7 +360,11 @@ bool CACHE::hit_test(uint64_t addr, uint8_t size)
 
 void CACHE::handle_read()
 {
-  while (reads_available_this_cycle > 0) {
+  uint32_t local_reads = reads_available_this_cycle;
+  if (0 != this->NAME.compare(this->NAME.length() - 3, 3, "L1I") and reads_available_this_cycle > 1) {
+    local_reads /= 2; // single port, other port is for prefetch
+  }
+  while (local_reads > 0) {
 
     if (!RQ.has_ready())
       return;
@@ -440,8 +447,7 @@ void CACHE::handle_prefetch()
     // remove this entry from PQ
     PQ.pop_front();
     // We don't prefetch into the frontend, only into L1I
-    if (0 != this->NAME.compare(this->NAME.length() - 3, 3, "L1I"))
-      reads_available_this_cycle--;
+    reads_available_this_cycle--;
   }
 }
 
@@ -1121,6 +1127,8 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
     if (result != -2) {
       if (result > 0)
         pf_issued++;
+      else
+        pf_not_issued++;
       return 1;
     }
   }
@@ -1159,6 +1167,9 @@ void CACHE::va_translate_prefetches()
 
     if (result > 0)
       pf_issued++;
+    else {
+      pf_not_issued++;
+    }
   }
 }
 
@@ -2258,6 +2269,7 @@ int VCL_CACHE::add_rq(PACKET* packet)
 
 void CACHE::print_private_stats()
 {
+  return;
   std::cout << NAME << " LINES HANDLED PER WAY" << std::endl;
   for (uint32_t i = 0; i < NUM_WAY; ++i) {
     std::cout << std::right << std::setw(3) << i << ":\t" << way_hits[i] << std::endl;

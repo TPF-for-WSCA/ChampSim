@@ -4,8 +4,8 @@
 
 #include "cache.h"
 #include "ooo_cpu.h"
-#define MAX_PFETCHQ_ENTRIES 128
-#define MAX_RECENT_PFETCH 4
+#define MAX_PFETCHQ_ENTRIES 64
+#define MAX_RECENT_PFETCH 32
 
 std::deque<std::tuple<uint64_t, uint64_t, uint8_t>> prefetch_queue; // Storage: 64-bits * 48 (queue size) = 384 bytes
 std::deque<uint64_t> recent_prefetches;                             // Storage: 64-bits * 10 (queue size) = 80 bytes
@@ -28,8 +28,6 @@ void O3_CPU::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_
     }
     if (prefetch_queue.size() > MAX_PFETCHQ_ENTRIES) {
       prefetch_queue.pop_front();
-#define L1I (static_cast<CACHE*>(L1I_bus.lower_level))
-      L1I->pf_not_issued++;
     }
   }
 }
