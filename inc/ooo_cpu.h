@@ -179,7 +179,7 @@ public:
          bpred_t bpred_type, btb_t btb_type, size_t btb_sets, size_t btb_ways, uint8_t* btb_offset_sizes, size_t btb_non_indirect, size_t btb_max_loop_branch,
          bool perfect_btb, bool perfect_branch_predict, ipref_t ipref_type, size_t align_bits)
       : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
-        IFETCH_BUFFER(ifetch_buffer_size * 2, "IFETCH_BUFFER"), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency, "DISPATCH_BUFFER"),
+        IFETCH_BUFFER(ifetch_buffer_size * 4, "IFETCH_BUFFER"), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency, "DISPATCH_BUFFER"),
         DECODE_BUFFER(decode_buffer_size, decode_latency, "DECODE_BUFFER"), ROB(rob_size, "ROB"), LQ(lq_size), SQ(sq_size), FETCH_WIDTH(fetch_width),
         DECODE_WIDTH(decode_width), DISPATCH_WIDTH(dispatch_width), SCHEDULER_SIZE(schedule_width), EXEC_WIDTH(execute_width), LQ_WIDTH(lq_width),
         SQ_WIDTH(sq_width), RETIRE_WIDTH(retire_width), BRANCH_MISPREDICT_PENALTY(mispredict_penalty), SCHEDULING_LATENCY(schedule_latency),

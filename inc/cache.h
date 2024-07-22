@@ -260,7 +260,7 @@ public:
         uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
         unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, bool filter_inserts, bool filter_prefetches, size_t filter_buffer_size,
         size_t prefetch_buffer_size)
-      : RQ(RQ_SIZE, HIT_LATENCY, (v1 + "_RQ")), PQ(PQ_SIZE, HIT_LATENCY, (v1 + "_PQ")), VAPQ(PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY, (v1 + "_VAPQ")),
+      : RQ(RQ_SIZE, HIT_LATENCY, (v1 + "_RQ")), PQ(PQ_SIZE, HIT_LATENCY / 2, (v1 + "_PQ")), VAPQ(PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY, (v1 + "_VAPQ")),
         WQ(WQ_SIZE, HIT_LATENCY, (v1 + "_WQ")), champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1),
         NUM_SET(v2), NUM_WAY(v3), perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat),
         FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load),
@@ -284,7 +284,7 @@ public:
         uint32_t hit_lat, uint32_t fill_lat, uint32_t max_read, uint32_t max_write, std::size_t offset_bits, bool pref_load, bool wq_full_addr, bool va_pref,
         unsigned pref_act_mask, MemoryRequestConsumer* ll, pref_t pref, repl_t repl, CountBlockMethod method, LruModifier lru_modifier, bool filter_inserts,
         bool filter_prefetches, size_t filter_buffer_size, size_t prefetch_buffer_size)
-      : RQ(RQ_SIZE, HIT_LATENCY, (v1 + "_RQ")), PQ(PQ_SIZE, HIT_LATENCY, (v1 + "_PQ")), VAPQ(PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY, (v1 + "_VAPQ")),
+      : RQ(RQ_SIZE, HIT_LATENCY, (v1 + "_RQ")), PQ(PQ_SIZE, HIT_LATENCY / 2, (v1 + "_PQ")), VAPQ(PQ_SIZE, VA_PREFETCH_TRANSLATION_LATENCY, (v1 + "_VAPQ")),
         WQ(WQ_SIZE, HIT_LATENCY, (v1 + "_WQ")), champsim::operable(freq_scale), MemoryRequestConsumer(fill_level), MemoryRequestProducer(ll), NAME(v1),
         NUM_SET(v2), NUM_WAY(v3), perfect_cache(perfect_cache), WQ_SIZE(v5), RQ_SIZE(v6), PQ_SIZE(v7), MSHR_SIZE(v8), HIT_LATENCY(hit_lat),
         FILL_LATENCY(fill_lat), OFFSET_BITS(offset_bits), MAX_READ(max_read), MAX_WRITE(max_write), prefetch_as_load(pref_load),

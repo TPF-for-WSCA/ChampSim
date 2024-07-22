@@ -36,7 +36,7 @@ uint32_t O3_CPU::prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, ui
 {
   assert(v_addr % 4 == 0);
 #define L1I (static_cast<CACHE*>(L1I_bus.lower_level))
-  if ((cache_hit == 0) && (L1I->get_occupancy(0, 0) < L1I->MSHR_SIZE >> 1)) {
+  if (not cache_hit) {
     uint64_t pf_addr = v_addr + (1 << LOG2_BLOCK_SIZE);
     prefetch_code_line(pf_addr);
     recent_prefetches.push_back(pf_addr);
@@ -52,7 +52,7 @@ void O3_CPU::prefetcher_cycle_operate()
 #define L1I (static_cast<CACHE*>(L1I_bus.lower_level))
   while (prefetch_queue.size()) {
 
-    if (L1I->get_occupancy(0, 0) < L1I->MSHR_SIZE - L1I->MAX_READ) {
+    if (L1I->get_occupancy(0, 0) < L1I->MSHR_SIZE) {
       auto it = std::find(recent_prefetches.begin(), recent_prefetches.end(), std::get<0>(prefetch_queue.front()));
       if (L1I->hit_test(std::get<1>(prefetch_queue.front()), std::get<2>(prefetch_queue.front()))) {
         prefetch_queue.pop_front();
