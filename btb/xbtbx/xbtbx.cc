@@ -20,6 +20,7 @@
 
 map<uint32_t, uint64_t> offset_reuse_freq;
 map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
+map<uint32_t, uint64_t> offset_size_count;
 uint64_t offset_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBhit;
@@ -449,6 +450,7 @@ int convert_offsetBits_to_btb_partitionID(int num_bits)
   return j;
 }
 
+// TODO: Fix make fully configurable
 int convert_offsetBits_to_offsetbtb_partitionID(int num_bits)
 {
   if (num_bits <= offsetbtb_partition_sizes[0] /* 9 */) {
@@ -517,7 +519,7 @@ void O3_CPU::initialize_btb()
   btb_partition[BTB_WAYS] = new BTB(small_btb_sets, 1);
 
   for (int i = 0; i < NUM_OFFSET_BTB_PARTITIONS; i++)
-    offsetBTB_partition[i] = new offsetBTB(1, NUM_SETS / 4); // TODO: make sets/ways configurable
+    offsetBTB_partition[i] = new offsetBTB(1, NUM_SETS / 8); // TODO: make sets/ways configurable
 }
 
 BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
@@ -647,9 +649,9 @@ uint64_t get_target_from_offset_btb_entry(BTBEntry* entry, uint64_t ip, int part
   auto target = (ip & ~mask) | (offset & mask);
   if (offsetBTB_partition[entry->offsetBTB_partitionID]->get_refcount_from_offsetBTB(entry->offsetBTB_set, entry->offsetBTB_way) > LOG_COMMONALITY_CUTOFF) {
     cout << "common offset: " << endl;
-    cout << "\tip:          " << ip << endl;
-    cout << "\toffset:      " << offset << endl;
-    cout << "\tprediction:  " << target << endl;
+    cout << "\tip:          0x" << hex << ip << dec << endl;
+    cout << "\toffset:      0x" << hex << offset << dec << endl;
+    cout << "\tprediction:  0x" << hex << target << dec << endl;
   }
   return target;
 }
@@ -785,6 +787,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     BTB_writes++;
 
     int smallest_offset_partition_id = convert_offsetBits_to_btb_partitionID(num_bits);
+    offset_size_count[num_bits]++;
 
     int partition = get_lru_partition(smallest_offset_partition_id, ip);
     assert(partition < NUM_BTB_PARTITIONS);
