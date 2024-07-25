@@ -19,11 +19,3 @@ do
     sleep 1
 done
 cd $old_dir
-
-
-for job in `jobs -p`
-do
-    echo $job
-    wait $job
-done
-
