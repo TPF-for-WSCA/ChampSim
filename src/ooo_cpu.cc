@@ -15,6 +15,7 @@
 
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t MAX_INSTR_DESTINATIONS;
+extern uint8_t knob_intel;
 
 std::ostream& operator<<(std::ostream& s, const ooo_model_instr& mi)
 {
@@ -437,7 +438,7 @@ void O3_CPU::fetch_instruction()
     // TODO: Fix up for x86 instructions
     // NOTE: this is here for the fake instructions in the fixed ipc1 traces,
     // such that we don't increase throughput requirements on instruction fetching
-    if (it->translated == COMPLETED && it->fetched == 0 && it->ip % 4 != 0) {
+    if (it->translated == COMPLETED && it->fetched == 0 && (it->ip % 4 != 0 and not knob_intel)) {
       it->fetched = COMPLETED;
       continue;
     }
@@ -488,7 +489,7 @@ void O3_CPU::fetch_instruction()
 void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
 {
   // add it to the L1-I's read queue
-  assert(begin->ip % 4 == 0);
+  assert(begin->ip % 4 == 0 or knob_intel);
   PACKET fetch_packet;
   fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
   fetch_packet.cpu = cpu;
@@ -507,7 +508,7 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   uint64_t min_addr = begin->instruction_pa;
   uint64_t max_addr = min_addr + begin->size;
   for (; begin != end; ++begin) {
-    if (begin->ip % 4 != 0) {
+    if (begin->ip % 4 != 0 and not knob_intel) {
       continue; // Ignore dummy instructions in updated traces
     }
 
