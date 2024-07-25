@@ -534,6 +534,76 @@ void write_offsets(O3_CPU* cpu, int cpu_id)
     }
   }
 
+  for (int i = 0; i < 16; i++) {
+    if (cpu->offset_counts_by_partition[i].empty()) {
+      cout << "Partition " << i << " unused in CPU " << cpu_id << endl;
+      continue;
+    }
+    string filename = "cpu" + std::to_string(cpu_id) + "_partition_" + std::to_string(i + 1) + "_offset_count.tsv";
+    auto csv_file_path = csv_result_path / filename;
+    csv_file.open(csv_file_path, std::ios::out);
+    if (!csv_file) {
+      std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+      std::cerr << std::flush;
+    } else {
+      // std::cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
+      for (auto elem : cpu->offset_counts_by_partition[i]) {
+        csv_file << elem.first << "\t" << elem.second << endl;
+      }
+      csv_file.close();
+    }
+  }
+
+  for (int i = 0; i < 16; i++) {
+    if (cpu->type_counts_by_size[i].empty()) {
+      cout << "Partition " << i << " unused in CPU " << cpu_id << endl;
+      continue;
+    }
+    string filename = "cpu" + std::to_string(cpu_id) + "_partition_" + std::to_string(i + 1) + "_type_count.tsv";
+    auto csv_file_path = csv_result_path / filename;
+    csv_file.open(csv_file_path, std::ios::out);
+    if (!csv_file) {
+      std::cerr << "COULD NOT CREATE/OPEN FILE " << csv_file_path << std::endl;
+      std::cerr << std::flush;
+    } else {
+      // std::cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
+      for (auto elem : cpu->type_counts_by_size[i]) {
+        std::string branch_type;
+        switch (elem.first) {
+        case NOT_BRANCH:
+          branch_type = "NOT_BRANCH";
+          cout << "WARNING: WE SHOULD NOT OBSERVE NO BRANCHES IN BTB" << endl;
+          break;
+        case BRANCH_DIRECT_JUMP:
+          branch_type = "BRANCH_DIRECT_JUMP";
+          break;
+        case BRANCH_INDIRECT:
+          branch_type = "BRANCH_INDIRECT";
+          break;
+        case BRANCH_CONDITIONAL:
+          branch_type = "BRANCH_CONDITIONAL";
+          break;
+        case BRANCH_DIRECT_CALL:
+          branch_type = "BRANCH_DIRECT_CALL";
+          break;
+        case BRANCH_INDIRECT_CALL:
+          branch_type = "BRANCH_INDIRECT_CALL";
+          break;
+        case BRANCH_RETURN:
+          branch_type = "BRANCH_RETURN";
+          break;
+        case BRANCH_OTHER:
+        default:
+          branch_type = "BRANCH_OTHER";
+          cout << "WARNING: WE SHOULD NOT OBSERVE SPURIOUS BRANCHES IN BTB" << endl;
+          break;
+        }
+        csv_file << branch_type << "\t" << elem.second << endl;
+      }
+      csv_file.close();
+    }
+  }
+
   std::vector<std::ofstream> json_files_per_offset_btb;
 
   size_t num_files_required = cpu->BTB_WAYS - cpu->BTB_NON_INDIRECT;
