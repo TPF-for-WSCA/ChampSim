@@ -29,7 +29,9 @@ std::ostream& operator<<(std::ostream& s, const BLOCK& b) { return (s << "BLOCK"
 void O3_CPU::operate()
 {
   // subtract 1, as we might insert two into the buffer (overlap)
-  instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy()) - 1);
+  std::size_t fetch_width = knob_intel ? FETCH_WIDTH - 1 : FETCH_WIDTH;
+  instrs_to_read_this_cycle =
+      std::min(fetch_width, std::min((IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy()) - 1, (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy())));
 
   retire_rob();                    // retire
   complete_inflight_instruction(); // finalize execution
@@ -306,6 +308,11 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     overhang_instr.ip += arch_instr.size;
     overhang_instr.instruction_pa += arch_instr.size;
     overhang_instr.size -= arch_instr.size;
+    overhang_instr.num_mem_ops = 0;
+    overhang_instr.destination_memory = {0};
+    overhang_instr.destination_registers = {0};
+    overhang_instr.source_registers = {0};
+    overhang_instr.source_memory = {0};
     assert(overhang_instr.size > 0);
     arch_instr.is_branch = 0; // we only predict a branch once - once it is fully fetched
     overlap = true;
@@ -315,7 +322,9 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   IFETCH_BUFFER.push_back(arch_instr);
 
   if (overlap) {
-    instrs_to_read_this_cycle--;
+    // TODO: check that we never cross multiple times
+    if (instrs_to_read_this_cycle > 0)
+      instrs_to_read_this_cycle--;
     IFETCH_BUFFER.push_back(overhang_instr);
   }
 
@@ -606,6 +615,7 @@ void O3_CPU::decode_instruction()
       }
     }
 
+    db_entry.decoded = COMPLETED;
     // Add to dispatch
     if (warmup_complete[cpu])
       DISPATCH_BUFFER.push_back(db_entry);
