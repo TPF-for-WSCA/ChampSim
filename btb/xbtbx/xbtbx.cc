@@ -774,9 +774,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     auto inserted = pc_offset_pairs_by_size[num_bits - 1].insert(std::make_pair(ip, offset));
 
     offset_counts_by_size[num_bits - 1][offset] += inserted.second ? 1 : 0;
-    type_counts_by_size[convert_offsetBits_to_btb_partitionID(num_bits)][branch_type]++;
     inserted = pc_offset_pairs_by_partition[convert_offsetBits_to_btb_partitionID(num_bits)].insert(std::make_pair(ip, offset));
     offset_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits)][offset] += inserted.second ? 1 : 0;
+    type_counts_by_size[convert_offsetBits_to_btb_partitionID(num_bits)][branch_type] += inserted.second ? 1 : 0;
   }
 
   assert_refcounts();
