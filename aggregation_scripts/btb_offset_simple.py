@@ -22,7 +22,7 @@ def dd():
     return defaultdict(int)
 
 
-def extract_single_workload(path):
+def extract_single_workload(path, name=""):
     dframes = []
     for i in range(1, 16):
         file_path = os.path.join(path, f"cpu0_partition_{i}_type_count.tsv")
@@ -35,6 +35,8 @@ def extract_single_workload(path):
         except:
             print(f"\tERROR: Could not open {file_path}")
             return None
+    if len(dframes) == 0:
+        return None
     result = dframes.pop(0)
     for df in dframes:
         result = result.merge(
@@ -48,7 +50,7 @@ def extract_single_workload(path):
     result = result.transpose()
     ax = result.plot.bar(stacked=True)
     ax.legend(loc=2)
-    plt.savefig(f"{path}/branch_type_by_offset_category.pdf")
+    plt.savefig(f"{path}/{name}branch_type_by_offset_category.pdf")
     return result
 
 
@@ -200,7 +202,7 @@ def main(args):
             for application in os.listdir(config_path):
                 app_path = os.path.join(config_path, application)
                 result = pool.apply_async(
-                    extract_single_workload, args=(app_path,)
+                    extract_single_workload, args=(app_path, f"{application}_")
                 )  # TODO: pass which value should be extracted
                 results_by_application_by_config[group][config][application] = result
 
