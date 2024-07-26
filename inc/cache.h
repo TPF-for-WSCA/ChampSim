@@ -53,7 +53,7 @@ void set_accessed(uint64_t* mask, uint8_t lower, uint8_t upper);
 /// @return Vector of alternatin block and hole start and end offsets
 std::vector<std::pair<uint8_t, uint8_t>> get_blockboundaries_from_mask(const uint64_t& mask);
 
-void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK& prev_block);
+void record_cacheline_accesses(PACKET& handle_pkt, BLOCK& hit_block, BLOCK* prev_block);
 
 enum class CountBlockMethod { EVICTION, SUM_ACCESSES };
 enum class BufferHistory { NONE, PARTIAL, FULL };

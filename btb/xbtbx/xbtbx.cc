@@ -436,12 +436,12 @@ uint64_t basic_btb_get_call_size(uint8_t cpu, uint64_t ip)
 }
 
 // TODO: CONVERT TO FLEXIBLE SIZE SOLUTION TO SUPPORT BTBX
-int convert_offsetBits_to_btb_partitionID(int num_bits)
+int convert_offsetBits_to_btb_partitionID(int num_bits, bool ignore_offset_count = false)
 {
   int j = 0;
   for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
     int way_size = *(btb_partition_sizes + i);
-    if (i <= NUM_NON_INDIRECT_PARTITIONS or i == LAST_BTB_PARTITION_ID)
+    if (ignore_offset_count or i <= NUM_NON_INDIRECT_PARTITIONS or i == LAST_BTB_PARTITION_ID)
       j = i;
     if (num_bits <= way_size) {
       break;
@@ -771,12 +771,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   extern uint8_t knob_collect_offsets;
   if (knob_collect_offsets) {
     uint64_t offset = (branch_target >> 2) & ((1ull << num_bits) - 1);
-    auto inserted = pc_offset_pairs_by_size[num_bits - 1].insert(std::make_pair(ip, offset));
+    auto inserted = pc_offset_pairs_by_size[num_bits].insert(std::make_pair(ip, offset));
 
-    offset_counts_by_size[num_bits - 1][offset] += inserted.second ? 1 : 0;
-    inserted = pc_offset_pairs_by_partition[convert_offsetBits_to_btb_partitionID(num_bits)].insert(std::make_pair(ip, offset));
-    offset_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits)][offset] += inserted.second ? 1 : 0;
-    type_counts_by_size[convert_offsetBits_to_btb_partitionID(num_bits)][branch_type] += inserted.second ? 1 : 0;
+    offset_counts_by_size[num_bits][offset] += inserted.second ? 1 : 0;
+    inserted = pc_offset_pairs_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)].insert(std::make_pair(ip, offset));
+    offset_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)][offset] += inserted.second ? 1 : 0;
+    type_counts_by_size[convert_offsetBits_to_btb_partitionID(num_bits, true)][branch_type] += inserted.second ? 1 : 0;
   }
 
   assert_refcounts();

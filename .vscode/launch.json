@@ -9,9 +9,9 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "-warmup_instructions",
-                "50000",
+                "5000",
                 "-simulation_instructions",
-                "50000",
+                "500000000",
                 "-result_dir",
                 "~/Downloads/results/ipc1/sizes_champsim32k/test/",
                 // "-ptrace",
