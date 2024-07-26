@@ -603,6 +603,7 @@ void O3_CPU::decode_instruction()
     ooo_model_instr& db_entry = DECODE_BUFFER.front();
     do_dib_update(db_entry);
 
+    // early resteer?
     // Resume fetch
     if (db_entry.branch_mispredicted) {
       // These branches detect the misprediction at decode

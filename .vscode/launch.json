@@ -96,6 +96,18 @@
             ]
         },
         {
+            "name": "Python: Simple Offsets",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceRoot}/aggregation_scripts/btb_offset_simple.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "stopOnEntry": false,
+            "args": [
+                "/home/robrunne/Downloads/results"
+            ]
+        },
+        {
             "name": "Python: ExtractLogs",
             "type": "debugpy",
             "request": "launch",
