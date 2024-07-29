@@ -357,7 +357,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
 
   if (btb_entry == NULL) {
-
     BTB_writes++;
 
     int num_bits;
@@ -403,3 +402,4 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 }
 
 bool O3_CPU::is_not_block_ending(uint64_t ip) { return true; }
+void O3_CPU::btb_final_stats() {}

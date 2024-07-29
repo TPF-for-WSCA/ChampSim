@@ -9,21 +9,22 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "-warmup_instructions",
-                "50000",
+                "5000",
                 "-simulation_instructions",
-                "50000000",
+                "500000000",
                 "-result_dir",
                 "~/Downloads/results/ipc1/sizes_champsim32k/test/",
                 // "-ptrace",
                 // "-cloudsuite",
-                //"-intel",
+                "-intel",
                 // "-stallonmiss",
                 "-traces",
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
                 // "/home/robrunne/OneDrive/Research/datasets/ipc1/server_004.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_030.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1/client_008.champsimtrace.xz"
-                "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/google/charlie/champsim-17571657100049929577.1006522.memtrace.gz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
@@ -92,6 +93,18 @@
                 "~/OneDrive/Research/results/sizes_scaled/sizes_champsim64k",
                 "optimal_way",
                 "x86"
+            ]
+        },
+        {
+            "name": "Python: Simple Offsets",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceRoot}/aggregation_scripts/btb_offset_simple.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "stopOnEntry": false,
+            "args": [
+                "/home/robrunne/Downloads/results"
             ]
         },
         {

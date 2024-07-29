@@ -15,6 +15,7 @@
 
 extern uint8_t warmup_complete[NUM_CPUS];
 extern uint8_t MAX_INSTR_DESTINATIONS;
+extern uint8_t knob_intel;
 
 std::ostream& operator<<(std::ostream& s, const ooo_model_instr& mi)
 {
@@ -28,7 +29,9 @@ std::ostream& operator<<(std::ostream& s, const BLOCK& b) { return (s << "BLOCK"
 void O3_CPU::operate()
 {
   // subtract 1, as we might insert two into the buffer (overlap)
-  instrs_to_read_this_cycle = std::min((std::size_t)FETCH_WIDTH, (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy()) - 1);
+  std::size_t fetch_width = knob_intel ? FETCH_WIDTH - 1 : FETCH_WIDTH;
+  instrs_to_read_this_cycle =
+      std::min(fetch_width, std::min((IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy()) - 1, (IFETCH_BUFFER.size() - IFETCH_BUFFER.occupancy())));
 
   retire_rob();                    // retire
   complete_inflight_instruction(); // finalize execution
@@ -305,6 +308,11 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
     overhang_instr.ip += arch_instr.size;
     overhang_instr.instruction_pa += arch_instr.size;
     overhang_instr.size -= arch_instr.size;
+    overhang_instr.num_mem_ops = 0;
+    overhang_instr.destination_memory = {0};
+    overhang_instr.destination_registers = {0};
+    overhang_instr.source_registers = {0};
+    overhang_instr.source_memory = {0};
     assert(overhang_instr.size > 0);
     arch_instr.is_branch = 0; // we only predict a branch once - once it is fully fetched
     overlap = true;
@@ -314,7 +322,9 @@ void O3_CPU::init_instruction(ooo_model_instr arch_instr)
   IFETCH_BUFFER.push_back(arch_instr);
 
   if (overlap) {
-    instrs_to_read_this_cycle--;
+    // TODO: check that we never cross multiple times
+    if (instrs_to_read_this_cycle > 0)
+      instrs_to_read_this_cycle--;
     IFETCH_BUFFER.push_back(overhang_instr);
   }
 
@@ -437,7 +447,7 @@ void O3_CPU::fetch_instruction()
     // TODO: Fix up for x86 instructions
     // NOTE: this is here for the fake instructions in the fixed ipc1 traces,
     // such that we don't increase throughput requirements on instruction fetching
-    if (it->translated == COMPLETED && it->fetched == 0 && it->ip % 4 != 0) {
+    if (it->translated == COMPLETED && it->fetched == 0 && (it->ip % 4 != 0 and not knob_intel)) {
       it->fetched = COMPLETED;
       continue;
     }
@@ -488,7 +498,7 @@ void O3_CPU::fetch_instruction()
 void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::iterator begin, champsim::circular_buffer<ooo_model_instr>::iterator end)
 {
   // add it to the L1-I's read queue
-  assert(begin->ip % 4 == 0);
+  assert(begin->ip % 4 == 0 or knob_intel);
   PACKET fetch_packet;
   fetch_packet.fill_level = L1I_bus.lower_level->fill_level;
   fetch_packet.cpu = cpu;
@@ -507,7 +517,7 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   uint64_t min_addr = begin->instruction_pa;
   uint64_t max_addr = min_addr + begin->size;
   for (; begin != end; ++begin) {
-    if (begin->ip % 4 != 0) {
+    if (begin->ip % 4 != 0 and not knob_intel) {
       continue; // Ignore dummy instructions in updated traces
     }
 
@@ -593,6 +603,7 @@ void O3_CPU::decode_instruction()
     ooo_model_instr& db_entry = DECODE_BUFFER.front();
     do_dib_update(db_entry);
 
+    // early resteer?
     // Resume fetch
     if (db_entry.branch_mispredicted) {
       // These branches detect the misprediction at decode
@@ -605,6 +616,7 @@ void O3_CPU::decode_instruction()
       }
     }
 
+    db_entry.decoded = COMPLETED;
     // Add to dispatch
     if (warmup_complete[cpu])
       DISPATCH_BUFFER.push_back(db_entry);
