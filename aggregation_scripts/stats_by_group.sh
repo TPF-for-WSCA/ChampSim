@@ -67,7 +67,7 @@ done
 echo "aggregation scripts finished"
 
 python ${chroot}/ChampSim/aggregation_scripts/offset_plotting.py --result_dir ./ &
-for ((i=1;i<=8;i++)); do
+for ((i=1;i<=9;i++)); do
     ${pg_dir}plotgen -i ./**/sizes_offset_btbx/**/cpu0_partition_${i}_offset_count.tsv --no-columns  --column-names --filename --column-names --renameregex '\./(.*)/.*/([a-zA-Z\-_0-9\.]+)/\.*' --normalise-function sum --normalise-columns : --join index --apply-function cset = nan 0 --apply-icolumns : --plot line --file ./raw_data/ordered_offset_partition_${i}.tsv  --palette bright -o ./graphs/ordered_offset_partition_${i}.html &
 done
 ${pg_dir}plotgen --debug -i ./**/sizes_champsim_data_32k/**/cpu0_L1I_num_cl_with_num_holes.tsv --column-names --filename --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*' --join index --transpose --add-function sum --add-column "TOTAL CACHELINES" --sort-function name --sort-rows --row-names --select-column "TOTAL CACHELINES" --print --y-master-title "#Cachelines" --palette bright --master-title "Total Evictions" --plot bar --y-title-standoff 135 --file ./raw_data/cacheline_count.tsv --width 1350 --height 300 -o ./graphs/cacheline_count.html ./graphs/cacheline_count.pdf &
