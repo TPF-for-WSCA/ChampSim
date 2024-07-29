@@ -11,7 +11,7 @@
                 "-warmup_instructions",
                 "50000",
                 "-simulation_instructions",
-                "50000",
+                "50000000",
                 "-result_dir",
                 "~/Downloads/results/ipc1/sizes_champsim32k/test/",
                 // "-ptrace",
@@ -49,9 +49,9 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "-warmup_instructions",
-                "500",
+                "50000",
                 "-simulation_instructions",
-                "5000000",
+                "50000000",
                 "-result_dir",
                 "~/Downloads/results/vcl_clang/",
                 // "-ptrace",
@@ -61,10 +61,10 @@
                 "-traces",
                 // "/Users/robrunne/Workspace/traces/tanvir/clang/clang.gz",
                 // "/Users/robrunne/Workspace/traces/ipc1/client_001.champsimtrace.xz"
-                "/Users/robrunne/Workspace/traces/ipc1/server_022.champsimtrace.xz"
+                // "/Users/robrunne/Workspace/traces/ipc1/server_022.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/client_007.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/spec_gcc_001.champsimtrace.xz"
-                // "/Users/robrunne/Workspace/traces/ipc1/server_014.champsimtrace.xz"
+                "/Users/robrunne/Workspace/traces/ipc1/server_014.champsimtrace.xz"
                 //"/Users/robrunne/Workspace/traces/ipc1/server_009.champsimtrace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/crc2/astar_163B.trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
