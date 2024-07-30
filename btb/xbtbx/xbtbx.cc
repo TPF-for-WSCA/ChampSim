@@ -25,6 +25,8 @@ uint64_t offset_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBhit;
 
+extern uint8_t knob_intel;
+
 enum BTB_ReplacementStrategy { LRU, REF0, REF };
 
 struct BTBEntry {
@@ -73,13 +75,14 @@ struct BTB {
     numIndexBits = (uint32_t)log2((double)Sets);
   }
 
-  int32_t index(uint64_t ip) { return ((ip >> 2) & indexMask); }
+  int32_t index(uint64_t ip) { return knob_intel ? (ip & indexMask) : ((ip >> 2) & indexMask); }
 
   uint64_t get_tag(uint64_t ip)
   {
     return ip;
     uint64_t addr = ip;
-    addr = addr >> 2;
+    if (not knob_intel)
+      addr = addr >> 2;
     addr = addr >> numIndexBits;
     /* We use a 16-bit tag.
      * The lower 8-bits stay the same as in the full tag.
@@ -266,7 +269,7 @@ struct offsetBTB {
     return way;
   }
 
-  int32_t index(uint64_t target) { return ((target >> 2) & indexMask); }
+  int32_t index(uint64_t target) { return knob_intel ? (target & indexMask) : ((target >> 2) & indexMask); }
 
   void inc_ref_count(int set, int way) { theOffsetBTB[set][way].ref_count++; }
   void dec_ref_count(int set, int way)
@@ -580,8 +583,12 @@ BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
       uint64_t target_offset =
           offsetBTB_partition[btb_entry->offsetBTB_partitionID]->get_offset_from_offsetBTB(btb_entry->offsetBTB_set, btb_entry->offsetBTB_way);
       int offset_size = offsetbtb_partition_sizes[btb_entry->offsetBTB_partitionID];
-      uint64_t temp = ((ip >> offset_size) >> 2) << offset_size;
-      branch_target = (temp | target_offset) << 2;
+      if (knob_intel) {
+        branch_target = ((ip >> offset_size) << offset_size) | target_offset;
+      } else {
+        uint64_t temp = ((ip >> offset_size) >> 2) << offset_size;
+        branch_target = (temp | target_offset) << 2;
+      }
       /*if (btb_entry->target_ip != branch_target) {
         cout << "Partition ID " <<  partitionID << " correct target " << std::hex << btb_entry->target_ip << " computed target " << branch_target << " offset "
       << target_offset << endl; assert(0);
@@ -622,7 +629,7 @@ void update_offsetbtb(uint64_t branch_target, int num_offset_bits, BTBEntry* btb
   int offsetBTB_partitionID = convert_offsetBits_to_offsetbtb_partitionID(num_offset_bits);
   assert(offsetBTB_partitionID < NUM_OFFSET_BTB_PARTITIONS);
   uint64_t target_offset_mask = ((uint64_t)1 << offsetbtb_partition_sizes[offsetBTB_partitionID]) - 1;
-  uint64_t target_offset = (branch_target >> 2) & target_offset_mask;
+  uint64_t target_offset = knob_intel ? (branch_target & target_offset_mask) : (branch_target >> 2) & target_offset_mask;
   if (not is_new_entry)
     offsetBTB_partition[btb_entry->offsetBTB_partitionID]->dec_ref_count(btb_entry->offsetBTB_set, btb_entry->offsetBTB_way);
   std::pair<uint32_t, uint32_t> offsetBTB_index = offsetBTB_partition[offsetBTB_partitionID]->update_OffsetBTB(target_offset, lru_counter, is_new_entry);
@@ -761,7 +768,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   if (branch_type == BRANCH_RETURN) {
     num_bits = 0;
   } else {
-    uint64_t diff_bits = (branch_target >> 2) ^ (ip >> 2);
+    uint64_t diff_bits = knob_intel ? (branch_target ^ ip) : (branch_target >> 2) ^ (ip >> 2);
     num_bits = 0;
     while (diff_bits != 0) {
       diff_bits = diff_bits >> 1;
@@ -770,10 +777,11 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
   extern uint8_t knob_collect_offsets;
   if (knob_collect_offsets) {
-    uint64_t offset = (branch_target >> 2) & ((1ull << num_bits) - 1);
+    uint64_t offset_mask = ((1ull << num_bits) - 1);
+    uint64_t offset = knob_intel ? branch_target & branch_target & offset_mask : (branch_target >> 2) & offset_mask;
     auto inserted = pc_offset_pairs_by_size[num_bits].insert(std::make_pair(ip, offset));
 
-    offset_counts_by_size[num_bits][offset] += inserted.second ? 1 : 0;
+    offset_counts_by_size[num_bits][offset] += 1; // static inserts: inserted.second ? 1 : 0
     inserted = pc_offset_pairs_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)].insert(std::make_pair(ip, offset));
     offset_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)][offset] += inserted.second ? 1 : 0;
     type_counts_by_size[convert_offsetBits_to_btb_partitionID(num_bits, true)][branch_type] += inserted.second ? 1 : 0;
