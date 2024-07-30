@@ -26,7 +26,7 @@
                 // "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace.xz"
                 "/home/robrunne/OneDrive/Research/datasets/google/charlie/champsim-17571657100049929577.1006522.memtrace.gz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"
-                //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/scrc2/nutch_phase0_core2.trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
                 //"/home/robrunne/Downloads/tmp/champsim_traces/whiskey/champsim-1748052322638680856.267686.memtrace.gz"
             ],
@@ -35,7 +35,7 @@
             "environment": [
                 {
                     "name": "LD_LIBRARY_PATH",
-                    "value": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib"
+                    "value": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib:/usr/lib/x86_64-linux-gnu/debug"
                 }
             ],
             "MIMode": "gdb",

@@ -205,7 +205,15 @@ public:
 */
 
 // TODO: Make specific versions for x86/ARM, depending on the address size
-bool is_kernel(uint64_t ip) { return std::bitset<64>(((ip >> 48) & 0xFFFF)).count() == 16; }
+bool is_kernel(uint64_t ip)
+{
+  bool is_kernel = false;
+  if (knob_intel)
+    is_kernel = std::bitset<64>(((ip >> 56) & 0xFF)).count() == 8;
+  else
+    is_kernel = std::bitset<64>(((ip >> 48) & 0xFFFF)).count() == 16;
+  return is_kernel;
+}
 bool is_stack(uint64_t ip) { return (bool)((ip >> 32) & 0xFFFF); } // TODO: Where are trap vectors or syscal jump tables?
 class cloudsuite_tracereader : public tracereader
 {
@@ -288,7 +296,7 @@ public:
 
     // adjust to test context crossing speedup improvements
     if (not is_stack(trace_read_instr.ip) and is_stack(last_instr.ip)) {
-      stack_entry++;
+      stack_exits++;
     }
     if (is_kernel(trace_read_instr.ip) and not is_kernel(last_instr.ip)) {
       trap_instrs++;
@@ -297,7 +305,7 @@ public:
       eret_instrs++;
     }
     if (not is_stack(last_instr.ip) and is_stack(trace_read_instr.ip)) {
-      stack_exits++;
+      stack_entry++;
     }
 
     if (knob_intel) {

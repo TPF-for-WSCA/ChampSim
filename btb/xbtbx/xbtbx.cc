@@ -84,7 +84,7 @@ struct BTB {
     if (not knob_intel)
       addr = addr >> 2;
     addr = addr >> numIndexBits;
-    /* We use a 16-bit tag.
+    /* We use a 16-bit tag. TODO: change to 12 bit tag - check how (e.g. kernel bit, "stack" bit and xor to 4 bits + lower 6 bits unchanged)
      * The lower 8-bits stay the same as in the full tag.
      * The upper 8-bits are the folded X-OR of the remaining bits of the full tag.
      */
@@ -527,7 +527,7 @@ void O3_CPU::initialize_btb()
 
 BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
 {
-  BTBEntry* btb_entry;
+  BTBEntry* btb_entry = NULL;
   int partitionID = -1;
 
   for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
