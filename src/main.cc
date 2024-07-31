@@ -543,7 +543,7 @@ void write_offsets(O3_CPU* cpu, int cpu_id)
   } else {
     // std::cout << csv_file_path << "FILE SUCCESSFULLY OPENED" << endl;
     for (int i = 0; i < 64; i++) {
-      csv_file << i << "\t" << cpu->offset_size[i] << endl;
+      csv_file << i << "\t" << cpu->offset_size_count[i] << endl;
     }
     csv_file.close();
   }

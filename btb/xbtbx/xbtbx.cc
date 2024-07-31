@@ -20,7 +20,6 @@
 
 map<uint32_t, uint64_t> offset_reuse_freq;
 map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
-map<uint32_t, uint64_t> offset_size_count;
 uint64_t offset_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBhit;
@@ -781,7 +780,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     uint64_t offset = knob_intel ? branch_target & offset_mask : (branch_target >> 2) & offset_mask;
     auto inserted = pc_offset_pairs_by_size[num_bits].insert(std::make_pair(ip, offset));
 
-    offset_size[num_bits]++;
+    offset_size_count[num_bits]++;
     offset_counts_by_size[num_bits][offset] += 1; // static inserts: inserted.second ? 1 : 0
     inserted = pc_offset_pairs_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)].insert(std::make_pair(ip, offset));
     offset_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)][offset] += inserted.second ? 1 : 0;
@@ -806,7 +805,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     BTB_writes++;
 
     int smallest_offset_partition_id = convert_offsetBits_to_btb_partitionID(num_bits);
-    offset_size_count[num_bits]++;
 
     int partition = get_lru_partition(smallest_offset_partition_id, ip);
     assert(partition < NUM_BTB_PARTITIONS);
