@@ -16,7 +16,7 @@
 #define BASIC_BTB_RAS_SIZE 64
 #define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
 
-#define LOG_COMMONALITY_CUTOFF 100
+#define LOG_COMMONALITY_CUTOFF 200
 
 map<uint32_t, uint64_t> offset_reuse_freq;
 map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
@@ -733,25 +733,25 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   // Exit kernel
   if (is_kernel(ip) and not is_kernel(branch_target)) {
     kernel_exit_branch_types[branch_type]++;
-    cout << "kernel exit" << endl;
+    // cout << "kernel exit" << endl;
   }
 
   // Enter kernel
   if (is_kernel(branch_target) and not is_kernel(ip)) {
     kernel_enter_branch_types[branch_type]++;
-    cout << "kernel enter" << endl;
+    // cout << "kernel enter" << endl;
   }
 
   // Enter stack
   if (is_stack(branch_target) and not is_stack(ip)) {
     stack_enter_branch_types[branch_type]++;
-    cout << "stack enter" << endl;
+    // cout << "stack enter" << endl;
   }
 
   // Exit stack
   if (is_stack(ip) and not(is_stack(branch_target) or is_kernel(branch_target))) {
     stack_exit_branch_types[branch_type]++;
-    cout << "stack exit" << endl;
+    // cout << "stack exit" << endl;
   }
 
   BTBEntry* btb_entry = NULL;
@@ -778,7 +778,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   extern uint8_t knob_collect_offsets;
   if (knob_collect_offsets) {
     uint64_t offset_mask = ((1ull << num_bits) - 1);
-    uint64_t offset = knob_intel ? branch_target & branch_target & offset_mask : (branch_target >> 2) & offset_mask;
+    uint64_t offset = knob_intel ? branch_target & offset_mask : (branch_target >> 2) & offset_mask;
     auto inserted = pc_offset_pairs_by_size[num_bits].insert(std::make_pair(ip, offset));
 
     offset_counts_by_size[num_bits][offset] += 1; // static inserts: inserted.second ? 1 : 0

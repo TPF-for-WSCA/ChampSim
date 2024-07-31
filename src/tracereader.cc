@@ -235,16 +235,16 @@ public:
     }
 
     if (is_kernel(trace_read_instr.ip) and not is_kernel(last_instr.ip)) {
-      std::cout << "Kernel entry" << std::endl;
+      // std::cout << "Kernel entry" << std::endl;
     }
     if (not is_kernel(trace_read_instr.ip) and is_kernel(last_instr.ip)) {
-      std::cout << "Kernel exit" << std::endl;
+      // std::cout << "Kernel exit" << std::endl;
     }
     if (not is_stack(trace_read_instr.ip) and is_stack(last_instr.ip)) {
-      std::cout << "Stack entry" << std::endl;
+      // std::cout << "Stack entry" << std::endl;
     }
     if (not is_stack(trace_read_instr.ip) and is_stack(last_instr.ip)) {
-      std::cout << "Stack exit" << std::endl;
+      // std::cout << "Stack exit" << std::endl;
     }
 
     last_instr.branch_target = trace_read_instr.ip;
