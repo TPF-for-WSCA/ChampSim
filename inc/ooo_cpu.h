@@ -61,9 +61,10 @@ public:
   std::map<uint64_t, uint64_t> branch_distance;
   uint32_t branch_count;
   uint64_t total_branch_distance;
-  std::array<std::set<std::pair<uint64_t, uint64_t>>, 64> pc_offset_pairs_by_size;
-  std::array<std::set<std::pair<uint64_t, uint64_t>>, 64> pc_offset_pairs_by_partition;
-  std::array<std::map<uint64_t, uint64_t>, 64> offset_counts_by_size;
+  std::array<std::set<std::pair<uint64_t, uint64_t>>, 64> pc_offset_pairs_by_size{};
+  std::array<std::set<std::pair<uint64_t, uint64_t>>, 64> pc_offset_pairs_by_partition{};
+  std::array<std::map<uint64_t, uint64_t>, 64> offset_counts_by_size{};
+  std::array<uint64_t, 64> offset_size{};
   std::array<std::map<uint64_t, uint64_t>, 64> type_counts_by_size;
   std::array<std::map<uint64_t, uint64_t>, 64> offset_counts_by_partition;
   std::vector<std::vector<uint64_t>> pc_bits_offset;
