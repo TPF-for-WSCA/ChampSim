@@ -100,7 +100,7 @@ while [ $i -le $end ]; do
 done
 
 for ((i=1;i<=64;i++)); do
-    ${pg_dir}plotgen -i ./**/sizes_offset_btbx/**/cpu0_size${i}_offset_count.tsv --no-columns --column-names --filename --column-names --renameregex '\./(.*)/.*/([a-zA-Z\-_0-9\.]+)/\.*' --normalise-function sum --normalise-columns : --join index --apply-function cset = nan 0 --apply-icolumns : --plot line --file ./raw_data/ordered_offset_${i}.tsv  --palette bright -o ./graphs/ordered_offset_${i}.html &
+    ${pg_dir}plotgen -i ./**/sizes_offset_btbx/**/cpu0_size${i}_offset_count.tsv --no-columns --column-names --filename --column-names --renameregex '\./(.*)/.*/([a-zA-Z\-_0-9\.]+)/\.*' --normalise-function sum --normalise-columns : --join index --apply-function cset = nan 0 --apply-icolumns : --sort-rows --plot line --file ./raw_data/ordered_offset_${i}.tsv  --palette bright -o ./graphs/ordered_offset_${i}.html &
 done
 # TODO: add a plotgen for the summary of the sizes
 ${pg_dir}plotgen --debug -i ./**/ordered_offset_counts.tsv --drop-nan --palette bright --sort-order desc --sort-function median --sort-rows --drop-index --column-names --filename --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*'      --join index --sort-function name --sort-columns --row-names --apply-function cset = nan 0 --apply-icolumns : --print --normalise-function sum --normalise-icolumns : --apply-fun cumsum --apply-columns : --apply-function cset = nan 1 --apply-icolumns : --drop-index --print --y-master-title "Relative Frequency of Offsets" --palette bright --master-title "" --plot line --y-title-standoff 135 --file ./raw_data/ordered_offset_overall_counts.tsv --width 1350 --height 300 -o ./graphs/ordered_offset_overall_counts.html ./graphs/ordered_offset_overall_counts.pdf &
