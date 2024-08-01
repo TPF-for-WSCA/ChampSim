@@ -45,6 +45,9 @@ struct offset_BTBEntry {
   uint32_t ref_count;
 };
 
+extern bool is_kernel(uint64_t ip);
+extern bool is_stack(uint64_t ip);
+
 struct BTB {
   std::vector<std::vector<BTBEntry>> theBTB;
   uint32_t numSets;
@@ -78,25 +81,31 @@ struct BTB {
 
   uint64_t get_tag(uint64_t ip)
   {
-    return ip;
-    uint64_t addr = ip;
+    // TODO: Make configurable for how many bits
+    int num_low_bits = 8;
+    uint64_t tag = 0;
+    tag = (tag | is_kernel(ip)) << 1;
+    tag = (tag | is_stack(ip)) << num_low_bits;
+    uint64_t addr = ip & 0xFFFFFFFF;
     if (not knob_intel)
       addr = addr >> 2;
     addr = addr >> numIndexBits;
-    /* We use a 16-bit tag. TODO: change to 12 bit tag - check how (e.g. kernel bit, "stack" bit and xor to 4 bits + lower 6 bits unchanged)
+    /* We use a 16-bit tag.
      * The lower 8-bits stay the same as in the full tag.
      * The upper 8-bits are the folded X-OR of the remaining bits of the full tag.
      */
-    uint64_t tag = addr & 0xFF; // Set the lower 8-bits of the tag
-    addr = addr >> 8;
+    tag |= addr & 0x7; // Set the lower 8-bits of the tag
+    addr = addr >> 3;
     int tagMSBs = 0;
     /*Get the upper 8-bits (folded X-OR)*/
-    for (int i = 0; i < 8; i++) {
-      tagMSBs = tagMSBs ^ (addr & 0xFF);
-      addr = addr >> 8;
+    for (int i = 0; i < 5; i++) {
+      tagMSBs = tagMSBs ^ (addr & 0x1F);
+      addr = addr >> 5;
+      if (not addr)
+        break;
     }
     /*Concatenate the lower and upper 8-bits of tag*/
-    tag = tag | (tagMSBs << 8);
+    tag = tag | (tagMSBs << 3);
     return tag;
   }
 
@@ -668,9 +677,6 @@ void print_map(std::map<uint32_t, uint16_t>& pm)
     std::cout << key << ": " << val << std::endl;
   }
 }
-
-extern bool is_kernel(uint64_t ip);
-extern bool is_stack(uint64_t ip);
 
 std::map<uint8_t, uint32_t> kernel_enter_branch_types;
 std::map<uint8_t, uint32_t> kernel_exit_branch_types;
