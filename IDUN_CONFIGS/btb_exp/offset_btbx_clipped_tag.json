@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/btb_x_vs_offset/btbx_clipped_tag",
+  "executable_name": "bin/btb_x_vs_offset/offset_btbx_clipped_tag",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,

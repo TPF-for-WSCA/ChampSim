@@ -47,6 +47,8 @@
         25,
         64
       ],
+      "full_tag": false,
+      "clipped_tag": true,
       "align_bits": 5
     }
   ],
