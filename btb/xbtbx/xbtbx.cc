@@ -54,6 +54,8 @@ struct BTB {
   uint32_t assoc;
   uint64_t indexMask;
   uint32_t numIndexBits;
+  bool full_tag = false;
+  bool clipped_tag = true;
 
   BTB() {}
 
@@ -81,6 +83,9 @@ struct BTB {
 
   uint64_t get_tag(uint64_t ip)
   {
+    if (full_tag) {
+      return ip;
+    }
     // TODO: Make configurable for how many bits
     int num_low_bits = 6;
     uint64_t tag = 0;
@@ -94,18 +99,26 @@ struct BTB {
      * The lower 8-bits stay the same as in the full tag.
      * The upper 8-bits are the folded X-OR of the remaining bits of the full tag.
      */
-    tag |= addr & 0x7; // Set the lower x-bits of the tag
-    addr = addr >> 3;
     int tagMSBs = 0;
-    /*Get the upper 8-bits (folded X-OR)*/
-    for (int i = 0; i < 5; i++) {
-      tagMSBs = tagMSBs ^ (addr & 0x1F);
-      addr = addr >> 5;
-      if (not addr)
-        break;
+    if (clipped_tag) {
+      tag |= addr & 0x7; // Set the lower 3-bits of the tag
+      addr = addr >> 3;
+      /*Get the upper 3-bits (folded X-OR)*/
+      while (addr != 0) {
+        tagMSBs = tagMSBs ^ (addr & (int)(std::pow(2, num_low_bits) - 1));
+        addr = addr >> (num_low_bits - 3);
+        if (not addr)
+          break;
+      }
+      tagMSBs <<= 3;
+    } else {
+      while (addr != 0) {
+        tagMSBs = tagMSBs ^ (addr & (int)(std::pow(2, num_low_bits) - 1));
+        addr >>= num_low_bits;
+      }
     }
     /*Concatenate the lower and upper 8-bits of tag*/
-    tag = tag | (tagMSBs << 3);
+    tag = tag | tagMSBs;
     return tag;
   }
 
