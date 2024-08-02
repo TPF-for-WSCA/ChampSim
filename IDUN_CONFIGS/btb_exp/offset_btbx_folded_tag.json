@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/btb_x_vs_offset/offset_btbx_full_tag",
+  "executable_name": "bin/btb_x_vs_offset/offset_btbx_folded_tag",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -33,20 +33,23 @@
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
       "btb": "xbtbx",
-      "btb_ways": 8,
-      "btb_non_indirect": 6,
+      "btb_ways": 10,
+      "btb_non_indirect": 8,
       "btb_sets": 512,
       "btb_offset_sizes": [
         0,
         4,
         5,
         7,
+        8,
         9,
         11,
+        15,
         19,
         25,
         64
       ],
+      "full_tag": false,
       "align_bits": 5
     }
   ],

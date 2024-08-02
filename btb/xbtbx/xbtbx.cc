@@ -54,8 +54,9 @@ struct BTB {
   uint32_t assoc;
   uint64_t indexMask;
   uint32_t numIndexBits;
-  bool full_tag = false;
+  bool full_tag = true;
   bool clipped_tag = true;
+  int num_low_bits = 6;
 
   BTB() {}
 
@@ -86,8 +87,7 @@ struct BTB {
     if (full_tag) {
       return ip;
     }
-    // TODO: Make configurable for how many bits
-    int num_low_bits = 6;
+
     uint64_t tag = 0;
     tag = (tag | is_kernel(ip)) << 1;
     tag = (tag | is_shared_or_vdso(ip)) << num_low_bits;
@@ -536,6 +536,9 @@ void O3_CPU::initialize_btb()
 
   for (uint32_t i = 0; i < BTB_WAYS; i++) {
     btb_partition[i] = new BTB(BTB_SETS, 1);
+    btb_partition[i]->full_tag = full_tag;
+    btb_partition[i]->clipped_tag = clipped_tag;
+    btb_partition[i]->num_low_bits = clipped_tag_size;
   }
   uint32_t small_btb_sets = BTB_SETS / 8;
   if (small_btb_sets == 0)

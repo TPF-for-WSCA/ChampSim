@@ -52,6 +52,8 @@ private:
   bool prev_was_branch = false;
   bool perfect_btb;
   bool perfect_branch_predict;
+  bool full_tag, clipped_tag;
+  uint8_t clipped_tag_size;
 
 public:
   size_t BTB_WAYS;
@@ -181,7 +183,7 @@ public:
          unsigned retire_width, unsigned mispredict_penalty, unsigned decode_latency, unsigned dispatch_latency, unsigned schedule_latency,
          unsigned execute_latency, MemoryRequestConsumer* itlb, MemoryRequestConsumer* dtlb, MemoryRequestConsumer* l1i, MemoryRequestConsumer* l1d,
          bpred_t bpred_type, btb_t btb_type, size_t btb_sets, size_t btb_ways, uint8_t* btb_offset_sizes, size_t btb_non_indirect, size_t btb_max_loop_branch,
-         bool perfect_btb, bool perfect_branch_predict, ipref_t ipref_type, size_t align_bits)
+         bool perfect_btb, bool perfect_branch_predict, bool full_tag, bool clipped_tag, uint8_t clipped_tag_size, ipref_t ipref_type, size_t align_bits)
       : champsim::operable(freq_scale), cpu(cpu), dib_set(dib_set), dib_way(dib_way), dib_window(dib_window),
         IFETCH_BUFFER(ifetch_buffer_size * 4, "IFETCH_BUFFER"), DISPATCH_BUFFER(dispatch_buffer_size, dispatch_latency, "DISPATCH_BUFFER"),
         DECODE_BUFFER(decode_buffer_size, decode_latency, "DECODE_BUFFER"), ROB(rob_size, "ROB"), LQ(lq_size), SQ(sq_size), FETCH_WIDTH(fetch_width),
@@ -190,7 +192,8 @@ public:
         EXEC_LATENCY(execute_latency), ITLB_bus(rob_size, itlb, "ITLB_bus"), DTLB_bus(rob_size, dtlb, "DTLB_bus"), L1I_bus(rob_size, l1i, "L1I_bus"),
         L1D_bus(rob_size, l1d, "L1D_bus"), bpred_type(bpred_type), btb_type(btb_type), BTB_SETS(btb_sets), BTB_WAYS(btb_ways), btb_sizes(btb_offset_sizes),
         BTB_NON_INDIRECT(btb_non_indirect), EXTENDED_BTB_MAX_LOOP_BRANCH(btb_max_loop_branch), perfect_btb(perfect_btb),
-        perfect_branch_predict(perfect_branch_predict), ipref_type(ipref_type), pc_bits_offset(128, std::vector<uint64_t>(64)), align_bits(align_bits)
+        perfect_branch_predict(perfect_branch_predict), full_tag(full_tag), clipped_tag(clipped_tag), clipped_tag_size(clipped_tag_size),
+        ipref_type(ipref_type), pc_bits_offset(128, std::vector<uint64_t>(64)), align_bits(align_bits)
   {
     basic_btb = (BASIC_BTB_ENTRY*)malloc(NUM_CPUS * BTB_SETS * BTB_WAYS * sizeof(BASIC_BTB_ENTRY));
     if (!basic_btb) {
