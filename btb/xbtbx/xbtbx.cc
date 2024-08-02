@@ -46,7 +46,7 @@ struct offset_BTBEntry {
 };
 
 extern bool is_kernel(uint64_t ip);
-extern bool is_stack(uint64_t ip);
+extern bool is_shared_or_vdso(uint64_t ip);
 
 struct BTB {
   std::vector<std::vector<BTBEntry>> theBTB;
@@ -82,11 +82,11 @@ struct BTB {
   uint64_t get_tag(uint64_t ip)
   {
     // TODO: Make configurable for how many bits
-    int num_low_bits = 8;
+    int num_low_bits = 6;
     uint64_t tag = 0;
     tag = (tag | is_kernel(ip)) << 1;
-    tag = (tag | is_stack(ip)) << num_low_bits;
-    uint64_t addr = ip & 0xFFFFFFFF;
+    tag = (tag | is_shared_or_vdso(ip)) << num_low_bits;
+    uint64_t addr = ip & 0xFFFFFFFF; // Remove kernel and shared lib address bits
     if (not knob_intel)
       addr = addr >> 2;
     addr = addr >> numIndexBits;
@@ -94,7 +94,7 @@ struct BTB {
      * The lower 8-bits stay the same as in the full tag.
      * The upper 8-bits are the folded X-OR of the remaining bits of the full tag.
      */
-    tag |= addr & 0x7; // Set the lower 8-bits of the tag
+    tag |= addr & 0x7; // Set the lower x-bits of the tag
     addr = addr >> 3;
     int tagMSBs = 0;
     /*Get the upper 8-bits (folded X-OR)*/
@@ -748,13 +748,13 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
 
   // Enter stack
-  if (is_stack(branch_target) and not is_stack(ip)) {
+  if (is_shared_or_vdso(branch_target) and not is_shared_or_vdso(ip)) {
     stack_enter_branch_types[branch_type]++;
     // cout << "stack enter" << endl;
   }
 
   // Exit stack
-  if (is_stack(ip) and not(is_stack(branch_target) or is_kernel(branch_target))) {
+  if (is_shared_or_vdso(ip) and not(is_shared_or_vdso(branch_target) or is_kernel(branch_target))) {
     stack_exit_branch_types[branch_type]++;
     // cout << "stack exit" << endl;
   }

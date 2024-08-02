@@ -214,7 +214,7 @@ bool is_kernel(uint64_t ip)
     is_kernel = std::bitset<64>(((ip >> 48) & 0xFFFF)).count() == 16;
   return is_kernel;
 }
-bool is_stack(uint64_t ip) { return (bool)((ip >> 32) & 0xFFFF); } // TODO: Where are trap vectors or syscal jump tables?
+bool is_shared_or_vdso(uint64_t ip) { return (bool)((ip >> 32) & 0xFFFF); } // TODO: Where are trap vectors or syscal jump tables?
 class cloudsuite_tracereader : public tracereader
 {
   ooo_model_instr last_instr;
@@ -240,10 +240,10 @@ public:
     if (not is_kernel(trace_read_instr.ip) and is_kernel(last_instr.ip)) {
       // std::cout << "Kernel exit" << std::endl;
     }
-    if (not is_stack(trace_read_instr.ip) and is_stack(last_instr.ip)) {
+    if (not is_shared_or_vdso(trace_read_instr.ip) and is_shared_or_vdso(last_instr.ip)) {
       // std::cout << "Stack entry" << std::endl;
     }
-    if (not is_stack(trace_read_instr.ip) and is_stack(last_instr.ip)) {
+    if (not is_shared_or_vdso(trace_read_instr.ip) and is_shared_or_vdso(last_instr.ip)) {
       // std::cout << "Stack exit" << std::endl;
     }
 
@@ -295,7 +295,7 @@ public:
     last_instr.branch_target = trace_read_instr.ip;
 
     // adjust to test context crossing speedup improvements
-    if (not is_stack(trace_read_instr.ip) and is_stack(last_instr.ip)) {
+    if (not is_shared_or_vdso(trace_read_instr.ip) and is_shared_or_vdso(last_instr.ip)) {
       stack_exits++;
     }
     if (is_kernel(trace_read_instr.ip) and not is_kernel(last_instr.ip)) {
@@ -304,7 +304,7 @@ public:
     if (not is_kernel(trace_read_instr.ip) and is_kernel(last_instr.ip)) {
       eret_instrs++;
     }
-    if (not is_stack(last_instr.ip) and is_stack(trace_read_instr.ip)) {
+    if (not is_shared_or_vdso(last_instr.ip) and is_shared_or_vdso(trace_read_instr.ip)) {
       stack_entry++;
     }
 
