@@ -219,7 +219,15 @@ def main(args):
     pool = mp.Pool(processes=7)
     results_by_application_by_config = defaultdict(lambda: defaultdict(lambda: 0))
     for benchmark in os.listdir(args.logdir):
-        if benchmark not in ["ipc1_server", "ipc1_client", "ipc1_spec"]:
+        if benchmark not in [
+            "ipc1_server",
+            "ipc1_client",
+            "ipc1_spec",
+            "google_whiskey",
+            "google_delta",
+            "google_merced",
+            "google_charlie",
+        ]:
             continue
         benchmark_path = os.path.join(args.logdir, benchmark)
         for config in os.listdir(benchmark_path):
