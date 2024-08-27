@@ -223,10 +223,6 @@ def main(args):
             "ipc1_server",
             "ipc1_client",
             "ipc1_spec",
-            "google_whiskey",
-            "google_delta",
-            "google_merced",
-            "google_charlie",
         ]:
             continue
         benchmark_path = os.path.join(args.logdir, benchmark)
