@@ -231,7 +231,7 @@ def main(args):
             continue
         benchmark_path = os.path.join(args.logdir, benchmark)
         for config in os.listdir(benchmark_path):
-            if not config.endswith("offset_btbx"):
+            if not config.endswith("_btb"):
                 continue
             config_path = os.path.join(benchmark_path, config)
             results_by_application = {}
