@@ -21,7 +21,7 @@ do
     for run in $benchmark/${baseline_config[@]}
     do
         echo "Handling ${run}"
-        python /cluster/projects/nn4650k/workspace/ChampSim/aggregation_scripts/btb_offset_analysis.py $run &
+        python /cluster/home/romankb/ChampSim/aggregation_scripts/btb_offset_analysis.py $run &
     done
 done
 
