@@ -237,8 +237,8 @@ def main(args):
             results_by_application = {}
             for application in os.listdir(config_path):
                 app_path = os.path.join(config_path, application)
-                # result = pool.apply_async(extract_single_workload, args=(app_path,))
-                result = extract_single_workload(app_path)
+                result = pool.apply_async(extract_single_workload, args=(app_path,))
+                # result = extract_single_workload(app_path)
                 results_by_application_by_config[config][application] = result
 
     print("COMPLETED DATA GATHERING")
