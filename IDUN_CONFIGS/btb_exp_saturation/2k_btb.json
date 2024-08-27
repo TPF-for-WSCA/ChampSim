@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/btb_x_vs_offset/offset_btbx_full_tag",
+    "executable_name": "bin/offset_saturation/2k_btb",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
@@ -34,7 +34,7 @@
         "btb": "xbtbx",
         "btb_ways": 8,
         "btb_non_indirect": 6,
-        "btb_sets": 512,
+        "btb_sets": 256,
         "btb_offset_sizes": [
             0,
             4,
@@ -47,8 +47,8 @@
             64
         ],
         "offset_btb_sets": [
-            1024,
-            1024
+            512,
+            512
         ],
         "align_bits": 5
     }],

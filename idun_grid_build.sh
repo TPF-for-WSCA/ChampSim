@@ -1,6 +1,6 @@
 #!/bin/bash
 
-build_dir=("btb_exp")
+build_dir=("btb_exp_saturation")
 
 old_dir=$(pwd)
 cd ~/ChampSim/

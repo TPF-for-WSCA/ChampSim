@@ -1,5 +1,5 @@
 {
-    "executable_name": "bin/btb_x_vs_offset/offset_btbx_full_tag",
+    "executable_name": "bin/offset_saturation/4k_btb",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
