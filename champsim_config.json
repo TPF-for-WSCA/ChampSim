@@ -5,8 +5,8 @@
     "page_size": 4096,
     "heartbeat_frequency": 10000000,
     "num_cores": 1,
-    "CFLAGS": "-Wall -fno-omit-frame-pointer -fno-sanitize=all -Wno-reorder -Werror -g -O0 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-    "CXXFLAGS": "-Wall -fno-omit-frame-pointer -fno-sanitize=all -Wno-reorder -Werror -g -O0 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+    "CFLAGS": "-Wall -fno-omit-frame-pointer -fno-sanitize=all -Wno-reorder -Werror -g -O3 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+    "CXXFLAGS": "-Wall -fno-omit-frame-pointer -fno-sanitize=all -Wno-reorder -Werror -g -O3 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
     "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
     "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib -fsanitize=bounds",
     "ooo_cpu": [{
@@ -34,7 +34,7 @@
         "btb": "xbtbx",
         "btb_ways": 8,
         "btb_non_indirect": 6,
-        "btb_sets": 512,
+        "btb_sets": 1024,
         "btb_offset_sizes": [
             0,
             4,
@@ -47,11 +47,9 @@
             64
         ],
         "offset_btb_sets": [
-            1024,
-            1024
+            2048,
+            2048
         ],
-        "full_tag": false,
-        "clipped_tag": true,
         "align_bits": 5
     }],
     "DIB": {
@@ -184,7 +182,7 @@
         "counting_block_method": "SUM_ACCESSES"
     },
     "physical_memory": {
-        "frequency": 1000,
+        "frequency": 3200,
         "channels": 1,
         "ranks": 1,
         "banks": 8,
