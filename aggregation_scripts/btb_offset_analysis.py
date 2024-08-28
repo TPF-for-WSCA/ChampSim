@@ -147,7 +147,7 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
         benchmarks = []
         ref_counts = set()
         for key, value in data_per_workload.items():
-            value = value.get()
+            # value = value.get()
             if not value:
                 continue
             value, summary = value
@@ -233,8 +233,8 @@ def main(args):
             results_by_application = {}
             for application in os.listdir(config_path):
                 app_path = os.path.join(config_path, application)
-                result = pool.apply_async(extract_single_workload, args=(app_path,))
-                # result = extract_single_workload(app_path)
+                # result = pool.apply_async(extract_single_workload, args=(app_path,))
+                result = extract_single_workload(app_path)
                 results_by_application_by_config[config][application] = result
 
     print("COMPLETED DATA GATHERING")
