@@ -166,6 +166,8 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
 
                 ref_counts.update(summary_per_benchmark[key].keys())
                 # assert sum(summary_per_benchmark[key].values()) == 1.0 # Floating point precision sometimes isn't good enough
+        if len(data_per_benchmark) == 0:
+            continue
 
         bottom = np.zeros(len(benchmarks))
         for ref_count in sorted(list(ref_counts)):
