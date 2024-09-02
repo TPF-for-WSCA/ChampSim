@@ -244,7 +244,7 @@ def plot_offset_count(results_by_config, graph_dir, filename, offset_idx, rv_idx
     summary_per_config = {}
     ref_counts = set()
     configs = []
-    for idx, group in groups:
+    for idx, group in enumerate(groups):
         for key, value in data_per_config.items():
             if not value:
                 continue
