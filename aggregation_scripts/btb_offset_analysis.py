@@ -216,8 +216,18 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
     plt.close(violin_fig)
     plt.close(stacked_fig)
 
-def plot_offset_count(results_by_application, graph_dir, filename, offset_idx, rv_idx):
-    pass
+
+def plot_offset_count(results_by_config, graph_dir, filename, offset_idx, rv_idx):
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    import matplotlib.ticker as mtick
+
+    def set_axis_style(ax, labels):
+        ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels, rotation=90)
+        ax.set_xlim(0.25, len(labels) + 0.75)
+
+    data_per_workload = dict(sorted(results_by_config.items()))
+    groups = set([label.split("_")[0] for label in data_per_workload.keys()])
+
 
 def main(args):
     pool = mp.Pool(processes=7)
@@ -248,17 +258,21 @@ def main(args):
     for rv_idx, name in enumerate(result_names):
         for offset_btb_idx in range(2):
             for (
+                application,
+                results,
+            ) in results_by_config_by_application.items():
+                plot_offset_count(
+                    results, graph_dir, f"{application}_{name}", offset_btb_idx, rv_idx
+                )
+
+    for rv_idx, name in enumerate(result_names):
+        for offset_btb_idx in range(2):
+            for (
                 config,
                 results,
             ) in results_by_application_by_config.items():
                 plot_config(
                     results, graph_dir, f"{config}_{name}", offset_btb_idx, rv_idx
-                )
-    for rv_idx, name in enumerate(result_names):
-        for offset_btb_idx in range(2):
-            for (application, results,) in results_by_config_by_application.items():
-                plot_offset_count(
-                    results, graph_dir, f"{application}_{name}", offset_btb_idx, rv_idx
                 )
 
 
