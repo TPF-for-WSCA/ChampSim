@@ -267,7 +267,7 @@ def plot_offset_count(results_by_config, graph_dir, filename, offset_idx, rv_idx
     make_axes_locatable(ax)
 
     ax.set_ylabel(f"{result_names[rv_idx]}")
-    ax.plot(x_data, _max, marker="o", linestyle="-", color="b")
+    ax.plot(configs, _max, marker="o", linestyle="-", color="b")
     ax.grid(True)
     linefig.savefig(
         os.path.join(graph_dir, f"{filename}_{offset_idx}_max_offset_count.pdf")
