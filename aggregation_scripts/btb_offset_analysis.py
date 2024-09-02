@@ -4,6 +4,7 @@ Plot offset BTBs fill level over time and the amount of sharing.
 
 import argparse
 import os
+import re
 
 from collections import defaultdict
 
@@ -225,8 +226,54 @@ def plot_offset_count(results_by_config, graph_dir, filename, offset_idx, rv_idx
         ax.set_xticks(np.arange(1, len(labels) + 1), labels=labels, rotation=90)
         ax.set_xlim(0.25, len(labels) + 0.75)
 
-    data_per_workload = dict(sorted(results_by_config.items()))
-    groups = set([label.split("_")[0] for label in data_per_workload.keys()])
+    data_per_config = dict(
+        sorted(
+            results_by_config.items(),
+            key=lambda label: int(re.findall(r"\d+", label)[0]),
+        )
+    )
+    groups = set([label.split("_")[1] for label in data_per_config.keys()])
+    groups = sorted(groups, key=lambda label: int(re.findall(r"\d+", label)[0]))
+
+    y_data = []
+    x_data = groups
+    avg = []
+    _max = []
+    _min = []
+    data_per_config = {}
+    summary_per_config = {}
+    ref_counts = set()
+    configs = []
+    for idx, group in groups:
+        for key, value in data_per_config.items():
+            if not value:
+                continue
+            value, summary = value
+            if group in key:
+                value = value[offset_idx][rv_idx]
+                avg.append(sum(value) / len(value))
+                _max.append(max(*value))
+                _min.append(min(*value))
+                configs.append(group)
+                summary_per_config[group] = {
+                    sum_key: (val / sum(summary[offset_idx].values()))
+                    for sum_key, val in summary[offset_idx].items()
+                }
+
+    cm = 1 / 2.54
+
+    linefig = plt.figure(figsize=(18 * cm, 8 * cm))
+    linefig.subplots_adjust(bottmo=0.39)
+    ax = linefig.add_subplot(1, 1, 1)
+    make_axes_locatable(ax)
+
+    ax.set_ylabel(f"{result_names[rv_idx]}")
+    ax.plot(x_data, _max, marker="o", linestyle="-", color="b")
+    ax.grid(True)
+    linefig.savefig(
+        os.path.join(graph_dir, f"{filename}_{offset_idx}_max_offset_count.pdf")
+    )
+    plt.close(linefig)
 
 
 def main(args):
