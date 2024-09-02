@@ -240,7 +240,6 @@ def plot_offset_count(results_by_config, graph_dir, filename, offset_idx, rv_idx
     avg = []
     _max = []
     _min = []
-    data_per_config = {}
     summary_per_config = {}
     ref_counts = set()
     configs = []
