@@ -218,7 +218,7 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
     plt.close(stacked_fig)
 
 
-def plot_offset_count(results_by_config, graph_dir, filename, offset_idx, rv_idx):
+def plot_offset_count(results_by_config, graph_dir, filename, offset_idx):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     import matplotlib.ticker as mtick
 
@@ -237,27 +237,28 @@ def plot_offset_count(results_by_config, graph_dir, filename, offset_idx, rv_idx
 
     y_data = []
     x_data = groups
-    avg = []
-    _max = []
-    _min = []
+    avg = defaultdict(lambda: [])
+    _max = defaultdict(lambda: [])
+    _min = defaultdict(lambda: [])
     summary_per_config = {}
     ref_counts = set()
-    configs = []
-    for idx, group in enumerate(groups):
-        for key, value in data_per_config.items():
-            if not value:
-                continue
-            value, summary = value
-            if group in key:
-                value = value[offset_idx][rv_idx]
-                avg.append(sum(value) / len(value))
-                _max.append(max(*value))
-                _min.append(min(*value))
-                configs.append(group)
-                summary_per_config[group] = {
-                    sum_key: (val / sum(summary[offset_idx].values()))
-                    for sum_key, val in summary[offset_idx].items()
-                }
+    configs = defaultdict(lambda: [])
+    for rv_idx, name in enumerate(result_names):
+        for idx, group in enumerate(groups):
+            for key, value in data_per_config.items():
+                if not value:
+                    continue
+                value, summary = value
+                if group in key:
+                    value = value[offset_idx][rv_idx]
+                    avg[name].append(sum(value) / len(value))
+                    _max[name].append(max(*value))
+                    _min[name].append(min(*value))
+                    configs[name].append(group)
+                    summary_per_config[group] = {
+                        sum_key: (val / sum(summary[offset_idx].values()))
+                        for sum_key, val in summary[offset_idx].items()
+                    }
 
     cm = 1 / 2.54
 
@@ -266,9 +267,12 @@ def plot_offset_count(results_by_config, graph_dir, filename, offset_idx, rv_idx
     ax = linefig.add_subplot(1, 1, 1)
     make_axes_locatable(ax)
 
-    ax.set_ylabel(f"{result_names[rv_idx]}")
-    ax.plot(configs, _max, marker="o", linestyle="-", color="b")
+    for rv_idx, name in enumerate(result_names):
+        ax.plot(
+            configs[name], _max[name], marker="o", linestyle="-", color="b", label=name
+        )
     ax.grid(True)
+    ax.legend()
     linefig.savefig(
         os.path.join(graph_dir, f"{filename}_{offset_idx}_max_offset_count.pdf")
     )
@@ -301,15 +305,12 @@ def main(args):
     print("COMPLETED DATA GATHERING")
     graph_dir = os.path.join(args.logdir, "graphs")
     os.makedirs(graph_dir, exist_ok=True)
-    for rv_idx, name in enumerate(result_names):
-        for offset_btb_idx in range(2):
-            for (
-                application,
-                results,
-            ) in results_by_config_by_application.items():
-                plot_offset_count(
-                    results, graph_dir, f"{application}_{name}", offset_btb_idx, rv_idx
-                )
+    for offset_btb_idx in range(2):
+        for (
+            application,
+            results,
+        ) in results_by_config_by_application.items():
+            plot_offset_count(results, graph_dir, f"{application}", offset_btb_idx)
 
     for rv_idx, name in enumerate(result_names):
         for offset_btb_idx in range(2):
