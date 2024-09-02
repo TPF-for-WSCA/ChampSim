@@ -229,7 +229,7 @@ def plot_offset_count(results_by_config, graph_dir, filename, offset_idx, rv_idx
     data_per_config = dict(
         sorted(
             results_by_config.items(),
-            key=lambda label: int(re.findall(r"\d+", label)[0]),
+            key=lambda label: int(re.findall(r"\d+", label[0])[0]),
         )
     )
     groups = set([label.split("_")[1] for label in data_per_config.keys()])
