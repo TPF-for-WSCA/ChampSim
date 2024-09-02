@@ -262,7 +262,7 @@ def plot_offset_count(results_by_config, graph_dir, filename, offset_idx, rv_idx
     cm = 1 / 2.54
 
     linefig = plt.figure(figsize=(18 * cm, 8 * cm))
-    linefig.subplots_adjust(bottmo=0.39)
+    linefig.subplots_adjust(bottom=0.39)
     ax = linefig.add_subplot(1, 1, 1)
     make_axes_locatable(ax)
 
