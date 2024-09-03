@@ -94,6 +94,7 @@ def extract_single_workload(path):
 
 
 result_names = ["num_offsets", "num_idx", "max_shared", "compression_factor"]
+colors = ["b", "r", "g", "k"]
 
 
 def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx):
@@ -148,7 +149,7 @@ def plot_config(results_by_application, graph_dir, filename, offset_idx, rv_idx)
         benchmarks = []
         ref_counts = set()
         for key, value in data_per_workload.items():
-            # value = value.get()
+            value = value.get()
             if not value:
                 continue
             value, summary = value
@@ -246,6 +247,7 @@ def plot_offset_count(results_by_config, graph_dir, filename, offset_idx):
     for rv_idx, name in enumerate(result_names):
         for idx, group in enumerate(groups):
             for key, value in data_per_config.items():
+                value = value.get()
                 if not value:
                     continue
                 value, summary = value
@@ -269,7 +271,12 @@ def plot_offset_count(results_by_config, graph_dir, filename, offset_idx):
 
     for rv_idx, name in enumerate(result_names):
         ax.plot(
-            configs[name], _max[name], marker="o", linestyle="-", color="b", label=name
+            configs[name],
+            _max[name],
+            marker="x",
+            linestyle="-",
+            color=colors[rv_idx],
+            label=name,
         )
     ax.grid(True)
     ax.legend()
@@ -298,8 +305,8 @@ def main(args):
             results_by_application = {}
             for application in os.listdir(config_path):
                 app_path = os.path.join(config_path, application)
-                # result = pool.apply_async(extract_single_workload, args=(app_path,))
-                result = extract_single_workload(app_path)
+                result = pool.apply_async(extract_single_workload, args=(app_path,))
+                # result = extract_single_workload(app_path)
                 results_by_application_by_config[config][application] = result
                 results_by_config_by_application[application][config] = result
     print("COMPLETED DATA GATHERING")
