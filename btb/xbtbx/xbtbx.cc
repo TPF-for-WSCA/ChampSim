@@ -629,7 +629,6 @@ BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
 
 void assert_refcounts()
 {
-  return;
   uint64_t num_idx_entries = 0;
   uint64_t stored_ref_count = 0;
   for (int partition = 0; partition < NUM_OFFSET_BTB_PARTITIONS; partition++) {
@@ -733,7 +732,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
           }
         }
       sharing_in_btb_by_partition[i].push_back(reuse_frequency);
-      offset_refcounts_by_partition[i].push_back(refcounts_by_offset);
+      // offset_refcounts_by_partition[i].push_back(refcounts_by_offset);
     }
   }
 
