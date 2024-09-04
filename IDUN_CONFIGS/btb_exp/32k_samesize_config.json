@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/btb_x_vs_offset/champsim32k",
+  "executable_name": "bin/btb_x_vs_offset/champsim32k_samesize",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -33,9 +33,10 @@
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
       "btb": "xbtbx",
+      "btb_comment": "We are putting down 64 bits per way, but that should only be 48 in total. That's why we have 8 ways, 256 sets at the same storage area as the btbx/offsetbtbx",
       "btb_ways": 8,
       "btb_non_indirect": 8,
-      "btb_sets": 512,
+      "btb_sets": 256,
       "btb_offset_sizes": [
         64,
         64,
