@@ -731,7 +731,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
             cout << "\tPARTITION:     " << i << endl;
           }
         }
-      sharing_in_btb_by_partition[i].push_back(reuse_frequency);
+      // sharing_in_btb_by_partition[i].push_back(reuse_frequency);
       // offset_refcounts_by_partition[i].push_back(refcounts_by_offset);
     }
   }
@@ -804,7 +804,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     offset_size_count[num_bits]++;
     offset_counts_by_size[num_bits][offset] += 1; // static inserts: inserted.second ? 1 : 0
     inserted = pc_offset_pairs_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)].insert(std::make_pair(ip, offset));
-    offset_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)][offset] += inserted.second ? 1 : 0;
+    static_offset_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)][offset] += inserted.second ? 1 : 0;
+    static_branch_pc_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)][ip] += inserted.second ? 1 : 0;
+    static_target_pc_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)][branch_target] += inserted.second ? 1 : 0;
+    dynamic_offset_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)][offset] += 1;
+    dynamic_branch_pc_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)][ip] += 1;
+    dynamic_target_pc_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)][branch_target] += 1;
     type_counts_by_size[convert_offsetBits_to_btb_partitionID(num_bits, true)][branch_type] += inserted.second ? 1 : 0;
   }
 

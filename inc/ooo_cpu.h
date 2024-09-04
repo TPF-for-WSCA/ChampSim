@@ -69,7 +69,12 @@ public:
   std::array<std::map<uint64_t, uint64_t>, 64> offset_counts_by_size{};
   std::array<uint64_t, 64> offset_size_count{};
   std::array<std::map<uint64_t, uint64_t>, 64> type_counts_by_size;
-  std::array<std::map<uint64_t, uint64_t>, 64> offset_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> static_offset_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> static_branch_pc_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> static_target_pc_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> dynamic_offset_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> dynamic_branch_pc_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> dynamic_target_pc_counts_by_partition;
   std::vector<std::vector<uint64_t>> pc_bits_offset;
   std::map<uint32_t, std::vector<std::map<uint32_t, uint16_t>>> sharing_in_btb_by_partition;
   std::map<uint32_t, std::vector<std::map<uint64_t, uint64_t>>> offset_refcounts_by_partition;
