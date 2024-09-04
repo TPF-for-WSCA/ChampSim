@@ -500,6 +500,9 @@ void print_sim_stats(uint32_t cpu, CACHE* cache)
 
 void write_btb_partition_stats(std::array<std::map<uint64_t, uint64_t>, 64>& stats_per_partition, bool is_static, std::string variable_type, int cpu_id)
 {
+  std::ofstream csv_file;
+  std::filesystem::path csv_result_path = result_dir;
+
   for (int i = 0; i < 16; i++) {
     if (stats_per_partition[i].empty()) {
       cout << "Partition " << i << " unused in CPU " << cpu_id << endl;
