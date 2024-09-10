@@ -17,7 +17,7 @@ do
     do
         echo "Building ${build_script}"
         ./config.sh $build_script
-        make -j
+        make -j 32
     done
 done
 cd $old_dir
