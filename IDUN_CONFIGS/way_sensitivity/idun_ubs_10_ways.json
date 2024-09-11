@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/micro-acic/ubs_acic",
+  "executable_name": "bin/way_sensitivity/ubs_10_ways",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -43,24 +43,18 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 16,
+    "ways": 10,
     "buffer": true,
     "buffer_size": 64,
-    "buffer_organisation": "FULLY_ASSOCIATIVE",
+    "buffer_organisation": "DIRECT_MAPPED",
     "way_sizes": [
-      4,
-      4,
-      8,
-      8,
-      8,
-      12,
-      12,
-      16,
-      24,
+      20,
+      20,
       32,
-      36,
-      36,
-      52,
+      32,
+      44,
+      44,
+      64,
       64,
       64,
       64
@@ -81,8 +75,7 @@
     "prefetch_buffer_size": 16,
     "lru_modifier": "LRU2BOUND4",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": false,
-    "replacement_strategy": "ACIC"
+    "extend_blocks_to_branch": true
   },
   "L1D": {
     "sets": 64,

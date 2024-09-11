@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/micro-acic/ubs_acic",
+  "executable_name": "bin/micro/ubs_overhead_isca",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -18,13 +18,13 @@
       "rob_size": 224,
       "lq_size": 128,
       "sq_size": 72,
-      "fetch_width": 4,
-      "decode_width": 4,
+      "fetch_width": 6,
+      "decode_width": 6,
       "dispatch_width": 6,
       "execute_width": 6,
       "lq_width": 2,
       "sq_width": 2,
-      "retire_width": 4,
+      "retire_width": 8,
       "mispredict_penalty": 1,
       "scheduler_size": 97,
       "decode_latency": 2,
@@ -46,7 +46,7 @@
     "ways": 16,
     "buffer": true,
     "buffer_size": 64,
-    "buffer_organisation": "FULLY_ASSOCIATIVE",
+    "buffer_organisation": "DIRECT_MAPPED",
     "way_sizes": [
       4,
       4,
@@ -81,8 +81,7 @@
     "prefetch_buffer_size": 16,
     "lru_modifier": "LRU2BOUND4",
     "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": false,
-    "replacement_strategy": "ACIC"
+    "extend_blocks_to_branch": false
   },
   "L1D": {
     "sets": 64,

@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/micro-acic/ubs_acic",
+  "executable_name": "bin/micro-rebuttal-16-32/champsim_32B",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -33,7 +33,7 @@
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "btb": "extended_basic_btb",
-      "btb_max_loop_branch": 32
+      "align_bits": 4
     }
   ],
   "DIB": {
@@ -43,27 +43,24 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 16,
-    "buffer": true,
+    "ways": 13,
+    "buffer": false,
     "buffer_size": 64,
     "buffer_organisation": "FULLY_ASSOCIATIVE",
     "way_sizes": [
-      4,
-      4,
-      8,
-      8,
-      8,
-      12,
-      12,
-      16,
-      24,
       32,
-      36,
-      36,
-      52,
-      64,
-      64,
-      64
+      32,
+      32,
+      32,
+      32,
+      32,
+      32,
+      32,
+      32,
+      32,
+      32,
+      32,
+      32
     ],
     "rq_size": 64,
     "wq_size": 64,
@@ -78,11 +75,8 @@
     "prefetcher": "fdip",
     "filter_inserts": false,
     "filter_prefetches": true,
-    "prefetch_buffer_size": 16,
-    "lru_modifier": "LRU2BOUND4",
-    "counting_block_method": "SUM_ACCESSES",
-    "extend_blocks_to_branch": false,
-    "replacement_strategy": "ACIC"
+    "prefetch_buffer_size": 128,
+    "counting_block_method": "SUM_ACCESSES"
   },
   "L1D": {
     "sets": 64,
