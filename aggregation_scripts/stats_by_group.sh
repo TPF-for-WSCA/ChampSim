@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #benchmarks=("tanvir")
-benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "cvp1_new_server" "cvp1_new_compute")
+benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "google_charlie" "google_whiskey" "google_delta" "google_merced")
 #benchmarks=("crc2_spec" "crc2_cloud" "dpc3")
 pg_dir=""
 
