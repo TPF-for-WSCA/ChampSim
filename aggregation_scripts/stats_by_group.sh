@@ -33,6 +33,17 @@ do
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_champsim32k single BRANCH_DISTANCES &
 done
 
+for b in ${benchmarks[@]}
+do
+    for application in ./$b/sizes_offset_btbx_full_tag/*;
+    do
+        for ((i=1;i<=64;i++)); do
+            echo "Plotting ${application}"
+            ${pg_dir}plotgen --debug -i $application/cpu0_partition${i}_dynamic_offset_count.tsv -i $application/cpu0_partition${i}_dynamic_branch_count.tsv -i $application/cpu0_partition${i}_dynamic_target_count.tsv
+        done
+    done
+done
+
 echo "Waiting for jobs to finish:"
 for job in `jobs -p`
 do
@@ -68,7 +79,7 @@ echo "aggregation scripts finished"
 
 python ${chroot}/ChampSim/aggregation_scripts/offset_plotting.py --result_dir ./ &
 for ((i=1;i<=64;i++)); do
-    ${pg_dir}plotgen -i ./**/**/**/cpu0_partition_${i}_offset_count.tsv --no-columns  --column-names --filename --column-names --renameregex '\./(.*)/(.*)/([a-zA-Z\-_0-9\.]+)/\.*' --normalise-function sum --normalise-columns : --join index --apply-function cset = nan 0 --apply-icolumns : --plot line --file ./raw_data/ordered_offset_partition_${i}.tsv  --palette bright -o ./graphs/ordered_offset_partition_${i}.html &
+    ${pg_dir}plotgen -i ./**/**/**/cpu0_partition${i}_dynamic_offset_count.tsv -i ./**/**/**/cpu0_partition${i}_dynamic_branch_count.tsv -i ./**/**/**/cpu0_partition${i}_dynamic_target_count.tsv --no-columns  --column-names --filename --column-names --renameregex '\./(.*)/(.*)/([a-zA-Z\-_0-9\.]+)/\.*' --normalise-function sum --normalise-columns : --join index --apply-function cset = nan 0 --apply-icolumns : --plot line --file ./raw_data/ordered_offset_partition_${i}.tsv  --palette bright -o ./graphs/ordered_offset_partition_${i}.html &
 done
 ${pg_dir}plotgen --debug -i ./**/sizes_champsim_data_32k/**/cpu0_L1I_num_cl_with_num_holes.tsv --column-names --filename --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*' --join index --transpose --add-function sum --add-column "TOTAL CACHELINES" --sort-function name --sort-rows --row-names --select-column "TOTAL CACHELINES" --print --y-master-title "#Cachelines" --palette bright --master-title "Total Evictions" --plot bar --y-title-standoff 135 --file ./raw_data/cacheline_count.tsv --width 1350 --height 300 -o ./graphs/cacheline_count.html ./graphs/cacheline_count.pdf &
 # TODO: fixup line and ipc script to generate headers ${pg_dir}plotgen --debug -i ./**/sizes_champsim32k/branch_distancesconst.tsv --column-names --filename --column-names --renameregex '\./.*/.*/([a-zA-Z\-_0-9\.]+)\.champsimtrace/\.*' --join index --transpose --add-function sum --add-column "TOTAL CACHELINES" --sort-function name --sort-rows --row-names --select-column "TOTAL CACHELINES" --print --y-master-title "#Cachelines" --palette bright --master-title "Total Evictions" --plot bar --y-title-standoff 135 --file ./raw_data/cacheline_count.tsv --width 1350 --height 300 -o ./graphs/cacheline_count.html ./graphs/cacheline_count.pdf &

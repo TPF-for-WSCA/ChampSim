@@ -698,6 +698,7 @@ std::map<uint8_t, uint32_t> kernel_exit_branch_types;
 std::map<uint8_t, uint32_t> stack_enter_branch_types;
 std::map<uint8_t, uint32_t> stack_exit_branch_types;
 
+// TODO: are never taken branches inserted?
 uint64_t last_stats_cycle = 0;
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
@@ -824,6 +825,11 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
     btb_entry->tag = 0;
     btb_entry->lru = 0;
+    btb_entry->target_ip = 0;
+    btb_entry->branch_type = NOT_BRANCH;
+    btb_entry->offsetBTB_partitionID = 0;
+    btb_entry->offsetBTB_set = -1;
+    btb_entry->offsetBTB_way = -1;
     btb_entry = NULL;
   }
 
