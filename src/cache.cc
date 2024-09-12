@@ -2302,7 +2302,6 @@ int VCL_CACHE::add_rq(PACKET* packet)
 
 void CACHE::print_private_stats()
 {
-  return;
   std::cout << NAME << " LINES HANDLED PER WAY" << std::endl;
   for (uint32_t i = 0; i < NUM_WAY; ++i) {
     std::cout << std::right << std::setw(3) << i << ":\t" << way_hits[i] << std::endl;
@@ -2315,6 +2314,18 @@ void CACHE::print_private_stats()
     BUFFER_CACHE& bc = ((VCL_CACHE*)this)->buffer_cache;
     bc.print_private_stats();
     std::cout << std::right << std::setw(3) << "merge register" << ":\t" << bc.merge_hit << std::endl;
+  }
+
+  for (int i = 0; i < 4; i++) {
+    std::cout << NAME << " PREDICTOR ACCURACY AFTER " << i << std::endl;
+    double average_accuracy = 0;
+    size_t num_evictions = 0;
+    for (auto it = predictor_accuracy[i].rbegin(); it != predictor_accuracy[i].rend(); it++) {
+      std::cout << std::right << std::setw(3) << it->first * 100 << "%:\t" << it->second << std::endl;
+      average_accuracy += it->first * (float)it->second;
+      num_evictions += it->second;
+    }
+    std::cout << "\t" << NAME << " AVERAGE ACCURACY " << i << " : " << average_accuracy / num_evictions << endl;
   }
 }
 
