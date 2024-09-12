@@ -35,21 +35,20 @@
       "btb": "xbtbx",
       "btb_ways": 8,
       "btb_non_indirect": 8,
-      "btb_sets": 1024,
+      "btb_sets": 512,
       "btb_offset_sizes": [
-        0,
-        4,
-        5,
-        7,
-        9,
-        11,
-        19,
-        25,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
         64
-      ],
-      "offset_btb_sets": [
-        2048,
-        2048
       ],
       "align_bits": 5
     }
