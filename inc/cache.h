@@ -352,7 +352,7 @@ public:
     merge_hit = 0;
   };
 
-  ~BUFFER_CACHE(){};
+  ~BUFFER_CACHE() {};
 
   void initialize_replacement();
 

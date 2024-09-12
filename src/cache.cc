@@ -761,6 +761,24 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
   if (!warmup_complete[cpu]) {
     return;
   }
+  float prev_sum = 0.0;
+  for (int i = 0; i < 4; i++) {
+    int accessed_bytes_after_predictor = std::bitset<64>(handle_block.bytes_accessed_in_predictor[i]).count();
+    int accessed_bytes_at_eviction = std::bitset<64>(handle_block.bytes_accessed).count();
+    if (accessed_bytes_at_eviction != 0 and accessed_bytes_after_predictor != 0) {
+      float percentage_predicted = (double)accessed_bytes_after_predictor / accessed_bytes_at_eviction;
+      if (percentage_predicted > 1.0)
+        break;
+      percentage_predicted -= prev_sum;
+      // assert(percentage_predicted <= 1.0 and percentage_predicted >= 0);
+      predictor_accuracy[i][percentage_predicted] += 1;
+      prev_sum += percentage_predicted;
+    }
+  }
+  if (handle_block.accessed_after_insert) {
+    accessed_block.first += 1;
+  }
+  accessed_block.second += 1;
   // we onlu write to the file if warmup is complete
   if (cl_accessmask_buffer.size() < WRITE_BUFFER_SIZE) {
     cl_accessmask_buffer.push_back(handle_block.bytes_accessed);
@@ -807,6 +825,11 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
 
 bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, bool treat_like_hit)
 {
+  for (size_t i = 0; i < last_inserted[set].size(); i++) {
+    auto last_n_inserted_block = last_inserted[set][i];
+    if (last_n_inserted_block != NULL)
+      last_n_inserted_block->bytes_accessed_in_predictor[i] = last_n_inserted_block->bytes_accessed;
+  }
   DP(if (warmup_complete[handle_pkt.cpu]) {
     std::cout << "[" << NAME << "] " << __func__ << " miss";
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
@@ -870,6 +893,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, 
 
     fill_block.bytes_accessed = 0; // newly added to the cache thus no accesses yet
     memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
+    memset(fill_block.bytes_accessed_in_predictor, 0, 4 * sizeof(fill_block.bytes_accessed_in_predictor[0]));
 
     fill_block.valid = true;
     fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
