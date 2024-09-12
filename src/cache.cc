@@ -465,6 +465,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
   if (perfect_cache)
     way = 0; // we attribute everything to the first way to ensure no out-of-bounds
   BLOCK& hit_block = block[set * NUM_WAY + way];
+  hit_block.accessed_after_insert = true;
 
   record_cacheline_accesses(handle_pkt, hit_block, prev_access);
   handle_pkt.data = (perfect_cache) ? handle_pkt.data : hit_block.data;
@@ -896,6 +897,7 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, 
     memset(fill_block.bytes_accessed_in_predictor, 0, 4 * sizeof(fill_block.bytes_accessed_in_predictor[0]));
 
     fill_block.valid = true;
+    fill_block.accessed_after_insert = false;
     fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
     fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
     fill_block.address = handle_pkt.address;
@@ -909,6 +911,12 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, 
     fill_block.accesses = 0;
     fill_block.last_modified_access = 0;
     fill_block.time_present = 0;
+
+    last_inserted[set].push_front(&fill_block);
+    if (last_inserted[set].size() > 4) {
+      last_inserted[set].pop_back();
+    }
+
     record_cacheline_accesses(handle_pkt, fill_block, prev_access);
   }
 
@@ -1600,6 +1608,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   }
   ////
   fill_block.valid = true;
+  fill_block.accessed_after_insert = false;
   fill_block.prefetch = (packet.type == PREFETCH && packet.pf_origin_level == fill_level);
   fill_block.dirty = (packet.type == WRITEBACK || (packet.type == RFO && packet.to_return.empty()));
   fill_block.address = packet.address;
@@ -2452,6 +2461,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
       pf_fill++;
 
     fill_block.valid = true;
+    fill_block.accessed_after_insert = false;
     fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
     fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
     fill_block.address = handle_pkt.address;

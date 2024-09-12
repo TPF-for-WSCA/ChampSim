@@ -139,6 +139,9 @@ public:
   bool is_vcl = false;
   bool filter_inserts;
   bool filter_prefetches;
+
+  std::pair<uint64_t, uint64_t> accessed_block;
+  std::map<double, size_t> predictor_accuracy[4];
   virtual bool hit_test(uint64_t addr, uint8_t size);
   size_t filter_buffer_size;
   size_t prefetch_buffer_size;
