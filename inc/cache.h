@@ -156,6 +156,7 @@ public:
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
   uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
+  std::vector<std::deque<BLOCK*>> last_inserted{NUM_SET};
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
   std::vector<uint64_t> cl_accessmask_buffer;
   std::vector<uint64_t> used_bytes_in_cache;
