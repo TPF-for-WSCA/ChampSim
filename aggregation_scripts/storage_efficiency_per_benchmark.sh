@@ -16,11 +16,9 @@ benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec")
 #baseline_configs=("sizes_champsim32k")
 baseline_configs=()
 vcl_16_configs=("sizes_champsim_16B")
-vcl_32_configs=("sizes_champsim_32B")
+vcl_32_configs=("sizes_champsim32")
 #vcl_18_configs=("sizes_ubs")
-vcl_18_configs=()
-
-
+vcl_18_configs=("sizes_ubs")
 old_dir=pwd
 
 for benchmark in ${benchmarks[@]}
@@ -34,7 +32,7 @@ do
     for config in ${vcl_18_configs[@]}
     do
         echo "\tHandling ${config}"
-        python /cluster/projects/nn4650k/workspace/ChampSim/aggregation_scripts/apply_merge_strategies.py ./${benchmark}/${config} storage_efficiency arm --vcl-configuration 4 4 4 4 8 8 8 8 12 16 20 32 36 36 48 64 64 64 &
+        python /cluster/projects/nn4650k/workspace/ChampSim/aggregation_scripts/apply_merge_strategies.py ./${benchmark}/${config} storage_efficiency arm --vcl-configuration  4 4 8 8 8 12 12 16 24 32 36 36 52 64 64 64 &
     done
     for config in ${vcl_16_configs[@]}
     do
