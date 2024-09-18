@@ -698,6 +698,20 @@ std::map<uint8_t, uint32_t> kernel_exit_branch_types;
 std::map<uint8_t, uint32_t> stack_enter_branch_types;
 std::map<uint8_t, uint32_t> stack_exit_branch_types;
 
+typedef struct _offset {
+  bool operator<(const struct _offset& off) const
+  {
+    if (num_bits == off.num_bits) {
+      return offset < off.offset;
+    } else {
+      return num_bits < off.num_bits;
+    }
+  }
+  uint8_t num_bits;
+  uint64_t offset;
+} Offset;
+std::map<uint64_t, std::set<Offset>> offsets_per_cacheline;
+
 // TODO: are never taken branches inserted?
 uint64_t last_stats_cycle = 0;
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
@@ -786,6 +800,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
 
   int num_bits;
+  uint64_t branch_cacheline_tag = ip >> LOG2_BLOCK_SIZE;
   if (branch_type == BRANCH_RETURN) {
     num_bits = 0;
   } else {
@@ -802,6 +817,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     uint64_t offset = knob_intel ? branch_target & offset_mask : (branch_target >> 2) & offset_mask;
     auto inserted = pc_offset_pairs_by_size[num_bits].insert(std::make_pair(ip, offset));
 
+    Offset off{.num_bits = (uint8_t)num_bits, .offset = offset};
+    offsets_per_cacheline[branch_cacheline_tag].insert(off);
     offset_size_count[num_bits]++;
     offset_counts_by_size[num_bits][offset] += 1; // static inserts: inserted.second ? 1 : 0
     inserted = pc_offset_pairs_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)].insert(std::make_pair(ip, offset));
@@ -882,6 +899,21 @@ void O3_CPU::btb_final_stats()
   uint64_t total_offsetBTB_evictions = 0;
   for (map<uint32_t, uint64_t>::iterator it = offset_reuse_freq.begin(); it != offset_reuse_freq.end(); ++it)
     total_offsetBTB_evictions += it->second;
+
+  std::map<uint32_t, uint64_t> num_cachelines_required_n_bits;
+
+  for (const auto& cacheline : offsets_per_cacheline) {
+    uint16_t offset_total_size = 0;
+    for (const auto& offset : cacheline.second) {
+      offset_total_size += offset.num_bits;
+    }
+    num_cachelines_required_n_bits[offset_total_size]++;
+  }
+
+  std::cout << "XXX num_cachelines_required_n_bits" << std::endl;
+  for (const auto& n_bits_cacheline_count : num_cachelines_required_n_bits) {
+    std::cout << n_bits_cacheline_count.first << ":\t" << n_bits_cacheline_count.second << std::endl;
+  }
 
   cout << "XXX total_offsetBTB_evictions " << total_offsetBTB_evictions << endl;
   int i = 0;

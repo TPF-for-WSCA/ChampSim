@@ -91,7 +91,8 @@
         "execution": "cpp",
         "csignal": "cpp",
         "user.h": "c",
-        "*.btb": "c"
+        "*.btb": "c",
+        "print": "cpp"
     },
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter"
