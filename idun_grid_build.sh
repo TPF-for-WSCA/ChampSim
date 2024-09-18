@@ -1,6 +1,6 @@
 #!/bin/bash
 
-build_dir=("google")
+build_dir=("btb_exp")
 
 old_dir=$(pwd)
 cd ~/ChampSim/
