@@ -465,6 +465,7 @@ void CACHE::readlike_hit(std::size_t set, std::size_t way, PACKET& handle_pkt)
   if (perfect_cache)
     way = 0; // we attribute everything to the first way to ensure no out-of-bounds
   BLOCK& hit_block = block[set * NUM_WAY + way];
+  hit_block.accessed_after_insert = true;
 
   record_cacheline_accesses(handle_pkt, hit_block, prev_access);
   handle_pkt.data = (perfect_cache) ? handle_pkt.data : hit_block.data;
@@ -761,6 +762,24 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
   if (!warmup_complete[cpu]) {
     return;
   }
+  float prev_sum = 0.0;
+  for (int i = 0; i < 4; i++) {
+    int accessed_bytes_after_predictor = std::bitset<64>(handle_block.bytes_accessed_in_predictor[i]).count();
+    int accessed_bytes_at_eviction = std::bitset<64>(handle_block.bytes_accessed).count();
+    if (accessed_bytes_at_eviction != 0 and accessed_bytes_after_predictor != 0) {
+      float percentage_predicted = (double)accessed_bytes_after_predictor / accessed_bytes_at_eviction;
+      if (percentage_predicted > 1.0)
+        break;
+      percentage_predicted -= prev_sum;
+      // assert(percentage_predicted <= 1.0 and percentage_predicted >= 0);
+      predictor_accuracy[i][percentage_predicted] += 1;
+      prev_sum += percentage_predicted;
+    }
+  }
+  if (handle_block.accessed_after_insert) {
+    accessed_block.first += 1;
+  }
+  accessed_block.second += 1;
   // we onlu write to the file if warmup is complete
   if (cl_accessmask_buffer.size() < WRITE_BUFFER_SIZE) {
     cl_accessmask_buffer.push_back(handle_block.bytes_accessed);
@@ -807,6 +826,11 @@ void CACHE::record_cacheline_stats(uint32_t cpu, BLOCK& handle_block)
 
 bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, bool treat_like_hit)
 {
+  for (size_t i = 0; i < last_inserted[set].size(); i++) {
+    auto last_n_inserted_block = last_inserted[set][i];
+    if (last_n_inserted_block != NULL)
+      last_n_inserted_block->bytes_accessed_in_predictor[i] = last_n_inserted_block->bytes_accessed;
+  }
   DP(if (warmup_complete[handle_pkt.cpu]) {
     std::cout << "[" << NAME << "] " << __func__ << " miss";
     std::cout << " instr_id: " << handle_pkt.instr_id << " address: " << std::hex << (handle_pkt.address >> OFFSET_BITS);
@@ -870,8 +894,10 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, 
 
     fill_block.bytes_accessed = 0; // newly added to the cache thus no accesses yet
     memset(fill_block.accesses_per_bytes, 0, sizeof(fill_block.accesses_per_bytes));
+    memset(fill_block.bytes_accessed_in_predictor, 0, 4 * sizeof(fill_block.bytes_accessed_in_predictor[0]));
 
     fill_block.valid = true;
+    fill_block.accessed_after_insert = false;
     fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
     fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
     fill_block.address = handle_pkt.address;
@@ -885,6 +911,12 @@ bool CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_pkt, 
     fill_block.accesses = 0;
     fill_block.last_modified_access = 0;
     fill_block.time_present = 0;
+
+    last_inserted[set].push_front(&fill_block);
+    if (last_inserted[set].size() > 4) {
+      last_inserted[set].pop_back();
+    }
+
     record_cacheline_accesses(handle_pkt, fill_block, prev_access);
   }
 
@@ -1576,6 +1608,7 @@ bool BUFFER_CACHE::fill_miss(PACKET& packet, VCL_CACHE& parent)
   }
   ////
   fill_block.valid = true;
+  fill_block.accessed_after_insert = false;
   fill_block.prefetch = (packet.type == PREFETCH && packet.pf_origin_level == fill_level);
   fill_block.dirty = (packet.type == WRITEBACK || (packet.type == RFO && packet.to_return.empty()));
   fill_block.address = packet.address;
@@ -2269,7 +2302,6 @@ int VCL_CACHE::add_rq(PACKET* packet)
 
 void CACHE::print_private_stats()
 {
-  return;
   std::cout << NAME << " LINES HANDLED PER WAY" << std::endl;
   for (uint32_t i = 0; i < NUM_WAY; ++i) {
     std::cout << std::right << std::setw(3) << i << ":\t" << way_hits[i] << std::endl;
@@ -2282,6 +2314,18 @@ void CACHE::print_private_stats()
     BUFFER_CACHE& bc = ((VCL_CACHE*)this)->buffer_cache;
     bc.print_private_stats();
     std::cout << std::right << std::setw(3) << "merge register" << ":\t" << bc.merge_hit << std::endl;
+  }
+
+  for (int i = 0; i < 4; i++) {
+    std::cout << NAME << " PREDICTOR ACCURACY AFTER " << i << std::endl;
+    double average_accuracy = 0;
+    size_t num_evictions = 0;
+    for (auto it = predictor_accuracy[i].rbegin(); it != predictor_accuracy[i].rend(); it++) {
+      std::cout << std::right << std::setw(3) << it->first * 100 << "%:\t" << it->second << std::endl;
+      average_accuracy += it->first * (float)it->second;
+      num_evictions += it->second;
+    }
+    std::cout << "\t" << NAME << " AVERAGE ACCURACY " << i << " : " << average_accuracy / num_evictions << endl;
   }
 }
 
@@ -2428,6 +2472,7 @@ bool VCL_CACHE::filllike_miss(std::size_t set, std::size_t way, PACKET& handle_p
       pf_fill++;
 
     fill_block.valid = true;
+    fill_block.accessed_after_insert = false;
     fill_block.prefetch = (handle_pkt.type == PREFETCH && handle_pkt.pf_origin_level == fill_level);
     fill_block.dirty = (handle_pkt.type == WRITEBACK || (handle_pkt.type == RFO && handle_pkt.to_return.empty()));
     fill_block.address = handle_pkt.address;

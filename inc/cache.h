@@ -139,6 +139,9 @@ public:
   bool is_vcl = false;
   bool filter_inserts;
   bool filter_prefetches;
+
+  std::pair<uint64_t, uint64_t> accessed_block;
+  std::map<double, size_t> predictor_accuracy[4];
   virtual bool hit_test(uint64_t addr, uint8_t size);
   size_t filter_buffer_size;
   size_t prefetch_buffer_size;
@@ -153,6 +156,7 @@ public:
   const std::string NAME;
   const uint32_t NUM_SET, NUM_WAY, WQ_SIZE, RQ_SIZE, PQ_SIZE, MSHR_SIZE;
   uint32_t HIT_LATENCY, FILL_LATENCY, OFFSET_BITS;
+  std::vector<std::deque<BLOCK*>> last_inserted{NUM_SET};
   std::vector<BLOCK> block{NUM_SET * NUM_WAY};
   std::vector<uint64_t> cl_accessmask_buffer;
   std::vector<uint64_t> used_bytes_in_cache;
@@ -352,7 +356,7 @@ public:
     merge_hit = 0;
   };
 
-  ~BUFFER_CACHE(){};
+  ~BUFFER_CACHE() {};
 
   void initialize_replacement();
 

@@ -18,7 +18,7 @@ module load Python/3.10.4-GCCcore-11.3.0
 #binaries=("champsim32k" "ubs_10_small_ways_not_extending" "ubs_10_small_ways" "ubs_10_ways_not_extending" "ubs_10_ways" "ubs_12_small_ways_not_extending" "ubs_12_small_ways" "ubs_14_small_ways_not_extending" "ubs_14_small_ways" "ubs_16_ways" "ubs_16_ways_not_extending" "ubs_17_ways" "ubs_17_ways_not_extending" "ubs_8_ways" "ubs_8_ways_not_extending")
 #binaries=("champsim32k" "ubs_12_ways_not_extending" "ubs_12_ways" "ubs_14_ways" "ubs_14_small_ways" "ubs_12_small_ways_not_extending" "ubs_12_small_ways" "ubs_14_small_ways_not_extending" "ubs_14_small_ways" "ubs_16_ways_precise" "ubs_16_ways_precise_not_extending")
 #binaries=("champsim32k_base_btb" "champsim32k_base_btbx" "champsim32k_hash_btbx" "champsim32k_perfect_l1i" "champsim32k_perfect_btb")
-binary_dir=("offset_saturation")
+binary_dir=("btb_exp")
 count=1
 #binary_dir=("size_sensitivity")
 #binaries=("ubs" "ubs_unaligned" "ubs_extended" "ubs_unaligned_extended")
@@ -26,8 +26,10 @@ count=1
 
 for dir in ${binary_dir[@]}
 do
+    echo $dir
     for bin in ~/ChampSim/bin/$dir/*
     do
+        echo $bin
         srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=20G -n1 -c8 -t03:30:00 -o /cluster/work/romankb/latency-spec-$(basename ${bin})-%j.out    -e /cluster/work/romankb/latency-spec-$(basename ${bin})-%j.err    python ~/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable ${bin}         --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/spec   --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}/ipc1_spec/sizes_$(basename ${bin})/      >> /cluster/work/romankb/pyrunner_latency_fixed_ipc1_spec_$(basename ${bin}).log &
         srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=20G -n1 -c8 -t03:30:00 -o /cluster/work/romankb/latency-client-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-client-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable ${bin}         --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/client --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}/ipc1_client/sizes_$(basename ${bin})/    >> /cluster/work/romankb/pyrunner_latency_fixed_ipc1_client_$(basename ${bin}).log &
         srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=20G -n1 -c8 -t03:30:00 -o /cluster/work/romankb/latency-server-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-server-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup 50000000 --evaluation 50000000 --experiment_executable ${bin}         --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/server --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}/ipc1_server/sizes_$(basename ${bin})/    >> /cluster/work/romankb/pyrunner_latency_fixed_ipc1_server_$(basename ${bin}).log &

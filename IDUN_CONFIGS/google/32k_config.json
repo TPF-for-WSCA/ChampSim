@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/btb_exp/btbx_full_tag",
+  "executable_name": "bin/micro-google/champsim32k",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -37,14 +37,17 @@
       "btb_non_indirect": 8,
       "btb_sets": 512,
       "btb_offset_sizes": [
-        0,
-        4,
-        5,
-        7,
-        9,
-        11,
-        19,
-        25,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
         64
       ],
       "align_bits": 5
@@ -71,7 +74,7 @@
     "prefetcher": "fdip",
     "filter_inserts": false,
     "filter_prefetches": true,
-    "prefetch_buffer_size": 64,
+    "prefetch_buffer_size": 16,
     "counting_block_method": "SUM_ACCESSES"
   },
   "L1D": {

@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/btb_x_vs_offset/champsim32k",
+  "executable_name": "bin/btb_exp/champsim32k",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -33,9 +33,9 @@
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
       "btb": "xbtbx",
-      "btb_ways": 12,
-      "btb_non_indirect": 12,
-      "btb_sets": 128,
+      "btb_ways": 8,
+      "btb_non_indirect": 8,
+      "btb_sets": 512,
       "btb_offset_sizes": [
         64,
         64,

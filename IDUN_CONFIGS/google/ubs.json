@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/btb_exp/btbx_full_tag",
+  "executable_name": "bin/micro-google/ubs",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -37,14 +37,17 @@
       "btb_non_indirect": 8,
       "btb_sets": 512,
       "btb_offset_sizes": [
-        0,
-        4,
-        5,
-        7,
-        9,
-        11,
-        19,
-        25,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
         64
       ],
       "align_bits": 5
@@ -57,7 +60,28 @@
   },
   "L1I": {
     "sets": 64,
-    "ways": 8,
+    "ways": 16,
+    "buffer": true,
+    "buffer_size": 64,
+    "buffer_organisation": "DIRECT_MAPPED",
+    "way_sizes": [
+      4,
+      4,
+      8,
+      8,
+      8,
+      12,
+      12,
+      16,
+      24,
+      32,
+      36,
+      36,
+      52,
+      64,
+      64,
+      64
+    ],
     "rq_size": 64,
     "wq_size": 64,
     "pq_size": 32,
@@ -71,8 +95,10 @@
     "prefetcher": "fdip",
     "filter_inserts": false,
     "filter_prefetches": true,
-    "prefetch_buffer_size": 64,
-    "counting_block_method": "SUM_ACCESSES"
+    "prefetch_buffer_size": 16,
+    "lru_modifier": "LRU2BOUND4",
+    "counting_block_method": "SUM_ACCESSES",
+    "extend_blocks_to_branch": false
   },
   "L1D": {
     "sets": 64,
@@ -91,8 +117,8 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "L2C": {
-    "sets": 2048,
-    "ways": 10,
+    "sets": 1024,
+    "ways": 8,
     "rq_size": 32,
     "wq_size": 32,
     "pq_size": 16,
@@ -107,8 +133,8 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "ITLB": {
-    "sets": 32,
-    "ways": 8,
+    "sets": 16,
+    "ways": 4,
     "rq_size": 16,
     "wq_size": 16,
     "pq_size": 0,
@@ -121,7 +147,7 @@
   },
   "DTLB": {
     "sets": 16,
-    "ways": 6,
+    "ways": 4,
     "rq_size": 16,
     "wq_size": 16,
     "pq_size": 0,
@@ -161,9 +187,9 @@
     "counting_block_method": "SUM_ACCESSES"
   },
   "LLC": {
-    "frequency": 2000,
-    "sets": 32768,
-    "ways": 15,
+    "frequency": 4000,
+    "sets": 2048,
+    "ways": 16,
     "rq_size": 32,
     "wq_size": 32,
     "pq_size": 32,
