@@ -98,7 +98,7 @@ def extract_btb_bits_per_cl(path):
         data[num_bits] = num_cl
         max_bits = num_bits
 
-    no_holes = [data.get(num_bits, 0) for num_bits in range(max_bits)]
+    no_holes = [data.get(num_bits, 0) for num_bits in range(max_bits+1)]
     total = sum(no_holes)
     no_holes = list(itertools.accumulate(no_holes))
     no_holes = [elem / total for elem in no_holes]
