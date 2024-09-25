@@ -823,7 +823,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     uint64_t offset = knob_intel ? branch_target & offset_mask : (branch_target >> 2) & offset_mask;
     auto inserted = pc_offset_pairs_by_size[num_bits].insert(std::make_pair(ip, offset));
 
-    Offset off{.num_bits = (uint8_t)num_bits, .offset = offset};
+    Offset off{.num_bits = (uint8_t)num_bits, .offset = offset, .ip = ip};
     offsets_per_cacheline[branch_cacheline_tag].insert(off); // TODO: only max per ip?
     offset_size_count[num_bits]++;
     offset_counts_by_size[num_bits][offset] += 1; // static inserts: inserted.second ? 1 : 0
