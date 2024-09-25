@@ -80,6 +80,8 @@ def extract_instruction_count(path):
 
 
 def extract_btb_bits_per_cl(path):
+    import itertools
+
     logs = []
     with open(path) as f:
         logs = f.readlines()
@@ -98,6 +100,9 @@ def extract_btb_bits_per_cl(path):
         max_bits = num_bits
 
     no_holes = [data.get(num_bits, 0) for num_bits in range(max_bits)]
+    total = sum(no_holes)
+    no_holes = list(itertools.accumulate(no_holes))
+    no_holes = [elem / total for elem in no_holes]
 
     return no_holes
 
@@ -575,7 +580,7 @@ elif sys.argv[3] == "INSTRUCTION_COUNT":
     type = STATS.INSTRUCTION_COUNT
 elif sys.argv[3] == "CONTEXT_SWITCH":
     type = STATS.CONTEXT_SWITCH
-elif sys.argv[3] == BTB_BITS_CL:
+elif sys.argv[3] == "BTB_BITS_CL":
     type = STATS.NUM_BTB_BITS_PER_CL
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
