@@ -596,7 +596,7 @@ if type == STATS.NUM_BTB_BITS_PER_CL:
     with open(file_path, "w+") as outfile:
         for workload, values in data["const"].items():
             outfile.write(f"{workload}")
-            for _, entry in series.items():
+            for entry in values:
                 outfile.write(f"\t{entry}")
             outfile.write("\n")
         outfile.flush()
