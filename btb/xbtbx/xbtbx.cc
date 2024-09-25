@@ -295,8 +295,10 @@ struct offsetBTB {
   void inc_ref_count(int set, int way) { theOffsetBTB[set][way].ref_count++; }
   void dec_ref_count(int set, int way)
   {
-    if (((size_t)set) >= theOffsetBTB.size() or ((size_t)way) >= theOffsetBTB[set].size())
+    if (((size_t)set) >= theOffsetBTB.size() or ((size_t)way) >= theOffsetBTB[set].size()) {
+      std::cerr << "OUTSIDE ACCEPTABLE RANGE FOR OFFSET BTB" << std::endl;
       return;
+    }
     if (theOffsetBTB[set][way].ref_count > 0)
       theOffsetBTB[set][way].ref_count--;
   }

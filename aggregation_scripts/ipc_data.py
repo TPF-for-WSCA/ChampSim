@@ -23,6 +23,7 @@ class STATS(Enum):
     ROB_AT_MISS = 14
     BIG_TARGET_COUNT = 15
     CONTEXT_SWITCH = 16
+    NUM_BTB_BITS_PER_CL = 17
 
 
 type = STATS.IPC
@@ -78,11 +79,49 @@ def extract_instruction_count(path):
             return int(matches.groups()[0])
 
 
+def extract_btb_bits_per_cl(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    ilogs = iter(logs)
+    for line in ilogs:
+        if line == "XXX num_cachelines_required_n_bits":
+            break
+    data = {}
+    max_bits = 0
+    for data_line in ilogs:
+        if data_line.startswith("XXX"):
+            break
+        [num_bits, num_cl] = [int(val.strip()) for val in data_line.split(":")]
+        data[num_bits] = num_cl
+        max_bits = num_bits
+
+    no_holes = [data.get(num_bits, 0) for num_bits in range(max_bits)]
+
+    return no_holes
+
+
 def extract_context_switch_count(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
     logs.reverse()
+    ilogs = iter(logs)
+    for line in ilogs:
+        if line == "XXX num_cachelines_required_n_bits":
+            break
+    data = {}
+    max_bits = 0
+    for data_line in ilogs:
+        if data_line.startswith("XXX"):
+            break
+        [num_bits, num_cl] = [int(val.strip()) for val in data_line.split(":")]
+        data[num_bits] = num_cl
+        max_bits = num_bits
+
+    no_holes = [data.get(num_bits, 0) for num_bits in range(max_bits)]
+
     kernel_enters = re.compile()
 
 
@@ -338,6 +377,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_context_switch_count(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.NUM_BTB_BITS_PER_CL:
+                stat_by_workload[workload] = extract_btb_bits_per_cl(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.ROB_AT_MISS:
                 stat_by_workload[workload] = extract_rob_at_stall(
                     f"{path}/{workload}/{logfile}"
@@ -450,6 +493,8 @@ def write_tsv(data, out_path=None):
         filename = "stall_cycles"
     elif type == STATS.ROB_AT_MISS:
         filename = "rob_at_miss"
+    elif type == STATS.NUM_BTB_BITS_PER_CL:
+        filename = "num_btb_bits_per_cacheline"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
@@ -530,6 +575,8 @@ elif sys.argv[3] == "INSTRUCTION_COUNT":
     type = STATS.INSTRUCTION_COUNT
 elif sys.argv[3] == "CONTEXT_SWITCH":
     type = STATS.CONTEXT_SWITCH
+elif sys.argv[3] == BTB_BITS_CL:
+    type = STATS.NUM_BTB_BITS_PER_CL
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
 if sys.argv[2] == "single":
@@ -544,5 +591,14 @@ if type == STATS.PARTIAL_MISSES:
     write_partial_misses(data, sys.argv[1])
 elif type == STATS.BRANCH_DISTANCES:
     write_series(data, sys.argv[1])
+if type == STATS.NUM_BTB_BITS_PER_CL:
+    file_path = os.path.join(sys.argv[1], "num_btb_bits_per_cl.tsv")
+    with open(file_path, "w+") as outfile:
+        for workload, values in data["const"].items():
+            outfile.write(f"{workload}")
+            for _, entry in series.items():
+                outfile.write(f"\t{entry}")
+            outfile.write("\n")
+        outfile.flush()
 else:
     write_tsv(data, sys.argv[1])
