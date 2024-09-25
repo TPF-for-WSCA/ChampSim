@@ -85,7 +85,6 @@ def extract_btb_bits_per_cl(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    logs.reverse()
     ilogs = iter(logs)
     for line in ilogs:
         if line.strip() == "XXX num_cachelines_required_n_bits":
