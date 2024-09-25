@@ -88,7 +88,7 @@ def extract_btb_bits_per_cl(path):
     logs.reverse()
     ilogs = iter(logs)
     for line in ilogs:
-        if line == "XXX num_cachelines_required_n_bits":
+        if line.strip() == "XXX num_cachelines_required_n_bits":
             break
     data = {}
     max_bits = 0
