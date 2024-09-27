@@ -23,6 +23,9 @@ map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 uint64_t offset_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBhit;
+uint64_t aliasing_overall = 0;
+uint64_t aliasing_same_region = 0;
+uint64_t aliasing_different_region = 0;
 
 extern uint8_t knob_intel;
 
@@ -30,6 +33,7 @@ enum BTB_ReplacementStrategy { LRU, REF0, REF };
 
 struct BTBEntry {
   uint64_t tag;
+  uint64_t full_tag;
   uint64_t target_ip;
   uint8_t branch_type;
   uint64_t lru;
@@ -54,6 +58,7 @@ struct BTB {
   uint32_t assoc;
   uint64_t indexMask;
   uint32_t numIndexBits;
+  uint8_t numRegions;
   bool full_tag = true;
   bool clipped_tag = true;
   int num_low_bits = 6;
@@ -82,16 +87,24 @@ struct BTB {
 
   int32_t index(uint64_t ip) { return knob_intel ? (ip & indexMask) : ((ip >> 2) & indexMask); }
 
-  uint64_t get_tag(uint64_t ip)
+  uint64_t get_tag(uint64_t ip, bool override_full_tag = false)
   {
-    if (full_tag) {
-      return ip;
+    uint64_t addr = ip;
+    if (not knob_intel)
+      addr = addr >> 2;
+    addr = addr >> numIndexBits;
+
+    if (full_tag or override_full_tag) {
+      return addr;
     }
 
+    return (addr & (uint64_t)(std::pow(2, num_low_bits) - 1));
+
+    // Old fold implementation
     uint64_t tag = 0;
     tag = (tag | is_kernel(ip)) << 1;
     tag = (tag | is_shared_or_vdso(ip)) << num_low_bits;
-    uint64_t addr = ip & 0xFFFFFFFF; // Remove kernel and shared lib address bits
+    addr = ip & 0xFFFFFFFF; // Remove kernel and shared lib address bits
     if (not knob_intel)
       addr = addr >> 2;
     addr = addr >> numIndexBits;
@@ -129,9 +142,21 @@ struct BTB {
     int idx = index(ip);
     uint64_t tag = get_tag(ip);
     uint32_t i = 0;
+    uint64_t region_mask = ((uint64_t)-1) << (64 - (uint64_t)std::log2(numRegions));
+
     while (i < theBTB[idx].size()) {
       // std::cout << "BTB SIZE: " << theBTB[idx].size() << endl;
+      // TODO: Catch aliasing here
       if (theBTB[idx][i].tag == tag) {
+        uint64_t lookup_full_tag = get_tag(ip, true);
+        if (theBTB[idx][i].full_tag != lookup_full_tag) {
+          aliasing_overall += 1;
+          if ((lookup_full_tag & region_mask) == (theBTB[idx][i].full_tag & region_mask)) {
+            aliasing_same_region += 1;
+          } else {
+            aliasing_different_region += 1;
+          }
+        }
         return &(theBTB[idx][i]);
       }
       i++;
@@ -157,6 +182,7 @@ struct BTB {
     uint64_t tag = get_tag(ip);
     int way = -1;
     for (uint32_t i = 0; i < theBTB[idx].size(); i++) {
+      // TODO: Catch aliasing here
       if (theBTB[idx][i].tag == tag) {
         way = i;
         break;
@@ -167,6 +193,7 @@ struct BTB {
       if ((target != 0) && taken) {
         BTBEntry entry;
         entry.tag = tag;
+        entry.full_tag = get_tag(ip, true);
         entry.branch_type = b_type;
         entry.target_ip = target;
         entry.lru = lru_counter;
@@ -541,6 +568,7 @@ void O3_CPU::initialize_btb()
     btb_partition[i]->full_tag = full_tag;
     btb_partition[i]->clipped_tag = clipped_tag;
     btb_partition[i]->num_low_bits = clipped_tag_size;
+    btb_partition[i]->numRegions = BTB_REGIONS;
   }
   uint32_t small_btb_sets = BTB_SETS / 8;
   if (small_btb_sets == 0)
@@ -959,6 +987,10 @@ void O3_CPU::btb_final_stats()
     cout << endl;
   }
   cout << "XXX Big offset targets total: " << count_big_targets << endl;
+
+  cout << "XXX TOTAL ALIASING: " << aliasing_overall << endl;
+  cout << "XXX ALIASING SAME REGION: " << aliasing_same_region << endl;
+  cout << "XXX ALIASING OTHER REGION: " << aliasing_different_region << endl;
 }
 
 bool O3_CPU::is_not_block_ending(uint64_t ip) { return true; }

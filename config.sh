@@ -26,7 +26,7 @@ cache_fmtstr = 'CACHE {name}("{name}", {frequency}, {fill_level}, {sets}, {ways}
 vlc_cache_fmtstr = 'VCL_CACHE {name}("{name}", {frequency}, {fill_level}, {sets}, {ways}, way_sizes, {buffer:b}, {buffer_size}, {buffer_fifo:b}, {aligned:b}, {wq_size}, {rq_size}, {pq_size}, {mshr_size}, {hit_latency}, {fill_latency}, {max_read}, {max_write}, {offset_bits}, {prefetch_as_load:b}, {wq_check_full_addr:b}, {virtual_prefetch:b}, {prefetch_activate_mask}, {lower_level}, CACHE::pref_t::{prefetcher_name}, CACHE::repl_t::{replacement_name}, BufferOrganisation::{buffer_organisation}, LruModifier::{lru_modifier}, CountBlockMethod::{counting_block_method}, BufferHistory::{buffer_history}, {filter_inserts:b}, {filter_prefetches:b}, {filter_buffer_size}, {prefetch_buffer_size}, {extend_blocks_to_branch:b}, CacheType::{insertion_method}, {word_size});\n'
 ptw_fmtstr = 'PageTableWalker {name}("{name}", {cpu}, {fill_level}, {pscl5_set}, {pscl5_way}, {pscl4_set}, {pscl4_way}, {pscl3_set}, {pscl3_way}, {pscl2_set}, {pscl2_way}, {ptw_rq_size}, {ptw_mshr_size}, {ptw_max_read}, {ptw_max_write}, 0, {lower_level});\n'
 
-cpu_fmtstr = "O3_CPU {name}({index}, {frequency}, {DIB[sets]}, {DIB[ways]}, {DIB[window_size]}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{ITLB}, &{DTLB}, &{L1I}, &{L1D}, O3_CPU::bpred_t::{bpred_name}, O3_CPU::btb_t::{btb_name}, {btb_sets}, {btb_ways}, offset_btb_sets, btb_offset_sizes, {btb_non_indirect}, {btb_max_loop_branch}, {btb_perfect:b}, {branch_predict_perfect:b}, {full_tag:b}, {clipped_tag:b}, {clipped_tag_size}, O3_CPU::ipref_t::{iprefetcher_name}, {align_bits});\n"
+cpu_fmtstr = "O3_CPU {name}({index}, {frequency}, {DIB[sets]}, {DIB[ways]}, {DIB[window_size]}, {ifetch_buffer_size}, {dispatch_buffer_size}, {decode_buffer_size}, {rob_size}, {lq_size}, {sq_size}, {fetch_width}, {decode_width}, {dispatch_width}, {scheduler_size}, {execute_width}, {lq_width}, {sq_width}, {retire_width}, {mispredict_penalty}, {decode_latency}, {dispatch_latency}, {schedule_latency}, {execute_latency}, &{ITLB}, &{DTLB}, &{L1I}, &{L1D}, O3_CPU::bpred_t::{bpred_name}, O3_CPU::btb_t::{btb_name}, {btb_sets}, {btb_regions}, {btb_ways}, offset_btb_sets, btb_offset_sizes, {btb_non_indirect}, {btb_max_loop_branch}, {btb_perfect:b}, {branch_predict_perfect:b}, {full_tag:b}, {clipped_tag:b}, {clipped_tag_size}, O3_CPU::ipref_t::{iprefetcher_name}, {align_bits});\n"
 
 pmem_fmtstr = "MEMORY_CONTROLLER {attrs[name]}({attrs[frequency]});\n"
 vmem_fmtstr = "VirtualMemory vmem({attrs[size]}, 1 << 12, {attrs[num_levels]}, 1, {attrs[minor_fault_penalty]});\n"
@@ -120,6 +120,7 @@ default_core = {
     "branch_predictor": "bimodal",
     "btb": "basic_btb",
     "btb_sets": 512,
+    "btb_regions": 1,
     "full_tag": True,
     "clipped_tag": False,
     "clipped_tag_size": 8,
