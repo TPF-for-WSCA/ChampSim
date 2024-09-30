@@ -24,6 +24,7 @@ class STATS(Enum):
     BIG_TARGET_COUNT = 15
     CONTEXT_SWITCH = 16
     NUM_BTB_BITS_PER_CL = 17
+    ALIASING = 18
 
 
 type = STATS.IPC
@@ -78,6 +79,23 @@ def extract_instruction_count(path):
         if matches:
             return int(matches.groups()[0])
 
+def extract_btb_aliasing(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    # order of values: total, aliasing, same block, different block
+    re_list = [re.compile("XXX TOTAL LOOKUPS: (\d+)"), re.compile("XXX TOTAL ALIASING: (\d+)"), re.compile("XXX ALIASING SAME REGION: (\d+)"), re.compile("XXX ALIASING OTHER REGION: (\d+)")]
+    lookups = [0,0,0,0]
+    for line in logs:
+        for idx, reg in enumerate(re_list):
+            matches = reg.match(line)
+            if matches:
+                lookups[idx] = int(matches.groups()[0])
+                break
+        if all(matches):
+            break
+    return matches
 
 def extract_btb_bits_per_cl(path):
     import itertools
@@ -387,6 +405,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_btb_bits_per_cl(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.ALIASING:
+                stat_by_workload[workload] = extract_btb_aliasing(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.ROB_AT_MISS:
                 stat_by_workload[workload] = extract_rob_at_stall(
                     f"{path}/{workload}/{logfile}"
@@ -501,6 +523,8 @@ def write_tsv(data, out_path=None):
         filename = "rob_at_miss"
     elif type == STATS.NUM_BTB_BITS_PER_CL:
         filename = "num_btb_bits_per_cacheline"
+    elif type == STATS.ALIASING:
+        filename = "aliasing_in_btb"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
@@ -583,6 +607,8 @@ elif sys.argv[3] == "CONTEXT_SWITCH":
     type = STATS.CONTEXT_SWITCH
 elif sys.argv[3] == "BTB_BITS_CL":
     type = STATS.NUM_BTB_BITS_PER_CL
+elif sys.argv[3] == "BTB_ALIASING":
+    type = STATS.ALIASING
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
 if sys.argv[2] == "single":
@@ -597,9 +623,19 @@ if type == STATS.PARTIAL_MISSES:
     write_partial_misses(data, sys.argv[1])
 elif type == STATS.BRANCH_DISTANCES:
     write_series(data, sys.argv[1])
-if type == STATS.NUM_BTB_BITS_PER_CL:
+elif type == STATS.NUM_BTB_BITS_PER_CL:
     file_path = os.path.join(sys.argv[1], "num_btb_bits_per_cl.tsv")
     with open(file_path, "w+") as outfile:
+        for workload, values in data["const"].items():
+            outfile.write(f"{workload}")
+            for entry in values:
+                outfile.write(f"\t{entry}")
+            outfile.write("\n")
+        outfile.flush()
+elif type == STATS.ALIASING:
+    file_path = os.path.join(sys.argv[1], "aliasing.tsv")
+    with open(file_path, "w+") as outfile:
+        outfile.write("Workload\tTotal Lookups\tAliasing Lookups\tSame Block Aliases\tDifferent Block Aliases\n")
         for workload, values in data["const"].items():
             outfile.write(f"{workload}")
             for entry in values:

@@ -34,6 +34,11 @@ do
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi ROB_AT_MISS &
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi STALL_CYCLES &
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_champsim32k single BRANCH_DISTANCES &
+    for config in ./${b}/*;
+    do
+        echo "Extrace ${config}"
+        python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ${config} single BTB_ALIASING &
+    done
 done
 
 for b in ${benchmarks[@]}

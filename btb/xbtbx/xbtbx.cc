@@ -23,9 +23,7 @@ map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 uint64_t offset_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBhit;
-uint64_t aliasing_overall = 0;
-uint64_t aliasing_same_region = 0;
-uint64_t aliasing_different_region = 0;
+uint64_t total_lookups = 0, aliasing_overall = 0, aliasing_same_region = 0, aliasing_different_region = 0;
 
 extern uint8_t knob_intel;
 
@@ -149,6 +147,7 @@ struct BTB {
       // TODO: Catch aliasing here
       if (theBTB[idx][i].tag == tag) {
         uint64_t lookup_full_tag = get_tag(ip, true);
+        total_lookups += 1;
         if (theBTB[idx][i].full_tag != lookup_full_tag) {
           aliasing_overall += 1;
           if ((lookup_full_tag & region_mask) == (theBTB[idx][i].full_tag & region_mask)) {
@@ -988,6 +987,7 @@ void O3_CPU::btb_final_stats()
   }
   cout << "XXX Big offset targets total: " << count_big_targets << endl;
 
+  cout << "XXX TOTAL LOOKUPS: " << total_lookups << endl;
   cout << "XXX TOTAL ALIASING: " << aliasing_overall << endl;
   cout << "XXX ALIASING SAME REGION: " << aliasing_same_region << endl;
   cout << "XXX ALIASING OTHER REGION: " << aliasing_different_region << endl;
