@@ -37,7 +37,7 @@
       "btb_non_indirect": 8,
       "btb_sets": 64,
       "btb_regions": 16,
-      "full_tag": false,
+      "full_tag": true,
       "clipped_tag": true,
       "clipped_tag_size": 6,
       "btb_offset_sizes": [
