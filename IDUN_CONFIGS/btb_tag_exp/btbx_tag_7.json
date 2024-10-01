@@ -1,14 +1,14 @@
 {
-    "executable_name": "bin/champsim",
+    "executable_name": "bin/btb_tag_exp/btbx_tag_7b",
     "block_size": 64,
     "bucket_size": 100,
     "page_size": 4096,
     "heartbeat_frequency": 10000000,
     "num_cores": 1,
-    "CFLAGS": "-Wall -fno-omit-frame-pointer -fno-sanitize=all -Wno-reorder -Werror -g -O0 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-    "CXXFLAGS": "-Wall -fno-omit-frame-pointer -fno-sanitize=all -Wno-reorder -Werror -g -O0 -DNLOG -DDEBUG -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
+    "CFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include",
+    "CXXFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include",
     "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
-    "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib -fsanitize=bounds",
+    "LDFLAGS": "-L/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib",
     "ooo_cpu": [{
         "frequency": 4000,
         "ifetch_buffer_size": 128,
@@ -38,7 +38,7 @@
         "btb_regions": 16,
         "full_tag": false,
         "clipped_tag": true,
-        "clipped_tag_size": 8,
+        "clipped_tag_size": 7,
         "btb_offset_sizes": [
             0,
             4,
@@ -49,10 +49,6 @@
             19,
             25,
             64
-        ],
-        "offset_btb_sets": [
-            256,
-            256
         ],
         "align_bits": 5
     }],
@@ -77,7 +73,7 @@
         "prefetcher": "fdip",
         "filter_inserts": false,
         "filter_prefetches": true,
-        "prefetch_buffer_size": 16,
+        "prefetch_buffer_size": 64,
         "counting_block_method": "SUM_ACCESSES"
     },
     "L1D": {
@@ -167,6 +163,7 @@
         "counting_block_method": "SUM_ACCESSES"
     },
     "LLC": {
+        "frequency": 2000,
         "sets": 32768,
         "ways": 15,
         "rq_size": 32,
