@@ -93,9 +93,9 @@ def extract_btb_aliasing(path):
             if matches:
                 lookups[idx] = int(matches.groups()[0])
                 break
-        if all(matches):
+        if all(lookups):
             break
-    return matches
+    return lookups
 
 def extract_btb_bits_per_cl(path):
     import itertools
