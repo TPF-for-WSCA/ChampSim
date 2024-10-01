@@ -24,6 +24,11 @@ uint64_t offset_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBhit;
 uint64_t total_lookups = 0, aliasing_overall = 0, aliasing_same_region = 0, aliasing_different_region = 0;
+set<uint64_t> branch_ip;
+uint64_t dynamic_branch_count = 0;
+uint64_t static_branch_count = 0;
+std::array<uint64_t, 64> dynamic_bit_counts;
+std::array<uint64_t, 64> static_bit_counts;
 
 extern uint8_t knob_intel;
 
@@ -135,33 +140,19 @@ struct BTB {
 
   BTBEntry* get_BTBentry(uint64_t ip)
   {
-    BTBEntry* entry = NULL;
-
     int idx = index(ip);
     uint64_t tag = get_tag(ip);
     uint32_t i = 0;
-    uint64_t region_mask = ((uint64_t)-1) << (64 - (uint64_t)std::log2(numRegions));
 
     while (i < theBTB[idx].size()) {
       // std::cout << "BTB SIZE: " << theBTB[idx].size() << endl;
       // TODO: Catch aliasing here
       if (theBTB[idx][i].tag == tag) {
-        uint64_t lookup_full_tag = get_tag(ip, true);
-        total_lookups += 1;
-        if (theBTB[idx][i].full_tag != lookup_full_tag) {
-          aliasing_overall += 1;
-          if ((lookup_full_tag & region_mask) == (theBTB[idx][i].full_tag & region_mask)) {
-            aliasing_same_region += 1;
-          } else {
-            aliasing_different_region += 1;
-          }
-        }
         return &(theBTB[idx][i]);
       }
       i++;
     }
-
-    return entry;
+    return NULL;
   }
 
   BTBEntry* get_lru_BTBEntry(uint64_t ip)
@@ -588,6 +579,47 @@ BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
   BTBEntry* btb_entry = NULL;
   int partitionID = -1;
 
+  bool is_static = branch_ip.insert(ip).second;
+  if (is_static) {
+    static_branch_count += 1;
+  }
+  dynamic_branch_count += 1;
+
+  for (int j = 0; j < 64; j++) {
+    if ((ip >> j) & 0x1) {
+      static_bit_counts[j] += (is_static) ? 1 : 0;
+      dynamic_bit_counts[j] += 1;
+    }
+  }
+
+  total_lookups += 1;
+  bool found = false;
+  for (int j = 0; j < NUM_BTB_PARTITIONS && !found; j++) {
+    int idx = btb_partition[j]->index(ip);
+    uint64_t tag = btb_partition[j]->get_tag(ip);
+    uint32_t i = 0;
+    uint64_t region_mask = ((uint64_t)-1) << (64 - (uint64_t)std::log2(btb_partition[j]->numRegions));
+
+    while (i < btb_partition[j]->theBTB[idx].size()) {
+      // std::cout << "BTB SIZE: " << theBTB[idx].size() << endl;
+      // TODO: Catch aliasing here
+      if (btb_partition[j]->theBTB[idx][i].tag == tag) {
+        uint64_t lookup_full_tag = btb_partition[j]->get_tag(ip, true);
+        if (btb_partition[j]->theBTB[idx][i].full_tag != lookup_full_tag) {
+          aliasing_overall += 1;
+          if ((lookup_full_tag & region_mask) == (btb_partition[j]->theBTB[idx][i].full_tag & region_mask)) {
+            aliasing_same_region += 1;
+          } else {
+            aliasing_different_region += 1;
+          }
+        }
+        found = true;
+        break;
+      }
+      i++;
+    }
+  }
+
   for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
     btb_entry = btb_partition[i]->get_BTBentry(ip);
     if (btb_entry) {
@@ -859,8 +891,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
     Offset off{.num_bits = (uint8_t)num_bits, .offset = offset, .ip = ip};
     offsets_per_cacheline[branch_cacheline_tag].insert(off); // TODO: only max per ip?
-    offset_size_count[num_bits]++;
-    offset_counts_by_size[num_bits][offset] += 1; // static inserts: inserted.second ? 1 : 0
+    offset_size_count[num_bits - 1]++;
+    offset_counts_by_size[num_bits - 1][offset] += 1; // static inserts: inserted.second ? 1 : 0
     inserted = pc_offset_pairs_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)].insert(std::make_pair(ip, offset));
     static_offset_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)][offset] += inserted.second ? 1 : 0;
     static_branch_pc_counts_by_partition[convert_offsetBits_to_btb_partitionID(num_bits, true)][ip] += inserted.second ? 1 : 0;
@@ -1000,6 +1032,18 @@ void O3_CPU::btb_final_stats()
   cout << "XXX TOTAL ALIASING: " << aliasing_overall << endl;
   cout << "XXX ALIASING SAME REGION: " << aliasing_same_region << endl;
   cout << "XXX ALIASING OTHER REGION: " << aliasing_different_region << endl;
+
+  cout << "XXX Total dynamic branch IPs: " << dynamic_branch_count << endl;
+  cout << "XXX Total dynamic 1 bits in branch IPs:" << endl;
+  for (int j = 0; j < 64; j++) {
+    cout << j << ":\t" << (double)dynamic_bit_counts[j] / (double)dynamic_branch_count << endl;
+  }
+
+  cout << "XXX Total static branch IPs: " << static_branch_count << endl;
+  cout << "XXX Total static 1 bits in branch IPs:" << endl;
+  for (int j = 0; j < 64; j++) {
+    cout << j << ":\t" << (double)static_bit_counts[j] / (double)static_branch_count << endl;
+  }
 }
 
 bool O3_CPU::is_not_block_ending(uint64_t ip) { return true; }
