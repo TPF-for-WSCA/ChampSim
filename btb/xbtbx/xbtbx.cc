@@ -175,15 +175,19 @@ struct BTB {
     return &theBTB[idx].front();
   }
 
-  BTBEntry* update_BTB(uint64_t ip, uint8_t b_type, uint64_t target, uint8_t taken, uint64_t lru_counter)
+  BTBEntry* update_BTB(uint64_t ip, uint8_t b_type, uint64_t target, uint8_t taken, uint64_t lru_counter, bool wrong_predict = false)
   {
     int idx = index(ip);
     uint64_t tag = get_tag(ip);
     int way = -1;
+    uint64_t full_tag = get_tag(ip, true);
     for (uint32_t i = 0; i < theBTB[idx].size(); i++) {
       // TODO: Catch aliasing here
       if (theBTB[idx][i].tag == tag) {
         way = i;
+        if (!wrong_predict) {
+          full_tag = theBTB[idx][i].full_tag;
+        }
         break;
       }
     }
@@ -192,7 +196,7 @@ struct BTB {
       if ((target != 0) && taken) {
         BTBEntry entry;
         entry.tag = tag;
-        entry.full_tag = get_tag(ip, true);
+        entry.full_tag = full_tag;
         entry.branch_type = b_type;
         entry.target_ip = target;
         entry.lru = lru_counter;
@@ -211,6 +215,7 @@ struct BTB {
         entry.target_ip = target;
       }
       entry.lru = lru_counter;
+      entry.full_tag = full_tag; // check that this is only updated if it is a wrong predict
 
       // Update LRU
       theBTB[idx].erase(theBTB[idx].begin() + way);
@@ -822,12 +827,14 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // cout << "stack exit" << endl;
   }
 
+  bool wrong_predicted = true;
   BTBEntry* btb_entry = NULL;
   int partitionID = -1;
   for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
     btb_entry = btb_partition[i]->get_BTBentry(ip);
     if (btb_entry) {
       partitionID = i;
+      wrong_predicted = false;
       break;
     }
   }
@@ -873,6 +880,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     if (is_offset_ref(btb_entry, partitionID)) {
       offsetBTB_partition[btb_entry->offsetBTB_partitionID]->dec_ref_count(btb_entry->offsetBTB_set, btb_entry->offsetBTB_way);
     }
+    btb_entry->full_tag = 0;
     btb_entry->tag = 0;
     btb_entry->lru = 0;
     btb_entry->target_ip = 0;
@@ -881,6 +889,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     btb_entry->offsetBTB_set = -1;
     btb_entry->offsetBTB_way = -1;
     btb_entry = NULL;
+    wrong_predicted = true;
   }
 
   if (btb_entry == NULL) {
@@ -900,7 +909,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // cout << "IP " << ip << " Target " << branch_target << " mask " << target_offset_mask << " offset " << target_offset << " num bits " << num_bits <<
     // endl;
 
-    BTBEntry* btb_entry = btb_partition[partition]->update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu]);
+    BTBEntry* btb_entry = btb_partition[partition]->update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu], true);
     if (is_offset_ref(btb_entry, partition)) {
       offset_sizes_by_target[branch_target].insert(num_bits);
       update_offsetbtb(branch_target, num_bits, btb_entry, basic_btb_lru_counter[cpu], 1);
@@ -914,7 +923,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   } else {
     // update an existing entry
     assert(partitionID != -1);
-    BTBEntry* btb_entry = btb_partition[partitionID]->update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu]);
+    BTBEntry* btb_entry = btb_partition[partitionID]->update_BTB(ip, branch_type, branch_target, taken, basic_btb_lru_counter[cpu], wrong_predicted);
 
     if (partitionID >= NUM_NON_INDIRECT_PARTITIONS && partitionID != LAST_BTB_PARTITION_ID && branch_type != BRANCH_RETURN) {
       offset_sizes_by_target[branch_target].insert(num_bits);
