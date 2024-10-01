@@ -12,7 +12,11 @@ std::deque<uint64_t> recent_prefetches;                             // Storage: 
 
 extern uint8_t knob_intel;
 
-void O3_CPU::prefetcher_initialize() {}
+void O3_CPU::prefetcher_initialize()
+{
+#define L1I (static_cast<CACHE*>(L1I_bus.lower_level))
+  std::cout << L1I->NAME << " fdip prefetcher" << std::endl;
+}
 
 void O3_CPU::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target, uint8_t size)
 {
@@ -36,7 +40,7 @@ void O3_CPU::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_
 
 uint32_t O3_CPU::prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit, uint32_t metadata_in)
 {
-  assert(knob_intel or v_addr % 4 == 0);
+  assert(knob_intel || v_addr % 4 == 0);
 #define L1I (static_cast<CACHE*>(L1I_bus.lower_level))
   if (not cache_hit) {
     uint64_t pf_addr = v_addr + (1 << LOG2_BLOCK_SIZE);
