@@ -2,7 +2,7 @@
 
 #benchmarks=("tanvir")
 #inputs: 
-benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "google_merced" "google_charlie" "google_delta" "google_whiskey")
+benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "google_merced" "google_charlie" "google_delta" "google_whiskey" "LLBP")
 normalise-to-row="sizes_btbx_full_tag"
 #end inputs~
 #benchmarks=("crc2_spec" "crc2_cloud" "dpc3")
