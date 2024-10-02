@@ -95,7 +95,12 @@ def extract_bit_information(path):
         if line.startswith("cpu0") or line.startswith("XXX"):
             break
         bit_data.append(float(line.split(":")[1].strip()))
-    assert(len(bit_data) == 64)
+    #assert(len(bit_data) == 64)
+    # if not successful we have empty list - make none list
+    if len(bit_data) == 0:
+        bit_data = [None for _ in range(64)]
+    if len(bit_data) < 64:
+        assert(0)
     return bit_data
 
 def extract_btb_aliasing(path):
