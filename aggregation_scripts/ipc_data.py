@@ -85,7 +85,6 @@ def extract_bit_information(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    logs.reverse()
     title_re = re.compile("XXX Total static 1 bits in branch IPs:")
     ilogs = iter(logs)
     for line in ilogs:
