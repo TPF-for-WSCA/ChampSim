@@ -85,7 +85,7 @@ def extract_bit_information(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    title_re = re.compile("XXX Total static 1 bits in branch IPs:")
+    title_re = re.compile("XXX Total dynamic 1 bits in branch IPs:")
     ilogs = iter(logs)
     for line in ilogs:
         if title_re.match(line):
@@ -675,7 +675,7 @@ elif type == STATS.ALIASING:
             outfile.write("\n")
         outfile.flush()
 elif type == STATS.BIT_INFORMATION:
-    file_path = os.path.join(sys.argv[1], "btb_bit_information.tsv")
+    file_path = os.path.join(sys.argv[1], "btb_dynamic_bit_information.tsv")
     with open(file_path, "w+") as outfile:
         outfile.write("Workload")
         for i in range(1,65):
