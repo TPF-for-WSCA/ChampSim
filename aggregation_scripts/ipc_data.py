@@ -25,6 +25,7 @@ class STATS(Enum):
     CONTEXT_SWITCH = 16
     NUM_BTB_BITS_PER_CL = 17
     ALIASING = 18
+    BIT_INFORMATION = 19
 
 
 type = STATS.IPC
@@ -78,6 +79,25 @@ def extract_instruction_count(path):
         matches = regex.match(line)
         if matches:
             return int(matches.groups()[0])
+
+def extract_bit_information(path):
+    import itertools
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    title_re = re.compile("XXX Total static 1 bits in branch IPs:")
+    ilogs = iter(logs)
+    for line in ilogs:
+        if title_re.match(line):
+            break
+    bit_data = []
+    for line in ilogs:
+        if line.startswith("cpu0") or line.startswith("XXX"):
+            break
+        bit_data.append(float(line.split(":")[1].strip()))
+    assert(len(bit_data) == 64)
+    return bit_data
 
 def extract_btb_aliasing(path):
     logs = []
@@ -409,6 +429,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_btb_aliasing(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.BIT_INFORMATION:
+                stat_by_workload[workload] = extract_bit_information(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.ROB_AT_MISS:
                 stat_by_workload[workload] = extract_rob_at_stall(
                     f"{path}/{workload}/{logfile}"
@@ -525,6 +549,8 @@ def write_tsv(data, out_path=None):
         filename = "num_btb_bits_per_cacheline"
     elif type == STATS.ALIASING:
         filename = "aliasing_in_btb"
+    elif type == STATS.BIT_INFORMATION:
+        filename = "address_bit_information"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
@@ -609,6 +635,8 @@ elif sys.argv[3] == "BTB_BITS_CL":
     type = STATS.NUM_BTB_BITS_PER_CL
 elif sys.argv[3] == "BTB_ALIASING":
     type = STATS.ALIASING
+elif sys.argv[3] == "BTB_BIT_INFORMATION":
+    type = STATS.BIT_INFORMATION
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
 if sys.argv[2] == "single":
@@ -636,6 +664,19 @@ elif type == STATS.ALIASING:
     file_path = os.path.join(sys.argv[1], "aliasing.tsv")
     with open(file_path, "w+") as outfile:
         outfile.write("Workload\tTotal Lookups\tAliasing Lookups\tSame Block Aliases\tDifferent Block Aliases\n")
+        for workload, values in data["const"].items():
+            outfile.write(f"{workload}")
+            for entry in values:
+                outfile.write(f"\t{entry}")
+            outfile.write("\n")
+        outfile.flush()
+elif type == STATS.BIT_INFORMATION:
+    file_path = os.path.join(sys.argv[1], "btb_bit_information.tsv")
+    with open(file_path, "w+") as outfile:
+        outfile.write("Workload")
+        for i in range(1,65):
+            outfile.write(f"\t{i}")
+        outfile.write("\n")
         for workload, values in data["const"].items():
             outfile.write(f"{workload}")
             for entry in values:

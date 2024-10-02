@@ -1044,6 +1044,7 @@ void O3_CPU::btb_final_stats()
   for (int j = 0; j < 64; j++) {
     cout << j << ":\t" << (double)static_bit_counts[j] / (double)static_branch_count << endl;
   }
+  cout << "XXX END BTB STATS" << endl;
 }
 
 bool O3_CPU::is_not_block_ending(uint64_t ip) { return true; }
