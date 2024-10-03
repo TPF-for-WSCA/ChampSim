@@ -64,7 +64,7 @@ struct BTB {
   uint8_t numRegions;
   bool full_tag = true;
   bool clipped_tag = true;
-  int num_low_bits = 6;
+  int num_low_bits = 64;
 
   BTB() {}
 
@@ -535,7 +535,7 @@ void O3_CPU::initialize_btb()
             << " RAS size: " << BASIC_BTB_RAS_SIZE << std::endl;
   btb_partition_sizes = btb_sizes;
   NUM_SETS = BTB_SETS;
-  NUM_BTB_PARTITIONS = BTB_WAYS + 1;
+  NUM_BTB_PARTITIONS = BTB_WAYS + 1; // +1 for mini BTB
   NUM_NON_INDIRECT_PARTITIONS = BTB_NON_INDIRECT;
   offsetbtb_partition_sizes = btb_partition_sizes + NUM_NON_INDIRECT_PARTITIONS;
   NUM_OFFSET_BTB_PARTITIONS = (NUM_BTB_PARTITIONS - NUM_NON_INDIRECT_PARTITIONS - 1);

@@ -38,7 +38,7 @@
         "btb_regions": 16,
         "full_tag": false,
         "clipped_tag": true,
-        "clipped_tag_size": 8,
+        "clipped_tag_size": 12,
         "btb_offset_sizes": [
             0,
             4,
@@ -50,10 +50,7 @@
             25,
             64
         ],
-        "offset_btb_sets": [
-            256,
-            256
-        ],
+        "offset_btb_sets": [],
         "align_bits": 5
     }],
     "DIB": {
@@ -77,7 +74,7 @@
         "prefetcher": "fdip",
         "filter_inserts": false,
         "filter_prefetches": true,
-        "prefetch_buffer_size": 16,
+        "prefetch_buffer_size": 64,
         "counting_block_method": "SUM_ACCESSES"
     },
     "L1D": {
@@ -167,6 +164,7 @@
         "counting_block_method": "SUM_ACCESSES"
     },
     "LLC": {
+        "frequency": 2000,
         "sets": 32768,
         "ways": 15,
         "rq_size": 32,

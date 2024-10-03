@@ -50,6 +50,9 @@
             25,
             64
         ],
+        "offset_btb_sets": [
+            1
+        ],
         "align_bits": 5
     }],
     "DIB": {
