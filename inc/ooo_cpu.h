@@ -46,7 +46,7 @@ class O3_CPU : public champsim::operable
 {
 private:
   size_t BTB_SETS;
-  uint8_t BTB_REGIONS;
+  uint8_t BTB_REGIONS = 1;
   size_t EXTENDED_BTB_MAX_LOOP_BRANCH;
   BASIC_BTB_ENTRY* basic_btb;
   uint8_t* btb_sizes;

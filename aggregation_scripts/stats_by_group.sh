@@ -135,4 +135,7 @@ done
 
 echo "DONE"
 
-# 
+
+# Usefule things:
+# aliasing plot: ~/plotgen/plotgen -i ./aliasing.tsv --sort-function name --sort-rows --drop-nan --normalise-to-column "Total Lookups" --y-tick-format ',.2%' --plot bar -o ../graphs/btb_16b_aliasing.html
+# address heatmap:  ~/plotgen/plotgen -i ./aggregated/btb_bit_information.tsv --palette bright --drop-nan --plot heatmap -o ./graphs/btb_address_heatmap.html
