@@ -67,9 +67,6 @@ void O3_CPU::prefetcher_cycle_operate()
       if (it == recent_prefetches.end()) {
         prefetch_code_line(std::get<0>(prefetch_queue.front()));
         recent_prefetches.push_back(std::get<0>(prefetch_queue.front()));
-      } else {
-        std::cout << "recent prefetch skip -- something failed when inserting into the pfq" << std::endl;
-        continue; // note: if all goes well we never end up here...
       }
       if (recent_prefetches.size() > MAX_RECENT_PFETCH) {
         recent_prefetches.pop_front();
