@@ -40,7 +40,7 @@ def run_experiment(
         "-simulation_instructions",
         str(evaluation_instructions),
         "-result_dir",
-        output_dir,
+        str(output_dir),
     ]
     if args.intel:
         cmd.append("-intel")
@@ -50,8 +50,8 @@ def run_experiment(
         cmd.append("-c")
     if args.trace_format == "p":
         cmd.append("-ptrace")
-    cmd.extend(["-traces", trace_file_path])
-    print(f"EXECUTE {' '.join(str(cmd))}", flush=True)
+    cmd.extend(["-traces", str(trace_file_path)])
+    print(f"EXECUTE {' '.join(cmd)}", flush=True)
     os.makedirs(output_dir, exist_ok=True)
     success = True
     completed_experiment = subprocess.run(cmd, -1, capture_output=True)
