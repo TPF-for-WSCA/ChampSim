@@ -29,6 +29,7 @@ uint64_t dynamic_branch_count = 0;
 uint64_t static_branch_count = 0;
 std::array<uint64_t, 64> dynamic_bit_counts;
 std::array<uint64_t, 64> static_bit_counts;
+uint64_t region_mask = 0;
 
 extern uint8_t knob_intel;
 
@@ -558,6 +559,8 @@ void O3_CPU::initialize_btb()
   offset_not_found_on_BTBmiss = 0;
   offset_not_found_on_BTBhit = 0;
 
+  uint64_t num_region_bits = (BTB_REGIONS == 0) ? 0 : (uint64_t)std::log2(BTB_REGIONS);
+  region_mask = ((uint64_t)-1) << (64 - num_region_bits);
   for (uint32_t i = 0; i < BTB_WAYS; i++) {
     btb_partition[i] = new BTB(BTB_SETS, 1);
     btb_partition[i]->full_tag = full_tag;
@@ -598,7 +601,6 @@ BTB_outcome O3_CPU::btb_prediction(uint64_t ip, uint8_t branch_type)
     int idx = btb_partition[j]->index(ip);
     uint64_t tag = btb_partition[j]->get_tag(ip);
     uint32_t i = 0;
-    uint64_t region_mask = ((uint64_t)-1) << (64 - (uint64_t)std::log2(btb_partition[j]->numRegions));
 
     while (i < btb_partition[j]->theBTB[idx].size()) {
       // std::cout << "BTB SIZE: " << theBTB[idx].size() << endl;
