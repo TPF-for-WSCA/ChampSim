@@ -11,19 +11,19 @@
                 "-warmup_instructions",
                 "50000000",
                 "-simulation_instructions",
-                "150000000",
+                "50000000",
                 "-result_dir",
                 "~/Downloads/results/ipc1/sizes_champsim32k/test/",
                 // "-ptrace",
                 // "-cloudsuite",
-                "-intel",
+                // "-intel",
                 // "-stallonmiss",
                 "-traces",
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_004.champsimtrace.xz"
-                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_003.champsimtrace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_010.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/spec_gcc_001.champsimtrace.xz"
-                "/home/robrunne/OneDrive/Research/datasets/llbp/benchbase-tpcc.champsim.trace.gz"
+                // "/home/robrunne/OneDrive/Research/datasets/llbp/benchbase-tpcc.champsim.trace.gz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_030.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1/client_008.champsimtrace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace.xz"
