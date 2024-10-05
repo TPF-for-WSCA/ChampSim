@@ -7,7 +7,7 @@
   "num_cores": 1,
   "CFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include",
   "CXXFLAGS": "-Wall -fno-omit-frame-pointer -fsanitize=bounds -Wno-reorder -Werror -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include",
-  "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
+  "LDLIBS": "-lxed -lz -lboost_system -fsanitize=bounds -lboost_filesystem",
   "LDFLAGS": "-L/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib",
   "ooo_cpu": [
     {

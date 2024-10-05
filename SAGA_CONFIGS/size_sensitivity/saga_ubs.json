@@ -7,7 +7,7 @@
   "num_cores": 1,
   "CFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include",
   "CXXFLAGS": "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include",
-  "LDLIBS": "-lxed -lz -lboost_system -lboost_filesystem",
+  "LDLIBS": "-lxed -lz -lboost_system -fsanitize=bounds -lboost_filesystem",
   "LDFLAGS": "-L/cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/lib",
   "ooo_cpu": [
     {
