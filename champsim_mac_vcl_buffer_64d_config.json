@@ -7,7 +7,7 @@
   "num_cores": 1,
   "CFLAGS": "-Wall -Wno-reorder -g -O0 -DDEBUG -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
   "CXXFLAGS": "-Wall -Wno-reorder -g -O0 -DDEBUG -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost",
-  "LDLIBS": "-lxed -lz -lboost_system-mt -fsanitize=bounds -lboost_filesystem-mt -v",
+  "LDLIBS": "-lxed -lz -lboost_system-mt -fsanitize=bounds -fsanitize=address -lboost_filesystem-mt -v",
   "LDFLAGS": "-L/Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/lib -L/opt/local/lib/boost/lib",
   "ooo_cpu": [
     {

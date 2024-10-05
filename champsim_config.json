@@ -7,8 +7,8 @@
   "num_cores": 1,
   "CFLAGS": "-Wall -Wno-reorder -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
   "CXXFLAGS": "-Wall -Wno-reorder -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include",
-  "LDLIBS": "-lxed -lz -lboost_system -fsanitize=bounds -lboost_filesystem",
-  "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib -fsanitize=bounds",
+  "LDLIBS": "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem",
+  "LDFLAGS": "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib -fsanitize=bounds -fsanitize=address",
   "ooo_cpu": [
     {
       "frequency": 4000,
