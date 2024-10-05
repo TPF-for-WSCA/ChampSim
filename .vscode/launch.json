@@ -85,6 +85,50 @@
             "preLaunchTask": "make DebugBuild"
         },
         {
+            "name": "IDUN C++ Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "targetArchitecture": "x64",
+            "program": "${workspaceRoot}/bin/btb_tag_exp/btbx_tag_16b",
+            "args": [
+                "-warmup_instructions",
+                "50000000",
+                "-simulation_instructions",
+                "50000000",
+                "-result_dir",
+                "/cluster/work/romankb/tmp",
+                // "-ptrace",
+                // "-cloudsuite",
+                // "-intel",
+                // "-stallonmiss",
+                "-traces",
+                // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_004.champsimtrace.xz"
+                "/cluster/work/romankb/dataset/IPC1_new_translated/server/server_023.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/spec_gcc_001.champsimtrace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/llbp/benchbase-tpcc.champsim.trace.gz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_030.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1/client_008.champsimtrace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/google/charlie/champsim-17571657100049929577.1006522.memtrace.gz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/scrc2/nutch_phase0_core2.trace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
+                //"/home/robrunne/Downloads/tmp/champsim_traces/whiskey/champsim-1748052322638680856.267686.memtrace.gz"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib:/usr/lib/debug"
+                }
+            ],
+            "miDebuggerPath": "/cluster/apps/eb/software/GDB/13.2-GCCcore-12.3.0/bin/gdb",
+            "MIMode": "gdb",
+            "preLaunchTask": "make IdunDebugBuild"
+        },
+        {
             "name": "Python: MergingBlocks",
             "type": "debugpy",
             "request": "launch",

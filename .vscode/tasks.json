@@ -63,6 +63,26 @@
             }
         },
         {
+            "label": "make IdunDebugBuild",
+            "type": "shell",
+            "command": "module",
+            "args": [
+                "load",
+                "GCCcore/12.3.0",
+                "GDB/13.2-GCCcore-12.3.0",
+                "Python/3.11.3-GCCcore-12.3.0"
+            ],
+            "dependsOn": [
+                "make DebugBuild"
+            ],
+            "options": {
+                "env": {
+                    "XED_INCLUDE_DIRS": "/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include",
+                    "XED_LIBRARY_DIR": "/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
+                }
+            }
+        },
+        {
             "label": "bin/champsim",
             "command": "make -j bin/champsim -f /home/robrunne/Workspace/Simulators/ChampSim/Makefile",
             "type": "shell",
