@@ -852,7 +852,7 @@ with open(instantiation_file_name, "wt") as wfp:
             if offset_sizes_set and offset_sets_set:
                 break
     if not offset_sizes_set:
-        wfp.write("uint8_t* btb_offset_sizes;\n\n")
+        wfp.write("uint8_t btb_offset_sizes[0];\n\n")
     if not offset_sets_set:
         print("Warning: offset sizes not configured")
         wfp.write("uint32_t* offset_btb_sets;\n\n")

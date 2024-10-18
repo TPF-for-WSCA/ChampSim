@@ -52,7 +52,7 @@
         64
       ],
       "offset_btb_sets": [
-        1
+        256
       ],
       "align_bits": 5
     }

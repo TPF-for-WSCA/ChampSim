@@ -273,6 +273,7 @@ public:
         filter_inserts(filter_inserts), filter_prefetches(filter_prefetches)
   {
     if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
+      std::cout << "Constructing " << NAME << std::endl;
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
       cl_num_accesses_to_complete_profile_buffer.reserve(WRITE_BUFFER_SIZE);
     }
@@ -297,7 +298,9 @@ public:
         filter_prefetches(filter_prefetches)
   {
     if (0 == NAME.compare(NAME.length() - 3, 3, "L1I")) {
+      std::cout << "Constructing " << NAME << std::endl;
       cl_accessmask_buffer.reserve(WRITE_BUFFER_SIZE);
+      cl_num_accesses_to_complete_profile_buffer.reserve(WRITE_BUFFER_SIZE);
     }
     cl_accesses_percentage_of_presence_covered.resize(100);
     cl_blocks_in_cache_buffer.reserve(WRITE_BUFFER_SIZE);
