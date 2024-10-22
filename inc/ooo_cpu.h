@@ -93,7 +93,43 @@ struct LSQ_ENTRY {
 // cpu
 class O3_CPU : public champsim::operable
 {
+private:
+  size_t BTB_SETS;
+  uint8_t BTB_REGIONS = 1;
+  size_t EXTENDED_BTB_MAX_LOOP_BRANCH;
+  BASIC_BTB_ENTRY* basic_btb;
+  uint8_t* btb_sizes;
+  uint32_t* offset_btb_sets;
+  bool prev_was_branch = false;
+  bool perfect_btb;
+  bool perfect_branch_predict;
+  bool full_tag, clipped_tag;
+  uint8_t clipped_tag_size;
+
 public:
+  size_t BTB_WAYS;
+  size_t BTB_NON_INDIRECT;
+  uint64_t rob_size_at_stall = 0;
+  uint32_t cpu = 0;
+  std::map<uint64_t, uint64_t> branch_distance;
+  uint32_t branch_count;
+  uint64_t total_branch_distance;
+  std::array<std::set<std::pair<uint64_t, uint64_t>>, 64> pc_offset_pairs_by_size{};
+  std::array<std::set<std::pair<uint64_t, uint64_t>>, 64> pc_offset_pairs_by_partition{};
+  std::array<std::map<uint64_t, uint64_t>, 64> offset_counts_by_size{};
+  std::array<uint64_t, 64> offset_size_count{};
+  std::array<std::map<uint64_t, uint64_t>, 64> type_counts_by_size;
+  std::array<std::map<uint64_t, uint64_t>, 64> static_offset_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> static_branch_pc_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> static_target_pc_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> dynamic_offset_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> dynamic_branch_pc_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> dynamic_target_pc_counts_by_partition;
+  std::vector<std::vector<uint64_t>> pc_bits_offset;
+  std::map<uint32_t, std::vector<std::map<uint32_t, uint16_t>>> sharing_in_btb_by_partition;
+  std::map<uint32_t, std::vector<std::map<uint64_t, uint64_t>>> offset_refcounts_by_partition;
+  size_t align_bits = LOG2_BLOCK_SIZE;
+
   uint32_t cpu = 0;
 
   // cycle

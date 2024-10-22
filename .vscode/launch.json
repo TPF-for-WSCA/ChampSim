@@ -1,0 +1,45 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "C++ Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "targetArchitecture": "x64",
+            "program": "${workspaceRoot}/bin/champsim",
+            "args": [
+                "--warmup_instructions",
+                "5000000",
+                "--simulation_instructions",
+                "5000000",
+                // "-result_dir",
+                // "~/Downloads/results/test/",
+                // "-ptrace",
+                // "-cloudsuite",
+                //"-intel",
+                // "-stallonmiss",
+                // "-traces",
+                // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_019.champsimtrace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
+                //"/home/robrunne/Downloads/tmp/champsim_traces/whiskey/champsim-1748052322638680856.267686.memtrace.gz"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib"
+                }
+            ],
+            "MIMode": "gdb",
+            "preLaunchTask": "make DebugBuild"
+        },
+    ]
+}
