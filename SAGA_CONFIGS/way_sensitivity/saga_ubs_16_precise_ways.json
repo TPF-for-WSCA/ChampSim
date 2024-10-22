@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/ubs_16_ways_precise",
+  "executable_name": "bin/way_sensitivity/ubs_16_ways_precise",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
