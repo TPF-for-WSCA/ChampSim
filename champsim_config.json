@@ -39,7 +39,27 @@
       "schedule_latency": 0,
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
-      "btb": "basic_btb"
+      "btb": "tagging_btb",
+      "btb_ways": 8,
+      "btb_non_indirect": 8,
+      "btb_sets": 512,
+      "btb_regions": 16,
+      "btb_clipped_tag": 1,
+      "btb__tag_size": 16,
+      "btb_offset_sizes": [
+        0,
+        4,
+        5,
+        7,
+        9,
+        11,
+        19,
+        25,
+        64
+      ],
+      "offset_btb_sets": [
+        1
+      ]
     }
   ],
   "DIB": {

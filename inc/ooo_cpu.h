@@ -26,9 +26,11 @@
 #include <bitset>
 #include <deque>
 #include <limits>
+#include <map>
 #include <memory>
 #include <optional>
 #include <queue>
+#include <set>
 #include <stdexcept>
 #include <vector>
 
@@ -95,9 +97,10 @@ class O3_CPU : public champsim::operable
 {
 private:
   size_t BTB_SETS;
+  uint8_t BTB_CLIPPED_TAG;
+  uint8_t BTB_TAG_SIZE;
   uint8_t BTB_REGIONS = 1;
   size_t EXTENDED_BTB_MAX_LOOP_BRANCH;
-  BASIC_BTB_ENTRY* basic_btb;
   uint8_t* btb_sizes;
   uint32_t* offset_btb_sets;
   bool prev_was_branch = false;
@@ -110,7 +113,6 @@ public:
   size_t BTB_WAYS;
   size_t BTB_NON_INDIRECT;
   uint64_t rob_size_at_stall = 0;
-  uint32_t cpu = 0;
   std::map<uint64_t, uint64_t> branch_distance;
   uint32_t branch_count;
   uint64_t total_branch_distance;
@@ -302,6 +304,10 @@ public:
     unsigned m_dispatch_latency{};
     unsigned m_schedule_latency{};
     unsigned m_execute_latency{};
+    unsigned long m_btb_ways{};
+    unsigned long m_btb_sets{};
+    unsigned char m_btb_clipped_tag{};
+    unsigned char m_btb_tag_size{};
 
     CACHE* m_l1i{};
     long int m_l1i_bw{};
@@ -320,6 +326,7 @@ public:
           m_schedule_width(other.m_schedule_width), m_execute_width(other.m_execute_width), m_lq_width(other.m_lq_width), m_sq_width(other.m_sq_width),
           m_retire_width(other.m_retire_width), m_mispredict_penalty(other.m_mispredict_penalty), m_decode_latency(other.m_decode_latency),
           m_dispatch_latency(other.m_dispatch_latency), m_schedule_latency(other.m_schedule_latency), m_execute_latency(other.m_execute_latency),
+          m_btb_clipped_tag(other.m_btb_clipped_tag), m_btb_sets(other.m_btb_sets), m_btb_tag_size(other.m_btb_tag_size), m_btb_ways(other.m_btb_ways),
           m_l1i(other.m_l1i), m_l1i_bw(other.m_l1i_bw), m_l1d_bw(other.m_l1d_bw), m_fetch_queues(other.m_fetch_queues), m_data_queues(other.m_data_queues)
     {
     }
@@ -447,6 +454,26 @@ public:
       m_execute_latency = execute_latency_;
       return *this;
     }
+    self_type& btb_ways(unsigned long btb_ways_)
+    {
+      m_btb_ways = btb_ways_;
+      return *this;
+    }
+    self_type& btb_sets(unsigned long btb_sets_)
+    {
+      m_btb_sets = btb_sets_;
+      return *this;
+    }
+    self_type& btb_clipped_tag(unsigned char btb_clipped_tag_)
+    {
+      m_btb_clipped_tag = btb_clipped_tag_;
+      return *this;
+    }
+    self_type& btb_tag_size(unsigned char btb_tag_size_)
+    {
+      m_btb_tag_size = btb_tag_size_;
+      return *this;
+    }
     self_type& l1i(CACHE* l1i_)
     {
       m_l1i = l1i_;
@@ -493,6 +520,7 @@ public:
         SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),
         BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency),
         SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
+        BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), BTB_CLIPPED_TAG(b.m_btb_clipped_tag), BTB_TAG_SIZE(b.m_btb_tag_size),
         L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
   {
   }
