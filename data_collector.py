@@ -35,22 +35,22 @@ def run_experiment(
 ):
     cmd = [
         executable,
-        "-warmup_instructions",
+        "--warmup_instructions",
         str(warmup_instructions),
-        "-simulation_instructions",
+        "--simulation_instructions",
         str(evaluation_instructions),
-        "-result_dir",
-        str(output_dir),
+        # "-result_dir",  # TODO: Re-add when we have more files written
+        # str(output_dir),
     ]
     if args.intel:
         cmd.append("-intel")
     if args.som:
-        cmd.append("-stallonmiss")
+        cmd.append("--stallonmiss")
     if args.trace_format == "c":
-        cmd.append("-c")
+        cmd.append("--c")
     if args.trace_format == "p":
-        cmd.append("-ptrace")
-    cmd.extend(["-traces", str(trace_file_path)])
+        cmd.append("--ptrace")
+    cmd.extend([str(trace_file_path)])
     print(f"EXECUTE {' '.join(cmd)}", flush=True)
     os.makedirs(output_dir, exist_ok=True)
     success = True
