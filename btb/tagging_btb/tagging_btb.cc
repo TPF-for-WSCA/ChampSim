@@ -19,15 +19,9 @@ uint64_t pow2(uint8_t exp)
 {
   assert(exp <= 64);
   uint64_t result = 1;
-  for (;;) {
-    if (exp & 1) {
-      result *= 2;
-    }
-    exp >>= 1;
-    if (!exp) {
-      break;
-    }
+  while (exp) {
     result *= 2;
+    exp -= 1;
   }
   return result;
 }
@@ -40,11 +34,11 @@ enum class branch_info {
   CONDITIONAL,
 };
 
-std::size_t INDEX_MASK = 0;
-std::size_t TAG_MASK = 0;
-uint8_t BTB_CLIPPED_TAG = 0;
-uint8_t BTB_TAG_SIZE = 0;
-uint8_t BTB_SET_BITS;
+std::size_t _INDEX_MASK = 0;
+std::size_t _TAG_MASK = 0;
+uint8_t _BTB_CLIPPED_TAG = 0;
+uint8_t _BTB_TAG_SIZE = 0;
+uint8_t _BTB_SET_BITS;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
 constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
@@ -54,14 +48,15 @@ struct btb_entry_t {
   uint64_t target = 0;
   branch_info type = branch_info::ALWAYS_TAKEN;
 
-  auto index() const { return (ip_tag >> 2) & INDEX_MASK; }
+  auto index() const { return (ip_tag >> 2) & _INDEX_MASK; }
   auto tag() const
   {
-    auto tag = ip_tag >> 2 >> BTB_SET_BITS;
-    if (!BTB_CLIPPED_TAG) {
+    auto tag = ip_tag >> 2 >> _BTB_SET_BITS;
+    if (!_BTB_CLIPPED_TAG) {
       return tag;
     }
-    return tag & TAG_MASK;
+    tag &= _TAG_MASK;
+    return tag;
   }
 };
 
@@ -82,15 +77,15 @@ void O3_CPU::initialize_btb()
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
   ::CONDITIONAL_HISTORY[this] = 0;
-  BTB_SET_BITS = champsim::lg2(BTB_SETS);
+  _BTB_SET_BITS = champsim::lg2(BTB_SETS);
   if (this->BTB_CLIPPED_TAG) {
-    BTB_CLIPPED_TAG = 1;
-    BTB_TAG_SIZE = this->BTB_TAG_SIZE;
+    _BTB_CLIPPED_TAG = 1;
+    _BTB_TAG_SIZE = this->BTB_TAG_SIZE;
   } else {
-    BTB_TAG_SIZE = 62 - BTB_SET_BITS;
+    _BTB_TAG_SIZE = 62 - _BTB_SET_BITS;
   }
-  INDEX_MASK = BTB_SETS - 1;
-  TAG_MASK = (-1 & (pow2(BTB_TAG_SIZE) - 1));
+  _INDEX_MASK = BTB_SETS - 1;
+  _TAG_MASK = pow2(_BTB_TAG_SIZE) - 1;
 }
 
 std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
