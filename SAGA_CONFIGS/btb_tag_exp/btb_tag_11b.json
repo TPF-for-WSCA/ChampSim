@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/btb_tag/btb_tag_11b",
+  "executable_name": "btb_tag/btb_tag_11b",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
