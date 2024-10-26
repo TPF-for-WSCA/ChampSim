@@ -3,7 +3,7 @@
 #benchmarks=("tanvir")
 #inputs: 
 benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "google_merced" "google_charlie" "google_delta" "google_whiskey" "LLBP")
-normalise-to-row="sizes_btbx_full_tag"
+normalise-to-row="sizes_btb_tag_full"
 #end inputs~
 #benchmarks=("crc2_spec" "crc2_cloud" "dpc3")
 pg_dir=""
