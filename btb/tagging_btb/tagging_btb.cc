@@ -9,11 +9,28 @@
 #include <algorithm>
 #include <bitset>
 #include <deque>
+#include <iostream>
 #include <map>
 
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
+uint64_t pow2(uint8_t exp)
+{
+  assert(exp <= 64);
+  uint64_t result = 1;
+  for (;;) {
+    if (exp & 1) {
+      result *= 2;
+    }
+    exp >>= 1;
+    if (!exp) {
+      break;
+    }
+    result *= 2;
+  }
+  return result;
+}
 namespace
 {
 enum class branch_info {
@@ -40,9 +57,11 @@ struct btb_entry_t {
   auto index() const { return (ip_tag >> 2) & INDEX_MASK; }
   auto tag() const
   {
+    auto tag = ip_tag >> 2 >> BTB_SET_BITS;
     if (!BTB_CLIPPED_TAG) {
-      return ip_tag >> 2 >> BTB_SET_BITS;
+      return tag;
     }
+    return tag & TAG_MASK;
   }
 };
 
@@ -64,15 +83,14 @@ void O3_CPU::initialize_btb()
   std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
   ::CONDITIONAL_HISTORY[this] = 0;
   BTB_SET_BITS = champsim::lg2(BTB_SETS);
-  if (this.BTB_CLIPPED_TAG) {
+  if (this->BTB_CLIPPED_TAG) {
     BTB_CLIPPED_TAG = 1;
-    BTB_TAG_SIZE = this.BTB_TAG_SIZE;
+    BTB_TAG_SIZE = this->BTB_TAG_SIZE;
   } else {
     BTB_TAG_SIZE = 62 - BTB_SET_BITS;
   }
   INDEX_MASK = BTB_SETS - 1;
-  // todo add power of tag bits -1 as mask
-  TAG_MASK = (-1 &)^(1 << (2 + BTB_SET_BITS));
+  TAG_MASK = (-1 & (pow2(BTB_TAG_SIZE) - 1));
 }
 
 std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)

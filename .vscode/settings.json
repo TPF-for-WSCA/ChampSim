@@ -3,6 +3,7 @@
         "ostream": "cpp",
         "cmath": "cpp",
         "optional": "cpp",
-        "type_traits": "cpp"
+        "type_traits": "cpp",
+        "map": "cpp"
     }
 }
