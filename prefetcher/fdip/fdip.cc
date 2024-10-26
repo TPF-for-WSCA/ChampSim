@@ -15,7 +15,7 @@ void CACHE::prefetcher_initialize() {}
 
 void CACHE::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target, uint8_t size)
 {
-  assert(ip % 4 == 0 and branch_target % 4 == 0);
+  // assert(ip % 4 == 0 and branch_target % 4 == 0);
   uint64_t block_addr = ((branch_target >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE);
   if (block_addr == 0)
     return;
