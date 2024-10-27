@@ -44,7 +44,7 @@ done
 
 for b in ${benchmarks[@]}
 do
-    for application in ./$b/sizes_offset_btbx_full_tag/*;
+    for application in ./$b/sizes_btb_tag_full/*;
     do
         for ((i=1;i<=64;i++)); do
             echo "Plotting ${application}"
