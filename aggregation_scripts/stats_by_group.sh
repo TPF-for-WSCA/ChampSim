@@ -2,8 +2,8 @@
 
 #benchmarks=("tanvir")
 #inputs: 
-benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "google_merced" "google_charlie" "google_delta" "google_whiskey" "LLBP")
-normalise_to_row="sizes_btb_tag_full"
+benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec") # "google_merced" "google_charlie" "google_delta" "google_whiskey" "LLBP")
+normalise_to_row="sizes_btb_tag_full"  # TODO: Make this the default/add default to look at / baseline
 #end inputs~
 #benchmarks=("crc2_spec" "crc2_cloud" "dpc3")
 pg_dir=""
@@ -33,7 +33,7 @@ do
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi FETCH_COUNT &
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi ROB_AT_MISS &
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi STALL_CYCLES &
-    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_champsim32k single BRANCH_DISTANCES &
+    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_btb_tag_full single BRANCH_DISTANCES &
     for config in ./${b}/*;
     do
         echo "Extract ${config}"
