@@ -42,16 +42,16 @@ do
     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_btbx_full_tag single BTB_BIT_INFORMATION &
 done
 
-for b in ${benchmarks[@]}
-do
-    for application in ./$b/sizes_btb_tag_full/*;
-    do
-        for ((i=1;i<=64;i++)); do
-            echo "Plotting ${application}"
-            ${pg_dir}plotgen --debug -i $application/cpu0_partition${i}_dynamic_offset_count.tsv -i $application/cpu0_partition${i}_dynamic_branch_count.tsv -i $application/cpu0_partition${i}_dynamic_target_count.tsv
-        done
-    done
-done
+# for b in ${benchmarks[@]}
+# do
+#     for application in ./$b/sizes_btb_tag_full/*;
+#     do
+#         for ((i=1;i<=64;i++)); do
+#             echo "Plotting ${application}"
+#             ${pg_dir}plotgen --debug -i $application/cpu0_partition${i}_dynamic_offset_count.tsv -i $application/cpu0_partition${i}_dynamic_branch_count.tsv -i $application/cpu0_partition${i}_dynamic_target_count.tsv &
+#         done
+#     done
+# done
 
 echo "Waiting for jobs to finish:"
 for job in `jobs -p`
