@@ -146,6 +146,15 @@ public:
     }
   }
 
+  void invalidate_region(const value_type& elem)
+  {
+    for (auto entry = std::begin(block); entry != std::end(block); entry++) {
+      if (entry->data.offset_tag == elem.offset_tag) {
+        std::exchange(*entry, {});
+      }
+    }
+  }
+
   std::optional<value_type> invalidate(const value_type& elem)
   {
     auto [set_begin, set_end] = get_set_span(elem);
