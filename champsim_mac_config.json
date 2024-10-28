@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/champsim",
+  "executable_name": "champsim",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -47,7 +47,7 @@
       "btb_regions": 16,
       "btb_clipped_tag": 1,
       "btb_tag_size": 6,
-      "btb_tag_regions": 32,
+      "btb_tag_regions": 4,
       "btb_tag_region_size": 6
     }
   ],
