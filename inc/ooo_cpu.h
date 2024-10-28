@@ -99,6 +99,8 @@ private:
   size_t BTB_SETS;
   uint8_t BTB_CLIPPED_TAG;
   uint8_t BTB_TAG_SIZE;
+  uint16_t BTB_TAG_REGIONS;
+  uint8_t BTB_TAG_REGION_SIZE;
   uint8_t BTB_REGIONS = 1;
   size_t EXTENDED_BTB_MAX_LOOP_BRANCH;
   uint8_t* btb_sizes;
@@ -308,6 +310,8 @@ public:
     unsigned long m_btb_sets{};
     unsigned char m_btb_clipped_tag{};
     unsigned char m_btb_tag_size{};
+    unsigned short m_btb_tag_regions{};
+    unsigned char m_btb_tag_region_size{};
 
     CACHE* m_l1i{};
     long int m_l1i_bw{};
@@ -474,6 +478,16 @@ public:
       m_btb_tag_size = btb_tag_size_;
       return *this;
     }
+    self_type& btb_tag_regions(unsigned short btb_tag_regions_)
+    {
+      m_btb_tag_regions = btb_tag_regions_;
+      return *this;
+    }
+    self_type& btb_tag_region_size(unsigned short btb_tag_region_size_)
+    {
+      m_btb_tag_region_size = btb_tag_region_size_;
+      return *this;
+    }
     self_type& l1i(CACHE* l1i_)
     {
       m_l1i = l1i_;
@@ -521,7 +535,8 @@ public:
         BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency),
         SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
         BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), BTB_CLIPPED_TAG(b.m_btb_clipped_tag), BTB_TAG_SIZE(b.m_btb_tag_size),
-        L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
+        BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), L1I_bus(b.m_cpu, b.m_fetch_queues),
+        L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
   {
   }
 };

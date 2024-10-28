@@ -138,6 +138,8 @@ def normalize_config(config_file):
         "btb_sets",
         "btb_clipped_tag",
         "btb_tag_size",
+        "btb_tag_regions",
+        "btb_tag_region_size",
     )
     cores = [
         util.chain(

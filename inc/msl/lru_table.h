@@ -32,7 +32,11 @@ namespace detail
 {
 template <typename T>
 struct table_indexer {
-  auto operator()(const T& t) const { return t.index(); }
+  auto operator()(const T& t) const
+  {
+    auto ret_val = t.index();
+    return ret_val;
+  }
 };
 
 template <typename T>
@@ -91,6 +95,19 @@ private:
   }
 
 public:
+  template <class UnaryPred>
+  std::optional<value_type> check_hit(const value_type& elem, UnaryPred func)
+  {
+    auto [set_begin, set_end] = get_set_span(elem);
+    auto hit = std::find_if(set_begin, set_end, func(elem));
+
+    if (hit == set_end)
+      return std::nullopt;
+
+    hit->last_used = ++access_count;
+    return hit->data;
+  }
+
   std::optional<value_type> check_hit(const value_type& elem)
   {
     auto [set_begin, set_end] = get_set_span(elem);
@@ -101,6 +118,18 @@ public:
 
     hit->last_used = ++access_count;
     return hit->data;
+  }
+
+  std::optional<uint8_t> check_hit_idx(const value_type& elem)
+  {
+    auto [set_begin, set_end] = get_set_span(elem);
+    auto hit = std::find_if(set_begin, set_end, match_func(elem));
+
+    if (hit == set_end)
+      return std::nullopt;
+
+    hit->last_used = ++access_count;
+    return hit - set_begin;
   }
 
   void fill(const value_type& elem)

@@ -284,6 +284,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield ".btb_sets({})".format(cpu.get("btb_sets", 1024))
         yield ".btb_clipped_tag({})".format(cpu.get("btb_clipped_tag", 1))
         yield ".btb_tag_size({})".format(cpu.get("btb_tag_size", 12))
+        yield ".btb_tag_regions({})".format(cpu.get("btb_tag_regions", 0))
+        yield ".btb_tag_region_size({})".format(cpu.get("btb_tag_region_size", 0))
 
         yield ".fetch_queues({})".format(
             "&{}_to_{}_queues".format(cpu["name"], cpu["L1I"])

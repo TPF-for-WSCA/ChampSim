@@ -36,9 +36,13 @@ enum class branch_info {
 
 std::size_t _INDEX_MASK = 0;
 std::size_t _TAG_MASK = 0;
+std::size_t _REGION_MASK = 0;
 uint8_t _BTB_CLIPPED_TAG = 0;
 uint8_t _BTB_TAG_SIZE = 0;
 uint8_t _BTB_SET_BITS;
+uint16_t _BTB_TAG_REGIONS = 0;
+uint8_t _BTB_TAG_REGION_SIZE = 0;
+uint16_t _BTB_REGION_BITS = 0;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
 constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
@@ -47,6 +51,7 @@ struct btb_entry_t {
   uint64_t ip_tag = 0;
   uint64_t target = 0;
   branch_info type = branch_info::ALWAYS_TAKEN;
+  uint16_t offset_tag = 0;
 
   auto index() const { return (ip_tag >> 2) & _INDEX_MASK; }
   auto tag() const
@@ -56,11 +61,42 @@ struct btb_entry_t {
       return tag;
     }
     tag &= _TAG_MASK;
+    if (_BTB_TAG_REGIONS) {
+      // TODO: check if zeroed out proper bits
+      auto masked_bits = tag & (_REGION_MASK << _BTB_TAG_SIZE);
+      tag ^= masked_bits;
+      tag |= offset_tag << _BTB_TAG_SIZE;
+    }
     return tag;
   }
 };
 
+struct region_btb_entry_t {
+  uint64_t ip_tag = 0;
+  auto index() const { return 0; }
+  auto tag() const
+  {
+    // TODO: calculate region tag
+    auto tag = ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+    tag &= _REGION_MASK;
+    return tag;
+  }
+};
+
+/*
+uint64_t patch_ip(uint64_t ip, uint64_t region_idx)
+{
+  // TODO: Check shamt
+  auto shamt = 2 << _BTB_SET_BITS << _BTB_TAG_SIZE;
+  auto masked_bits = ip & (_REGION_MASK << shamt);
+  ip ^= masked_bits;
+  ip |= region_idx << shamt;
+  return ip;
+}
+*/
+
 std::map<O3_CPU*, champsim::msl::lru_table<btb_entry_t>> BTB;
+std::map<O3_CPU*, champsim::msl::lru_table<region_btb_entry_t>> REGION_BTB;
 std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
 std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
 std::map<O3_CPU*, std::deque<uint64_t>> RAS;
@@ -74,6 +110,7 @@ std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 void O3_CPU::initialize_btb()
 {
   ::BTB.insert({this, champsim::msl::lru_table<btb_entry_t>{BTB_SETS, BTB_WAYS}});
+  ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, BTB_TAG_REGIONS}});
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
   ::CONDITIONAL_HISTORY[this] = 0;
@@ -81,6 +118,10 @@ void O3_CPU::initialize_btb()
   if (this->BTB_CLIPPED_TAG) {
     _BTB_CLIPPED_TAG = 1;
     _BTB_TAG_SIZE = this->BTB_TAG_SIZE;
+    _BTB_TAG_REGIONS = this->BTB_TAG_REGIONS;
+    _BTB_TAG_REGION_SIZE = this->BTB_TAG_REGION_SIZE;
+    _REGION_MASK = pow2(_BTB_TAG_REGION_SIZE) - 1;
+    _BTB_REGION_BITS = champsim::lg2(_BTB_TAG_REGIONS);
   } else {
     _BTB_TAG_SIZE = 62 - _BTB_SET_BITS;
   }
@@ -90,8 +131,16 @@ void O3_CPU::initialize_btb()
 
 std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
+  uint8_t region_idx = -1;
+  if (_BTB_TAG_REGIONS) {
+    auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
+    if (!region_idx_.has_value()) {
+      return {0, false};
+    }
+    region_idx = region_idx_.value();
+  }
   // use BTB for all other branches + direct calls
-  auto btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN});
+  auto btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx});
 
   // no prediction for this IP
   if (!btb_entry.has_value())
@@ -156,7 +205,17 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   else if ((branch_type == BRANCH_CONDITIONAL) || (branch_type == BRANCH_OTHER))
     type = ::branch_info::CONDITIONAL;
 
-  auto opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type});
+  uint8_t region_idx = -1;
+  if (_BTB_TAG_REGIONS) {
+    auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
+    if (!region_idx_.has_value()) {
+      ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
+      region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
+    }
+    region_idx = region_idx_.value();
+  }
+
+  auto opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, region_idx});
   if (opt_entry.has_value()) {
     opt_entry->type = type;
     if (branch_target != 0)
@@ -164,6 +223,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
 
   if (branch_target != 0) {
-    ::BTB.at(this).fill(opt_entry.value_or(::btb_entry_t{ip, branch_target, type}));
+    ::BTB.at(this).fill(opt_entry.value_or(::btb_entry_t{ip, branch_target, type, region_idx}));
   }
 }
