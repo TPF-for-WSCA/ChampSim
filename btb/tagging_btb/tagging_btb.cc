@@ -211,6 +211,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     if (!region_idx_.has_value()) {
       ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
       region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
+      // ::BTB.at(this).invalidate_region({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
     }
     region_idx = region_idx_.value();
   }
