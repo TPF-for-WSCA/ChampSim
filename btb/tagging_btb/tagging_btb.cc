@@ -69,6 +69,16 @@ struct btb_entry_t {
     }
     return tag;
   }
+
+  auto partial_tag() const
+  {
+    uint64_t tag = ip_tag >> 2 >> _BTB_SET_BITS;
+    if (!_BTB_CLIPPED_TAG) {
+      return tag;
+    }
+    tag &= _TAG_MASK;
+    return tag;
+  }
 };
 
 struct region_btb_entry_t {
@@ -81,6 +91,7 @@ struct region_btb_entry_t {
     tag &= _REGION_MASK;
     return tag;
   }
+  auto partial_tag() const { return 0; }
 };
 
 /*
@@ -129,40 +140,40 @@ void O3_CPU::initialize_btb()
   _TAG_MASK = pow2(_BTB_TAG_SIZE) - 1;
 }
 
-std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
-  uint8_t region_idx = -1;
+  std::optional<::btb_entry_t> btb_entry;
   if (_BTB_TAG_REGIONS) {
     auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
     if (!region_idx_.has_value()) {
-      return {0, false};
+      btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0}, true);
+    } else {
+      // use BTB for all other branches + direct calls
+      btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
     }
-    region_idx = region_idx_.value();
   }
-  // use BTB for all other branches + direct calls
-  auto btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx});
 
   // no prediction for this IP
   if (!btb_entry.has_value())
-    return {0, false};
+    return {0, ip, false};
 
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this]))
-      return {0, true};
+      return {0, ip, true};
 
     // peek at the top of the RAS and adjust for the size of the call instr
     auto target = ::RAS[this].back();
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
 
-    return {target + size, true};
+    return {target + size, btb_entry->ip_tag, true};
   }
 
   if (btb_entry->type == ::branch_info::INDIRECT) {
     auto hash = (ip >> 2) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
-    return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], true};
+    return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
   }
 
-  return {btb_entry->target, btb_entry->type != ::branch_info::CONDITIONAL};
+  return {btb_entry->target, btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL};
 }
 
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)

@@ -16,6 +16,7 @@ struct tracker {
 
     auto index() const { return ip; }
     auto tag() const { return ip; }
+    auto partial_tag() const { return ip; }
   };
 
   struct lookahead_entry {

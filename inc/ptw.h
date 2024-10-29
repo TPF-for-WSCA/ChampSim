@@ -39,7 +39,7 @@ class PageTableWalker : public champsim::operable
     auto operator()(const pscl_entry& entry) const { return entry.vaddr >> shamt; }
   };
 
-  using pscl_type = champsim::lru_table<pscl_entry, pscl_indexer, pscl_indexer>;
+  using pscl_type = champsim::lru_table<pscl_entry, pscl_indexer, pscl_indexer, pscl_indexer>;
   using channel_type = champsim::channel;
   using request_type = typename channel_type::request_type;
   using response_type = typename channel_type::response_type;

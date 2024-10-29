@@ -358,7 +358,7 @@ def get_ooo_cpu_module_lines(branch_data, btb_data):
         (
             "btb_prediction",
             (("uint64_t", "ip"),),
-            "std::pair<uint64_t, uint8_t>",
+            "std::tuple<uint64_t, uint64_t, uint8_t>",
             "champsim::detail::take_last",
         ),
     ]

@@ -68,6 +68,7 @@ struct cpu_stats {
   uint64_t begin_instrs = 0, begin_cycles = 0;
   uint64_t end_instrs = 0, end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
+  uint64_t positive_aliasing = 0, negative_aliasing = 0;
 
   std::array<long long, 8> total_branch_types = {};
   std::array<long long, 8> branch_type_misses = {};
@@ -159,7 +160,7 @@ public:
     std::size_t shamt;
     auto operator()(uint64_t val) const { return val >> shamt; }
   };
-  using dib_type = champsim::lru_table<uint64_t, dib_shift, dib_shift>;
+  using dib_type = champsim::lru_table<uint64_t, dib_shift, dib_shift, dib_shift>;
   dib_type DIB;
 
   // reorder buffer, load/store queue, register file
@@ -241,7 +242,7 @@ public:
 
     virtual void impl_initialize_btb() = 0;
     virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) = 0;
-    virtual std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
+    virtual std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
   };
 
   template <unsigned long long B_FLAG, unsigned long long T_FLAG>
@@ -255,7 +256,7 @@ public:
 
     void impl_initialize_btb();
     void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type);
-    std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
+    std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
   };
 
   std::unique_ptr<module_concept> module_pimpl;
@@ -272,7 +273,7 @@ public:
   {
     module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
   }
-  std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
+  std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
 
   class builder_conversion_tag
   {

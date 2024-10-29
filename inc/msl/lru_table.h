@@ -43,9 +43,14 @@ template <typename T>
 struct table_tagger {
   auto operator()(const T& t) const { return t.tag(); }
 };
+
+template <typename T>
+struct partial_tagger {
+  auto operator()(const T& t) const { return t.partial_tag(); }
+};
 } // namespace detail
 
-template <typename T, typename SetProj = detail::table_indexer<T>, typename TagProj = detail::table_tagger<T>>
+template <typename T, typename SetProj = detail::table_indexer<T>, typename TagProj = detail::table_tagger<T>, typename PartTagProj = detail::partial_tagger<T>>
 class lru_table
 {
 public:
@@ -60,6 +65,7 @@ private:
 
   SetProj set_projection;
   TagProj tag_projection;
+  PartTagProj partial_tag_projection;
 
   std::size_t NUM_SET, NUM_WAY;
   uint64_t access_count = 0;
@@ -72,6 +78,13 @@ private:
     auto set_begin = std::next(std::begin(block), set_idx * static_cast<diff_type>(NUM_WAY));
     auto set_end = std::next(set_begin, static_cast<diff_type>(NUM_WAY));
     return std::pair{set_begin, set_end};
+  }
+
+  auto partial_match(const value_type& elem)
+  {
+    return [partial_tag = partial_tag_projection(elem), partial_proj = this->partial_tag_projection](const block_t& x) {
+      return x.last_used > 0 && partial_proj(x.data) == partial_tag;
+    };
   }
 
   auto match_func(const value_type& elem)
@@ -95,30 +108,32 @@ private:
   }
 
 public:
-  template <class UnaryPred>
-  std::optional<value_type> check_hit(const value_type& elem, UnaryPred func)
-  {
-    auto [set_begin, set_end] = get_set_span(elem);
-    auto hit = std::find_if(set_begin, set_end, func(elem));
-
-    if (hit == set_end)
-      return std::nullopt;
-
-    hit->last_used = ++access_count;
-    return hit->data;
-  }
-
-  std::optional<value_type> check_hit(const value_type& elem)
+  std::optional<value_type> check_hit(const value_type& elem, bool partial = false)
   {
     auto [set_begin, set_end] = get_set_span(elem);
     auto hit = std::find_if(set_begin, set_end, match_func(elem));
-
+    if (partial) {
+      hit = std::find_if(set_begin, set_end, partial_match(elem));
+    }
     if (hit == set_end)
       return std::nullopt;
 
     hit->last_used = ++access_count;
     return hit->data;
   }
+  /*
+    std::optional<value_type> check_hit(const value_type& elem)
+    {
+      auto [set_begin, set_end] = get_set_span(elem);
+      auto hit = std::find_if(set_begin, set_end, match_func(elem));
+
+      if (hit == set_end)
+        return std::nullopt;
+
+      hit->last_used = ++access_count;
+      return hit->data;
+    }
+    */
 
   std::optional<uint8_t> check_hit_idx(const value_type& elem)
   {
