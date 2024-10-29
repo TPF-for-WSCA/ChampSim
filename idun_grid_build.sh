@@ -1,6 +1,6 @@
 #!/bin/bash
 
-build_dir=("btb_tag_exp")
+build_dir=("btb_region_tag_exp")
 
 old_dir=$(pwd)
 cd ~/ChampSim/
