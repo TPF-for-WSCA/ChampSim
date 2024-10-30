@@ -19,29 +19,31 @@ if [ -z ${champsim_root+x} ]; then chroot="/cluster/projects/nn4650k/workspace";
 
 echo "chroot: ${chroot}"
 
-
-for b in ${benchmarks[@]}
-do
-    echo "Accumulating ${b}"
-    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi MPKI &
-    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi IPC  &
-    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BTB_ALIASING  &
-    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL &
-    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi FRONTEND_STALLS &
-    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL_MISSES &
-    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi USELESS_LINES &
-    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BRANCH_MPKI &
-    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi FETCH_COUNT &
-    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi ROB_AT_MISS &
-    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi STALL_CYCLES &
-    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_btb_tag_full single BRANCH_DISTANCES &
-    # for config in ./${b}/*;
-    # do
-    #     echo "Extract ${config}"
-    #     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ${config} single BTB_ALIASING &
-    # done
-    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_btbx_full_tag single BTB_BIT_INFORMATION &
-done
+if [ $# -lt 1 ]; then
+    for b in ${benchmarks[@]}
+    do
+        echo "Accumulating ${b}"
+        python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi MPKI &
+        python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi IPC  &
+        python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BTB_ALIASING  &
+        # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL &
+        # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi FRONTEND_STALLS &
+        # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL_MISSES &
+        # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi USELESS_LINES &
+        # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BRANCH_MPKI &
+        # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi FETCH_COUNT &
+        # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi ROB_AT_MISS &
+        # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi STALL_CYCLES &
+        # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_btb_tag_full single BRANCH_DISTANCES &
+        # for config in ./${b}/*;
+        # do
+        #     echo "Extract ${config}"
+        #     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ${config} single BTB_ALIASING &
+        # done
+        # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_btbx_full_tag single BTB_BIT_INFORMATION &
+    done
+else echo "skip aggregation";
+fi
 
 # for b in ${benchmarks[@]}
 # do
