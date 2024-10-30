@@ -142,7 +142,7 @@ void O3_CPU::initialize_btb()
 
 std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
-  std::optional<::btb_entry_t> btb_entry;
+  std::optional<::btb_entry_t> btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0});
   if (_BTB_TAG_REGIONS) {
     auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
     if (!region_idx_.has_value()) {
@@ -154,12 +154,13 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   }
 
   // no prediction for this IP
+  // default: no aliasing, thus returning ip itself as recorded ip
   if (!btb_entry.has_value())
     return {0, ip, false};
 
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this]))
-      return {0, ip, true};
+      return {0, btb_entry->ip_tag, true};
 
     // peek at the top of the RAS and adjust for the size of the call instr
     auto target = ::RAS[this].back();
