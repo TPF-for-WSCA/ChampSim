@@ -80,8 +80,10 @@ def extract_instruction_count(path):
         if matches:
             return int(matches.groups()[0])
 
+
 def extract_bit_information(path):
     import itertools
+
     logs = []
     with open(path) as f:
         logs = f.readlines()
@@ -95,13 +97,14 @@ def extract_bit_information(path):
         if line.startswith("cpu0") or line.startswith("XXX"):
             break
         bit_data.append(float(line.split(":")[1].strip()))
-    #assert(len(bit_data) == 64)
+    # assert(len(bit_data) == 64)
     # if not successful we have empty list - make none list
     if len(bit_data) == 0:
         bit_data = [None for _ in range(64)]
     if len(bit_data) < 64:
-        assert(0)
+        assert 0
     return bit_data
+
 
 def extract_btb_aliasing(path):
     logs = []
@@ -109,8 +112,11 @@ def extract_btb_aliasing(path):
         logs = f.readlines()
     logs.reverse()
     # order of values: total, aliasing, same block, different block
-    re_list = [re.compile("XXX TOTAL LOOKUPS: (\d+)"), re.compile("XXX TOTAL ALIASING: (\d+)"), re.compile("XXX ALIASING SAME REGION: (\d+)"), re.compile("XXX ALIASING OTHER REGION: (\d+)")]
-    lookups = [0,0,0,0]
+    re_list = [
+        re.compile("XXX Positive Aliasing: (\d+)"),
+        re.compile("XXX Total Aliasing: (\d+)"),
+    ]
+    lookups = [0, 0]
     for line in logs:
         for idx, reg in enumerate(re_list):
             matches = reg.match(line)
@@ -119,7 +125,8 @@ def extract_btb_aliasing(path):
                 break
         if all(lookups):
             break
-    return lookups
+    return lookups[0] / lookups[1]
+
 
 def extract_btb_bits_per_cl(path):
     import itertools
@@ -521,6 +528,8 @@ def write_tsv(data, out_path=None):
     filename = "ipc"
     if type == STATS.MPKI:
         filename = "mpki"
+    elif type == STATS.ALIASING:
+        filename = "aliasing"
     elif type == STATS.FETCH_COUNT:
         filename = "fetch_count"
     elif type == STATS.BRANCH_MPKI:
@@ -664,21 +673,23 @@ elif type == STATS.NUM_BTB_BITS_PER_CL:
                 outfile.write(f"\t{entry}")
             outfile.write("\n")
         outfile.flush()
-elif type == STATS.ALIASING:
-    file_path = os.path.join(sys.argv[1], "aliasing.tsv")
-    with open(file_path, "w+") as outfile:
-        outfile.write("Workload\tTotal Lookups\tAliasing Lookups\tSame Block Aliases\tDifferent Block Aliases\n")
-        for workload, values in data["const"].items():
-            outfile.write(f"{workload}")
-            for entry in values:
-                outfile.write(f"\t{entry}")
-            outfile.write("\n")
-        outfile.flush()
+# elif type == STATS.ALIASING:
+#     file_path = os.path.join(sys.argv[1], "aliasing.tsv")
+#     with open(file_path, "w+") as outfile:
+#         outfile.write(
+#             "Workload\tTotal Lookups\tAliasing Lookups\tSame Block Aliases\tDifferent Block Aliases\n"
+#         )
+#         for workload, values in data["const"].items():
+#             outfile.write(f"{workload}")
+#             for entry in values:
+#                 outfile.write(f"\t{entry}")
+#             outfile.write("\n")
+#         outfile.flush()
 elif type == STATS.BIT_INFORMATION:
     file_path = os.path.join(sys.argv[1], "btb_dynamic_bit_information.tsv")
     with open(file_path, "w+") as outfile:
         outfile.write("Workload")
-        for i in range(1,65):
+        for i in range(1, 65):
             outfile.write(f"\t{i}")
         outfile.write("\n")
         for workload, values in data["const"].items():
