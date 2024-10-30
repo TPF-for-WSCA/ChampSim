@@ -113,8 +113,8 @@ def extract_btb_aliasing(path):
     logs.reverse()
     # order of values: total, aliasing, same block, different block
     re_list = [
-        re.compile("XXX Positive Aliasing: (\d+)"),
-        re.compile("XXX Total Aliasing: (\d+)"),
+        re.compile("Positive Aliasing: (\d+)"),
+        re.compile("Total Aliasing: (\d+)"),
     ]
     lookups = [0, 0]
     for line in logs:
