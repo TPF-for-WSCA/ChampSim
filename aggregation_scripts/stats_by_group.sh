@@ -35,12 +35,12 @@ do
     # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi ROB_AT_MISS &
     # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi STALL_CYCLES &
     # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_btb_tag_full single BRANCH_DISTANCES &
-    for config in ./${b}/*;
-    do
-        echo "Extract ${config}"
-        python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ${config} single BTB_ALIASING &
-    done
-    python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_btbx_full_tag single BTB_BIT_INFORMATION &
+    # for config in ./${b}/*;
+    # do
+    #     echo "Extract ${config}"
+    #     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ${config} single BTB_ALIASING &
+    # done
+    # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_btbx_full_tag single BTB_BIT_INFORMATION &
 done
 
 # for b in ${benchmarks[@]}
