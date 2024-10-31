@@ -152,6 +152,11 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types[arch_instr.branch_type]++;
   auto [predicted_branch_target, branch_ip, always_taken] = impl_btb_prediction(arch_instr.ip);
+  if (perfect_btb) {
+    predicted_branch_target = arch_instr.branch_target;
+    branch_ip = arch_instr.ip;
+    always_taken = arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
+  }
   if (arch_instr.ip != branch_ip) {
     // aliasing
     if (predicted_branch_target == arch_instr.branch_target) {

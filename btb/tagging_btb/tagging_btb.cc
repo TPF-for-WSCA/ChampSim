@@ -239,6 +239,3 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     ::BTB.at(this).fill(opt_entry.value_or(::btb_entry_t{ip, branch_target, type, region_idx}));
   }
 }
-
-// TODO: Partial hits
-// * Aliasing benficial/hurts

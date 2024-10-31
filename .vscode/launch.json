@@ -46,7 +46,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceRoot}/bin/champsim",
-            "externalConsole": true,
+            "externalConsole": false,
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "--warmup_instructions",
@@ -69,12 +69,7 @@
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",
-            "environment": [
-                {
-                    "name": "DYLD_LIBRARY_PATH",
-                    "value": "/Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/lib:/opt/local/lib/boost/lib"
-                }
-            ],
+            "environment": [],
             "MIMode": "lldb",
             "preLaunchTask": "make DebugBuild"
         },

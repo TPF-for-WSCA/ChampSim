@@ -46,6 +46,7 @@
       "btb_sets": 512,
       "btb_clipped_tag": 0,
       "btb_tag_size": 64,
+      "btb_regions": 0,
       "align_bits": 5
     }
   ],
