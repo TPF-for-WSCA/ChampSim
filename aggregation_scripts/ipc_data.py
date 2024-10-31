@@ -37,7 +37,7 @@ def extract_ipc(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile("CPU 0 cumulative IPC\: (\d*\.?\d+)")
+    regex = re.compile(r"CPU 0 cumulative IPC: (\d*\.?\d+)")
     logs.reverse()
     for line in logs:  # reverse to find last run first
         matches = regex.match(line)
@@ -49,7 +49,7 @@ def extract_branch_count(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile("\tTOTAL BRANCHES: (\d+)")
+    regex = re.compile(r"\tTOTAL BRANCHES: (\d+)")
     logs.reverse()
     for line in logs:
         matches = regex.match(line)
@@ -61,7 +61,7 @@ def extract_big_offset_counts(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile("XXX Big offset targets total: (\d+)")
+    regex = re.compile(r"XXX Big offset targets total: (\d+)")
     logs.reverse()
     for line in logs:
         matches = regex.match(line)
@@ -73,7 +73,7 @@ def extract_instruction_count(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile("CPU \d+ cumulative IPC: \d+.\d+ instructions: (\d+)")
+    regex = re.compile(r"CPU \d+ cumulative IPC: \d+.\d+ instructions: (\d+)")
     logs.reverse()
     for line in logs:
         matches = regex.match(line)
@@ -87,7 +87,7 @@ def extract_bit_information(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    title_re = re.compile("XXX Total dynamic 1 bits in branch IPs:")
+    title_re = re.compile(r"XXX Total dynamic 1 bits in branch IPs:")
     ilogs = iter(logs)
     for line in ilogs:
         if title_re.match(line):
@@ -113,13 +113,13 @@ def extract_btb_aliasing(path):
     logs.reverse()
     # order of values: total, aliasing, same block, different block
     re_list = [
-        re.compile("Positive Aliasing\: (\d+)"),
-        re.compile("Total Aliasing\: (\d+)"),
+        re.compile(r"Positive Aliasing: (\d+)"),
+        re.compile(r"Total Aliasing: (\d+)"),
     ]
     lookups = [0, 0]
     for line in logs:
         for idx, reg in enumerate(re_list):
-            matches = reg.match(line)
+            matches = reg.search(line)
             if matches:
                 lookups[idx] = int(matches.groups()[0])
                 break
@@ -184,7 +184,7 @@ def extract_l1i_partial(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile("cpu0\_L1I TOTAL.*PARTIAL MISS\:\s+(\d*) \( (\d*\.?\d+)\%\)")
+    regex = re.compile(r"cpu0\_L1I TOTAL.*PARTIAL MISS:\s+(\d*) \( (\d*\.?\d+)\%\)")
     logs.reverse()
     for line in logs:  # reverse to find last run first
         matches = regex.match(line)
@@ -197,7 +197,7 @@ def extract_fetches(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile("cpu0\_L1I LOAD.*ACCESS\:\s+(\d*)")
+    regex = re.compile(r"cpu0\_L1I LOAD.*ACCESS:\s+(\d*)")
     logs.reverse()
     for line in logs:  # reverse to find last run first
         matches = regex.match(line)
@@ -233,9 +233,9 @@ def extrace_useless_percentage(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile("cpu0\_L1I EVICTIONS\:\s+(\d*)\s+USELESS:\s+(\d*)")
+    regex = re.compile(r"cpu0\_L1I EVICTIONS:\s+(\d*)\s+USELESS:\s+(\d*)")
     if buffer:
-        regex = re.compile("cpu0\_L1I_buffer EVICTIONS\:\s+(\d*)\s+USELESS:\s+(\d*)")
+        regex = re.compile(r"cpu0\_L1I_buffer EVICTIONS:\s+(\d*)\s+USELESS:\s+(\d*)")
 
     logs.reverse()
     for line in logs:  # reverse to find last run first
@@ -249,7 +249,7 @@ def extract_branch_mpki(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile("BRANCH\_MPKI\: (\d*\.?\d+)")
+    regex = re.compile(r"BRANCH\_MPKI: (\d*\.?\d+)")
     logs.reverse()
     for line in logs:  # reverse to find last run first
         matches = regex.match(line)
@@ -261,7 +261,7 @@ def extract_rob_at_stall(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile("AVG ROB SIZE AT STALL\: (\d*\.?\d+)")
+    regex = re.compile(r"AVG ROB SIZE AT STALL: (\d*\.?\d+)")
     logs.reverse()
     for line in logs:  # reverse to find last run first
         matches = regex.match(line)
@@ -273,9 +273,9 @@ def extract_stall_cycles(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-        stallcycles_regex = re.compile("CPU 0 FRONTEND STALLED CYCLES:\s+(\d+)")
-    regex = re.compile("CPU 0 cumulative IPC\: (\d*\.?\d+)")
-    totalmiss_regex = re.compile("cpu0\_L1I TOTAL.*MISS\:\s+(\d*)\s+PARTIAL MISS")
+        stallcycles_regex = re.compile(r"CPU 0 FRONTEND STALLED CYCLES:\s+(\d+)")
+    regex = re.compile(r"CPU 0 cumulative IPC: (\d*\.?\d+)")
+    totalmiss_regex = re.compile(r"cpu0\_L1I TOTAL.*MISS:\s+(\d*)\s+PARTIAL MISS")
     logs.reverse()
     total_misses = -1
     stall_cycles = -1
@@ -296,7 +296,7 @@ def extract_l1i_mpki(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile("cpu0\_L1I MPKI\: (\d*\.?\d+)")
+    regex = re.compile(r"cpu0\_L1I MPKI: (\d*\.?\d+)")
     logs.reverse()
     for line in logs:  # reverse to find last run first
         matches = regex.match(line)
@@ -308,8 +308,8 @@ def extract_frontend_stalls_percentage(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    stallcycles_regex = re.compile("CPU 0 FRONTEND STALLED CYCLES:\s+(\d+)")
-    regex = re.compile("CPU 0 cumulative IPC\: (\d*\.?\d+)")
+    stallcycles_regex = re.compile(r"CPU 0 FRONTEND STALLED CYCLES:\s+(\d+)")
+    regex = re.compile(r"CPU 0 cumulative IPC: (\d*\.?\d+)")
     totalinstructions_regex = re.compile(
         "CPU 0 cumulative IPC: \d*\.?\d+ instructions: (\d+)"
     )
@@ -340,7 +340,7 @@ def extract_branch_distance(path):
         logs = f.readlines()
     candidate_lines = []
     logs = logs[::-1]
-    regex = re.compile("^\s+(\d+):\s+(\d+)")
+    regex = re.compile(r"^\s+(\d+):\s+(\d+)")
     for logline in logs:
         matches = regex.match(logline)
         if matches:
