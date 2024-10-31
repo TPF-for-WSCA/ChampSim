@@ -1,5 +1,5 @@
 {
-  "executable_name": "champsim_full_btb",
+  "executable_name": "champsim_perfect_btb",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -40,15 +40,15 @@
       "schedule_latency": 0,
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
-      "perfect_btb": 0,
+      "perfect_btb": 1,
       "btb": "tagging_btb",
       "btb_ways": 8,
       "btb_non_indirect": 8,
       "btb_sets": 512,
       "btb_regions": 16,
       "btb_clipped_tag": 0,
-      "btb_tag_size": 64,
-      "btb_tag_regions": 0,
+      "btb_tag_size": 6,
+      "btb_tag_regions": 4,
       "btb_tag_region_size": 6
     }
   ],

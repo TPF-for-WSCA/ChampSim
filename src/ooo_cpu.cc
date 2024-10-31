@@ -155,7 +155,9 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (perfect_btb) {
     predicted_branch_target = arch_instr.branch_target;
     branch_ip = arch_instr.ip;
-    always_taken = arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
+    always_taken = (arch_instr.branch_type == BRANCH_CONDITIONAL || arch_instr.branch_type == BRANCH_OTHER)
+                       ? 0
+                       : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
   }
   if (arch_instr.ip != branch_ip) {
     // aliasing
