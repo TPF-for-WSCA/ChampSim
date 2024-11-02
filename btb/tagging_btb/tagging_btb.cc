@@ -142,7 +142,7 @@ void O3_CPU::initialize_btb()
 
 std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
-  std::optional<::btb_entry_t> btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0});
+  std::optional<::btb_entry_t> btb_entry;
   if (_BTB_TAG_REGIONS) {
     auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
     if (!region_idx_.has_value()) {
@@ -151,6 +151,8 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
       // use BTB for all other branches + direct calls
       btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
     }
+  } else {
+    btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0});
   }
 
   // no prediction for this IP

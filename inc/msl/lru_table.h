@@ -111,9 +111,11 @@ public:
   std::optional<value_type> check_hit(const value_type& elem, bool partial = false)
   {
     auto [set_begin, set_end] = get_set_span(elem);
-    auto hit = std::find_if(set_begin, set_end, match_func(elem));
+    typename std::vector<block_t>::iterator hit;
     if (partial) {
       hit = std::find_if(set_begin, set_end, partial_match(elem));
+    } else {
+      hit = std::find_if(set_begin, set_end, match_func(elem));
     }
     if (hit == set_end)
       return std::nullopt;
