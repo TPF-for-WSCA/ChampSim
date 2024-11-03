@@ -11,8 +11,8 @@
 #SBATCH -o /cluster/work/romankb/slurm-default-sizes-%j.out
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
-module load Boost/1.79.0-GCC-11.3.0
-module load Python/3.10.4-GCCcore-11.3.0
+#module load Boost/1.79.0-GCC-11.3.0
+#module load Python/3.10.4-GCCcore-11.3.0
 
 binary_dir=("micro-rebuttal-predictor")
 # binary_dir=("micro-rebuttal-16-32" "micro-new-traces" "micro-acic" "micro" "micro-rebuttal-predictor" "size_sensitivity" "way_sensitivity" "micro-rebuttal")
