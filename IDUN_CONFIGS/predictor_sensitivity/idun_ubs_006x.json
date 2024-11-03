@@ -1,5 +1,5 @@
 {
-  "executable_name": "bin/micro-rebuttal-predictor/ubs_006x",
+  "executable_name": "bin/micro-rebuttal-predictor/ubs_006x_fifo",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -46,7 +46,8 @@
     "ways": 16,
     "buffer": true,
     "buffer_size": 4,
-    "buffer_organisation": "DIRECT_MAPPED",
+    "buffer_fifo": true,
+    "buffer_organisation": "FULLY_ASSOCIATIVE",
     "way_sizes": [
       4,
       4,
