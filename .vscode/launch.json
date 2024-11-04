@@ -45,7 +45,7 @@
             "name": "C++ Mac Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/bin/champsim_perfect_btb",
+            "program": "${workspaceRoot}/bin/champsim_full_btb",
             "externalConsole": false,
             "internalConsoleOptions": "openOnSessionStart",
             "args": [

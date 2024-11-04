@@ -159,17 +159,17 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
                        ? 0
                        : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
   }
-  if (arch_instr.ip != branch_ip) {
-    // aliasing
+  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
+  if (arch_instr.branch_prediction == 0)
+    predicted_branch_target = 0;
+
+  if (arch_instr.branch_prediction && arch_instr.branch_taken && arch_instr.ip != branch_ip) {
     if (predicted_branch_target == arch_instr.branch_target) {
       sim_stats.positive_aliasing += 1;
     } else {
       sim_stats.negative_aliasing += 1;
     }
   }
-  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
-  if (arch_instr.branch_prediction == 0)
-    predicted_branch_target = 0;
 
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
