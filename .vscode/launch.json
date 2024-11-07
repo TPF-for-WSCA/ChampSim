@@ -50,9 +50,9 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "--warmup_instructions",
-                "50000000",
+                "500000",
                 "--simulation_instructions",
-                "50000000",
+                "500000",
                 // "-ptrace",
                 // "-cloudsuite",
                 // "-intel",
