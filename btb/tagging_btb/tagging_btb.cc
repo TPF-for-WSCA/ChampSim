@@ -241,3 +241,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     ::BTB.at(this).fill(opt_entry.value_or(::btb_entry_t{ip, branch_target, type, region_idx}));
   }
 }
+
+// TODO:
+// * BTBX
+// * entropy counter on the tag bits select highest ranking after warmup
+// * output selection map and compare over all workloads
+// * download dpc3, LLBP, ...
