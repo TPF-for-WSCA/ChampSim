@@ -80,6 +80,18 @@ private:
     return std::pair{set_begin, set_end};
   }
 
+  auto get_set_span(const value_type& elem, uint8_t size)
+  {
+    using diff_type = typename block_vec_type::difference_type;
+    auto set_idx = static_cast<diff_type>(set_projection(elem) & bitmask(lg2(NUM_SET)));
+    auto set_begin = std::next(std::begin(block), set_idx * static_cast<diff_type>(NUM_WAY));
+    auto set_end = std::next(set_begin, static_cast<diff_type>(NUM_WAY));
+    while (set_begin->target_size < size) {
+      set_begin++;
+    }
+    return std::pair{set_begin, set_end};
+  }
+
   auto partial_match(const value_type& elem)
   {
     return [partial_tag = partial_tag_projection(elem), partial_proj = this->partial_tag_projection](const block_t& x) {
@@ -147,6 +159,12 @@ public:
 
     hit->last_used = ++access_count;
     return hit - set_begin;
+  }
+
+  void fill(const value_type& elem, uint8_t size)
+  {
+    auto tag = tag_projection(elem);
+    auto [set_begin, set_end] = get_set_span(elem);
   }
 
   void fill(const value_type& elem)

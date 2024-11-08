@@ -61,6 +61,7 @@ struct BTBEntry {
   branch_info type = branch_info::ALWAYS_TAKEN;
   uint16_t offset_tag = 0;
   uint8_t target_size = 64; // TODO: Only update for which we have sizes
+  uint64_t offset_mask = -1;
 
   uint32_t offsetBTB_partitionID;
   uint32_t offsetBTB_set;
@@ -89,6 +90,14 @@ struct BTBEntry {
     }
     tag &= _TAG_MASK;
     return tag;
+  }
+
+  auto get_prediction() const
+  {
+    auto offset = target & offset_mask;
+    auto prediction = ip_tag & (~offset_mask);
+    prediction |= offset;
+    return prediction;
   }
 };
 
@@ -139,6 +148,110 @@ void 03_CPU ::initialize_btb()
   _INDEX_MASK = BTB_SETS - 1;
   _TAG_MASK = pow2(_BTB_TAG_SIZE) - 1;
 }
+
+std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+{
+  std::optional<::btb_entry_t> btb_entry;
+  if (_BTB_TAG_REGIONS) {
+    auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
+    if (!region_idx_.has_value()) {
+      btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0}, true);
+    } else {
+      // use BTB for all other branches + direct calls
+      btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
+    }
+  } else {
+    btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0});
+  }
+
+  // no prediction for this IP
+  // default: no aliasing, thus returning ip itself as recorded ip
+  if (!btb_entry.has_value())
+    return {0, ip, false};
+
+  if (btb_entry->type == ::branch_info::RETURN) {
+    if (std::empty(::RAS[this]))
+      return {0, btb_entry->ip_tag, true};
+
+    // peek at the top of the RAS and adjust for the size of the call instr
+    auto target = ::RAS[this].back();
+    auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
+
+    return {target + size, btb_entry->ip_tag, true};
+  }
+  /*
+    if (btb_entry->type == ::branch_info::INDIRECT) {
+      auto hash = (ip >> 2) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
+      return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
+    }*/
+
+  return {btb_entry->get_prediction(), btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL || btb_entry->type != ::branch_info::INDIRECT};
+}
+
+// TODO: ONLY UPDATE WHEN FITTING IN THE WAY
+void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+{
+  // add something to the RAS
+  if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL) {
+    RAS[this].push_back(ip);
+    if (std::size(RAS[this]) > RAS_SIZE)
+      RAS[this].pop_front();
+  }
+
+  // updates for indirect branches
+  if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
+    auto hash = (ip >> 2) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
+    ::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])] = branch_target;
+  }
+
+  if ((branch_type == BRANCH_CONDITIONAL) || (branch_type == BRANCH_OTHER)) {
+    ::CONDITIONAL_HISTORY[this] <<= 1;
+    ::CONDITIONAL_HISTORY[this].set(0, taken);
+  }
+
+  if (branch_type == BRANCH_RETURN && !std::empty(::RAS[this])) {
+    // recalibrate call-return offset if our return prediction got us close, but not exact
+    auto call_ip = ::RAS[this].back();
+    ::RAS[this].pop_back();
+
+    auto estimated_call_instr_size = (call_ip > branch_target) ? call_ip - branch_target : branch_target - call_ip;
+    if (estimated_call_instr_size <= 10) {
+      ::CALL_SIZE[this][call_ip % std::size(::CALL_SIZE[this])] = estimated_call_instr_size;
+    }
+  }
+
+  // update btb entry
+  auto type = ::branch_info::ALWAYS_TAKEN;
+  if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL))
+    type = ::branch_info::INDIRECT;
+  else if (branch_type == BRANCH_RETURN)
+    type = ::branch_info::RETURN;
+  else if ((branch_type == BRANCH_CONDITIONAL) || (branch_type == BRANCH_OTHER))
+    type = ::branch_info::CONDITIONAL;
+
+  uint8_t region_idx = -1;
+  if (_BTB_TAG_REGIONS) {
+    auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
+    if (!region_idx_.has_value()) {
+      ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
+      region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
+      // ::BTB.at(this).invalidate_region({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
+    }
+    region_idx = region_idx_.value();
+  }
+
+  auto opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, region_idx});
+  if (opt_entry.has_value()) {
+    opt_entry->type = type;
+    if (branch_target != 0)
+      opt_entry->target = branch_target;
+  }
+  // TODO: calculate size
+  if (branch_target != 0) {
+    ::BTB.at(this).fill(opt_entry.value_or(::btb_entry_t{ip, branch_target, type, region_idx}));
+  }
+}
+
 void init_btb(int32_t Sets, int32_t Assoc)
 {
   numSets = Sets;
