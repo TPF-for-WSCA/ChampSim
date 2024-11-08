@@ -71,6 +71,14 @@ private:
   uint64_t access_count = 0;
   block_vec_type block{NUM_SET * NUM_WAY};
 
+  auto get_set_span(uint16_t idx)
+  {
+    using diff_type = typename block_vec_type::difference_type;
+    auto set_begin = std::next(std::begin(block), idx * static_cast<diff_type>(NUM_WAY));
+    auto set_end = std::next(set_begin, static_cast<diff_type>(NUM_WAY));
+    return std::pair{set_begin, set_end};
+  }
+
   auto get_set_span(const value_type& elem)
   {
     using diff_type = typename block_vec_type::difference_type;
