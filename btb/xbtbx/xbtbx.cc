@@ -10,20 +10,35 @@
 #include <bitset>
 #include <cmath>
 #include <deque>
+#include <iostream>
 #include <map>
 #include <set>
 
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
-#define BASIC_BTB_SETS 4096
-#define BASIC_BTB_WAYS 4
-#define BASIC_BTB_INDIRECT_SIZE 4096
-#define BASIC_BTB_RAS_SIZE 64
-#define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
+namespace
+{
 
-#define LOG_COMMONALITY_CUTOFF 200
-using namespace std;
+enum class branch_info {
+  INDIRECT,
+  RETURN,
+  ALWAYS_TAKEN,
+  CONDITIONAL,
+};
+
+std::size_t _INDEX_MASK = 0;
+std::size_t _TAG_MASK = 0;
+std::size_t _REGION_MASK = 0;
+uint8_t _BTB_CLIPPED_TAG = 0;
+uint8_t _BTB_TAG_SIZE = 0;
+uint8_t _BTB_SET_BITS;
+uint16_t _BTB_TAG_REGIONS = 0;
+uint8_t _BTB_TAG_REGION_SIZE = 0;
+uint16_t _BTB_REGION_BITS = 0;
+constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
+constexpr std::size_t RAS_SIZE = 64;
+constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
 
 std::map<uint32_t, uint64_t> offset_reuse_freq;
 std::map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
@@ -38,210 +53,200 @@ std::array<uint64_t, 64> dynamic_bit_counts;
 std::array<uint64_t, 64> static_bit_counts;
 uint64_t region_mask = 0;
 
-extern uint8_t knob_intel;
-
 enum BTB_ReplacementStrategy { LRU, REF0, REF };
 
 struct BTBEntry {
-  uint64_t tag;
-  uint64_t full_tag;
-  uint64_t target_ip;
-  uint8_t branch_type;
-  uint64_t lru;
+  uint64_t ip_tag = 0;
+  uint64_t target;
+  branch_info type = branch_info::ALWAYS_TAKEN;
+  uint16_t offset_tag = 0;
+  uint8_t target_size = 64; // TODO: Only update for which we have sizes
 
   uint32_t offsetBTB_partitionID;
   uint32_t offsetBTB_set;
   uint32_t offsetBTB_way;
-};
-
-struct offset_BTBEntry {
-  uint64_t target_offset;
-  uint64_t lru;
-  uint32_t ref_count;
-};
-
-extern bool is_kernel(uint64_t ip);
-extern bool is_shared_or_vdso(uint64_t ip);
-
-struct BTB {
-  std::vector<std::vector<BTBEntry>> theBTB;
-  uint32_t numSets;
-  uint32_t assoc;
-  uint64_t indexMask;
-  uint32_t numIndexBits;
-  uint8_t numRegions;
-  bool full_tag = true;
-  bool clipped_tag = true;
-  int num_low_bits = 64;
-
-  BTB() {}
-
-  BTB(int32_t Sets, int32_t Assoc) : numSets(Sets), assoc(Assoc)
+  auto index() const { return (ip_tag >> 2) & _INDEX_MASK; }
+  auto tag() const
   {
-    // aBTBSize must be a power of 2
-    assert(((Sets - 1) & (Sets)) == 0);
-    theBTB.resize(Sets);
-    indexMask = Sets - 1;
-    numIndexBits = (uint32_t)log2((double)Sets);
-  }
-
-  void init_btb(int32_t Sets, int32_t Assoc)
-  {
-    numSets = Sets;
-    assoc = Assoc;
-    // aBTBSize must be a power of 2
-    assert(((Sets - 1) & (Sets)) == 0);
-    theBTB.resize(Sets);
-    indexMask = Sets - 1;
-    numIndexBits = (uint32_t)log2((double)Sets);
-  }
-
-  int32_t index(uint64_t ip) { return knob_intel ? (ip & indexMask) : ((ip >> 2) & indexMask); }
-
-  uint64_t get_tag(uint64_t ip, bool override_full_tag = false)
-  {
-    uint64_t addr = ip;
-    if (not knob_intel)
-      addr = addr >> 2;
-    addr = addr >> numIndexBits;
-
-    if (full_tag or override_full_tag) {
-      return addr;
+    auto tag = ip_tag >> 2 >> _BTB_SET_BITS;
+    if (!_BTB_CLIPPED_TAG) {
+      return tag;
     }
-
-    return (addr & (uint64_t)(std::pow(2, num_low_bits) - 1));
-
-    // Old fold implementation
-    uint64_t tag = 0;
-    tag = (tag | is_kernel(ip)) << 1;
-    tag = (tag | is_shared_or_vdso(ip)) << num_low_bits;
-    addr = ip & 0xFFFFFFFF; // Remove kernel and shared lib address bits
-    if (not knob_intel)
-      addr = addr >> 2;
-    addr = addr >> numIndexBits;
-    /* We use a 16-bit tag.
-     * The lower 8-bits stay the same as in the full tag.
-     * The upper 8-bits are the folded X-OR of the remaining bits of the full tag.
-     */
-    int tagMSBs = 0;
-    if (clipped_tag) {
-      tag |= addr & 0x7; // Set the lower 3-bits of the tag
-      addr = addr >> 3;
-      /*Get the upper 3-bits (folded X-OR)*/
-      while (addr != 0) {
-        tagMSBs = tagMSBs ^ (addr & (int)(std::pow(2, num_low_bits) - 1));
-        addr = addr >> (num_low_bits - 3);
-        if (not addr)
-          break;
-      }
-      tagMSBs <<= 3;
-    } else {
-      while (addr != 0) {
-        tagMSBs = tagMSBs ^ (addr & (int)(std::pow(2, num_low_bits) - 1));
-        addr >>= num_low_bits;
-      }
+    tag &= _TAG_MASK;
+    if (_BTB_TAG_REGIONS) {
+      auto masked_bits = tag & (_REGION_MASK << _BTB_TAG_SIZE);
+      tag ^= masked_bits;
+      tag |= offset_tag << _BTB_TAG_SIZE;
     }
-    /*Concatenate the lower and upper 8-bits of tag*/
-    tag = tag | tagMSBs;
     return tag;
   }
 
-  BTBEntry* get_BTBentry(uint64_t ip)
+  auto partial_tag() const
   {
-    int idx = index(ip);
-    uint64_t tag = get_tag(ip);
-    uint32_t i = 0;
-
-    while (i < theBTB[idx].size()) {
-      // std::cout << "BTB SIZE: " << theBTB[idx].size() << endl;
-      // TODO: Catch aliasing here
-      if (theBTB[idx][i].tag == tag) {
-        return &(theBTB[idx][i]);
-      }
-      i++;
+    uint64_t tag = ip_tag >> 2 >> _BTB_SET_BITS;
+    if (!_BTB_CLIPPED_TAG) {
+      return tag;
     }
+    tag &= _TAG_MASK;
+    return tag;
+  }
+};
+
+struct region_btb_entry_t {
+  uint64_t ip_tag = 0;
+  auto index() const { return 0; }
+  auto tag() const
+  {
+    // TODO: calculate region tag
+    auto tag = ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+    tag &= _REGION_MASK;
+    return tag;
+  }
+  auto partial_tag() const { return 0; }
+};
+
+// TODO: Currently not implemented -- Add later on
+// extern bool is_kernel(uint64_t ip);
+// extern bool is_shared_or_vdso(uint64_t ip);
+
+std::map<O3_CPU*, champsim::msl::lru_table<BTBEntry>> BTB;
+std::map<O3_CPU*, champsim::msl::lru_table<region_btb_entry_t>> REGION_BTB;
+std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
+std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
+std::map<O3_CPU*, std::deque<uint64_t>> RAS;
+std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
+} // namespace
+
+void 03_CPU ::initialize_btb()
+{
+  ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
+  ::OFFSET_BTB.insert({this, champsim::msl::lru_table<offset_BTBEntry>{BTB_SETS, BTB_WAYS}});
+  ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, BTB_TAG_REGIONS}});
+  std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
+  std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
+  ::CONDITIONAL_HISTORY[this] = 0;
+  _BTB_SET_BITS = champsim::lg2(BTB_SETS);
+  if (this->BTB_CLIPPED_TAG) {
+    _BTB_CLIPPED_TAG = 1;
+    _BTB_TAG_SIZE = this->BTB_TAG_SIZE;
+    _BTB_TAG_REGIONS = this->BTB_TAG_REGIONS;
+    _BTB_TAG_REGION_SIZE = this->BTB_TAG_REGION_SIZE;
+    _REGION_MASK = pow2(_BTB_TAG_REGION_SIZE) - 1;
+    _BTB_REGION_BITS = champsim::lg2(_BTB_TAG_REGIONS);
+  } else {
+    _BTB_TAG_SIZE = 62 - _BTB_SET_BITS;
+  }
+  _INDEX_MASK = BTB_SETS - 1;
+  _TAG_MASK = pow2(_BTB_TAG_SIZE) - 1;
+}
+void init_btb(int32_t Sets, int32_t Assoc)
+{
+  numSets = Sets;
+  assoc = Assoc;
+  // aBTBSize must be a power of 2
+  assert(((Sets - 1) & (Sets)) == 0);
+  theBTB.resize(Sets);
+  indexMask = Sets - 1;
+  numIndexBits = (uint32_t)log2((double)Sets);
+}
+
+BTBEntry* get_BTBentry(uint64_t ip)
+{
+  int idx = index(ip);
+  uint64_t tag = get_tag(ip);
+  uint32_t i = 0;
+
+  while (i < theBTB[idx].size()) {
+    // std::cout << "BTB SIZE: " << theBTB[idx].size() << endl;
+    // TODO: Catch aliasing here
+    if (theBTB[idx][i].tag == tag) {
+      return &(theBTB[idx][i]);
+    }
+    i++;
+  }
+  return NULL;
+}
+
+BTBEntry* get_lru_BTBEntry(uint64_t ip)
+{
+  int idx = index(ip);
+
+  if (theBTB[idx].size() < assoc) {
     return NULL;
   }
 
-  BTBEntry* get_lru_BTBEntry(uint64_t ip)
-  {
-    int idx = index(ip);
+  return &theBTB[idx].front();
+}
 
-    if (theBTB[idx].size() < assoc) {
-      return NULL;
+BTBEntry* update_BTB(uint64_t ip, uint8_t b_type, uint64_t target, uint8_t taken, uint64_t lru_counter, bool wrong_predict = false)
+{
+  int idx = index(ip);
+  uint64_t tag = get_tag(ip);
+  int way = -1;
+  uint64_t full_tag = get_tag(ip, true);
+  for (uint32_t i = 0; i < theBTB[idx].size(); i++) {
+    // TODO: Catch aliasing here
+    if (theBTB[idx][i].tag == tag) {
+      way = i;
+      if (!wrong_predict) {
+        full_tag = theBTB[idx][i].full_tag;
+      }
+      break;
     }
-
-    return &theBTB[idx].front();
   }
 
-  BTBEntry* update_BTB(uint64_t ip, uint8_t b_type, uint64_t target, uint8_t taken, uint64_t lru_counter, bool wrong_predict = false)
-  {
-    int idx = index(ip);
-    uint64_t tag = get_tag(ip);
-    int way = -1;
-    uint64_t full_tag = get_tag(ip, true);
-    for (uint32_t i = 0; i < theBTB[idx].size(); i++) {
-      // TODO: Catch aliasing here
-      if (theBTB[idx][i].tag == tag) {
-        way = i;
-        if (!wrong_predict) {
-          full_tag = theBTB[idx][i].full_tag;
-        }
-        break;
+  if (way == -1) {
+    if ((target != 0) && taken) {
+      BTBEntry entry;
+      entry.tag = tag;
+      entry.full_tag = full_tag;
+      entry.branch_type = b_type;
+      entry.target_ip = target;
+      entry.lru = lru_counter;
+
+      if (theBTB[idx].size() >= assoc) {
+        theBTB[idx].erase(theBTB[idx].begin());
       }
+      theBTB[idx].push_back(entry);
+    } else {
+      assert(0);
     }
+  } else {
+    BTBEntry entry = theBTB[idx][way];
+    entry.branch_type = b_type;
+    if (target != 0) {
+      entry.target_ip = target;
+    }
+    entry.lru = lru_counter;
+    entry.full_tag = full_tag; // check that this is only updated if it is a wrong predict
 
-    if (way == -1) {
-      if ((target != 0) && taken) {
-        BTBEntry entry;
-        entry.tag = tag;
-        entry.full_tag = full_tag;
-        entry.branch_type = b_type;
-        entry.target_ip = target;
-        entry.lru = lru_counter;
+    // Update LRU
+    theBTB[idx].erase(theBTB[idx].begin() + way);
+    theBTB[idx].push_back(entry);
+  }
 
-        if (theBTB[idx].size() >= assoc) {
-          theBTB[idx].erase(theBTB[idx].begin());
-        }
-        theBTB[idx].push_back(entry);
-      } else {
+  return &(theBTB[idx].back());
+}
+
+uint64_t get_lru_value(uint64_t ip)
+{
+  int idx = index(ip);
+  uint64_t lru_value;
+  if (theBTB[idx].size() < assoc) { // All ways are not yet allocated
+    lru_value = 0;
+  } else {
+    lru_value = theBTB[idx][0].lru;
+    for (uint32_t i = 1; i < theBTB[idx].size(); i++) { // We should never enter here because head should be LRU
+      if (theBTB[idx][i].lru < lru_value) {
         assert(0);
       }
-    } else {
-      BTBEntry entry = theBTB[idx][way];
-      entry.branch_type = b_type;
-      if (target != 0) {
-        entry.target_ip = target;
-      }
-      entry.lru = lru_counter;
-      entry.full_tag = full_tag; // check that this is only updated if it is a wrong predict
-
-      // Update LRU
-      theBTB[idx].erase(theBTB[idx].begin() + way);
-      theBTB[idx].push_back(entry);
     }
-
-    return &(theBTB[idx].back());
   }
 
-  uint64_t get_lru_value(uint64_t ip)
-  {
-    int idx = index(ip);
-    uint64_t lru_value;
-    if (theBTB[idx].size() < assoc) { // All ways are not yet allocated
-      lru_value = 0;
-    } else {
-      lru_value = theBTB[idx][0].lru;
-      for (uint32_t i = 1; i < theBTB[idx].size(); i++) { // We should never enter here because head should be LRU
-        if (theBTB[idx][i].lru < lru_value) {
-          assert(0);
-        }
-      }
-    }
-
-    return lru_value;
-  }
-};
+  return lru_value;
+}
+}
+;
 
 struct offsetBTB {
   std::vector<std::vector<offset_BTBEntry>> theOffsetBTB;

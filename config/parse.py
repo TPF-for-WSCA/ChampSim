@@ -141,6 +141,7 @@ def normalize_config(config_file):
         "btb_tag_size",
         "btb_tag_regions",
         "btb_tag_region_size",
+        "btb_target_sizes",
     )
     cores = [
         util.chain(

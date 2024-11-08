@@ -254,6 +254,13 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield ""
 
     for cpu in cores:
+        yield "uint8_t btb_sizes_{} = [".format(cpu["name"])
+        for (idx, btb_way_sizes) in enumerate(cpu.get("btb_target_sizes", [])):
+            if idx < (len(cpu["btb_target_sizes"]) - 1):
+                yield "{}, ".format(btb_way_sizes)
+            else:
+                yield "{}".format(btb_way_sizes)
+        yield "];"
         yield "O3_CPU {}{{O3_CPU::Builder{{ champsim::defaults::default_core }}".format(
             cpu["name"]
         )
@@ -283,6 +290,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield ".btb_ways({})".format(cpu.get("btb_ways", 8))
         yield ".btb_sets({})".format(cpu.get("btb_sets", 1024))
         yield ".btb_clipped_tag({})".format(cpu.get("btb_clipped_tag", 1))
+        yield ".btb_offset_sizes(btb_sizes_{})".format(cpu["name"])
         yield ".perfect_btb({})".format(cpu.get("perfect_btb", 0))
         yield ".btb_tag_size({})".format(cpu.get("btb_tag_size", 12))
         yield ".btb_tag_regions({})".format(cpu.get("btb_tag_regions", 0))
