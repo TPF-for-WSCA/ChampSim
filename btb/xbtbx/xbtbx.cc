@@ -17,6 +17,16 @@
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
+constexpr uint64_t pow2(uint8_t exp)
+{
+  assert(exp <= 64);
+  uint64_t result = 1;
+  while (exp) {
+    result *= 2;
+    exp -= 1;
+  }
+  return result;
+}
 namespace
 {
 
@@ -39,11 +49,10 @@ uint16_t _BTB_REGION_BITS = 0;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
 constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
-
+/*
 std::map<uint32_t, uint64_t> offset_reuse_freq;
 std::map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 uint64_t offset_found_on_BTBmiss;
-uint64_t offset_not_found_on_BTBmiss;
 uint64_t offset_not_found_on_BTBhit;
 uint64_t total_lookups = 0, aliasing_overall = 0, aliasing_same_region = 0, aliasing_different_region = 0;
 std::set<uint64_t> branch_ip;
@@ -52,7 +61,7 @@ uint64_t static_branch_count = 0;
 std::array<uint64_t, 64> dynamic_bit_counts;
 std::array<uint64_t, 64> static_bit_counts;
 uint64_t region_mask = 0;
-
+*/
 enum BTB_ReplacementStrategy { LRU, REF0, REF };
 
 struct BTBEntry {
@@ -63,9 +72,6 @@ struct BTBEntry {
   uint8_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
 
-  uint32_t offsetBTB_partitionID;
-  uint32_t offsetBTB_set;
-  uint32_t offsetBTB_way;
   auto index() const { return (ip_tag >> 2) & _INDEX_MASK; }
   auto tag() const
   {
@@ -126,10 +132,9 @@ std::map<O3_CPU*, std::deque<uint64_t>> RAS;
 std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 } // namespace
 
-void 03_CPU ::initialize_btb()
+void O3_CPU::initialize_btb()
 {
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
-  ::OFFSET_BTB.insert({this, champsim::msl::lru_table<offset_BTBEntry>{BTB_SETS, BTB_WAYS}});
   ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, BTB_TAG_REGIONS}});
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
@@ -147,13 +152,14 @@ void 03_CPU ::initialize_btb()
   }
   _INDEX_MASK = BTB_SETS - 1;
   _TAG_MASK = pow2(_BTB_TAG_SIZE) - 1;
-  if (BTB_TARGET_SIZES.length() == BTB_WAYS) {
+  if (BTB_TARGET_SIZES.size() == BTB_WAYS) {
     for (uint16_t i = 0; i < BTB_SETS; i++) {
       auto [set_begin, set_end] = ::BTB.at(this).get_set_span(i);
       auto way_sizes_begin = std::begin(BTB_TARGET_SIZES);
       auto way_sizes_end = std::end(BTB_TARGET_SIZES);
       for (; way_sizes_begin != way_sizes_end && set_begin != set_end; set_begin++) {
         set_begin->data.target_size = *way_sizes_begin;
+        set_begin->data.offset_mask = pow2(*way_sizes_begin) - 1;
         way_sizes_begin++;
       }
     }
@@ -162,7 +168,7 @@ void 03_CPU ::initialize_btb()
 
 std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
-  std::optional<::btb_entry_t> btb_entry;
+  std::optional<::BTBEntry> btb_entry;
   if (_BTB_TAG_REGIONS) {
     auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
     if (!region_idx_.has_value()) {
@@ -202,6 +208,13 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 // TODO: ONLY UPDATE WHEN FITTING IN THE WAY
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
+  // TODO: calculate size
+  uint64_t offset_size = ip ^ branch_target;
+  uint8_t num_bits = 0;
+  while (offset_size) {
+    offset_size >>= 1;
+    num_bits++;
+  }
   // add something to the RAS
   if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL) {
     RAS[this].push_back(ip);
@@ -229,6 +242,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     if (estimated_call_instr_size <= 10) {
       ::CALL_SIZE[this][call_ip % std::size(::CALL_SIZE[this])] = estimated_call_instr_size;
     }
+    num_bits = 0; // We don't need to store the target, we store it in the RAS
   }
 
   // update btb entry
@@ -257,15 +271,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     if (branch_target != 0)
       opt_entry->target = branch_target;
   }
-  // TODO: calculate size
-  uint64_t offset_size = ip ^ branch_target;
-  uint8_t num_bits = 0;
-  while (offset_size) {
-    offset_size >>= 1;
-    num_bits++;
-  }
+
   if (branch_target != 0) {
-    ::BTB.at(this).fill(opt_entry.value_or(::btb_entry_t{ip, branch_target, type, region_idx}), num_bits);
+    ::BTB.at(this).fill(opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx}), num_bits);
   }
 }
 /*

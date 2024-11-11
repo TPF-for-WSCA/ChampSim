@@ -15,6 +15,16 @@
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
+constexpr uint64_t pow2(uint8_t exp)
+{
+  assert(exp <= 64);
+  uint64_t result = 1;
+  while (exp) {
+    result *= 2;
+    exp -= 1;
+  }
+  return result;
+}
 namespace
 {
 enum class branch_info {

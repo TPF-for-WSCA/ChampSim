@@ -43,17 +43,6 @@
 #include "util/lru_table.h"
 #include <type_traits>
 
-uint64_t pow2(uint8_t exp)
-{
-  assert(exp <= 64);
-  uint64_t result = 1;
-  while (exp) {
-    result *= 2;
-    exp -= 1;
-  }
-  return result;
-}
-
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
 class CACHE;

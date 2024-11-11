@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <iostream>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -55,6 +56,13 @@ class lru_table
 {
 public:
   using value_type = T;
+  auto get_set_span(uint16_t idx)
+  {
+    using diff_type = typename block_vec_type::difference_type;
+    auto set_begin = std::next(std::begin(block), idx * static_cast<diff_type>(NUM_WAY));
+    auto set_end = std::next(set_begin, static_cast<diff_type>(NUM_WAY));
+    return std::pair{set_begin, set_end};
+  }
 
 private:
   struct block_t {
@@ -70,14 +78,6 @@ private:
   std::size_t NUM_SET, NUM_WAY;
   uint64_t access_count = 0;
   block_vec_type block{NUM_SET * NUM_WAY};
-
-  auto get_set_span(uint16_t idx)
-  {
-    using diff_type = typename block_vec_type::difference_type;
-    auto set_begin = std::next(std::begin(block), idx * static_cast<diff_type>(NUM_WAY));
-    auto set_end = std::next(set_begin, static_cast<diff_type>(NUM_WAY));
-    return std::pair{set_begin, set_end};
-  }
 
   auto get_set_span(const value_type& elem)
   {
@@ -173,6 +173,25 @@ public:
   {
     auto tag = tag_projection(elem);
     auto [set_begin, set_end] = get_set_span(elem);
+    while (set_begin->data.target_size < size && set_begin != set_end) {
+      set_begin++;
+    }
+    if (set_begin != set_end) {
+      auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
+      if (tag_projection(hit->data) == tag) {
+        auto target_size = hit->data.target_size;
+        auto offset_mask = hit->data.offset_mask;
+        *hit = {++access_count, elem};
+        hit->data.target_size = target_size;
+        hit->data.offset_mask = offset_mask;
+      } else {
+        auto target_size = miss->data.target_size;
+        auto offset_mask = miss->data.offset_mask;
+        *miss = {++access_count, elem};
+        miss->data.target_size = target_size;
+        miss->data.offset_mask = offset_mask;
+      }
+    }
   }
 
   void fill(const value_type& elem)

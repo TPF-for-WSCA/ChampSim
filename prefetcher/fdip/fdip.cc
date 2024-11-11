@@ -57,7 +57,7 @@ void CACHE::prefetcher_cycle_operate()
 
     if (get_mshr_occupancy() < get_mshr_size() >> 1) {
       auto it = std::find(recent_prefetches.begin(), recent_prefetches.end(), std::get<0>(prefetch_queue.front()));
-      if (hit_test(std::get<1>(prefetch_queue.front()), std::get<2>(prefetch_queue.front()))) {
+      if (hit_test(std::get<1>(prefetch_queue.front()))) {
         prefetch_queue.pop_front();
         continue;
       }

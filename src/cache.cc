@@ -166,7 +166,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   return success;
 }
 
-bool CACHE::hit_test(uint64_t addr, uint8_t size)
+bool CACHE::hit_test(uint64_t addr)
 {
   auto [set_begin, set_end] = get_set_span(addr);
   auto way =
