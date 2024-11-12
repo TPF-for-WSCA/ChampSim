@@ -32,14 +32,17 @@ struct repeatable {
   std::tuple<Args...> args_;
   T intern_{std::apply([](auto... x) { return T{x...}; }, args_)};
   explicit repeatable(Args... args) : args_(args...) {}
+  unsigned long long inst_count = 0;
 
   auto operator()()
   {
     // Reopen trace if we've reached the end of the file
     if (intern_.eof()) {
       fmt::print("*** Reached end of trace: {}\n", args_);
+      fmt::print("|After {} instructions|\n", inst_count);
       intern_ = T{std::apply([](auto... x) { return T{x...}; }, args_)};
     }
+    inst_count++;
 
     return intern_();
   }

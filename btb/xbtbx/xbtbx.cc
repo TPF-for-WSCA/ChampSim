@@ -49,7 +49,7 @@ uint16_t _BTB_REGION_BITS = 0;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
 constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
-/*
+
 std::map<uint32_t, uint64_t> offset_reuse_freq;
 std::map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 uint64_t offset_found_on_BTBmiss;
@@ -61,7 +61,7 @@ uint64_t static_branch_count = 0;
 std::array<uint64_t, 64> dynamic_bit_counts;
 std::array<uint64_t, 64> static_bit_counts;
 uint64_t region_mask = 0;
-*/
+
 enum BTB_ReplacementStrategy { LRU, REF0, REF };
 
 struct BTBEntry {
@@ -176,6 +176,9 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
     } else {
       // use BTB for all other branches + direct calls
       btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
+      if (not btb_entry.has_value()) {
+        btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0}, true);
+      }
     }
   } else {
     btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0});
@@ -208,13 +211,23 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 // TODO: ONLY UPDATE WHEN FITTING IN THE WAY
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
-  // TODO: calculate size
+  // DONE: calculate size
   uint64_t offset_size = ip ^ branch_target;
   uint8_t num_bits = 0;
   while (offset_size) {
     offset_size >>= 1;
     num_bits++;
   }
+
+  // TODO: Integrate with sim
+  bool is_static = branch_ip.insert(ip).second;
+  for (int j = 0; j < 64; j++) {
+    if ((ip >> j) & 0x1) {
+      static_bit_counts[j] += (is_static) ? 1 : 0;
+      dynamic_bit_counts[j] += 1;
+    }
+  }
+
   // add something to the RAS
   if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL) {
     RAS[this].push_back(ip);

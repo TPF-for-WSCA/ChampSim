@@ -68,7 +68,7 @@ struct cpu_stats {
   uint64_t begin_instrs = 0, begin_cycles = 0;
   uint64_t end_instrs = 0, end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
-  uint64_t positive_aliasing = 0, negative_aliasing = 0;
+  uint64_t total_aliasing = 0, positive_aliasing = 0, negative_aliasing = 0;
 
   std::array<long long, 8> total_branch_types = {};
   std::array<long long, 8> branch_type_misses = {};
