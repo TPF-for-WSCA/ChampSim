@@ -31,7 +31,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
        std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
 
   fmt::print(stream, "\nPositive Aliasing: {}\nNegative Aliasing: {}\nTotal Aliasing: {}", stats.positive_aliasing, stats.negative_aliasing,
-             stats.positive_aliasing + stats.negative_aliasing);
+             stats.total_aliasing);
 
   auto total_branch = std::ceil(
       std::accumulate(std::begin(types), std::end(types), 0ll, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt[next.second]; }));

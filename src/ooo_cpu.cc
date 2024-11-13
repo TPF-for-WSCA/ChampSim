@@ -151,6 +151,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types[arch_instr.branch_type]++;
+  // TODO: Check if this is good enough to identify branches
   auto [predicted_branch_target, branch_ip, always_taken] = impl_btb_prediction(arch_instr.ip);
   if (perfect_btb) {
     predicted_branch_target = arch_instr.branch_target;
@@ -159,17 +160,24 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
                        ? 0
                        : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
   }
-  if (branch_ip != arch_instr.ip) {
+  if (!warmup and branch_ip != arch_instr.ip) {
     sim_stats.total_aliasing++;
   }
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
   if (arch_instr.branch_prediction == 0) {
     predicted_branch_target = 0;
-  } else if (arch_instr.branch_type == NOT_BRANCH) {
-    sim_stats.negative_aliasing++;
+  } else if (branch_ip && predicted_branch_target && arch_instr.branch_type == NOT_BRANCH && arch_instr.branch_prediction) {
+    if (!warmup) {
+      sim_stats.negative_aliasing++;
+      fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
+      stop_fetch = true;
+      arch_instr.branch_mispredicted = 1;
+      arch_instr.branch_prediction = 0;
+      arch_instr.branch_taken = 0;
+    }
   }
 
-  if (arch_instr.branch_prediction && arch_instr.branch_taken && arch_instr.ip != branch_ip) {
+  if (!warmup and arch_instr.branch_prediction && arch_instr.branch_taken && arch_instr.ip != branch_ip) {
     if (predicted_branch_target == arch_instr.branch_target) {
       sim_stats.positive_aliasing += 1;
     } else {
@@ -177,6 +185,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     }
   }
 
+  // TODO: Go on wrong path on aliasing instructions as well... not yet done
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
       fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
@@ -321,10 +330,11 @@ long O3_CPU::decode_instruction()
     this->do_dib_update(db_entry);
 
     // Resume fetch
+    // TODO: Mispredicts on no-branches should be detected at decode the latest
     if (db_entry.branch_mispredicted) {
       // These branches detect the misprediction at decode
       if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL)
-          || (((db_entry.branch_type == BRANCH_CONDITIONAL) || (db_entry.branch_type == BRANCH_OTHER))
+          || (((db_entry.branch_type == BRANCH_CONDITIONAL) || (db_entry.branch_type == BRANCH_OTHER) || (db_entry.branch_type == NOT_BRANCH))
               && db_entry.branch_taken == db_entry.branch_prediction)) {
         // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
         db_entry.branch_mispredicted = 0;

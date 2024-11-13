@@ -15,6 +15,8 @@
                 "5000000",
                 "--simulation_instructions",
                 "5000000",
+                "--json",
+                "~/Downloads/stats.json",
                 // "-result_dir",
                 // "~/Downloads/results/test/",
                 // "-ptrace",

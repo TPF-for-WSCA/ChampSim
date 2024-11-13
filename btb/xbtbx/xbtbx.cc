@@ -37,6 +37,7 @@ enum class branch_info {
   CONDITIONAL,
 };
 
+std::map<uint64_t, uint64_t> region_tag_entry_count;
 std::size_t _INDEX_MASK = 0;
 std::size_t _TAG_MASK = 0;
 std::size_t _REGION_MASK = 0;
@@ -285,6 +286,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       opt_entry->target = branch_target;
   }
 
+  // TODO: Account for replacement on fill: how to remove the replaced element from our region map? we would need a return value of the replaced/hit element
   if (branch_target != 0) {
     ::BTB.at(this).fill(opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx}), num_bits);
   }

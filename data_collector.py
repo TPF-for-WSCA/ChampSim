@@ -41,6 +41,8 @@ def run_experiment(
         str(evaluation_instructions),
         # "-result_dir",  # TODO: Re-add when we have more files written
         # str(output_dir),
+        "--json",
+        f"{output_dir}/stats.json",
     ]
     if args.intel:
         cmd.append("-intel")
