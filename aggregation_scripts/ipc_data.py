@@ -26,6 +26,7 @@ class STATS(Enum):
     NUM_BTB_BITS_PER_CL = 17
     ALIASING = 18
     BIT_INFORMATION = 19
+    BTB_TAG_ENTROPY = 20
 
 
 type = STATS.IPC
@@ -79,6 +80,17 @@ def extract_instruction_count(path):
         matches = regex.match(line)
         if matches:
             return int(matches.groups()[0])
+
+
+def extract_btb_tag_entropy(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    entropy_re = re.compile(r"BTB TAG Entropy: ([0-9]*(\.[0-9]+)?)")
+    for line in logs:
+        matches = entropy_re.search(line)
+        if matches:
+            return float(matches.groups()[0])
 
 
 def extract_bit_information(path):
@@ -444,6 +456,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_bit_information(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.BTB_TAG_ENTROPY:
+                stat_by_workload[workload] = extract_btb_tag_entropy(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.ROB_AT_MISS:
                 stat_by_workload[workload] = extract_rob_at_stall(
                     f"{path}/{workload}/{logfile}"
@@ -564,6 +580,8 @@ def write_tsv(data, out_path=None):
         filename = "aliasing_in_btb"
     elif type == STATS.BIT_INFORMATION:
         filename = "address_bit_information"
+    elif type == STATS.BTB_TAG_ENTROPY:
+        filename == "btb_tag_entropy"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
@@ -650,6 +668,8 @@ elif sys.argv[3] == "BTB_ALIASING":
     type = STATS.ALIASING
 elif sys.argv[3] == "BTB_BIT_INFORMATION":
     type = STATS.BIT_INFORMATION
+elif sys.argv[3] == "BTB_TAG_ENTROPY":
+    type = STATS.BTB_TAG_ENTROPY
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
 if sys.argv[2] == "single":
