@@ -166,18 +166,16 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
   if (arch_instr.branch_prediction == 0) {
     predicted_branch_target = 0;
-  } else if (branch_ip && predicted_branch_target && arch_instr.branch_type == NOT_BRANCH && arch_instr.branch_prediction) {
-    if (!warmup) {
-      sim_stats.negative_aliasing++;
-      fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
-      stop_fetch = true;
-      arch_instr.branch_mispredicted = 1;
-      arch_instr.branch_prediction = 0;
-      arch_instr.branch_taken = 0;
-    }
+  } else if (!warmup && branch_ip && predicted_branch_target && arch_instr.branch_type == NOT_BRANCH && arch_instr.branch_prediction) {
+    sim_stats.negative_aliasing++;
+    fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
+    stop_fetch = true;
+    arch_instr.branch_mispredicted = 1;
+    arch_instr.branch_prediction = 0;
+    arch_instr.branch_taken = 0;
   }
 
-  if (!warmup and arch_instr.branch_prediction && arch_instr.branch_taken && arch_instr.ip != branch_ip) {
+  if (!warmup && arch_instr.branch_prediction && arch_instr.branch_taken && arch_instr.ip != branch_ip) {
     if (predicted_branch_target == arch_instr.branch_target) {
       sim_stats.positive_aliasing += 1;
     } else {
@@ -185,7 +183,6 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     }
   }
 
-  // TODO: Go on wrong path on aliasing instructions as well... not yet done
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
       fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);

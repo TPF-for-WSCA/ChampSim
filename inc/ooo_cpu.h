@@ -69,6 +69,11 @@ struct cpu_stats {
   uint64_t end_instrs = 0, end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
   uint64_t total_aliasing = 0, positive_aliasing = 0, negative_aliasing = 0;
+  uint64_t max_regions = 0;
+  uint64_t min_regions = -1;
+  uint64_t btb_updates = 0;
+  uint16_t btb_tag_size = 0;
+  std::array<long double, 64> btb_tag_entropy = {};
 
   std::array<long long, 8> total_branch_types = {};
   std::array<long long, 8> branch_type_misses = {};
@@ -553,6 +558,8 @@ public:
         BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),
         module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
   {
+    sim_stats.btb_tag_size = BTB_TAG_SIZE;
+    roi_stats.btb_tag_size = BTB_TAG_SIZE;
   }
 };
 

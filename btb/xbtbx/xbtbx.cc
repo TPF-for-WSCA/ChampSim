@@ -53,15 +53,9 @@ constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
 
 std::map<uint32_t, uint64_t> offset_reuse_freq;
 std::map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
-uint64_t offset_found_on_BTBmiss;
-uint64_t offset_not_found_on_BTBhit;
-uint64_t total_lookups = 0, aliasing_overall = 0, aliasing_same_region = 0, aliasing_different_region = 0;
 std::set<uint64_t> branch_ip;
-uint64_t dynamic_branch_count = 0;
-uint64_t static_branch_count = 0;
 std::array<uint64_t, 64> dynamic_bit_counts;
 std::array<uint64_t, 64> static_bit_counts;
-uint64_t region_mask = 0;
 
 enum BTB_ReplacementStrategy { LRU, REF0, REF };
 
@@ -237,10 +231,10 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
 
   // updates for indirect branches
-  if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
-    auto hash = (ip >> 2) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
-    ::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])] = branch_target;
-  }
+  // if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
+  //   auto hash = (ip >> 2) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
+  //   ::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])] = branch_target;
+  // }
 
   if ((branch_type == BRANCH_CONDITIONAL) || (branch_type == BRANCH_OTHER)) {
     ::CONDITIONAL_HISTORY[this] <<= 1;
@@ -268,29 +262,60 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   else if ((branch_type == BRANCH_CONDITIONAL) || (branch_type == BRANCH_OTHER))
     type = ::branch_info::CONDITIONAL;
 
-  uint8_t region_idx = -1;
+  // TODO: Only update region btb if partial was wrong?
+  std::optional<uint8_t> region_idx = std::nullopt;
+  std::optional<::BTBEntry> opt_entry;
   if (_BTB_TAG_REGIONS) {
-    auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
-    if (!region_idx_.has_value()) {
-      ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
-      region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
-      // ::BTB.at(this).invalidate_region({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
+    region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
+    if (!region_idx.has_value()) {
+      opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, 0}, true);
+      if (!opt_entry.has_value() || (opt_entry.has_value() && opt_entry.value().get_prediction() != branch_target)) {
+        ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
+        region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
+      }
     }
-    region_idx = region_idx_.value();
   }
 
-  auto opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, region_idx});
+  opt_entry = std::nullopt;
+  if (region_idx.has_value())
+    opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, region_idx.value()});
   if (opt_entry.has_value()) {
     opt_entry->type = type;
     if (branch_target != 0)
       opt_entry->target = branch_target;
   }
 
-  // TODO: Account for replacement on fill: how to remove the replaced element from our region map? we would need a return value of the replaced/hit element
-  if (branch_target != 0) {
-    ::BTB.at(this).fill(opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx}), num_bits);
+  std::optional<::BTBEntry> replaced_entry = std::nullopt;
+  if (branch_target != 0 && region_idx.has_value()) {
+    replaced_entry = ::BTB.at(this).fill(opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx.value()}), num_bits);
+    uint64_t new_region = (ip >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+    region_tag_entry_count[new_region]++;
+  }
+
+  if (replaced_entry.has_value()) {
+    sim_stats.btb_updates++;
+    auto new_tag = std::bitset<64>(::BTBEntry{ip, branch_target, type, region_idx.value()}.tag());
+    for (size_t idx = 0; idx < 64; idx++) {
+      sim_stats.btb_tag_entropy[idx] += new_tag[idx];
+    }
+    uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+    assert(region_tag_entry_count[old_region] > 0);
+    region_tag_entry_count[old_region]--;
+    if (region_tag_entry_count[old_region] == 0) {
+      region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
+    }
+    if (!warmup) {
+      if (sim_stats.max_regions < region_tag_entry_count.size()) {
+        sim_stats.max_regions = region_tag_entry_count.size();
+      }
+      uint64_t min2ref = std::count_if(region_tag_entry_count.begin(), region_tag_entry_count.end(), [](auto entry) { return entry.second > 3; });
+      if (sim_stats.min_regions > min2ref) {
+        sim_stats.min_regions = min2ref;
+      }
+    }
   }
 }
+
 /*
 void init_btb(int32_t Sets, int32_t Assoc)
 {

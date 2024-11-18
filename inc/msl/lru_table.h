@@ -169,7 +169,7 @@ public:
     return hit - set_begin;
   }
 
-  void fill(const value_type& elem, uint8_t size)
+  std::optional<value_type> fill(const value_type& elem, uint8_t size)
   {
     auto tag = tag_projection(elem);
     auto [set_begin, set_end] = get_set_span(elem);
@@ -184,28 +184,37 @@ public:
         *hit = {++access_count, elem};
         hit->data.target_size = target_size;
         hit->data.offset_mask = offset_mask;
+        return std::nullopt;
       } else {
+        std::optional<value_type> replaced = (miss->last_used > 0) ? std::optional<value_type>{miss->data} : std::nullopt;
         auto target_size = miss->data.target_size;
         auto offset_mask = miss->data.offset_mask;
         *miss = {++access_count, elem};
         miss->data.target_size = target_size;
         miss->data.offset_mask = offset_mask;
+        return replaced;
       }
     }
+    return std::nullopt;
   }
 
-  void fill(const value_type& elem)
+  std::optional<value_type> fill(const value_type& elem)
   {
     auto tag = tag_projection(elem);
     auto [set_begin, set_end] = get_set_span(elem);
     if (set_begin != set_end) {
       auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
 
-      if (tag_projection(hit->data) == tag)
+      if (tag_projection(hit->data) == tag) {
         *hit = {++access_count, elem};
-      else
+        return std::nullopt;
+      } else {
+        std::optional<value_type> rv = (miss->last_used > 0) ? std::optional<value_type>{miss->data} : std::nullopt;
         *miss = {++access_count, elem};
+        return rv;
+      }
     }
+    return std::nullopt;
   }
 
   void invalidate_region(const value_type& elem)

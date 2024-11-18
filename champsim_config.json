@@ -5,10 +5,10 @@
   "heartbeat_frequency": 10000000,
   "num_cores": 1,
   "CFLAGS": [
-    "-Wall -Wno-reorder -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -Og -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
   ],
   "CXXFLAGS": [
-    "-Wall -Wno-reorder -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -Og -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
   ],
   "LDLIBS": [
     "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem"
@@ -180,8 +180,8 @@
   },
   "physical_memory": {
     "frequency": 3200,
-    "channels": 2,
-    "ranks": 1,
+    "channels": 4,
+    "ranks": 2,
     "banks": 8,
     "rows": 65536,
     "columns": 128,

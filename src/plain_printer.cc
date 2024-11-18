@@ -30,9 +30,6 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
        std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL}, std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
        std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
 
-  fmt::print(stream, "\nPositive Aliasing: {}\nNegative Aliasing: {}\nTotal Aliasing: {}", stats.positive_aliasing, stats.negative_aliasing,
-             stats.total_aliasing);
-
   auto total_branch = std::ceil(
       std::accumulate(std::begin(types), std::end(types), 0ll, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt[next.second]; }));
   auto total_mispredictions = std::ceil(
@@ -43,6 +40,21 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   fmt::print(stream, "{} Branch Prediction Accuracy: {:.4g}% MPKI: {:.4g} Average ROB Occupancy at Mispredict: {:.4g}\n", stats.name,
              (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch, (1000.0 * total_mispredictions) / std::ceil(stats.instrs()),
              std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions);
+
+  fmt::print(stream, "\nPositive Aliasing: {}\nNegative Aliasing: {}\nTotal Aliasing: {}", stats.positive_aliasing, stats.negative_aliasing,
+             stats.total_aliasing);
+  fmt::print(stream, "\nMAX BTB Regions: {}\nMIN BTB Regions: {}\n", stats.max_regions, stats.min_regions);
+
+  long double btb_tag_entropy = 0;
+  auto total_btb_updates = ((long double)stats.btb_updates);
+  for (size_t i = 0; i < 64; i++) {
+    long double percentage = stats.btb_tag_entropy[i] / total_btb_updates;
+    if (percentage == 1.0 or percentage == 0.0)
+      continue;
+    btb_tag_entropy += -1 * (percentage * std::log2l(percentage) + (1 - percentage) * std::log2l(1 - percentage));
+  }
+  fmt::print(stream, "\nBTB TAG Entropy: {}b\nBTB TAG Size: {}\nBTB TAG AVG Utilisation: {}\n", btb_tag_entropy, stats.btb_tag_size,
+             btb_tag_entropy / (float)stats.btb_tag_size);
 
   std::vector<double> mpkis;
   std::transform(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), std::back_inserter(mpkis),
