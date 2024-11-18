@@ -43,7 +43,7 @@
       "btb_ways": 9,
       "btb_non_indirect": 9,
       "btb_sets": 512,
-      "btb_regions": 16,
+      "btb_regions": 0,
       "btb_clipped_tag": 1,
       "btb_tag_size": 6,
       "btb_tag_regions": 6,
