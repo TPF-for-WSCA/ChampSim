@@ -40,7 +40,7 @@
       "schedule_latency": 1,
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
-      "btb": "tagging_btb",
+      "btb": "xbtbx",
       "btb_ways": 9,
       "btb_non_indirect": 9,
       "btb_sets": 512,

@@ -41,20 +41,10 @@
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
       "btb": "xbtbx",
-      "btb_ways": 8,
-      "btb_non_indirect": 8,
+      "btb_ways": 9,
+      "btb_non_indirect": 9,
       "btb_sets": 512,
       "btb_clipped_tag": 1,
-      "btb_target_sizes": [
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64,
-        64
-      ],
       "btb_tag_size": 8,
       "btb_target_sizes": [
         0,
