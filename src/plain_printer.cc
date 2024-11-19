@@ -46,31 +46,59 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   fmt::print(stream, "\nMAX BTB Regions: {}\nMIN BTB Regions: {}\n", stats.max_regions, stats.min_regions);
 
   long double btb_tag_entropy = 0;
+  long double switch_tag_entropy = 0;
   auto total_btb_updates = ((long double)stats.btb_updates);
-  long double prev_counter = 0;
+  long double prev_counter = 0, prev_switch = 0;
   std::vector<std::pair<long double, uint8_t>> tag_bit_order;
+  std::vector<std::pair<long double, uint8_t>> switch_bit_order;
   tag_bit_order.reserve(64);
+  switch_bit_order.reserve(64);
   for (size_t i = 0; i < 64; i++) {
-    if (prev_counter == stats.btb_tag_entropy[i]) {
+    if (prev_counter == stats.btb_tag_entropy[i] and prev_switch == stats.btb_tag_switch_entropy[i]) {
       continue;
     }
     prev_counter =
         stats.btb_tag_entropy[i]; // This is to prevent blocks of equal bits to change the outcome: Blocks that all contain exactly the same information should
                                   // be ignored. We don't capture interleaving patterns here, but that can be added at a later stage
+    prev_switch = stats.btb_tag_switch_entropy[i];
     long double percentage = stats.btb_tag_entropy[i] / total_btb_updates;
-    if (percentage == 1.0 or percentage == 0.0)
+    long double switch_percentage = stats.btb_tag_switch_entropy[i] / total_btb_updates;
+    if ((percentage == 1.0 or percentage == 0.0) and (switch_percentage == 0.0 or switch_percentage == 1.0))
       continue;
+    auto local_switch_entropy = -1.0 * (switch_percentage * std::log2l(switch_percentage) + (1.0 - switch_percentage) * std::log2l(1.0 - switch_percentage));
     auto local_entropy = -1.0 * (percentage * std::log2l(percentage) + (1.0 - percentage) * std::log2l(1.0 - percentage));
     tag_bit_order.push_back({local_entropy, i});
-    btb_tag_entropy += local_entropy;
+    switch_bit_order.push_back({local_switch_entropy, i});
   }
   fmt::print(stream, "\nBTB TAG Entropy: {}b\nBTB TAG Size: {}\nBTB TAG AVG Utilisation: {}\n", btb_tag_entropy, stats.btb_tag_size,
              btb_tag_entropy / (float)stats.btb_tag_size);
+  fmt::print(stream, "\nBTB TAG SWITCH Entropy: {}b\n", switch_tag_entropy);
 
   std::sort(tag_bit_order.begin(), tag_bit_order.end(), [](auto& a, auto& b) { return a.first > b.first; });
+  std::sort(switch_bit_order.begin(), switch_bit_order.end(), [](auto& a, auto& b) { return a.first > b.first; });
+  std::vector<std::pair<long double, uint8_t>> filtered_tag_bit_order, filtered_switch_bit_order;
+  prev_counter = 0.0;
+  prev_switch = 0.0;
+  for (size_t i = 0; i < tag_bit_order.size(); i++) {
+    if (prev_counter != tag_bit_order[i].first) {
+      filtered_switch_bit_order.push_back(tag_bit_order[i]);
+      btb_tag_entropy += tag_bit_order[i].first;
+    }
+    if (prev_switch != switch_bit_order[i].first) {
+      switch_tag_entropy += switch_bit_order[i].first;
+      filtered_switch_bit_order.push_back(switch_bit_order[i]);
+    }
+    prev_counter = tag_bit_order[i].first;
+    prev_switch = switch_bit_order[i].first;
+  }
   fmt::print(stream, "BTB TAG Bits Sorted by Entropy\n");
   fmt::print(stream, "BTB TAG Bit IDX\tENTROPY\n");
   for (auto [entropy, bit_idx] : tag_bit_order) {
+    fmt::print(stream, "{}\t{}\n", bit_idx, entropy);
+  }
+
+  fmt::print(stream, "BTB TAG Switched Bit IDX\tENTROPY\n");
+  for (auto [entropy, bit_idx] : switch_bit_order) {
     fmt::print(stream, "{}\t{}\n", bit_idx, entropy);
   }
 
