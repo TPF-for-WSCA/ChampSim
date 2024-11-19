@@ -294,7 +294,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
   if (replaced_entry.has_value()) {
     sim_stats.btb_updates++;
-    auto new_tag = std::bitset<64>(::BTBEntry{ip, branch_target, type, region_idx.value()}.tag());
+    auto new_tag = std::bitset<64>(::BTBEntry{ip, branch_target, type, region_idx.value_or(0)}.tag());
     for (size_t idx = 0; idx < 64; idx++) {
       sim_stats.btb_tag_entropy[idx] += new_tag[idx];
     }

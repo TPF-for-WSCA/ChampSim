@@ -12,9 +12,9 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "--warmup_instructions",
-                "5000000",
+                "15000000",
                 "--simulation_instructions",
-                "5000000",
+                "15000000",
                 "--json",
                 "~/Downloads/stats.json",
                 // "-result_dir",

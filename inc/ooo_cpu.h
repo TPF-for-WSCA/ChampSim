@@ -558,8 +558,8 @@ public:
         BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),
         module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
   {
-    sim_stats.btb_tag_size = BTB_TAG_SIZE;
-    roi_stats.btb_tag_size = BTB_TAG_SIZE;
+    sim_stats.btb_tag_size = b.m_btb_tag_size;
+    roi_stats.btb_tag_size = b.m_btb_tag_size;
   }
 };
 
