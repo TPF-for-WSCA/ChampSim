@@ -48,6 +48,8 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   long double btb_tag_entropy = 0;
   auto total_btb_updates = ((long double)stats.btb_updates);
   long double prev_counter = 0;
+  std::vector<std::pair<long double, uint8_t>> tag_bit_order;
+  tag_bit_order.reserve(64);
   for (size_t i = 0; i < 64; i++) {
     if (prev_counter == stats.btb_tag_entropy[i]) {
       continue;
@@ -58,10 +60,19 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     long double percentage = stats.btb_tag_entropy[i] / total_btb_updates;
     if (percentage == 1.0 or percentage == 0.0)
       continue;
-    btb_tag_entropy += -1 * (percentage * std::log2l(percentage) + (1 - percentage) * std::log2l(1 - percentage));
+    auto local_entropy = -1.0 * (percentage * std::log2l(percentage) + (1.0 - percentage) * std::log2l(1.0 - percentage));
+    tag_bit_order.push_back({local_entropy, i});
+    btb_tag_entropy += local_entropy;
   }
   fmt::print(stream, "\nBTB TAG Entropy: {}b\nBTB TAG Size: {}\nBTB TAG AVG Utilisation: {}\n", btb_tag_entropy, stats.btb_tag_size,
              btb_tag_entropy / (float)stats.btb_tag_size);
+
+  std::sort(tag_bit_order.begin(), tag_bit_order.end(), [](auto& a, auto& b) { return a.first > b.first; });
+  fmt::print(stream, "BTB TAG Bits Sorted by Entropy\n");
+  fmt::print(stream, "BTB TAG Bit IDX\tENTROPY\n");
+  for (auto [entropy, bit_idx] : tag_bit_order) {
+    fmt::print(stream, "{}\t{}\n", bit_idx, entropy);
+  }
 
   std::vector<double> mpkis;
   std::transform(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), std::back_inserter(mpkis),
