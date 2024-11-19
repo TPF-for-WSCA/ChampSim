@@ -2,7 +2,7 @@
 
 #benchmarks=("tanvir")
 #inputs: 
-benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec") # "google_merced" "google_charlie" "google_delta" "google_whiskey" "LLBP")
+benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "llbp" "speccpu") # "google_merced" "google_charlie" "google_delta" "google_whiskey" "LLBP")
 normalise_to_row="sizes_btb_tag_full"  # TODO: Make this the default/add default to look at / baseline
 #end inputs~
 #benchmarks=("crc2_spec" "crc2_cloud" "dpc3")

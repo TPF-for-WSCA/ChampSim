@@ -41,25 +41,15 @@
       "execute_latency": 0,
       "branch_predictor": "hashed_perceptron",
       "perfect_btb": 0,
-      "btb": "tagging_btb",
+      "btb": "xbtbx",
       "btb_ways": 8,
       "btb_non_indirect": 8,
       "btb_sets": 512,
       "btb_regions": 16,
-      "btb_clipped_tag": 1,
+      "btb_clipped_tag": 0,
       "btb_tag_size": 6,
       "btb_tag_regions": 6,
-      "btb_tag_region_size": 6,
-      "btb_target_sizes": [
-        0,
-        4,
-        8,
-        10,
-        19,
-        25,
-        48,
-        64
-      ]
+      "btb_tag_region_size": 6
     }
   ],
   "DIB": {

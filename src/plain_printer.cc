@@ -47,7 +47,14 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
 
   long double btb_tag_entropy = 0;
   auto total_btb_updates = ((long double)stats.btb_updates);
+  long double prev_counter = 0;
   for (size_t i = 0; i < 64; i++) {
+    if (prev_counter == stats.btb_tag_entropy[i]) {
+      continue;
+    }
+    prev_counter =
+        stats.btb_tag_entropy[i]; // This is to prevent blocks of equal bits to change the outcome: Blocks that all contain exactly the same information should
+                                  // be ignored. We don't capture interleaving patterns here, but that can be added at a later stage
     long double percentage = stats.btb_tag_entropy[i] / total_btb_updates;
     if (percentage == 1.0 or percentage == 0.0)
       continue;
