@@ -93,12 +93,12 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   }
   fmt::print(stream, "BTB TAG Bits Sorted by Entropy\n");
   fmt::print(stream, "BTB TAG Bit IDX\tENTROPY\n");
-  for (auto [entropy, bit_idx] : tag_bit_order) {
+  for (auto [entropy, bit_idx] : filtered_tag_bit_order) {
     fmt::print(stream, "{}\t{}\n", bit_idx, entropy);
   }
 
   fmt::print(stream, "BTB TAG Switched Bit IDX\tENTROPY\n");
-  for (auto [entropy, bit_idx] : switch_bit_order) {
+  for (auto [entropy, bit_idx] : filtered_switch_bit_order) {
     fmt::print(stream, "{}\t{}\n", bit_idx, entropy);
   }
 

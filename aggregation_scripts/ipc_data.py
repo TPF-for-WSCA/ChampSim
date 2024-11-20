@@ -581,7 +581,7 @@ def write_tsv(data, out_path=None):
     elif type == STATS.BIT_INFORMATION:
         filename = "address_bit_information"
     elif type == STATS.BTB_TAG_ENTROPY:
-        filename == "btb_tag_entropy"
+        filename = "btb_tag_entropy"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
