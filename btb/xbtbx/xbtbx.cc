@@ -37,7 +37,7 @@ enum class branch_info {
   CONDITIONAL,
 };
 
-std::map<uint64_t, uint64_t> region_tag_entry_count;
+std::map<uint64_t, uint64_t> region_tag_entry_count = {};
 std::size_t _INDEX_MASK = 0;
 std::size_t _TAG_MASK = 0;
 std::size_t _REGION_MASK = 0;
@@ -322,14 +322,15 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       }
       std::vector<std::pair<uint64_t, uint64_t>> sort_vec(region_tag_entry_count.begin(), region_tag_entry_count.end());
       std::sort(sort_vec.begin(), sort_vec.end(), [](auto& a, auto& b) { return a.second > b.second; });
-      uint64_t min2ref = 0;
+      uint64_t min2ref = 0, sum_count = 0;
       for (auto [tag, count] : sort_vec) {
         assert(count < BTB_SETS * BTB_WAYS);
         if (tag == 0) {
           continue;
         }
-        min2ref += count;
-        if (min2ref > 0.9 * BTB_SETS * BTB_WAYS)
+        min2ref += 1;
+        sum_count += count;
+        if (sum_count > 0.9 * BTB_SETS * BTB_WAYS)
           break;
       }
       if (sim_stats.min_regions < min2ref) {

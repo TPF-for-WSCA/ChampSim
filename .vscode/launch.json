@@ -12,7 +12,7 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "--warmup_instructions",
-                "15000000",
+                "150000",
                 "--simulation_instructions",
                 "15000000",
                 "--json",
