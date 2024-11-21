@@ -70,7 +70,7 @@ struct cpu_stats {
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
   uint64_t total_aliasing = 0, positive_aliasing = 0, negative_aliasing = 0;
   uint64_t max_regions = 0;
-  uint64_t min_regions = -1;
+  uint64_t min_regions = 0;
   uint64_t btb_updates = 0;
   uint16_t btb_tag_size = 0;
   std::array<long double, 64> btb_tag_entropy = {}, btb_tag_switch_entropy = {};

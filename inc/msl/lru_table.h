@@ -186,7 +186,7 @@ public:
         hit->data.offset_mask = offset_mask;
         return std::nullopt;
       } else {
-        std::optional<value_type> replaced = (miss->last_used > 0) ? std::optional<value_type>{miss->data} : std::nullopt;
+        std::optional<value_type> replaced = std::optional<value_type>{miss->data};
         auto target_size = miss->data.target_size;
         auto offset_mask = miss->data.offset_mask;
         *miss = {++access_count, elem};
@@ -209,7 +209,7 @@ public:
         *hit = {++access_count, elem};
         return std::nullopt;
       } else {
-        std::optional<value_type> rv = (miss->last_used > 0) ? std::optional<value_type>{miss->data} : std::nullopt;
+        std::optional<value_type> rv = std::optional<value_type>{miss->data};
         *miss = {++access_count, elem};
         return rv;
       }

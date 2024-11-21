@@ -81,7 +81,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   prev_switch = 0.0;
   for (size_t i = 0; i < tag_bit_order.size(); i++) {
     if (prev_counter != tag_bit_order[i].first) {
-      filtered_switch_bit_order.push_back(tag_bit_order[i]);
+      filtered_tag_bit_order.push_back(tag_bit_order[i]);
       btb_tag_entropy += tag_bit_order[i].first;
     }
     if (prev_switch != switch_bit_order[i].first) {

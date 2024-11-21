@@ -166,14 +166,16 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   std::optional<::BTBEntry> btb_entry;
   if (_BTB_TAG_REGIONS) {
     auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
-    if (!region_idx_.has_value()) {
-      btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0}, true);
+    // TODO: Make partial resolution configurable
+    if (region_idx_.has_value()) {
+      btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()}, true);
     } else {
+      btb_entry = std::nullopt;
       // use BTB for all other branches + direct calls
-      btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
-      if (not btb_entry.has_value()) {
-        btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0}, true);
-      }
+      // btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
+      // if (false && not btb_entry.has_value()) {
+      //  btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0}, true);
+      //}
     }
   } else {
     btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0});
@@ -265,7 +267,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   // TODO: Only update region btb if partial was wrong?
   std::optional<uint8_t> region_idx = std::nullopt;
   std::optional<::BTBEntry> opt_entry;
-  if (_BTB_TAG_REGIONS) {
+  if (_BTB_TAG_REGIONS && num_bits <= 10) {
     region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     if (!region_idx.has_value()) {
       opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, 0}, true);
@@ -286,10 +288,11 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
 
   std::optional<::BTBEntry> replaced_entry = std::nullopt;
-  if (branch_target != 0 && (region_idx.has_value() || !_BTB_TAG_REGIONS)) {
+  if (branch_target != 0) {
     replaced_entry = ::BTB.at(this).fill(opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx.value_or(0)}), num_bits);
     uint64_t new_region = (ip >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-    region_tag_entry_count[new_region]++;
+    region_tag_entry_count[new_region] += replaced_entry.has_value();
+    assert(region_tag_entry_count[new_region] <= BTB_SETS * BTB_WAYS);
   }
 
   if (replaced_entry.has_value()) {
@@ -303,400 +306,414 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     for (size_t idx = 0; idx < 64; idx++) {
       sim_stats.btb_tag_entropy[idx] += new_tag[idx];
     }
-    uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-    assert(region_tag_entry_count[old_region] > 0);
-    region_tag_entry_count[old_region]--;
-    if (region_tag_entry_count[old_region] == 0) {
-      region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
+
+    if (replaced_entry.value().ip_tag != 0) {
+      uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+      assert(region_tag_entry_count[old_region] > 0);
+      region_tag_entry_count[old_region]--;
+      if (region_tag_entry_count[old_region] == 0) {
+        region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
+      }
     }
+
     if (!warmup) {
       if (sim_stats.max_regions < region_tag_entry_count.size()) {
         sim_stats.max_regions = region_tag_entry_count.size();
       }
-      uint64_t min2ref = std::count_if(region_tag_entry_count.begin(), region_tag_entry_count.end(), [](auto entry) { return entry.second > 3; });
-      if (sim_stats.min_regions > min2ref) {
+      std::vector<std::pair<uint64_t, uint64_t>> sort_vec(region_tag_entry_count.begin(), region_tag_entry_count.end());
+      std::sort(sort_vec.begin(), sort_vec.end(), [](auto& a, auto& b) { return a.second > b.second; });
+      uint64_t min2ref = 0;
+      for (auto [tag, count] : sort_vec) {
+        assert(count < BTB_SETS * BTB_WAYS);
+        if (tag == 0) {
+          continue;
+        }
+        min2ref += count;
+        if (min2ref > 0.9 * BTB_SETS * BTB_WAYS)
+          break;
+      }
+      if (sim_stats.min_regions < min2ref) {
         sim_stats.min_regions = min2ref;
       }
     }
   }
 }
 
-/*
-void init_btb(int32_t Sets, int32_t Assoc)
-{
-  numSets = Sets;
-  assoc = Assoc;
-  // aBTBSize must be a power of 2
-  assert(((Sets - 1) & (Sets)) == 0);
-  theBTB.resize(Sets);
-  indexMask = Sets - 1;
-  numIndexBits = (uint32_t)log2((double)Sets);
-}
-
-BTBEntry* get_BTBentry(uint64_t ip)
-{
-  int idx = index(ip);
-  uint64_t tag = get_tag(ip);
-  uint32_t i = 0;
-
-  while (i < theBTB[idx].size()) {
-    // std::cout << "BTB SIZE: " << theBTB[idx].size() << endl;
-    // TODO: Catch aliasing here
-    if (theBTB[idx][i].tag == tag) {
-      return &(theBTB[idx][i]);
-    }
-    i++;
-  }
-  return NULL;
-}
-
-BTBEntry* get_lru_BTBEntry(uint64_t ip)
-{
-  int idx = index(ip);
-
-  if (theBTB[idx].size() < assoc) {
-    return NULL;
-  }
-
-  return &theBTB[idx].front();
-}
-
-BTBEntry* update_BTB(uint64_t ip, uint8_t b_type, uint64_t target, uint8_t taken, uint64_t lru_counter, bool wrong_predict = false)
-{
-  int idx = index(ip);
-  uint64_t tag = get_tag(ip);
-  int way = -1;
-  uint64_t full_tag = get_tag(ip, true);
-  for (uint32_t i = 0; i < theBTB[idx].size(); i++) {
-    // TODO: Catch aliasing here
-    if (theBTB[idx][i].tag == tag) {
-      way = i;
-      if (!wrong_predict) {
-        full_tag = theBTB[idx][i].full_tag;
-      }
-      break;
-    }
-  }
-
-  if (way == -1) {
-    if ((target != 0) && taken) {
-      BTBEntry entry;
-      entry.tag = tag;
-      entry.full_tag = full_tag;
-      entry.branch_type = b_type;
-      entry.target_ip = target;
-      entry.lru = lru_counter;
-
-      if (theBTB[idx].size() >= assoc) {
-        theBTB[idx].erase(theBTB[idx].begin());
-      }
-      theBTB[idx].push_back(entry);
-    } else {
-      assert(0);
-    }
-  } else {
-    BTBEntry entry = theBTB[idx][way];
-    entry.branch_type = b_type;
-    if (target != 0) {
-      entry.target_ip = target;
-    }
-    entry.lru = lru_counter;
-    entry.full_tag = full_tag; // check that this is only updated if it is a wrong predict
-
-    // Update LRU
-    theBTB[idx].erase(theBTB[idx].begin() + way);
-    theBTB[idx].push_back(entry);
-  }
-
-  return &(theBTB[idx].back());
-}
-
-uint64_t get_lru_value(uint64_t ip)
-{
-  int idx = index(ip);
-  uint64_t lru_value;
-  if (theBTB[idx].size() < assoc) { // All ways are not yet allocated
-    lru_value = 0;
-  } else {
-    lru_value = theBTB[idx][0].lru;
-    for (uint32_t i = 1; i < theBTB[idx].size(); i++) { // We should never enter here because head should be LRU
-      if (theBTB[idx][i].lru < lru_value) {
-        assert(0);
-      }
-    }
-  }
-
-  return lru_value;
-}
-
-struct offsetBTB {
-  std::vector<std::vector<offset_BTBEntry>> theOffsetBTB;
-  uint32_t numSets;
-  uint32_t assoc;
-  uint64_t indexMask;
-  uint32_t numIndexBits;
-  BTB_ReplacementStrategy strategy;
-
-  offsetBTB() {}
-
-  offsetBTB(int32_t Sets, int32_t Assoc) : numSets(Sets), assoc(Assoc)
-  {
-    // aBTBSize must be a power of 2
-    assert(((Sets - 1) & (Sets)) == 0);
-    theOffsetBTB.resize(Sets);
-    indexMask = Sets - 1;
-    numIndexBits = (uint32_t)log2((double)Sets);
-    strategy = REF;
-  }
-
-  void init_offsetbtb(int32_t Sets, int32_t Assoc)
-  {
-    numSets = Sets;
-    assoc = Assoc;
-    // aBTBSize must be a power of 2
-    assert(((Sets - 1) & (Sets)) == 0);
-    theOffsetBTB.resize(Sets);
-    indexMask = Sets - 1;
-    numIndexBits = (uint32_t)log2((double)Sets);
-    strategy = REF;
-  }
-
-  int get_replacement_candidate(int set)
-  {
-    size_t way = 0;
-    size_t j = 0;
-    uint64_t lru_count = theOffsetBTB[set][0].lru;
-    uint64_t ref_count = theOffsetBTB[set][0].ref_count;
-    switch (strategy) {
-    case LRU:
-      for (uint32_t i = 1; i < theOffsetBTB[set].size(); i++) {
-        if (theOffsetBTB[set][i].lru < lru_count) {
-          lru_count = theOffsetBTB[set][i].lru;
-          way = i;
-        }
-      }
-      break;
-    case REF0:
-      while (ref_count != 0 and j < theOffsetBTB[set].size()) {
-        if (ref_count > theOffsetBTB[set][j].ref_count) {
-          ref_count = theOffsetBTB[set][j].ref_count;
-          way = j;
-        }
-        j++;
-      }
-      // TODO: make this configurable: right now we only filter 0 entries
-      if (ref_count != 0) {
-        strategy = LRU;
-        way = get_replacement_candidate(set);
-        strategy = REF0;
-      }
-      break;
-    case REF:
-      while (ref_count != 0 and j < theOffsetBTB[set].size()) {
-        if (ref_count > theOffsetBTB[set][j].ref_count) {
-          ref_count = theOffsetBTB[set][j].ref_count;
-          way = j;
-        }
-        j++;
-      }
-      break;
-    default:
-      assert(0);
-    }
-    return way;
-  }
-
-  int32_t index(uint64_t target) { return knob_intel ? (target & indexMask) : ((target >> 2) & indexMask); }
-
-  void inc_ref_count(int set, int way) { theOffsetBTB[set][way].ref_count++; }
-  void dec_ref_count(int set, int way)
-  {
-    if (((size_t)set) >= theOffsetBTB.size() or ((size_t)way) >= theOffsetBTB[set].size()) {
-      std::cerr << "OUTSIDE ACCEPTABLE RANGE FOR OFFSET BTB" << std::endl;
-      return;
-    }
-    if (theOffsetBTB[set][way].ref_count > 0)
-      theOffsetBTB[set][way].ref_count--;
-  }
-
-  std::pair<uint32_t, uint32_t> update_OffsetBTB(uint64_t target_offset, uint64_t lru_counter, bool is_new_entry)
-  {
-    int idx = index(target_offset);
-    int way = -1;
-    for (uint32_t i = 0; i < theOffsetBTB[idx].size(); i++) {
-      if (theOffsetBTB[idx][i].target_offset == target_offset) {
-        way = i;
-        inc_ref_count(idx, way);
-        break;
-      }
-    }
-
-    // cout << "idx " << idx << " way " << way << " offset " << target_offset << endl;
-    if (is_new_entry) {
-      if (way == -1) {
-        offset_not_found_on_BTBmiss++;
-      } else {
-        offset_found_on_BTBmiss++;
-      }
-    } else {
-      if (way == -1) {
-        offset_not_found_on_BTBhit++;
-      }
-    }
-
-    if (way == -1) {
-      if (1) { //(target_offset != 0) &&
-        offset_BTBEntry entry;
-        entry.target_offset = target_offset;
-        entry.lru = lru_counter;
-        entry.ref_count = 1;
-
-        // Find and replace LRU entry
-        if (theOffsetBTB[idx].size() < assoc) {
-          way = theOffsetBTB[idx].size();
-          theOffsetBTB[idx].push_back(entry);
-        } else {
-          way = get_replacement_candidate(idx);
-
-          uint32_t ref_count = theOffsetBTB[idx][way].ref_count;
-          map<uint32_t, uint64_t>::iterator it;
-          it = offset_reuse_freq.find(ref_count);
-          if (it != offset_reuse_freq.end()) {
-            it->second++;
-          } else {
-            offset_reuse_freq[ref_count] = 1;
-          }
-
-          theOffsetBTB[idx][way] = entry; // TODO: add refcount of LRU element? as we have pointers to the lru elem
-        }
-        assert(theOffsetBTB[idx].size() <= assoc);
-      }
-    } else {
-      // Update LRU counter
-      theOffsetBTB[idx][way].lru = lru_counter;
-    }
-
-    // cout << "idx " << idx << " way " << way << endl;
-    return std::make_pair(idx, way);
-  }
-
-  uint64_t get_offset_from_offsetBTB(uint32_t idx, uint32_t way)
-  {
-    assert(idx < numSets);
-    assert(way < assoc);
-    return theOffsetBTB[idx][way].target_offset;
-  }
-  uint64_t get_refcount_from_offsetBTB(uint32_t idx, uint32_t way)
-  {
-    assert(idx < numSets);
-    assert(way < assoc);
-    return theOffsetBTB[idx][way].ref_count;
-  }
-};
-
-/*BTB BTB_4D(1024, 8);                                   //Storage: (tag:16-bit, branch-type: 2-bit, target-offset: 10-bit) 28*1024*8 = 28KB
-BTB BTB_6D(1024, 8);                                   //Storage: (tag:16-bit, branch-type: 2-bit, target-offset: 15-bit) 33*1024*7 = 28.875KB
-BTB BTB_8D(1024, 8);                                   //Storage: (tag:16-bit, branch-type: 2-bit, target-offset: 25-bit) 43*1024*8 = 43KB
-BTB BTB_12D(512, 8);                                    //Storage: (tag:16-bit, branch-type: 2-bit,   full-target: 64-bit) 82*256*4  = 10.25KB
-BTB BTB_18D(512, 8);
-BTB BTB_25D(256, 8);
-BTB BTB_46D(128, 8);
-BTB BTB_Ret(1024, 8);*/
-/*
-// Way sizes in bits
-uint8_t* btb_partition_sizes;
-
-uint8_t* offsetbtb_partition_sizes;
-
-int NUM_BTB_PARTITIONS = -1;
-int NUM_NON_INDIRECT_PARTITIONS = -1;
-int NUM_OFFSET_BTB_PARTITIONS = -1;
-int NUM_SETS = -1;
-int LAST_BTB_PARTITION_ID = -1;
-BTB** btb_partition;
-
-offsetBTB** offsetBTB_partition;
-
-uint64_t basic_btb_lru_counter[NUM_CPUS];
-
-uint64_t basic_btb_indirect[NUM_CPUS][BASIC_BTB_INDIRECT_SIZE];
-uint64_t basic_btb_conditional_history[NUM_CPUS];
-
-uint64_t basic_btb_ras[NUM_CPUS][BASIC_BTB_RAS_SIZE];
-int basic_btb_ras_index[NUM_CPUS];
-/*
- * The following two variables are used to automatically identify the
- * size of call instructions, in bytes, which tells us the appropriate
- * target for a call's corresponding return.
- * They exist because ChampSim does not model a specific ISA, and
- * different ISAs could use different sizes for call instructions,
- * and even within the same ISA, calls can have different sizes.
- */
-/*
-uint64_t basic_btb_call_instr_sizes[NUM_CPUS][BASIC_BTB_CALL_INSTR_SIZE_TRACKERS];
-
-uint64_t basic_btb_abs_addr_dist(uint64_t addr1, uint64_t addr2)
-{
-  if (addr1 > addr2) {
-    return addr1 - addr2;
-  }
-
-  return addr2 - addr1;
-}
-
-void push_basic_btb_ras(uint8_t cpu, uint64_t ip)
-{
-  basic_btb_ras_index[cpu]++;
-  if (basic_btb_ras_index[cpu] == BASIC_BTB_RAS_SIZE) {
-    basic_btb_ras_index[cpu] = 0;
-  }
-
-  basic_btb_ras[cpu][basic_btb_ras_index[cpu]] = ip;
-}
-
-uint64_t peek_basic_btb_ras(uint8_t cpu) { return basic_btb_ras[cpu][basic_btb_ras_index[cpu]]; }
-
-uint64_t pop_basic_btb_ras(uint8_t cpu)
-{
-  uint64_t target = basic_btb_ras[cpu][basic_btb_ras_index[cpu]];
-  basic_btb_ras[cpu][basic_btb_ras_index[cpu]] = 0;
-
-  basic_btb_ras_index[cpu]--;
-  if (basic_btb_ras_index[cpu] == -1) {
-    basic_btb_ras_index[cpu] += BASIC_BTB_RAS_SIZE;
-  }
-
-  return target;
-}
-
-uint64_t basic_btb_call_size_tracker_hash(uint64_t ip) { return (ip & (BASIC_BTB_CALL_INSTR_SIZE_TRACKERS - 1)); }
-
-uint64_t basic_btb_get_call_size(uint8_t cpu, uint64_t ip)
-{
-  uint64_t size = basic_btb_call_instr_sizes[cpu][basic_btb_call_size_tracker_hash(ip)];
-
-  return size;
-}
-
-// TODO: CONVERT TO FLEXIBLE SIZE SOLUTION TO SUPPORT BTBX
-int convert_offsetBits_to_btb_partitionID(int num_bits, bool ignore_offset_count = false)
-{
-  int j = 0;
-  for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
-    int way_size = *(btb_partition_sizes + i);
-    if (ignore_offset_count or i <= NUM_NON_INDIRECT_PARTITIONS or i == LAST_BTB_PARTITION_ID)
-      j = i;
-    if (num_bits <= way_size) {
-      break;
-    }
-  }
-  return j;
-}
-
-// TODO: Fix make fully configurable
-int convert_offsetBits_to_offsetbtb_partitionID(int num_bits)
-{
-  if (num_bits <= offsetbtb_partition_sizes[0] /* 9 *///)
+// void init_btb(int32_t Sets, int32_t Assoc)
+// {
+//   numSets = Sets;
+//   assoc = Assoc;
+//   // aBTBSize must be a power of 2
+//   assert(((Sets - 1) & (Sets)) == 0);
+//   theBTB.resize(Sets);
+//   indexMask = Sets - 1;
+//   numIndexBits = (uint32_t)log2((double)Sets);
+// }
+//
+// BTBEntry* get_BTBentry(uint64_t ip)
+// {
+//   int idx = index(ip);
+//   uint64_t tag = get_tag(ip);
+//   uint32_t i = 0;
+//
+//   while (i < theBTB[idx].size()) {
+//     // std::cout << "BTB SIZE: " << theBTB[idx].size() << endl;
+//     // TODO: Catch aliasing here
+//     if (theBTB[idx][i].tag == tag) {
+//       return &(theBTB[idx][i]);
+//     }
+//     i++;
+//   }
+//   return NULL;
+// }
+//
+// BTBEntry* get_lru_BTBEntry(uint64_t ip)
+// {
+//   int idx = index(ip);
+//
+//   if (theBTB[idx].size() < assoc) {
+//     return NULL;
+//   }
+//
+//   return &theBTB[idx].front();
+// }
+//
+// BTBEntry* update_BTB(uint64_t ip, uint8_t b_type, uint64_t target, uint8_t taken, uint64_t lru_counter, bool wrong_predict = false)
+// {
+//   int idx = index(ip);
+//   uint64_t tag = get_tag(ip);
+//   int way = -1;
+//   uint64_t full_tag = get_tag(ip, true);
+//   for (uint32_t i = 0; i < theBTB[idx].size(); i++) {
+//     // TODO: Catch aliasing here
+//     if (theBTB[idx][i].tag == tag) {
+//       way = i;
+//       if (!wrong_predict) {
+//         full_tag = theBTB[idx][i].full_tag;
+//       }
+//       break;
+//     }
+//   }
+//
+//   if (way == -1) {
+//     if ((target != 0) && taken) {
+//       BTBEntry entry;
+//       entry.tag = tag;
+//       entry.full_tag = full_tag;
+//       entry.branch_type = b_type;
+//       entry.target_ip = target;
+//       entry.lru = lru_counter;
+//
+//       if (theBTB[idx].size() >= assoc) {
+//         theBTB[idx].erase(theBTB[idx].begin());
+//       }
+//       theBTB[idx].push_back(entry);
+//     } else {
+//       assert(0);
+//     }
+//   } else {
+//     BTBEntry entry = theBTB[idx][way];
+//     entry.branch_type = b_type;
+//     if (target != 0) {
+//       entry.target_ip = target;
+//     }
+//     entry.lru = lru_counter;
+//     entry.full_tag = full_tag; // check that this is only updated if it is a wrong predict
+//
+//     // Update LRU
+//     theBTB[idx].erase(theBTB[idx].begin() + way);
+//     theBTB[idx].push_back(entry);
+//   }
+//
+//   return &(theBTB[idx].back());
+// }
+//
+// uint64_t get_lru_value(uint64_t ip)
+// {
+//   int idx = index(ip);
+//   uint64_t lru_value;
+//   if (theBTB[idx].size() < assoc) { // All ways are not yet allocated
+//     lru_value = 0;
+//   } else {
+//     lru_value = theBTB[idx][0].lru;
+//     for (uint32_t i = 1; i < theBTB[idx].size(); i++) { // We should never enter here because head should be LRU
+//       if (theBTB[idx][i].lru < lru_value) {
+//         assert(0);
+//       }
+//     }
+//   }
+//
+//   return lru_value;
+// }
+//
+// struct offsetBTB {
+//   std::vector<std::vector<offset_BTBEntry>> theOffsetBTB;
+//   uint32_t numSets;
+//   uint32_t assoc;
+//   uint64_t indexMask;
+//   uint32_t numIndexBits;
+//   BTB_ReplacementStrategy strategy;
+//
+//   offsetBTB() {}
+//
+//   offsetBTB(int32_t Sets, int32_t Assoc) : numSets(Sets), assoc(Assoc)
+//   {
+//     // aBTBSize must be a power of 2
+//     assert(((Sets - 1) & (Sets)) == 0);
+//     theOffsetBTB.resize(Sets);
+//     indexMask = Sets - 1;
+//     numIndexBits = (uint32_t)log2((double)Sets);
+//     strategy = REF;
+//   }
+//
+//   void init_offsetbtb(int32_t Sets, int32_t Assoc)
+//   {
+//     numSets = Sets;
+//     assoc = Assoc;
+//     // aBTBSize must be a power of 2
+//     assert(((Sets - 1) & (Sets)) == 0);
+//     theOffsetBTB.resize(Sets);
+//     indexMask = Sets - 1;
+//     numIndexBits = (uint32_t)log2((double)Sets);
+//     strategy = REF;
+//   }
+//
+//   int get_replacement_candidate(int set)
+//   {
+//     size_t way = 0;
+//     size_t j = 0;
+//     uint64_t lru_count = theOffsetBTB[set][0].lru;
+//     uint64_t ref_count = theOffsetBTB[set][0].ref_count;
+//     switch (strategy) {
+//     case LRU:
+//       for (uint32_t i = 1; i < theOffsetBTB[set].size(); i++) {
+//         if (theOffsetBTB[set][i].lru < lru_count) {
+//           lru_count = theOffsetBTB[set][i].lru;
+//           way = i;
+//         }
+//       }
+//       break;
+//     case REF0:
+//       while (ref_count != 0 and j < theOffsetBTB[set].size()) {
+//         if (ref_count > theOffsetBTB[set][j].ref_count) {
+//           ref_count = theOffsetBTB[set][j].ref_count;
+//           way = j;
+//         }
+//         j++;
+//       }
+//       // TODO: make this configurable: right now we only filter 0 entries
+//       if (ref_count != 0) {
+//         strategy = LRU;
+//         way = get_replacement_candidate(set);
+//         strategy = REF0;
+//       }
+//       break;
+//     case REF:
+//       while (ref_count != 0 and j < theOffsetBTB[set].size()) {
+//         if (ref_count > theOffsetBTB[set][j].ref_count) {
+//           ref_count = theOffsetBTB[set][j].ref_count;
+//           way = j;
+//         }
+//         j++;
+//       }
+//       break;
+//     default:
+//       assert(0);
+//     }
+//     return way;
+//   }
+//
+//   int32_t index(uint64_t target) { return knob_intel ? (target & indexMask) : ((target >> 2) & indexMask); }
+//
+//   void inc_ref_count(int set, int way) { theOffsetBTB[set][way].ref_count++; }
+//   void dec_ref_count(int set, int way)
+//   {
+//     if (((size_t)set) >= theOffsetBTB.size() or ((size_t)way) >= theOffsetBTB[set].size()) {
+//       std::cerr << "OUTSIDE ACCEPTABLE RANGE FOR OFFSET BTB" << std::endl;
+//       return;
+//     }
+//     if (theOffsetBTB[set][way].ref_count > 0)
+//       theOffsetBTB[set][way].ref_count--;
+//   }
+//
+//   std::pair<uint32_t, uint32_t> update_OffsetBTB(uint64_t target_offset, uint64_t lru_counter, bool is_new_entry)
+//   {
+//     int idx = index(target_offset);
+//     int way = -1;
+//     for (uint32_t i = 0; i < theOffsetBTB[idx].size(); i++) {
+//       if (theOffsetBTB[idx][i].target_offset == target_offset) {
+//         way = i;
+//         inc_ref_count(idx, way);
+//         break;
+//       }
+//     }
+//
+//     // cout << "idx " << idx << " way " << way << " offset " << target_offset << endl;
+//     if (is_new_entry) {
+//       if (way == -1) {
+//         offset_not_found_on_BTBmiss++;
+//       } else {
+//         offset_found_on_BTBmiss++;
+//       }
+//     } else {
+//       if (way == -1) {
+//         offset_not_found_on_BTBhit++;
+//       }
+//     }
+//
+//     if (way == -1) {
+//       if (1) { //(target_offset != 0) &&
+//         offset_BTBEntry entry;
+//         entry.target_offset = target_offset;
+//         entry.lru = lru_counter;
+//         entry.ref_count = 1;
+//
+//         // Find and replace LRU entry
+//         if (theOffsetBTB[idx].size() < assoc) {
+//           way = theOffsetBTB[idx].size();
+//           theOffsetBTB[idx].push_back(entry);
+//         } else {
+//           way = get_replacement_candidate(idx);
+//
+//           uint32_t ref_count = theOffsetBTB[idx][way].ref_count;
+//           map<uint32_t, uint64_t>::iterator it;
+//           it = offset_reuse_freq.find(ref_count);
+//           if (it != offset_reuse_freq.end()) {
+//             it->second++;
+//           } else {
+//             offset_reuse_freq[ref_count] = 1;
+//           }
+//
+//           theOffsetBTB[idx][way] = entry; // TODO: add refcount of LRU element? as we have pointers to the lru elem
+//         }
+//         assert(theOffsetBTB[idx].size() <= assoc);
+//       }
+//     } else {
+//       // Update LRU counter
+//       theOffsetBTB[idx][way].lru = lru_counter;
+//     }
+//
+//     // cout << "idx " << idx << " way " << way << endl;
+//     return std::make_pair(idx, way);
+//   }
+//
+//   uint64_t get_offset_from_offsetBTB(uint32_t idx, uint32_t way)
+//   {
+//     assert(idx < numSets);
+//     assert(way < assoc);
+//     return theOffsetBTB[idx][way].target_offset;
+//   }
+//   uint64_t get_refcount_from_offsetBTB(uint32_t idx, uint32_t way)
+//   {
+//     assert(idx < numSets);
+//     assert(way < assoc);
+//     return theOffsetBTB[idx][way].ref_count;
+//   }
+// };
+//
+// /*BTB BTB_4D(1024, 8);                                   //Storage: (tag:16-bit, branch-type: 2-bit, target-offset: 10-bit) 28*1024*8 = 28KB
+// BTB BTB_6D(1024, 8);                                   //Storage: (tag:16-bit, branch-type: 2-bit, target-offset: 15-bit) 33*1024*7 = 28.875KB
+// BTB BTB_8D(1024, 8);                                   //Storage: (tag:16-bit, branch-type: 2-bit, target-offset: 25-bit) 43*1024*8 = 43KB
+// BTB BTB_12D(512, 8);                                    //Storage: (tag:16-bit, branch-type: 2-bit,   full-target: 64-bit) 82*256*4  = 10.25KB
+// BTB BTB_18D(512, 8);
+// BTB BTB_25D(256, 8);
+// BTB BTB_46D(128, 8);
+// BTB BTB_Ret(1024, 8);*/
+//
+// // Way sizes in bits
+// uint8_t* btb_partition_sizes;
+//
+// uint8_t* offsetbtb_partition_sizes;
+//
+// int NUM_BTB_PARTITIONS = -1;
+// int NUM_NON_INDIRECT_PARTITIONS = -1;
+// int NUM_OFFSET_BTB_PARTITIONS = -1;
+// int NUM_SETS = -1;
+// int LAST_BTB_PARTITION_ID = -1;
+// BTB** btb_partition;
+//
+// offsetBTB** offsetBTB_partition;
+//
+// uint64_t basic_btb_lru_counter[NUM_CPUS];
+//
+// uint64_t basic_btb_indirect[NUM_CPUS][BASIC_BTB_INDIRECT_SIZE];
+// uint64_t basic_btb_conditional_history[NUM_CPUS];
+//
+// uint64_t basic_btb_ras[NUM_CPUS][BASIC_BTB_RAS_SIZE];
+// int basic_btb_ras_index[NUM_CPUS];
+// /*
+//  * The following two variables are used to automatically identify the
+//  * size of call instructions, in bytes, which tells us the appropriate
+//  * target for a call's corresponding return.
+//  * They exist because ChampSim does not model a specific ISA, and
+//  * different ISAs could use different sizes for call instructions,
+//  * and even within the same ISA, calls can have different sizes.
+//  */
+//
+// uint64_t basic_btb_call_instr_sizes[NUM_CPUS][BASIC_BTB_CALL_INSTR_SIZE_TRACKERS];
+//
+// uint64_t basic_btb_abs_addr_dist(uint64_t addr1, uint64_t addr2)
+// {
+//   if (addr1 > addr2) {
+//     return addr1 - addr2;
+//   }
+//
+//   return addr2 - addr1;
+// }
+//
+// void push_basic_btb_ras(uint8_t cpu, uint64_t ip)
+// {
+//   basic_btb_ras_index[cpu]++;
+//   if (basic_btb_ras_index[cpu] == BASIC_BTB_RAS_SIZE) {
+//     basic_btb_ras_index[cpu] = 0;
+//   }
+//
+//   basic_btb_ras[cpu][basic_btb_ras_index[cpu]] = ip;
+// }
+//
+// uint64_t peek_basic_btb_ras(uint8_t cpu) { return basic_btb_ras[cpu][basic_btb_ras_index[cpu]]; }
+//
+// uint64_t pop_basic_btb_ras(uint8_t cpu)
+// {
+//   uint64_t target = basic_btb_ras[cpu][basic_btb_ras_index[cpu]];
+//   basic_btb_ras[cpu][basic_btb_ras_index[cpu]] = 0;
+//
+//   basic_btb_ras_index[cpu]--;
+//   if (basic_btb_ras_index[cpu] == -1) {
+//     basic_btb_ras_index[cpu] += BASIC_BTB_RAS_SIZE;
+//   }
+//
+//   return target;
+// }
+//
+// uint64_t basic_btb_call_size_tracker_hash(uint64_t ip) { return (ip & (BASIC_BTB_CALL_INSTR_SIZE_TRACKERS - 1)); }
+//
+// uint64_t basic_btb_get_call_size(uint8_t cpu, uint64_t ip)
+// {
+//   uint64_t size = basic_btb_call_instr_sizes[cpu][basic_btb_call_size_tracker_hash(ip)];
+//
+//   return size;
+// }
+//
+// // TODO: CONVERT TO FLEXIBLE SIZE SOLUTION TO SUPPORT BTBX
+// int convert_offsetBits_to_btb_partitionID(int num_bits, bool ignore_offset_count = false)
+// {
+//   int j = 0;
+//   for (int i = 0; i < NUM_BTB_PARTITIONS; i++) {
+//     int way_size = *(btb_partition_sizes + i);
+//     if (ignore_offset_count or i <= NUM_NON_INDIRECT_PARTITIONS or i == LAST_BTB_PARTITION_ID)
+//       j = i;
+//     if (num_bits <= way_size) {
+//       break;
+//     }
+//   }
+//   return j;
+// }
+//
+// // TODO: Fix make fully configurable
+// int convert_offsetBits_to_offsetbtb_partitionID(int num_bits)
+// {
+//   if (num_bits <= offsetbtb_partition_sizes[0] /* 9 *///)
 //{
 //  return 0;
 //}
@@ -885,7 +902,8 @@ int convert_offsetBits_to_offsetbtb_partitionID(int num_bits)
 //        branch_target = (temp | target_offset) << 2;
 //      }
 //      /*if (btb_entry->target_ip != branch_target) {
-//        cout << "Partition ID " <<  partitionID << " correct target " << std::hex << btb_entry->target_ip << " computed target " << branch_target << " offset
+//        cout << "Partition ID " <<  partitionID << " correct target " << std::hex << btb_entry->target_ip << " computed target " << branch_target << "
+//        offset
 //        "
 //      << target_offset << endl; assert(0);
 //      }*/
