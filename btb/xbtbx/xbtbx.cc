@@ -291,7 +291,18 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   if (branch_target != 0) {
     replaced_entry = ::BTB.at(this).fill(opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx.value_or(0)}), num_bits);
     uint64_t new_region = (ip >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-    region_tag_entry_count[new_region] += replaced_entry.has_value();
+    if (replaced_entry.has_value()) {
+      region_tag_entry_count[new_region]++;
+      if (replaced_entry.value().ip_tag != 0 and replaced_entry.value().target != 0) {
+        uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+        assert(region_tag_entry_count[old_region] > 0);
+        region_tag_entry_count[old_region]--;
+        if (region_tag_entry_count[old_region] == 0) {
+          region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
+        }
+      }
+    }
+    // region_tag_entry_count[new_region] += replaced_entry.has_value();
     assert(region_tag_entry_count[new_region] <= BTB_SETS * BTB_WAYS);
   }
 
@@ -305,15 +316,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
     for (size_t idx = 0; idx < 64; idx++) {
       sim_stats.btb_tag_entropy[idx] += new_tag[idx];
-    }
-
-    if (replaced_entry.value().ip_tag != 0) {
-      uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-      assert(region_tag_entry_count[old_region] > 0);
-      region_tag_entry_count[old_region]--;
-      if (region_tag_entry_count[old_region] == 0) {
-        region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
-      }
     }
 
     if (!warmup) {
