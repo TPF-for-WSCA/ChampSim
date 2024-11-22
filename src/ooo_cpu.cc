@@ -167,6 +167,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (arch_instr.branch_prediction == 0) {
     predicted_branch_target = 0;
   } else if (!warmup && branch_ip && predicted_branch_target && arch_instr.branch_type == NOT_BRANCH && arch_instr.branch_prediction) {
+    // NOTE: HERE WE GO WRONGPATH ON NON-BRANCHING INSTRUCTIONS
     sim_stats.negative_aliasing++;
     fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
     stop_fetch = true;
