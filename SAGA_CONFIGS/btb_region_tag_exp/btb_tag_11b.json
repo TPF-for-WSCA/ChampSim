@@ -1,21 +1,21 @@
 {
-  "executable_name": "btb_region_tag/btb_tag_4b_region_32",
+  "executable_name": "btb_region_tag/btb_tag_11b",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
   "num_cores": 1,
   "CFLAGS": [
-    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include"
   ],
   "CXXFLAGS": [
-    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include"
   ],
   "LDLIBS": [
     "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem"
   ],
   "LDFLAGS": [
-    "-L/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
+    "-L/cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/lib -fsanitize=bounds -fsanitize=address"
   ],
   "ooo_cpu": [
     {
@@ -41,25 +41,24 @@
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
       "btb": "xbtbx",
-      "btb_ways": 9,
-      "btb_non_indirect": 9,
+      "btb_ways": 8,
+      "btb_non_indirect": 8,
       "btb_sets": 512,
       "btb_clipped_tag": 1,
+      "btb_tag_size": 11,
+      "btb_tag_regions": 0,
+      "btb_tag_region_size": 6,
+      "align_bits": 5,
       "btb_target_sizes": [
-        0,
-        4,
-        5,
-        7,
-        9,
-        11,
-        19,
-        25,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
         64
-      ],
-      "btb_tag_size": 4,
-      "btb_tag_regions": 32,
-      "btb_tag_region_size": 8,
-      "align_bits": 5
+      ]
     }
   ],
   "DIB": {

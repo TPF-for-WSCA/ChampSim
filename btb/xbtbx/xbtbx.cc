@@ -297,7 +297,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
    */
   std::optional<::BTBEntry> replaced_entry = std::nullopt;
   if (branch_target != 0) {
-    replaced_entry = ::BTB.at(this).fill(::BTBEntry{ip, branch_target, type, region_idx.value_or(0)}, num_bits);
+    replaced_entry = ::BTB.at(this).fill(::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS))}, num_bits);
 
     uint64_t new_region = (ip >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
     _37_updated += (new_region == 37) ? 1 : 0;
