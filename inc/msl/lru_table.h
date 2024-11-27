@@ -179,12 +179,13 @@ public:
     if (set_begin != set_end) {
       auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
       if (tag_projection(hit->data) == tag) {
+        std::optional<value_type> updated = std::optional<value_type>{hit->data};
         auto target_size = hit->data.target_size;
         auto offset_mask = hit->data.offset_mask;
         *hit = {++access_count, elem};
         hit->data.target_size = target_size;
         hit->data.offset_mask = offset_mask;
-        return std::nullopt;
+        return updated;
       } else {
         std::optional<value_type> replaced = std::optional<value_type>{miss->data};
         auto target_size = miss->data.target_size;
@@ -207,7 +208,7 @@ public:
 
       if (tag_projection(hit->data) == tag) {
         *hit = {++access_count, elem};
-        return std::nullopt;
+        return std::optional<value_type>{hit->data};
       } else {
         std::optional<value_type> rv = std::optional<value_type>{miss->data};
         *miss = {++access_count, elem};
@@ -234,7 +235,9 @@ public:
     if (hit == set_end)
       return std::nullopt;
 
-    return std::exchange(*hit, {}).data;
+    auto new_val = *hit;
+    new_val.last_used = 0;
+    return std::exchange(*hit, new_val).data;
   }
 
   lru_table(std::size_t sets, std::size_t ways, SetProj set_proj, TagProj tag_proj)

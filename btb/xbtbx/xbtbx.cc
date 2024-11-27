@@ -12,6 +12,7 @@
 #include <deque>
 #include <iostream>
 #include <map>
+#include <numeric>
 #include <set>
 
 #include "msl/lru_table.h"
@@ -36,6 +37,13 @@ enum class branch_info {
   ALWAYS_TAKEN,
   CONDITIONAL,
 };
+
+// DEBUGGING VARIABLES
+size_t _37_added = 0;
+size_t _37_removed = 0;
+size_t _37_deleted = 0;
+size_t _37_updated = 0;
+// DEBUGGING END
 
 std::map<uint64_t, uint64_t> region_tag_entry_count = {};
 std::size_t _INDEX_MASK = 0;
@@ -278,32 +286,41 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   }
 
-  opt_entry = std::nullopt;
-  if (region_idx.has_value())
-    opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, region_idx.value()});
-  if (opt_entry.has_value()) {
-    opt_entry->type = type;
-    if (branch_target != 0)
-      opt_entry->target = branch_target;
-  }
-
+  /*   opt_entry = std::nullopt;
+    if (region_idx.has_value())
+      opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, region_idx.value()});
+    if (opt_entry.has_value()) {
+      opt_entry->type = type;
+      if (branch_target != 0)
+        opt_entry->target = branch_target;
+    }
+   */
   std::optional<::BTBEntry> replaced_entry = std::nullopt;
   if (branch_target != 0) {
-    replaced_entry = ::BTB.at(this).fill(opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx.value_or(0)}), num_bits);
+    replaced_entry = ::BTB.at(this).fill(::BTBEntry{ip, branch_target, type, region_idx.value_or(0)}, num_bits);
+
     uint64_t new_region = (ip >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-    if (replaced_entry.has_value()) {
-      region_tag_entry_count[new_region]++;
-      if (replaced_entry.value().ip_tag != 0 and replaced_entry.value().target != 0) {
-        uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-        assert(region_tag_entry_count[old_region] > 0);
+    _37_updated += (new_region == 37) ? 1 : 0;
+    region_tag_entry_count[new_region] += replaced_entry.has_value();
+    _37_added += (new_region == 37) ? replaced_entry.has_value() : 0;
+    if (replaced_entry.has_value() and replaced_entry.value().ip_tag != 0 and replaced_entry.value().target != 0) {
+      uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+      _37_removed += (old_region == 37) ? 1 : 0;
+      if (region_tag_entry_count[old_region] == 0) {
+        std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
+        std::cerr << "OLD REGION: " << old_region << std::endl;
+      } else {
         region_tag_entry_count[old_region]--;
         if (region_tag_entry_count[old_region] == 0) {
           region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
+          _37_deleted += (old_region == 37) ? 1 : 0;
         }
       }
     }
     // region_tag_entry_count[new_region] += replaced_entry.has_value();
-    assert(region_tag_entry_count[new_region] <= BTB_SETS * BTB_WAYS);
+    uint64_t sum = std::accumulate(std::begin(region_tag_entry_count), std::end(region_tag_entry_count), 0,
+                                   [](const auto prev, const auto& elem) { return prev + elem.second; });
+    assert(sum <= BTB_SETS * BTB_WAYS);
   }
 
   if (replaced_entry.has_value()) {
