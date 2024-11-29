@@ -48,6 +48,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   long double btb_tag_entropy = 0;
   long double switch_tag_entropy = 0;
   auto total_btb_updates = ((long double)stats.btb_updates);
+  auto total_btb_static_updates = ((long double)stats.btb_static_updates);
   long double prev_counter = 0, prev_switch = 0;
   std::vector<std::pair<long double, uint8_t>> tag_bit_order;
   std::vector<std::pair<long double, uint8_t>> switch_bit_order;
@@ -61,12 +62,13 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
         stats.btb_tag_entropy[i]; // This is to prevent blocks of equal bits to change the outcome: Blocks that all contain exactly the same information should
                                   // be ignored. We don't capture interleaving patterns here, but that can be added at a later stage
     prev_switch = stats.btb_tag_switch_entropy[i];
-    long double percentage = stats.btb_tag_entropy[i] / total_btb_updates;
+    long double percentage = stats.btb_tag_entropy[i] / total_btb_static_updates;
     long double switch_percentage = stats.btb_tag_switch_entropy[i] / total_btb_updates;
     if ((percentage == 1.0 or percentage == 0.0) and (switch_percentage == 0.0 or switch_percentage == 1.0))
       continue;
-    auto local_switch_entropy = -1.0 * (switch_percentage * std::log2l(switch_percentage) + (1.0 - switch_percentage) * std::log2l(1.0 - switch_percentage));
-    auto local_entropy = -1.0 * (percentage * std::log2l(percentage) + (1.0 - percentage) * std::log2l(1.0 - percentage));
+    auto local_switch_entropy =
+        (switch_percentage) ? -1.0 * (switch_percentage * std::log2l(switch_percentage) + (1.0 - switch_percentage) * std::log2l(1.0 - switch_percentage)) : 0;
+    auto local_entropy = (percentage) ? -1.0 * (percentage * std::log2l(percentage) + (1.0 - percentage) * std::log2l(1.0 - percentage)) : 0;
     tag_bit_order.push_back({local_entropy, i});
     switch_bit_order.push_back({local_switch_entropy, i});
   }

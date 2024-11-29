@@ -72,6 +72,7 @@ struct cpu_stats {
   uint64_t max_regions = 0;
   uint64_t min_regions = 0;
   uint64_t btb_updates = 0;
+  uint64_t btb_static_updates = 0;
   uint16_t btb_tag_size = 0;
   std::array<long double, 64> btb_tag_entropy = {}, btb_tag_switch_entropy = {};
 
