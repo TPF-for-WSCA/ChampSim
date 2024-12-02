@@ -72,10 +72,6 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     tag_bit_order.push_back({local_entropy, i});
     switch_bit_order.push_back({local_switch_entropy, i});
   }
-  fmt::print(stream, "\nBTB TAG Entropy: {}b\nBTB TAG Size: {}\nBTB TAG AVG Utilisation: {}\n", btb_tag_entropy, stats.btb_tag_size,
-             btb_tag_entropy / (float)stats.btb_tag_size);
-  fmt::print(stream, "\nBTB TAG SWITCH Entropy: {}b\n", switch_tag_entropy);
-
   std::sort(tag_bit_order.begin(), tag_bit_order.end(), [](auto& a, auto& b) { return a.first > b.first; });
   std::sort(switch_bit_order.begin(), switch_bit_order.end(), [](auto& a, auto& b) { return a.first > b.first; });
   std::vector<std::pair<long double, uint8_t>> filtered_tag_bit_order, filtered_switch_bit_order;
@@ -93,6 +89,11 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     prev_counter = tag_bit_order[i].first;
     prev_switch = switch_bit_order[i].first;
   }
+
+  fmt::print(stream, "\nBTB TAG Entropy: {}b\nBTB TAG Size: {}\nBTB TAG AVG Utilisation: {}\n", btb_tag_entropy, stats.btb_tag_size,
+             btb_tag_entropy / (float)stats.btb_tag_size);
+  fmt::print(stream, "\nBTB TAG SWITCH Entropy: {}b\n", switch_tag_entropy);
+
   fmt::print(stream, "BTB TAG Bits Sorted by Entropy\n");
   fmt::print(stream, "BTB TAG Bit IDX\tENTROPY\n");
   for (auto [entropy, bit_idx] : filtered_tag_bit_order) {
