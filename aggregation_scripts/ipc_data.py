@@ -101,7 +101,7 @@ def extract_btb_bit_ordering(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    entropy_re = re.compiler(r"BTB TAG BIT IDX\tENTROPY")
+    entropy_re = re.compile(r"BTB TAG Bit IDX\tENTROPY")
     ilogs = iter(logs)
     for line in ilogs:
         matches = entropy_re.search(line)
@@ -484,7 +484,7 @@ def single_run(path):
                 )
             elif type == STATS.BTB_BIT_ORDERING:
                 bit_ordering = extract_btb_bit_ordering(f"{path}/{workload}/{logfile}")
-                raw_data_path = f"{path}/raw_data/{workload}.txt"
+                raw_data_path = f"{path}/{workload}_bit_ordering.txt"
                 with open(raw_data_path, "x") as f:
                     for bit in bit_ordering:
                         f.write(f"{bit}\n")
