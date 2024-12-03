@@ -27,6 +27,8 @@ class STATS(Enum):
     ALIASING = 18
     BIT_INFORMATION = 19
     BTB_TAG_ENTROPY = 20
+    BTB_BIT_ORDERING = 21
+    BTB_BIT_ORDERING_SWITCHED = 22
 
 
 type = STATS.IPC
@@ -91,6 +93,26 @@ def extract_btb_tag_entropy(path):
         matches = entropy_re.search(line)
         if matches:
             return float(matches.groups()[0])
+
+
+def extract_btb_bit_ordering(path):
+    import itertools
+
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    entropy_re = re.compiler(r"BTB TAG BIT IDX\tENTROPY")
+    ilogs = iter(logs)
+    for line in ilogs:
+        matches = entropy_re.search(line)
+        if matches:
+            break
+    bit_ordering = []
+    for line in ilogs:
+        if line.startswith("BTB"):
+            break
+        bit_ordering.append(int(line.split("\t")[0].strip()))
+    return bit_ordering
 
 
 def extract_bit_information(path):
@@ -460,6 +482,12 @@ def single_run(path):
                 stat_by_workload[workload] = extract_btb_tag_entropy(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.BTB_BIT_ORDERING:
+                bit_ordering = extract_btb_bit_ordering(f"{path}/{workload}/{logfile}")
+                raw_data_path = f"{path}/raw_data/{workload}.txt"
+                with open(raw_data_path, "x") as f:
+                    for bit in bit_ordering:
+                        f.write(f"{bit}\n")
             elif type == STATS.ROB_AT_MISS:
                 stat_by_workload[workload] = extract_rob_at_stall(
                     f"{path}/{workload}/{logfile}"
@@ -487,7 +515,10 @@ def mutliple_sizes_run(out_dir=None):
         lip_matches = re.search(r"(\d*)lip", subdir)
         matches = re.search(r"(\d+)([km])+$", subdir)
         if not matches:
-            ipc_by_cachesize_and_workload[subdir] = single_run(f"{out_dir}/{subdir}")
+            result = single_run(f"{out_dir}/{subdir}")
+            if len(result) == 0:
+                continue
+            ipc_by_cachesize_and_workload[subdir] = result
             continue
         matches = matches.groups()
         name = ""
@@ -499,7 +530,10 @@ def mutliple_sizes_run(out_dir=None):
             name += f"{size_bytes}"
         else:
             name = subdir
-        ipc_by_cachesize_and_workload[name] = single_run(f"{out_dir}/{subdir}")
+        result = single_run(f"{out_dir}/{subdir}")
+        if len(result) == 0:
+            continue
+        ipc_by_cachesize_and_workload[name] = result
     return ipc_by_cachesize_and_workload
 
 
@@ -628,6 +662,8 @@ def multiple_benchmarks_run():
         if not os.path.isdir(benchpath):
             continue
         data = mutliple_sizes_run(out_dir=benchpath)
+        if len(data) == 0:
+            continue
         write_tsv(data, out_path=benchpath)
 
 
@@ -679,6 +715,9 @@ elif sys.argv[2] == "multibench":
     exit(0)
 else:
     data = mutliple_sizes_run()
+
+if len(data) == 0:
+    exit(0)
 
 if type == STATS.PARTIAL_MISSES:
     write_partial_misses(data, sys.argv[1])
