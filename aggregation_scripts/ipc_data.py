@@ -717,7 +717,7 @@ else:
     data = mutliple_sizes_run()
 
 if len(data) == 0:
-    return
+    exit(0)
 
 if type == STATS.PARTIAL_MISSES:
     write_partial_misses(data, sys.argv[1])
