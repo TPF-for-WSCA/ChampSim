@@ -706,6 +706,8 @@ elif sys.argv[3] == "BTB_BIT_INFORMATION":
     type = STATS.BIT_INFORMATION
 elif sys.argv[3] == "BTB_TAG_ENTROPY":
     type = STATS.BTB_TAG_ENTROPY
+elif sys.argv[3] == "BTB_BIT_ORDERING":
+    type = STATS.BTB_BIT_ORDERING
 if len(sys.argv) == 5 and sys.argv[4]:
     buffer = True
 if sys.argv[2] == "single":
