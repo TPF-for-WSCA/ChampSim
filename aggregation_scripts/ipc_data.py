@@ -109,7 +109,7 @@ def extract_btb_bit_ordering(path):
             break
     bit_ordering = []
     for line in ilogs:
-        if line.startswith("BTB"):
+        if line.startswith("BTB") or line.startswith("Branch"):
             break
         bit_ordering.append(int(line.split("\t")[0].strip()))
     return bit_ordering
