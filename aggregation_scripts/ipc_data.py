@@ -101,7 +101,7 @@ def extract_btb_bit_ordering(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    entropy_re = re.compile(r"BTB TAG Bit IDX\tENTROPY")
+    entropy_re = re.compile(r"BTB TAG Switched Bit IDX\tENTROPY")
     ilogs = iter(logs)
     for line in ilogs:
         matches = entropy_re.search(line)

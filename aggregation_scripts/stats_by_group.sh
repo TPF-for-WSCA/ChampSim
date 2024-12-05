@@ -19,6 +19,10 @@ if [ -z ${champsim_root+x} ]; then chroot="/cluster/projects/nn4650k/workspace";
 
 echo "chroot: ${chroot}"
 
+mkdir raw_data
+mkdir graphs
+mkdir raw_data/btb_tag_bits
+
 if [ $# -lt 1 ]; then
     for b in ${benchmarks[@]}
     do
@@ -27,6 +31,8 @@ if [ $# -lt 1 ]; then
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi IPC  &
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BTB_ALIASING  &
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BTB_TAG_ENTROPY  &
+        python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BTB_BIT_ORDERING  &
+
         # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL &
         # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi FRONTEND_STALLS &
         # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL_MISSES &
@@ -45,6 +51,14 @@ if [ $# -lt 1 ]; then
     done
 else echo "skip aggregation";
 fi
+
+# Collect all btb bit information files
+find $(find . -name "*full*") -name "*bit_ordering.txt" -exec cp {} ./raw_data/btb_tag_bits ';'
+pushd raw_data/btb_tag_bits
+echo ./*.txt | sed 's/ /\t/g' > header.txt
+paste ./*bit_ordering.txt > combined_bit_ordering.csv
+
+popd
 
 # for b in ${benchmarks[@]}
 # do
