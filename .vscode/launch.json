@@ -17,6 +17,8 @@
                 "15000000",
                 "--json",
                 "~/Downloads/stats.json",
+                "--btb-tag-hash",
+                "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace_bit_ordering.txt"
                 // "-result_dir",
                 // "~/Downloads/results/test/",
                 // "-ptrace",

@@ -45,6 +45,7 @@ int main(int argc, char** argv)
   uint64_t warmup_instructions = 0;
   uint64_t simulation_instructions = std::numeric_limits<uint64_t>::max();
   std::string json_file_name;
+  std::string btb_index_tag_hash_file_name;
   std::vector<std::string> trace_names;
 
   auto set_heartbeat_callback = [&](auto) {
@@ -64,11 +65,28 @@ int main(int argc, char** argv)
 
   auto json_option =
       app.add_option("--json", json_file_name, "The name of the file to receive JSON output. If no name is specified, stdout will be used")->expected(0, 1);
+  auto btb_index_tag_hash = app.add_option("--btb-tag-hash", btb_index_tag_hash_file_name,
+                                           "The name of the file that contains the ordering of the address bits to be used for indexing and tagging")
+                                ->expected(0, 1);
 
   app.add_option("traces", trace_names, "The paths to the traces")->required()->expected(NUM_CPUS)->check(CLI::ExistingFile);
 
   CLI11_PARSE(app, argc, argv);
 
+  if (btb_index_tag_hash->count() > 0 && !btb_index_tag_hash_file_name.empty()) {
+    std::ifstream f;
+    f.open(btb_index_tag_hash_file_name.c_str());
+    if (!f.is_open())
+      throw std::runtime_error("file not opened");
+
+    // TODO: Rewrite tag and indexing function to use infromation
+    int bit_idx;
+    for (int i = 0; f >> bit_idx; i++) {
+      for (O3_CPU& cpu : gen_environment.cpu_view()) {
+        cpu.btb_index_tag_hash[i] = bit_idx;
+      }
+    }
+  }
   const bool warmup_given = (warmup_instr_option->count() > 0) || (deprec_warmup_instr_option->count() > 0);
   const bool simulation_given = (sim_instr_option->count() > 0) || (deprec_sim_instr_option->count() > 0);
 

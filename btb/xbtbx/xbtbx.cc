@@ -46,6 +46,8 @@ enum class branch_info {
 // DEBUGGING END
 
 std::map<uint64_t, uint64_t> region_tag_entry_count = {};
+std::vector<uint8_t> index_bits;
+std::vector<uint8_t> tag_bits;
 std::size_t _INDEX_MASK = 0;
 std::size_t _TAG_MASK = 0;
 std::size_t _REGION_MASK = 0;
@@ -76,6 +78,7 @@ struct BTBEntry {
   uint8_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
 
+  // TODO: shift indexes and tags into place
   auto index() const { return (ip_tag >> 2) & _INDEX_MASK; }
   auto tag() const
   {
@@ -155,6 +158,7 @@ void O3_CPU::initialize_btb()
     _BTB_TAG_SIZE = 62 - _BTB_SET_BITS;
     _REGION_MASK = pow2(62 - _BTB_SET_BITS) - 1;
   }
+  // TODO: Initialize index and tag based on bit information
   _INDEX_MASK = BTB_SETS - 1;
   _TAG_MASK = pow2(_BTB_TAG_SIZE) - 1;
   if (BTB_TARGET_SIZES.size() == BTB_WAYS) {
