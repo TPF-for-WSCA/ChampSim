@@ -87,7 +87,7 @@ struct BTBEntry {
       return tag;
     }
     tag &= _TAG_MASK;
-    if (_BTB_TAG_REGIONS) {
+    if (_BTB_TAG_REGIONS && target_size < 10) {
       auto masked_bits = tag & (_REGION_MASK << _BTB_TAG_SIZE);
       tag ^= masked_bits;
       tag |= offset_tag << _BTB_TAG_SIZE;
