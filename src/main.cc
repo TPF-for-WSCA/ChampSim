@@ -83,7 +83,7 @@ int main(int argc, char** argv)
     int bit_idx;
     for (int i = 0; f >> bit_idx; i++) {
       for (O3_CPU& cpu : gen_environment.cpu_view()) {
-        cpu.btb_index_tag_hash[i] = bit_idx;
+        cpu.btb_index_tag_hash.push_back(bit_idx);
       }
     }
   }

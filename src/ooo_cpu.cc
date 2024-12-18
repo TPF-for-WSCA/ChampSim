@@ -203,7 +203,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
         stop_fetch = true;
         arch_instr.branch_mispredicted = 1;
       }
-    } else {
+    } else if (predicted_branch_target && predicted_branch_target != arch_instr.ip + 4) {
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
     }
 

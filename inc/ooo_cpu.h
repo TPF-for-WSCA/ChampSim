@@ -119,7 +119,7 @@ private:
   uint8_t clipped_tag_size;
 
 public:
-  std::array<uint8_t, 64> btb_index_tag_hash{};
+  std::vector<uint8_t> btb_index_tag_hash{};
   size_t BTB_WAYS;
   size_t BTB_NON_INDIRECT;
   uint64_t rob_size_at_stall = 0;

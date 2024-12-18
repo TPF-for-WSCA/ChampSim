@@ -17,8 +17,8 @@
                 "15000000",
                 "--json",
                 "~/Downloads/stats.json",
-                "--btb-tag-hash",
-                "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace_bit_ordering.txt"
+                // "--btb-tag-hash",
+                // "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace_bit_ordering.txt"
                 // "-result_dir",
                 // "~/Downloads/results/test/",
                 // "-ptrace",
@@ -66,9 +66,13 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "--warmup_instructions",
-                "500000",
+                "5000000",
                 "--simulation_instructions",
-                "500000",
+                "5000000",
+                "--json",
+                "~/Downloads/stats.json",
+                "--btb-tag-hash",
+                "/Users/robrunne/Downloads/bit_ordering/server_022.champsimtrace_bit_ordering.txt"
                 // "-ptrace",
                 // "-cloudsuite",
                 // "-intel",

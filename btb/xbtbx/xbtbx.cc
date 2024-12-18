@@ -48,9 +48,15 @@ enum class branch_info {
 std::map<uint64_t, uint64_t> region_tag_entry_count = {};
 std::vector<uint8_t> index_bits;
 std::vector<uint8_t> tag_bits;
+std::vector<uint8_t> btb_addressing_hash;
+std::vector<uint64_t> btb_addressing_masks;
+std::vector<int> btb_addressing_shifts; // negative shift amounts are left shifts by the given amount. 0 means no shift is necessary, positive shift amounts
+                                        // are shifts to the right (max the bit idx)
 std::size_t _INDEX_MASK = 0;
 std::size_t _TAG_MASK = 0;
 std::size_t _REGION_MASK = 0;
+std::size_t _BTB_SETS = 0;
+std::size_t _BTB_WAYS = 0;
 uint8_t _BTB_CLIPPED_TAG = 0;
 uint8_t _BTB_TAG_SIZE = 0;
 uint8_t _BTB_SET_BITS;
@@ -79,15 +85,52 @@ struct BTBEntry {
   uint64_t offset_mask = -1;
 
   // TODO: shift indexes and tags into place
-  auto index() const { return (ip_tag >> 2) & _INDEX_MASK; }
+  auto index() const
+  {
+    if (btb_addressing_hash.empty())
+      return (ip_tag >> 2) & _INDEX_MASK;
+    assert(btb_addressing_hash.size() <= _BTB_SETS);
+    auto ip = ip_tag >> 2;
+    uint64_t idx = 0;
+    for (uint8_t i = 0; i < _BTB_SET_BITS; i++) {
+      auto mask = btb_addressing_masks[i];
+      auto shift = btb_addressing_shifts[i];
+      auto bit = ip & mask;
+      if (shift > 0) {
+        bit >>= shift;
+      } else if (shift < 0) {
+        bit <<= (-1 * shift);
+      }
+      idx |= bit;
+    }
+    return idx;
+  }
   auto tag() const
   {
     auto tag = ip_tag >> 2 >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
     }
-    tag &= _TAG_MASK;
-    if (_BTB_TAG_REGIONS && target_size < 10) {
+    if (btb_addressing_hash.empty())
+      tag &= _TAG_MASK;
+    else {
+      tag = 0;
+      auto ip = ip_tag >> 2;
+      for (uint8_t i = _BTB_SET_BITS; i < _BTB_SET_BITS + _BTB_TAG_SIZE; i++) {
+        auto mask = btb_addressing_masks[i];
+        auto shift = btb_addressing_shifts[i];
+        auto bit = ip & mask;
+        if (shift > 0) {
+          bit >>= shift;
+        } else if (shift < 0) {
+          bit <<= (-1 * shift);
+        }
+        tag |= bit;
+      }
+      tag = tag >> _BTB_SET_BITS;
+    }
+    if (ip_tag && _BTB_TAG_REGIONS && target_size < 10) {
+      // TODO: double check if the shift amount of the BTB TAG size is correct and we are not overriding the actual tag bits
       auto masked_bits = tag & (_REGION_MASK << _BTB_TAG_SIZE);
       tag ^= masked_bits;
       tag |= offset_tag << _BTB_TAG_SIZE;
@@ -144,6 +187,13 @@ void O3_CPU::initialize_btb()
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
   ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, BTB_TAG_REGIONS}});
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
+  ::btb_addressing_hash = btb_index_tag_hash;
+  btb_addressing_masks.resize(btb_addressing_hash.size());
+  btb_addressing_shifts.resize(btb_addressing_hash.size());
+  for (int i = 0; i < btb_index_tag_hash.size(); i++) {
+    btb_addressing_masks[i] = ((uint64_t)1) << btb_index_tag_hash[i];
+    btb_addressing_shifts[i] = (btb_index_tag_hash[i] > i) ? (btb_index_tag_hash[i] - i) : -1 * (i - (int)btb_index_tag_hash[i]);
+  }
   std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
   ::CONDITIONAL_HISTORY[this] = 0;
   _BTB_SET_BITS = champsim::lg2(BTB_SETS);
@@ -160,6 +210,9 @@ void O3_CPU::initialize_btb()
   }
   // TODO: Initialize index and tag based on bit information
   _INDEX_MASK = BTB_SETS - 1;
+  _BTB_SETS = BTB_SETS;
+  _BTB_WAYS = BTB_WAYS;
+
   _TAG_MASK = pow2(_BTB_TAG_SIZE) - 1;
   if (BTB_TARGET_SIZES.size() == BTB_WAYS) {
     for (uint16_t i = 0; i < BTB_SETS; i++) {
