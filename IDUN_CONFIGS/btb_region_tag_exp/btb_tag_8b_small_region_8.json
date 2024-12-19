@@ -1,5 +1,5 @@
 {
-  "executable_name": "btb_region_tag/btb_tag_4b_region_16",
+  "executable_name": "btb_region_tag/btb_tag_8b_small_region_8",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -45,6 +45,7 @@
       "btb_non_indirect": 8,
       "btb_sets": 512,
       "btb_clipped_tag": 1,
+      "btb_small_way_regions_enabled": 1,
       "btb_target_sizes": [
         64,
         64,
@@ -55,9 +56,9 @@
         64,
         64
       ],
-      "btb_tag_size": 4,
-      "btb_tag_regions": 16,
-      "btb_tag_region_size": 8,
+      "btb_tag_size": 8,
+      "btb_tag_regions": 8,
+      "btb_tag_region_size": 4,
       "align_bits": 5
     }
   ],

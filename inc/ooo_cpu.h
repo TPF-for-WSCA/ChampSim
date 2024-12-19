@@ -114,6 +114,8 @@ private:
   uint32_t* offset_btb_sets;
   bool prev_was_branch = false;
   bool perfect_btb;
+  bool btb_small_way_regions_enabled;
+  bool btb_big_way_regions_enabled;
   bool perfect_branch_predict;
   bool full_tag, clipped_tag;
   uint8_t clipped_tag_size;
@@ -322,6 +324,8 @@ public:
     unsigned short m_btb_tag_regions{};
     unsigned char m_btb_tag_region_size{};
     bool m_perfect_btb{};
+    bool m_btb_small_way_regions_enabled{};
+    bool m_btb_big_way_regions_enabled{};
 
     CACHE* m_l1i{};
     long int m_l1i_bw{};
@@ -494,6 +498,16 @@ public:
       m_perfect_btb = perfect_btb_;
       return *this;
     }
+    self_type& btb_small_way_regions_enabled(bool btb_small_way_regions_enabled_)
+    {
+      m_btb_small_way_regions_enabled = btb_small_way_regions_enabled_;
+      return *this;
+    }
+    self_type& btb_big_way_regions_enabled(bool btb_big_way_regions_enabled_)
+    {
+      m_btb_big_way_regions_enabled = btb_big_way_regions_enabled_;
+      return *this;
+    }
     self_type& btb_tag_size(unsigned char btb_tag_size_)
     {
       m_btb_tag_size = btb_tag_size_;
@@ -555,10 +569,10 @@ public:
         SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),
         BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency),
         SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
-        BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), perfect_btb(b.m_perfect_btb), BTB_CLIPPED_TAG(b.m_btb_clipped_tag),
-        BTB_TARGET_SIZES(b.m_btb_target_sizes), BTB_TAG_SIZE(b.m_btb_tag_size), BTB_TAG_REGIONS(b.m_btb_tag_regions),
-        BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),
-        module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
+        BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), perfect_btb(b.m_perfect_btb), btb_small_way_regions_enabled(b.m_btb_small_way_regions_enabled),
+        btb_big_way_regions_enabled(b.m_btb_big_way_regions_enabled), BTB_CLIPPED_TAG(b.m_btb_clipped_tag), BTB_TARGET_SIZES(b.m_btb_target_sizes),
+        BTB_TAG_SIZE(b.m_btb_tag_size), BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), L1I_bus(b.m_cpu, b.m_fetch_queues),
+        L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
   {
     sim_stats.btb_tag_size = b.m_btb_tag_size;
     roi_stats.btb_tag_size = b.m_btb_tag_size;

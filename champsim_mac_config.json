@@ -6,10 +6,10 @@
   "heartbeat_frequency": 1000000,
   "num_cores": 1,
   "CFLAGS": [
-    "-Wall -Wno-reorder -ferror-limit=5 -DNLOG -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost"
+    "-Wall -Wno-reorder -ferror-limit=5 -DNLOG -g -O0 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost"
   ],
   "CXXFLAGS": [
-    "-Wall -Wno-reorder -ferror-limit=5 -DNLOG -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost"
+    "-Wall -Wno-reorder -ferror-limit=5 -DNLOG -g -O0 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost"
   ],
   "LDLIBS": [
     "-lxed -lz -lboost_system-mt -fsanitize=bounds -fsanitize=address -lboost_filesystem-mt -v"
@@ -45,10 +45,12 @@
       "btb_ways": 9,
       "btb_non_indirect": 9,
       "btb_sets": 512,
-      "btb_clipped_tag": 0,
+      "btb_clipped_tag": 1,
       "btb_tag_size": 6,
       "btb_tag_regions": 16,
       "btb_tag_region_size": 6,
+      "btb_big_way_regions_enabled": 1,
+      "btb_small_way_regions_enabled": 1,
       "btb_target_sizes": [
         0,
         4,

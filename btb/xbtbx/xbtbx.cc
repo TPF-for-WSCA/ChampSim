@@ -18,6 +18,8 @@
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
+#define SMALL_BIG_WAY_SPLIT 10
+
 constexpr uint64_t pow2(uint8_t exp)
 {
   assert(exp <= 64);
@@ -66,6 +68,8 @@ uint16_t _BTB_REGION_BITS = 0;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
 constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
+bool small_way_regions_enabled = 0;
+bool big_way_regions_enabled = 0;
 
 uint64_t prev_branch_ip = 0;
 std::map<uint32_t, uint64_t> offset_reuse_freq;
@@ -73,6 +77,18 @@ std::map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 std::set<uint64_t> branch_ip;
 std::array<uint64_t, 64> dynamic_bit_counts;
 std::array<uint64_t, 64> static_bit_counts;
+
+bool utilise_regions(size_t way_size)
+{
+  if (small_way_regions_enabled && big_way_regions_enabled) {
+    return true;
+  }
+  if (small_way_regions_enabled) {
+    return way_size < SMALL_BIG_WAY_SPLIT;
+  } else {
+    return SMALL_BIG_WAY_SPLIT < way_size;
+  }
+}
 
 enum BTB_ReplacementStrategy { LRU, REF0, REF };
 
@@ -129,7 +145,7 @@ struct BTBEntry {
       }
       tag = tag >> _BTB_SET_BITS;
     }
-    if (ip_tag && _BTB_TAG_REGIONS && target_size < 10) {
+    if (ip_tag && _BTB_TAG_REGIONS && utilise_regions(target_size)) {
       // TODO: double check if the shift amount of the BTB TAG size is correct and we are not overriding the actual tag bits
       auto masked_bits = tag & (_REGION_MASK << _BTB_TAG_SIZE);
       tag ^= masked_bits;
@@ -212,6 +228,8 @@ void O3_CPU::initialize_btb()
   _INDEX_MASK = BTB_SETS - 1;
   _BTB_SETS = BTB_SETS;
   _BTB_WAYS = BTB_WAYS;
+  small_way_regions_enabled = btb_small_way_regions_enabled;
+  big_way_regions_enabled = btb_big_way_regions_enabled;
 
   _TAG_MASK = pow2(_BTB_TAG_SIZE) - 1;
   if (BTB_TARGET_SIZES.size() == BTB_WAYS) {
@@ -334,7 +352,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   // TODO: Only update region btb if partial was wrong?
   std::optional<uint8_t> region_idx = std::nullopt;
   std::optional<::BTBEntry> opt_entry;
-  if (_BTB_TAG_REGIONS && num_bits <= 10) {
+  if (_BTB_TAG_REGIONS && utilise_regions(num_bits)) {
     region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     if (!region_idx.has_value()) {
       opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, 0}, true);
