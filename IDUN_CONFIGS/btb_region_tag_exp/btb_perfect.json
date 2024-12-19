@@ -40,12 +40,22 @@
       "schedule_latency": 1,
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
-      "btb": "tagging_btb",
+      "btb": "xbtbx",
       "perfect_btb": 1,
       "btb_ways": 8,
       "btb_non_indirect": 8,
       "btb_sets": 512,
       "btb_clipped_tag": 0,
+      "btb_target_sizes": [
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64
+      ],
       "btb_tag_size": 64,
       "btb_regions": 0,
       "align_bits": 5
