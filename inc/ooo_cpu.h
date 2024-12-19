@@ -114,6 +114,7 @@ private:
   uint32_t* offset_btb_sets;
   bool prev_was_branch = false;
   bool perfect_btb;
+  bool BTB_PARTIAL_TAG_RESOLUTION = false;
   bool btb_small_way_regions_enabled;
   bool btb_big_way_regions_enabled;
   bool perfect_branch_predict;
@@ -319,6 +320,7 @@ public:
     unsigned long m_btb_ways{};
     unsigned long m_btb_sets{};
     unsigned char m_btb_clipped_tag{};
+    unsigned char m_btb_partial_tag_resolution{};
     std::vector<uint8_t> m_btb_target_sizes{};
     unsigned char m_btb_tag_size{};
     unsigned short m_btb_tag_regions{};
@@ -488,6 +490,11 @@ public:
       m_btb_clipped_tag = btb_clipped_tag_;
       return *this;
     }
+    self_type& btb_partial_tag_resolution(unsigned char btb_partial_tag_resolution_)
+    {
+      m_btb_partial_tag_resolution = btb_partial_tag_resolution_;
+      return *this;
+    }
     self_type& btb_target_sizes(std::vector<uint8_t>& btb_target_sizes_)
     {
       m_btb_target_sizes = btb_target_sizes_;
@@ -570,8 +577,9 @@ public:
         BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency),
         SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
         BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), perfect_btb(b.m_perfect_btb), btb_small_way_regions_enabled(b.m_btb_small_way_regions_enabled),
-        btb_big_way_regions_enabled(b.m_btb_big_way_regions_enabled), BTB_CLIPPED_TAG(b.m_btb_clipped_tag), BTB_TARGET_SIZES(b.m_btb_target_sizes),
-        BTB_TAG_SIZE(b.m_btb_tag_size), BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), L1I_bus(b.m_cpu, b.m_fetch_queues),
+        btb_big_way_regions_enabled(b.m_btb_big_way_regions_enabled), BTB_CLIPPED_TAG(b.m_btb_clipped_tag),
+        BTB_PARTIAL_TAG_RESOLUTION(b.m_btb_partial_tag_resolution), BTB_TARGET_SIZES(b.m_btb_target_sizes), BTB_TAG_SIZE(b.m_btb_tag_size),
+        BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), L1I_bus(b.m_cpu, b.m_fetch_queues),
         L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
   {
     sim_stats.btb_tag_size = b.m_btb_tag_size;

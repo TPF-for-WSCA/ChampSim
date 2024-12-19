@@ -290,6 +290,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield ".btb_ways({})".format(cpu.get("btb_ways", 8))
         yield ".btb_sets({})".format(cpu.get("btb_sets", 1024))
         yield ".btb_clipped_tag({})".format(cpu.get("btb_clipped_tag", 1))
+        yield ".btb_partial_tag_resolution({})".format(cpu.get("btb_partial_tag_resolution", 0))
         yield ".btb_target_sizes(btb_sizes_{})".format(cpu["name"])
         yield ".perfect_btb({})".format(cpu.get("perfect_btb", 0))
         yield ".btb_small_way_regions_enabled({})".format(cpu.get("btb_small_way_regions_enabled", 0))

@@ -47,7 +47,7 @@
       "btb_sets": 512,
       "btb_clipped_tag": 1,
       "btb_tag_size": 6,
-      "btb_tag_regions": 16,
+      "btb_tag_regions": 64,
       "btb_tag_region_size": 6,
       "btb_big_way_regions_enabled": 1,
       "btb_small_way_regions_enabled": 1,

@@ -248,19 +248,19 @@ void O3_CPU::initialize_btb()
 
 std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
-  std::optional<::BTBEntry> btb_entry;
+  std::optional<::BTBEntry> btb_entry = std::nullopt;
   if (_BTB_TAG_REGIONS) {
     auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
+    if (BTB_PARTIAL_TAG_RESOLUTION) {
+      btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0}, true);
+    }
     // TODO: Make partial resolution configurable
+    // TODO: FIX PARTIAL RESOLUTION
     if (region_idx_.has_value()) {
-      btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()}, true);
-    } else {
-      btb_entry = std::nullopt;
-      // use BTB for all other branches + direct calls
-      // btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
-      // if (false && not btb_entry.has_value()) {
-      //  btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0}, true);
-      //}
+      auto entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
+      if (entry.has_value()) {
+        btb_entry = entry;
+      }
     }
   } else {
     btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0});
@@ -354,7 +354,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   std::optional<::BTBEntry> opt_entry;
   if (_BTB_TAG_REGIONS && utilise_regions(num_bits)) {
     region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
-    if (!region_idx.has_value()) {
+    if (!region_idx.has_value() && BTB_PARTIAL_TAG_RESOLUTION) {
       opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, 0}, true);
       if (!opt_entry.has_value() || (opt_entry.has_value() && opt_entry.value().get_prediction() != branch_target)) {
         ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});

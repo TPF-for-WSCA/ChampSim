@@ -137,6 +137,7 @@ def normalize_config(config_file):
         "btb_ways",
         "btb_sets",
         "btb_clipped_tag",
+        "btb_partial_tag_resolution",
         "perfect_btb",
         "btb_small_way_regions_enabled",
         "btb_big_way_regions_enabled",
