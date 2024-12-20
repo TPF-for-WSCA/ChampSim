@@ -159,7 +159,7 @@ def extract_btb_aliasing(path):
                 break
         if all(lookups):
             break
-    return 1 if not lookups[1] else lookups[0] / lookups[1]
+    return 0 if not lookups[1] else lookups[0] / lookups[1]
 
 
 def extract_btb_bits_per_cl(path):
