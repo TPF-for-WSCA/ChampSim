@@ -360,6 +360,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
         region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
       }
+    } else if (!region_idx.has_value()) {
+      ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
+      region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     }
   }
 
@@ -376,7 +379,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   /********* STATS ACCOUNTING *********/
   std::optional<::BTBEntry> replaced_entry = std::nullopt;
   if (branch_target != 0) {
-    replaced_entry = ::BTB.at(this).fill(::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS))}, num_bits);
+    replaced_entry = ::BTB.at(this).fill(
+        ::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS))},
+        num_bits); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
 
     if (_BTB_TAG_REGIONS) {
       uint64_t new_region = (ip >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
