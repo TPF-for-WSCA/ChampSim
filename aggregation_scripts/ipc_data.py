@@ -29,6 +29,7 @@ class STATS(Enum):
     BTB_TAG_ENTROPY = 20
     BTB_BIT_ORDERING = 21
     BTB_BIT_ORDERING_SWITCHED = 22
+    ABSOLUTE_ALIASING = 23
 
 
 type = STATS.IPC
@@ -139,8 +140,22 @@ def extract_bit_information(path):
         assert 0
     return bit_data
 
+def extract_absolute_btb_aliasing(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    # order of values: total, aliasing, same block, different block
+    re_total = re.compile(r"Total Aliasing: (\d+)")
+    total = 0
+    for line in logs:
+        matches = re_total.search(line)
+        if matches:
+            total = int(matches.groups()[0])
+            break
+    return total
 
-def extract_btb_aliasing(path):
+def extract_positive_btb_aliasing(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
@@ -471,7 +486,11 @@ def single_run(path):
                     f"{path}/{workload}/{logfile}"
                 )
             elif type == STATS.ALIASING:
-                stat_by_workload[workload] = extract_btb_aliasing(
+                stat_by_workload[workload] = extract_positive_btb_aliasing(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.ABSOLUTE_ALIASING:
+                stat_by_workload[workload] = extract_absolute_btb_aliasing(
                     f"{path}/{workload}/{logfile}"
                 )
             elif type == STATS.BIT_INFORMATION:
@@ -580,6 +599,8 @@ def write_tsv(data, out_path=None):
         filename = "mpki"
     elif type == STATS.ALIASING:
         filename = "aliasing"
+    elif type == STATS.ABSOLUTE_ALIASING:
+        filename = "total_aliasing"
     elif type == STATS.FETCH_COUNT:
         filename = "fetch_count"
     elif type == STATS.BRANCH_MPKI:
@@ -610,8 +631,6 @@ def write_tsv(data, out_path=None):
         filename = "rob_at_miss"
     elif type == STATS.NUM_BTB_BITS_PER_CL:
         filename = "num_btb_bits_per_cacheline"
-    elif type == STATS.ALIASING:
-        filename = "aliasing_in_btb"
     elif type == STATS.BIT_INFORMATION:
         filename = "address_bit_information"
     elif type == STATS.BTB_TAG_ENTROPY:
@@ -702,6 +721,8 @@ elif sys.argv[3] == "BTB_BITS_CL":
     type = STATS.NUM_BTB_BITS_PER_CL
 elif sys.argv[3] == "BTB_ALIASING":
     type = STATS.ALIASING
+elif sys.argv[3] == "BTB_TOTAL_ALIASING":
+    type = STATS.ABSOLUTE_ALIASING
 elif sys.argv[3] == "BTB_BIT_INFORMATION":
     type = STATS.BIT_INFORMATION
 elif sys.argv[3] == "BTB_TAG_ENTROPY":
