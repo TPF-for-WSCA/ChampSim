@@ -106,8 +106,17 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   }
 
   std::vector<double> mpkis;
+  double total_mpki = 0.0;
+  for (auto it = std::begin(stats.branch_type_misses); it != std::end(stats.branch_type_misses); it++) {
+    double mpki = 1000.0 * std::ceil(*it) / std::ceil(stats.instrs());
+    mpkis.push_back(mpki);
+    total_mpki += mpki;
+  }
+
   std::transform(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), std::back_inserter(mpkis),
                  [instrs = stats.instrs()](auto x) { return 1000.0 * std::ceil(x) / std::ceil(instrs); });
+
+  fmt::print(stream, "BRANCH_MPKI: {:.3}\n\n", total_mpki);
 
   fmt::print(stream, "Branch type MPKI\n");
   for (auto [str, idx] : types)
