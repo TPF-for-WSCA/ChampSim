@@ -30,6 +30,8 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
+#define KERNEL_LOWER_BOUND 0xffff800000000000ul
+
 std::chrono::seconds elapsed_time();
 
 long O3_CPU::operate()
@@ -148,6 +150,16 @@ void do_stack_pointer_folding(ooo_model_instr& arch_instr)
 bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 {
   bool stop_fetch = false;
+  // TODO: Make kernel address constant at top file and find how to disitinguish between 48b and 56b configurations
+  if (arch_instr.ip > KERNEL_LOWER_BOUND) { // Check if kernel space
+    if (arch_instr.is_branch) {
+      // TODO: Discuss with rakesh how to handle kernel branches
+      arch_instr.branch_mispredicted = 0;
+      arch_instr.branch_prediction = arch_instr.branch_target;
+      return true;
+    }
+    return false;
+  }
 
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types[arch_instr.branch_type]++;
