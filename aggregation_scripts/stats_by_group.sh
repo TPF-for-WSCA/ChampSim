@@ -19,9 +19,9 @@ if [ -z ${champsim_root+x} ]; then chroot="/cluster/projects/nn4650k/workspace";
 
 echo "chroot: ${chroot}"
 
-mkdir raw_data
-mkdir graphs
-mkdir raw_data/btb_tag_bits
+mkdir -p raw_data
+mkdir -p graphs
+mkdir -p raw_data/btb_tag_bits
 
 if [ $# -lt 1 ]; then
     for b in ${benchmarks[@]}
