@@ -140,6 +140,7 @@ def extract_bit_information(path):
         assert 0
     return bit_data
 
+
 def extract_absolute_btb_aliasing(path):
     logs = []
     with open(path) as f:
@@ -155,6 +156,7 @@ def extract_absolute_btb_aliasing(path):
             break
     return total
 
+
 def extract_positive_btb_aliasing(path):
     logs = []
     with open(path) as f:
@@ -162,7 +164,7 @@ def extract_positive_btb_aliasing(path):
     logs.reverse()
     # order of values: total, aliasing, same block, different block
     re_list = [
-        re.compile(r"Positive Aliasing: (\d+)"),
+        re.compile(r"Negative Aliasing: (\d+)"),
         re.compile(r"Total Aliasing: (\d+)"),
     ]
     lookups = [0, 0]
