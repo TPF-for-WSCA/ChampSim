@@ -78,15 +78,18 @@ std::set<uint64_t> branch_ip;
 std::array<uint64_t, 64> dynamic_bit_counts;
 std::array<uint64_t, 64> static_bit_counts;
 
+// TODO: Only makes sense with BTB-X
 bool utilise_regions(size_t way_size)
 {
   if (small_way_regions_enabled && big_way_regions_enabled) {
     return true;
   }
   if (small_way_regions_enabled) {
-    return way_size < SMALL_BIG_WAY_SPLIT;
-  } else {
+    return way_size <= SMALL_BIG_WAY_SPLIT;
+  } else if (big_way_regions_enabled) {
     return SMALL_BIG_WAY_SPLIT < way_size;
+  } else {
+    return false;
   }
 }
 
@@ -160,7 +163,24 @@ struct BTBEntry {
     if (!_BTB_CLIPPED_TAG) {
       return tag;
     }
-    tag &= _TAG_MASK;
+    if (btb_addressing_hash.empty())
+      tag &= _TAG_MASK;
+    else {
+      tag = 0;
+      auto ip = ip_tag >> 2;
+      for (uint8_t i = _BTB_SET_BITS; i < _BTB_SET_BITS + _BTB_TAG_SIZE; i++) {
+        auto mask = btb_addressing_masks[i];
+        auto shift = btb_addressing_shifts[i];
+        auto bit = ip & mask;
+        if (shift > 0) {
+          bit >>= shift;
+        } else if (shift < 0) {
+          bit <<= (-1 * shift);
+        }
+        tag |= bit;
+      }
+      tag = tag >> _BTB_SET_BITS;
+    }
     return tag;
   }
 
@@ -206,7 +226,7 @@ void O3_CPU::initialize_btb()
   ::btb_addressing_hash = btb_index_tag_hash;
   btb_addressing_masks.resize(btb_addressing_hash.size());
   btb_addressing_shifts.resize(btb_addressing_hash.size());
-  for (int i = 0; i < btb_index_tag_hash.size(); i++) {
+  for (size_t i = 0; i < btb_index_tag_hash.size(); i++) {
     btb_addressing_masks[i] = ((uint64_t)1) << btb_index_tag_hash[i];
     btb_addressing_shifts[i] = (btb_index_tag_hash[i] > i) ? (btb_index_tag_hash[i] - i) : -1 * (i - (int)btb_index_tag_hash[i]);
   }
@@ -251,11 +271,10 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   std::optional<::BTBEntry> btb_entry = std::nullopt;
   if (_BTB_TAG_REGIONS) {
     auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
-    if (BTB_PARTIAL_TAG_RESOLUTION) {
-      btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0}, true);
+    auto partial_btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0}, true);
+    if (BTB_PARTIAL_TAG_RESOLUTION || !utilise_regions(partial_btb_entry.value_or(::BTBEntry{ip, 0, ::branch_info::CONDITIONAL, 0, 0}).target_size)) {
+      btb_entry = partial_btb_entry;
     }
-    // TODO: Make partial resolution configurable
-    // TODO: FIX PARTIAL RESOLUTION
     if (region_idx_.has_value()) {
       auto entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
       if (entry.has_value()) {
@@ -352,7 +371,17 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   // TODO: Only update region btb if partial was wrong?
   std::optional<uint8_t> region_idx = std::nullopt;
   std::optional<::BTBEntry> opt_entry;
-  if (_BTB_TAG_REGIONS && utilise_regions(num_bits)) {
+  uint8_t entry_size = num_bits;
+  std::optional<::BTBEntry> small_hit = ::BTB.at(this).check_hit({ip, 0, type, 0, 0});
+  std::optional<::BTBEntry> big_hit = ::BTB.at(this).check_hit({ip, 0, type, 0, 64});
+  ::BTBEntry lru_elem = ::BTB.at(this).get_lru_elem(::BTBEntry{ip, 0, type, 0, 0}, num_bits);
+  // TODO: pass way size and not num bits to utilise regions function here
+  // TODO: check partial and check if utilise region is true -> update that value
+  bool small_region = small_hit.has_value() && num_bits <= small_hit.value().target_size && utilise_regions(small_hit.value().target_size);
+  bool big_region = big_hit.has_value() && num_bits <= big_hit.value().target_size && utilise_regions(big_hit.value().target_size);
+  bool lru_region = utilise_regions(lru_elem.target_size);
+  bool require_region = small_region || big_region || lru_region;
+  if (require_region) {
     region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     if (!region_idx.has_value() && BTB_PARTIAL_TAG_RESOLUTION) {
       opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, 0}, true);
@@ -363,6 +392,22 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     } else if (!region_idx.has_value()) {
       ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
       region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
+    }
+    if (small_region)
+      entry_size = std::max(entry_size, small_hit.value().target_size);
+    if (big_region)
+      entry_size = std::max(entry_size, big_hit.value().target_size);
+    if (!small_region && !big_region)
+      entry_size = std::max(entry_size, lru_elem.target_size);
+  } else {
+    if (small_hit.has_value()) {
+      entry_size = std::max(entry_size, small_hit.value().target_size);
+    }
+    if (big_hit.has_value()) {
+      entry_size = std::max(entry_size, big_hit.value().target_size);
+    }
+    if (!small_hit.has_value() && !big_hit.has_value()) {
+      entry_size = lru_elem.target_size;
     }
   }
 
@@ -379,11 +424,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   /********* STATS ACCOUNTING *********/
   std::optional<::BTBEntry> replaced_entry = std::nullopt;
   if (branch_target != 0) {
+    // TODO: Check if (since we already know about region or not region) should make two distinct calls out of the below
     replaced_entry = ::BTB.at(this).fill(
-        ::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS))},
+        ::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS)), entry_size},
         num_bits); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
 
-    if (_BTB_TAG_REGIONS) {
+    if (require_region) {
       uint64_t new_region = (ip >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
       region_tag_entry_count[new_region] += replaced_entry.has_value();
       if (replaced_entry.has_value() and replaced_entry.value().ip_tag != 0 and replaced_entry.value().target != 0) {

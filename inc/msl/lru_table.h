@@ -169,6 +169,20 @@ public:
     return hit - set_begin;
   }
 
+  value_type get_lru_elem(const value_type& elem, uint8_t size)
+  {
+    auto [set_begin, set_end] = get_set_span(elem);
+    while (set_begin->data.target_size < size && set_begin != set_end) {
+      set_begin++;
+    }
+    auto [miss, _] = std::minmax_element(set_begin, set_end, [](const auto& x, const auto& y) {
+      auto x_valid = x.last_used > 0;
+      auto cmp_lru = x.last_used < y.last_used;
+      return !x_valid || cmp_lru;
+    });
+    return miss->data;
+  }
+
   std::optional<value_type> fill(const value_type& elem, uint8_t size)
   {
     auto tag = tag_projection(elem);
