@@ -374,10 +374,11 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   std::optional<uint8_t> region_idx = std::nullopt;
   std::optional<::BTBEntry> opt_entry;
   uint8_t entry_size = num_bits;
-  // TODO: Double check the small/big hits
-  std::optional<::BTBEntry> small_hit = ::BTB.at(this).check_hit({ip, 0, type, 0, 0}, true);
-  std::optional<::BTBEntry> big_hit = ::BTB.at(this).check_hit({ip, 0, type, 0, 64}, true);
-  ::BTBEntry lru_elem = ::BTB.at(this).get_lru_elem(::BTBEntry{ip, 0, type, 0, 0}, num_bits);
+  // TODO: ADD REGION INFORMATION IF AVAILABLE
+  std::optional<uint8_t> tmp_region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
+  std::optional<::BTBEntry> small_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value_or(-1), 0});
+  std::optional<::BTBEntry> big_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value_or(-1), 64});
+  ::BTBEntry lru_elem = ::BTB.at(this).get_lru_elem(::BTBEntry{ip, 0}, num_bits);
   // TODO: pass way size and not num bits to utilise regions function here
   // TODO: check partial and check if utilise region is true -> update that value
   bool small_region = small_hit.has_value() && num_bits <= small_hit.value().target_size && utilise_regions(small_hit.value().target_size);
