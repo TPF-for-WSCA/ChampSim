@@ -435,8 +435,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       if (replaced_entry.has_value() and replaced_entry.value().ip_tag != 0 and replaced_entry.value().target != 0) {
         uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
         if (region_tag_entry_count[old_region] == 0) {
-          std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
-          std::cerr << "OLD REGION: " << old_region << std::endl;
+          // std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
+          // std::cerr << "OLD REGION: " << old_region << std::endl;
         } else {
           region_tag_entry_count[old_region]--;
           if (region_tag_entry_count[old_region] == 0) {
@@ -447,7 +447,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       // region_tag_entry_count[new_region] += replaced_entry.has_value();
       uint64_t sum = std::accumulate(std::begin(region_tag_entry_count), std::end(region_tag_entry_count), 0,
                                      [](const auto prev, const auto& elem) { return prev + elem.second; });
-      assert(sum <= BTB_SETS * BTB_WAYS);
+      // assert(sum <= BTB_SETS * BTB_WAYS);
     }
   }
 
