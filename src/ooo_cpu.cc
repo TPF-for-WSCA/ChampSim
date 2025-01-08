@@ -31,6 +31,7 @@
 #include <fmt/ranges.h>
 
 #define KERNEL_LOWER_BOUND 0xffff800000000000ul
+#define KERNEL_IGNORE_ENABLE false
 
 std::chrono::seconds elapsed_time();
 
@@ -151,7 +152,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 {
   bool stop_fetch = false;
   // TODO: Make kernel address constant at top file and find how to disitinguish between 48b and 56b configurations
-  if (arch_instr.ip > KERNEL_LOWER_BOUND) { // Check if kernel space
+  if (KERNEL_IGNORE_ENABLE && arch_instr.ip > KERNEL_LOWER_BOUND) { // Check if kernel space
     if (arch_instr.is_branch) {
       // TODO: Discuss with rakesh how to handle kernel branches
       arch_instr.branch_mispredicted = 0;
