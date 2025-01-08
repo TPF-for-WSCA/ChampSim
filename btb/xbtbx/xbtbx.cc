@@ -18,7 +18,7 @@
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
-#define SMALL_BIG_WAY_SPLIT 10
+#define SMALL_BIG_WAY_SPLIT 14
 
 constexpr uint64_t pow2(uint8_t exp)
 {
@@ -56,6 +56,7 @@ std::vector<int> btb_addressing_shifts; // negative shift amounts are left shift
                                         // are shifts to the right (max the bit idx)
 std::size_t _INDEX_MASK = 0;
 std::size_t _TAG_MASK = 0;
+std::size_t _FULL_TAG_MASK = 0;
 std::size_t _REGION_MASK = 0;
 std::size_t _BTB_SETS = 0;
 std::size_t _BTB_WAYS = 0;
@@ -130,9 +131,9 @@ struct BTBEntry {
     if (!_BTB_CLIPPED_TAG) {
       return tag;
     }
-    if (btb_addressing_hash.empty())
-      tag &= _TAG_MASK;
-    else {
+    if (btb_addressing_hash.empty()) {
+      tag &= _FULL_TAG_MASK;
+    } else {
       tag = 0;
       auto ip = ip_tag >> 2;
       for (uint8_t i = _BTB_SET_BITS; i < _BTB_SET_BITS + _BTB_TAG_SIZE; i++) {
@@ -252,6 +253,7 @@ void O3_CPU::initialize_btb()
   big_way_regions_enabled = btb_big_way_regions_enabled;
 
   _TAG_MASK = pow2(_BTB_TAG_SIZE) - 1;
+  _FULL_TAG_MASK = pow2(_BTB_TAG_SIZE + _BTB_TAG_REGION_SIZE) - 1;
   if (BTB_TARGET_SIZES.size() == BTB_WAYS) {
     for (uint16_t i = 0; i < BTB_SETS; i++) {
       auto [set_begin, set_end] = ::BTB.at(this).get_set_span(i);
@@ -372,8 +374,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   std::optional<uint8_t> region_idx = std::nullopt;
   std::optional<::BTBEntry> opt_entry;
   uint8_t entry_size = num_bits;
-  std::optional<::BTBEntry> small_hit = ::BTB.at(this).check_hit({ip, 0, type, 0, 0});
-  std::optional<::BTBEntry> big_hit = ::BTB.at(this).check_hit({ip, 0, type, 0, 64});
+  // TODO: Double check the small/big hits
+  std::optional<::BTBEntry> small_hit = ::BTB.at(this).check_hit({ip, 0, type, 0, 0}, true);
+  std::optional<::BTBEntry> big_hit = ::BTB.at(this).check_hit({ip, 0, type, 0, 64}, true);
   ::BTBEntry lru_elem = ::BTB.at(this).get_lru_elem(::BTBEntry{ip, 0, type, 0, 0}, num_bits);
   // TODO: pass way size and not num bits to utilise regions function here
   // TODO: check partial and check if utilise region is true -> update that value
@@ -429,26 +432,25 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         ::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS)), entry_size},
         num_bits); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
 
-    if (require_region) {
-      uint64_t new_region = (ip >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-      region_tag_entry_count[new_region] += replaced_entry.has_value();
-      if (replaced_entry.has_value() and replaced_entry.value().ip_tag != 0 and replaced_entry.value().target != 0) {
-        uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+    uint64_t new_region = (ip >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+    region_tag_entry_count[new_region] += require_region;
+    if (replaced_entry.has_value() and utilise_regions(replaced_entry.value().target_size) and replaced_entry.value().ip_tag != 0
+        and replaced_entry.value().target != 0) {
+      uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+      if (region_tag_entry_count[old_region] == 0) {
+        // std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
+        // std::cerr << "OLD REGION: " << old_region << std::endl;
+      } else {
+        region_tag_entry_count[old_region] -= 1;
         if (region_tag_entry_count[old_region] == 0) {
-          // std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
-          // std::cerr << "OLD REGION: " << old_region << std::endl;
-        } else {
-          region_tag_entry_count[old_region]--;
-          if (region_tag_entry_count[old_region] == 0) {
-            region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
-          }
+          region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
         }
       }
-      // region_tag_entry_count[new_region] += replaced_entry.has_value();
-      uint64_t sum = std::accumulate(std::begin(region_tag_entry_count), std::end(region_tag_entry_count), 0,
-                                     [](const auto prev, const auto& elem) { return prev + elem.second; });
-      // assert(sum <= BTB_SETS * BTB_WAYS);
     }
+    // region_tag_entry_count[new_region] += replaced_entry.has_value();
+    uint64_t sum = std::accumulate(std::begin(region_tag_entry_count), std::end(region_tag_entry_count), 0,
+                                   [](const auto prev, const auto& elem) { return prev + elem.second; });
+    // assert(sum <= BTB_SETS * BTB_WAYS);
   }
 
   sim_stats.btb_updates++;
