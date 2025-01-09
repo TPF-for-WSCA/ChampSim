@@ -434,24 +434,25 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         num_bits); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
 
     uint64_t new_region = (ip >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-    region_tag_entry_count[new_region] += require_region;
-    if (replaced_entry.has_value() and utilise_regions(replaced_entry.value().target_size) and replaced_entry.value().ip_tag != 0
-        and replaced_entry.value().target != 0) {
-      uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-      if (region_tag_entry_count[old_region] == 0) {
-        // std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
-        // std::cerr << "OLD REGION: " << old_region << std::endl;
-      } else {
-        region_tag_entry_count[old_region] -= 1;
+    if (utilise_regions(replaced_entry.value_or(::BTBEntry{0}).target_size)) {
+      region_tag_entry_count[new_region] += require_region;
+      if (replaced_entry.has_value() and replaced_entry.value().ip_tag != 0 and replaced_entry.value().target != 0) {
+        uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
         if (region_tag_entry_count[old_region] == 0) {
-          region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
+          std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
+          std::cerr << "OLD REGION: " << old_region << std::endl;
+        } else {
+          region_tag_entry_count[old_region] -= 1;
+          if (region_tag_entry_count[old_region] == 0) {
+            region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
+          }
         }
       }
     }
     // region_tag_entry_count[new_region] += replaced_entry.has_value();
     uint64_t sum = std::accumulate(std::begin(region_tag_entry_count), std::end(region_tag_entry_count), 0,
                                    [](const auto prev, const auto& elem) { return prev + elem.second; });
-    // assert(sum <= BTB_SETS * BTB_WAYS);
+    assert(sum <= BTB_SETS * BTB_WAYS);
   }
 
   sim_stats.btb_updates++;
@@ -476,7 +477,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     std::sort(sort_vec.begin(), sort_vec.end(), [](auto& a, auto& b) { return a.second > b.second; });
     uint64_t min2ref = 0, sum_count = 0;
     for (auto [tag, count] : sort_vec) {
-      // assert(count < BTB_SETS * BTB_WAYS);
+      assert(count < BTB_SETS * BTB_WAYS);
       if (tag == 0) {
         continue;
       }

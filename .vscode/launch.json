@@ -71,15 +71,16 @@
                 "5000000",
                 "--json",
                 "~/Downloads/stats.json",
-                "--btb-tag-hash",
-                "/Users/robrunne/Downloads/bit_ordering/server_022.champsimtrace_bit_ordering.txt"
+                // "--btb-tag-hash",
+                // "/Users/robrunne/Downloads/bit_ordering/server_022.champsimtrace_bit_ordering.txt"
                 // "-ptrace",
                 // "-cloudsuite",
                 // "-intel",
                 //"-stallonmiss",
                 // "/Users/robrunne/Workspace/traces/tanvir/clang/clang.gz",
                 // "/Users/robrunne/Workspace/traces/ipc1/client_001.champsimtrace.xz"
-                "/Users/robrunne/Workspace/traces/ipc1/server_022.champsimtrace.xz"
+                "/Users/robrunne/Workspace/traces/LLBP/renaissance-finagle-chirper.champsim.trace.gz"
+                //"/Users/robrunne/Workspace/traces/ipc1/server_022.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/client_007.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/spec_gcc_001.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/server_014.champsimtrace.xz"
