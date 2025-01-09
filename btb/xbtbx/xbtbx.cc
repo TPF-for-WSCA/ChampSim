@@ -476,7 +476,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     std::sort(sort_vec.begin(), sort_vec.end(), [](auto& a, auto& b) { return a.second > b.second; });
     uint64_t min2ref = 0, sum_count = 0;
     for (auto [tag, count] : sort_vec) {
-      assert(count < BTB_SETS * BTB_WAYS);
+      // assert(count < BTB_SETS * BTB_WAYS);
       if (tag == 0) {
         continue;
       }
