@@ -67,6 +67,7 @@ uint16_t _BTB_TAG_REGIONS = 0;
 uint8_t _BTB_TAG_REGION_SIZE = 0;
 uint16_t _BTB_REGION_BITS = 0;
 uint64_t last_stats_cycle = 0;
+uint64_t isa_shiftamount = 2;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
 constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
@@ -109,9 +110,9 @@ struct BTBEntry {
   auto index() const
   {
     if (btb_addressing_hash.empty())
-      return (ip_tag >> 2) & _INDEX_MASK;
+      return (ip_tag >> isa_shiftamount) & _INDEX_MASK;
     assert(btb_addressing_hash.size() <= _BTB_SETS);
-    auto ip = ip_tag >> 2;
+    auto ip = ip_tag >> isa_shiftamount;
     uint64_t idx = 0;
     for (uint8_t i = 0; i < _BTB_SET_BITS; i++) {
       auto mask = btb_addressing_masks[i];
@@ -128,7 +129,7 @@ struct BTBEntry {
   }
   auto tag() const
   {
-    auto tag = ip_tag >> 2 >> _BTB_SET_BITS;
+    auto tag = ip_tag >> isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
     }
@@ -136,7 +137,7 @@ struct BTBEntry {
       tag &= _FULL_TAG_MASK;
     } else {
       tag = 0;
-      auto ip = ip_tag >> 2;
+      auto ip = ip_tag >> isa_shiftamount;
       for (uint8_t i = _BTB_SET_BITS; i < _BTB_SET_BITS + _BTB_TAG_SIZE; i++) {
         auto mask = btb_addressing_masks[i];
         auto shift = btb_addressing_shifts[i];
@@ -161,7 +162,7 @@ struct BTBEntry {
 
   auto partial_tag() const
   {
-    uint64_t tag = ip_tag >> 2 >> _BTB_SET_BITS;
+    uint64_t tag = ip_tag >> isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
     }
@@ -169,7 +170,7 @@ struct BTBEntry {
       tag &= _TAG_MASK;
     else {
       tag = 0;
-      auto ip = ip_tag >> 2;
+      auto ip = ip_tag >> isa_shiftamount;
       for (uint8_t i = _BTB_SET_BITS; i < _BTB_SET_BITS + _BTB_TAG_SIZE; i++) {
         auto mask = btb_addressing_masks[i];
         auto shift = btb_addressing_shifts[i];
@@ -201,7 +202,7 @@ struct region_btb_entry_t {
   auto tag() const
   {
     // TODO: calculate region tag
-    auto tag = ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+    auto tag = ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
     tag &= _REGION_MASK;
     return tag;
   }
@@ -245,6 +246,9 @@ void O3_CPU::initialize_btb()
   } else {
     _BTB_TAG_SIZE = 62 - _BTB_SET_BITS;
     _REGION_MASK = pow2(62 - _BTB_SET_BITS) - 1;
+  }
+  if (intel) {
+    isa_shiftamount = 0;
   }
   // TODO: Initialize index and tag based on bit information
   _INDEX_MASK = BTB_SETS - 1;
@@ -305,7 +309,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   }
   /*
     if (btb_entry->type == ::branch_info::INDIRECT) {
-      auto hash = (ip >> 2) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
+      auto hash = (ip >> isa_shiftamount) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
       return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
     }*/
 
@@ -313,7 +317,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 }
 
 // TODO: ONLY UPDATE WHEN FITTING IN THE WAY
-void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type, uint64_t current_cycle)
+void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   // DONE: calculate size
   uint64_t offset_size = ip ^ branch_target;
@@ -341,7 +345,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
   // updates for indirect branches
   // if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
-  //   auto hash = (ip >> 2) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
+  //   auto hash = (ip >> isa_shiftamount) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
   //   ::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])] = branch_target;
   // }
 
@@ -436,11 +440,11 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
 
     // TODO: TAKE REGION BTB REPLACEMENTS INTO ACCOUNT
-    uint64_t new_region = (ip >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+    uint64_t new_region = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
     if (utilise_regions(replaced_entry.value_or(::BTBEntry{0, 0}).target_size)) {
       region_tag_entry_count[new_region] += require_region;
       if (replaced_entry.has_value() && replaced_entry.value().ip_tag != 0 && replaced_entry.value().target != 0) {
-        uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+        uint64_t old_region = (replaced_entry.value().ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
         if (region_tag_entry_count[old_region] == 0) {
           std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
           std::cerr << "OLD REGION: " << old_region << std::endl;
@@ -461,7 +465,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
       if (it->data.ip_tag && utilise_regions(it->data.target_size) && REGION_BTB.at(this).check_hit({it->data.ip_tag})) {
         total_blocks++;
-        control_region_tag_mapping[(it->data.ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK]++;
+        control_region_tag_mapping[(it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK]++;
       }
     }
     assert(sum == total_blocks);

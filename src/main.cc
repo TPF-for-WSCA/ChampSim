@@ -53,8 +53,14 @@ int main(int argc, char** argv)
       cpu.show_heartbeat = false;
   };
 
+  auto set_intel_callback = [&](auto) {
+    for (O3_CPU& cpu : gen_environment.cpu_view())
+      cpu.intel = true;
+  };
+
   app.add_flag("-c,--cloudsuite", knob_cloudsuite, "Read all traces using the cloudsuite format");
   app.add_flag("--hide-heartbeat", set_heartbeat_callback, "Hide the heartbeat output");
+  app.add_flag("--intel", set_intel_callback, "Enable x86 isa support");
   auto warmup_instr_option = app.add_option("-w,--warmup-instructions", warmup_instructions, "The number of instructions in the warmup phase");
   auto deprec_warmup_instr_option =
       app.add_option("--warmup_instructions", warmup_instructions, "[deprecated] use --warmup-instructions instead")->excludes(warmup_instr_option);

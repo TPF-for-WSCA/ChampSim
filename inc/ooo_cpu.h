@@ -166,6 +166,7 @@ public:
   uint64_t num_retired = 0;
 
   bool show_heartbeat = true;
+  bool intel = false;
 
   using stats_type = cpu_stats;
 
@@ -257,7 +258,7 @@ public:
     virtual uint8_t impl_predict_branch(uint64_t ip) = 0;
 
     virtual void impl_initialize_btb() = 0;
-    virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type, uint64_t current_cycle) = 0;
+    virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) = 0;
     virtual std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
   };
 
@@ -271,7 +272,7 @@ public:
     uint8_t impl_predict_branch(uint64_t ip);
 
     void impl_initialize_btb();
-    void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type, uint64_t current_cycle);
+    void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type);
     std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
   };
 
@@ -285,9 +286,9 @@ public:
   uint8_t impl_predict_branch(uint64_t ip) { return module_pimpl->impl_predict_branch(ip); }
 
   void impl_initialize_btb() { module_pimpl->impl_initialize_btb(); }
-  void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type, uint64_t current_cycle)
+  void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type)
   {
-    module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type, current_cycle);
+    module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
   }
   std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
 

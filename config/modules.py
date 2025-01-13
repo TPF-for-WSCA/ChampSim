@@ -353,7 +353,6 @@ def get_ooo_cpu_module_lines(branch_data, btb_data):
                 ("uint64_t", "predicted_target"),
                 ("uint8_t", "taken"),
                 ("uint8_t", "branch_type"),
-                ("uint64_t", "current_cycle")
             ),
         ),
         (
