@@ -15,7 +15,7 @@
                 "15000",
                 "--simulation_instructions",
                 "15000000",
-                // "--intel",
+                "--intel",
                 "--json",
                 "~/Downloads/stats.json",
                 // "--btb-tag-hash",

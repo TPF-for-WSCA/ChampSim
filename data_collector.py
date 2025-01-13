@@ -45,7 +45,7 @@ def run_experiment(
         f"{output_dir}/stats.json",
     ]
     if args.intel:
-        cmd.append("-intel")
+        cmd.append("--intel")
     if args.som:
         cmd.append("--stallonmiss")
     if args.trace_format == "c":
