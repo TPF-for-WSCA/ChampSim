@@ -81,7 +81,7 @@ int main(int argc, char** argv)
 
     // TODO: Rewrite tag and indexing function to use infromation
     int bit_idx;
-    for (int i = 0; f >> bit_idx; i++) {
+    while (f >> bit_idx) {
       for (O3_CPU& cpu : gen_environment.cpu_view()) {
         cpu.btb_index_tag_hash.push_back(bit_idx);
       }

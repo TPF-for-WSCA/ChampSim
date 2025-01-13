@@ -63,6 +63,8 @@ public:
     auto set_end = std::next(set_begin, static_cast<diff_type>(NUM_WAY));
     return std::pair{set_begin, set_end};
   }
+  auto begin() { return std::begin(block); }
+  auto end() { return std::end(block); }
 
 private:
   struct block_t {

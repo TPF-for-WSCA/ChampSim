@@ -71,6 +71,7 @@ struct cpu_stats {
   uint64_t total_aliasing = 0, positive_aliasing = 0, negative_aliasing = 0;
   uint64_t max_regions = 0;
   uint64_t min_regions = 0;
+  std::vector<std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>> region_history;
   uint64_t btb_updates = 0;
   uint64_t btb_static_updates = 0;
   uint16_t btb_tag_size = 0;
@@ -81,6 +82,11 @@ struct cpu_stats {
 
   uint64_t instrs() const { return end_instrs - begin_instrs; }
   uint64_t cycles() const { return end_cycles - begin_cycles; }
+
+  cpu_stats()
+  {
+    region_history.reserve(3000); // This is the reservation for the small scale experiments
+  }
 };
 
 struct LSQ_ENTRY {
@@ -251,7 +257,7 @@ public:
     virtual uint8_t impl_predict_branch(uint64_t ip) = 0;
 
     virtual void impl_initialize_btb() = 0;
-    virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) = 0;
+    virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type, uint64_t current_cycle) = 0;
     virtual std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
   };
 
@@ -265,7 +271,7 @@ public:
     uint8_t impl_predict_branch(uint64_t ip);
 
     void impl_initialize_btb();
-    void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type);
+    void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type, uint64_t current_cycle);
     std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
   };
 
@@ -279,9 +285,9 @@ public:
   uint8_t impl_predict_branch(uint64_t ip) { return module_pimpl->impl_predict_branch(ip); }
 
   void impl_initialize_btb() { module_pimpl->impl_initialize_btb(); }
-  void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type)
+  void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type, uint64_t current_cycle)
   {
-    module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
+    module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type, current_cycle);
   }
   std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
 

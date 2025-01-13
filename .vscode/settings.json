@@ -91,5 +91,6 @@
         "stack": "cpp",
         "*.inc": "cpp",
         "*.def": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "/Users/robrunne/Workspace/NTNU/ChampSim/vcpkg/ports/7zip"
 }

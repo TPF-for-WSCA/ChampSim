@@ -66,6 +66,7 @@ uint8_t _BTB_SET_BITS;
 uint16_t _BTB_TAG_REGIONS = 0;
 uint8_t _BTB_TAG_REGION_SIZE = 0;
 uint16_t _BTB_REGION_BITS = 0;
+uint64_t last_stats_cycle = 0;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
 constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
@@ -312,7 +313,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 }
 
 // TODO: ONLY UPDATE WHEN FITTING IN THE WAY
-void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type, uint64_t current_cycle)
 {
   // DONE: calculate size
   uint64_t offset_size = ip ^ branch_target;
@@ -381,10 +382,11 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   ::BTBEntry lru_elem = ::BTB.at(this).get_lru_elem(::BTBEntry{ip, 0}, num_bits);
   // TODO: pass way size and not num bits to utilise regions function here
   // TODO: check partial and check if utilise region is true -> update that value
+  // TODO: get rid of hits that have the wrong size - those need to be updated and inserted into a larger way
   bool small_region = small_hit.has_value() && num_bits <= small_hit.value().target_size && utilise_regions(small_hit.value().target_size);
   bool big_region = big_hit.has_value() && num_bits <= big_hit.value().target_size && utilise_regions(big_hit.value().target_size);
   bool lru_region = utilise_regions(lru_elem.target_size);
-  bool require_region = small_region || big_region || lru_region;
+  bool require_region = small_region || big_region || (lru_region && !small_hit.has_value() && !big_hit.has_value()); // add if we have a hit
   if (require_region) {
     region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     if (!region_idx.has_value() && BTB_PARTIAL_TAG_RESOLUTION) {
@@ -431,12 +433,13 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // TODO: Check if (since we already know about region or not region) should make two distinct calls out of the below
     replaced_entry = ::BTB.at(this).fill(
         ::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS)), entry_size},
-        num_bits); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
+        entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
 
+    // TODO: TAKE REGION BTB REPLACEMENTS INTO ACCOUNT
     uint64_t new_region = (ip >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-    if (utilise_regions(replaced_entry.value_or(::BTBEntry{0}).target_size)) {
+    if (utilise_regions(replaced_entry.value_or(::BTBEntry{0, 0}).target_size)) {
       region_tag_entry_count[new_region] += require_region;
-      if (replaced_entry.has_value() and replaced_entry.value().ip_tag != 0 and replaced_entry.value().target != 0) {
+      if (replaced_entry.has_value() && replaced_entry.value().ip_tag != 0 && replaced_entry.value().target != 0) {
         uint64_t old_region = (replaced_entry.value().ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
         if (region_tag_entry_count[old_region] == 0) {
           std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
@@ -450,9 +453,18 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       }
     }
     // region_tag_entry_count[new_region] += replaced_entry.has_value();
+
     uint64_t sum = std::accumulate(std::begin(region_tag_entry_count), std::end(region_tag_entry_count), 0,
                                    [](const auto prev, const auto& elem) { return prev + elem.second; });
-    assert(sum <= BTB_SETS * BTB_WAYS);
+    uint64_t total_blocks = 0;
+    std::map<uint64_t, uint64_t> control_region_tag_mapping;
+    for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
+      if (it->data.ip_tag && utilise_regions(it->data.target_size) && REGION_BTB.at(this).check_hit({it->data.ip_tag})) {
+        total_blocks++;
+        control_region_tag_mapping[(it->data.ip_tag >> 2 >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK]++;
+      }
+    }
+    assert(sum == total_blocks);
   }
 
   sim_stats.btb_updates++;
@@ -469,26 +481,52 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       sim_stats.btb_tag_entropy[idx] += ip_bits[idx];
     }
   }
-  if (!warmup) {
+  if (!warmup && 100000 < current_cycle - last_stats_cycle) {
     if (sim_stats.max_regions < region_tag_entry_count.size()) {
       sim_stats.max_regions = region_tag_entry_count.size();
     }
     std::vector<std::pair<uint64_t, uint64_t>> sort_vec(region_tag_entry_count.begin(), region_tag_entry_count.end());
     std::sort(sort_vec.begin(), sort_vec.end(), [](auto& a, auto& b) { return a.second > b.second; });
     uint64_t min2ref = 0, sum_count = 0;
+    std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t> stats_entry{};
+    // TODO: count current valid entries in btb
+    // TODO: Track 90, 95, 99, 99.5% and add to queue whenever we sample
+    uint64_t total_blocks = 0;
+    for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
+      if (it->data.ip_tag && utilise_regions(it->data.target_size) && REGION_BTB.at(this).check_hit({it->data.ip_tag})) {
+        total_blocks++;
+      }
+    }
+
     for (auto [tag, count] : sort_vec) {
-      assert(count < BTB_SETS * BTB_WAYS);
+      assert(count < total_blocks);
       if (tag == 0) {
         continue;
       }
       min2ref += 1;
       sum_count += count;
-      if (sum_count > 0.9 * BTB_SETS * BTB_WAYS)
-        break;
+      if (std::get<4>(stats_entry) == 0 && sum_count == total_blocks) {
+        std::get<4>(stats_entry) = min2ref;
+      }
+      if (std::get<3>(stats_entry) == 0 && sum_count > 0.995 * total_blocks) {
+        std::get<3>(stats_entry) = min2ref;
+      }
+      if (std::get<2>(stats_entry) == 0 && sum_count > 0.99 * total_blocks) {
+        std::get<2>(stats_entry) = min2ref;
+      }
+      if (std::get<1>(stats_entry) == 0 && sum_count > 0.95 * total_blocks) {
+        std::get<1>(stats_entry) = min2ref;
+      }
+      if (std::get<0>(stats_entry) == 0 && sum_count > 0.9 * total_blocks) {
+        std::get<0>(stats_entry) = min2ref;
+      }
     }
     if (sim_stats.min_regions < min2ref) {
       sim_stats.min_regions = min2ref;
     }
+
+    sim_stats.region_history.push_back(stats_entry);
+    last_stats_cycle = current_cycle;
   }
   /********* STATS END *********/
   /********* UPDATE STATE *********/
