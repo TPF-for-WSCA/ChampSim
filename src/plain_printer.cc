@@ -126,6 +126,11 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     fmt::print(stream, "{}:\t{}\n", str, stats.total_branch_types[idx]);
   }
   fmt::print(stream, "\n");
+  // fmt::print(stream, "90%\t95%\t99%\t99.5%\t100%\n");
+  // for (auto [percentile90, percentile95, percentile99, percentile995, full] : stats.region_history) {
+  //   fmt::print(stream, "{}\t{}\t{}\t{}\t{}\n", percentile90, percentile95, percentile99, percentile995, full);
+  // }
+  // fmt::print(stream, "\n");
 }
 
 void champsim::plain_printer::print(CACHE::stats_type stats)

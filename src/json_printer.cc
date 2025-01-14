@@ -36,6 +36,27 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
       {"min", stats.min_regions},
   };
 
+  std::vector<uint64_t> percentile90;
+  percentile90.reserve(stats.region_history.size());
+  std::vector<uint64_t> percentile95;
+  percentile95.reserve(stats.region_history.size());
+  std::vector<uint64_t> percentile99;
+  percentile99.reserve(stats.region_history.size());
+  std::vector<uint64_t> percentile995;
+  percentile995.reserve(stats.region_history.size());
+  std::vector<uint64_t> full;
+  full.reserve(stats.region_history.size());
+  for (auto [_percentile90, _percentile95, _percentile99, _percentile995, _full] : stats.region_history) {
+    percentile90.push_back(_percentile90);
+    percentile95.push_back(_percentile95);
+    percentile99.push_back(_percentile99);
+    percentile995.push_back(_percentile995);
+    full.push_back(_full);
+  }
+  std::map<std::string, std::vector<uint64_t>> regions = {
+      {"90%", percentile90}, {"95%", percentile95}, {"99%", percentile99}, {"99.5%", percentile995}, {"100%", full},
+  };
+
   auto total_mispredictions = std::ceil(
       std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
 
@@ -50,6 +71,7 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
       {"mispredict", mpki},
       {"aliasing", aliasing},
       {"btb_regions", btb_regions},
+      {"regions_covered", regions},
   };
 }
 

@@ -12,10 +12,10 @@
             "program": "${workspaceRoot}/bin/champsim",
             "args": [
                 "--warmup_instructions",
-                "15000",
+                "0",
                 "--simulation_instructions",
-                "15000000",
-                "--intel",
+                "30000000",
+                // "--intel",
                 "--json",
                 "~/Downloads/stats.json",
                 // "--btb-tag-hash",
@@ -29,10 +29,10 @@
                 // "-traces",
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_019.champsimtrace.xz"
-                // "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_024.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"
-                "/home/robrunne/OneDrive/Research/datasets/dpc3/435.gromacs-111B.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/dpc3/435.gromacs-111B.champsimtrace.xz"
                 //"/home/robrunne/Downloads/tmp/champsim_traces/whiskey/champsim-1748052322638680856.267686.memtrace.gz"
             ],
             "stopAtEntry": false,

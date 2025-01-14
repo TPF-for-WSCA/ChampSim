@@ -390,7 +390,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   bool small_region = small_hit.has_value() && num_bits <= small_hit.value().target_size && utilise_regions(small_hit.value().target_size);
   bool big_region = big_hit.has_value() && num_bits <= big_hit.value().target_size && utilise_regions(big_hit.value().target_size);
   bool lru_region = utilise_regions(lru_elem.target_size);
-  bool require_region = small_region || big_region || (lru_region && !small_hit.has_value() && !big_hit.has_value()); // add if we have a hit
+  bool require_region = small_region || big_region || (lru_region && !small_hit.has_value() && !big_hit.has_value())
+                        || (tmp_region_idx.has_value() && (small_hit.has_value() || big_hit.has_value())); // add if we have a hit
   if (require_region) {
     region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     if (!region_idx.has_value() && BTB_PARTIAL_TAG_RESOLUTION) {
@@ -403,11 +404,16 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
       region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     }
-    if (small_region)
+    bool require_replaced = true;
+    if (small_hit.has_value() && small_way_regions_enabled) {
       entry_size = std::max(entry_size, small_hit.value().target_size);
-    if (big_region)
+      require_replaced = false;
+    }
+    if (big_hit.has_value() && big_way_regions_enabled) {
       entry_size = std::max(entry_size, big_hit.value().target_size);
-    if (!small_region && !big_region)
+      require_replaced = false;
+    }
+    if (require_replaced)
       entry_size = std::max(entry_size, lru_elem.target_size);
   } else {
     if (small_hit.has_value()) {
@@ -458,17 +464,17 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
     // region_tag_entry_count[new_region] += replaced_entry.has_value();
 
-    uint64_t sum = std::accumulate(std::begin(region_tag_entry_count), std::end(region_tag_entry_count), 0,
-                                   [](const auto prev, const auto& elem) { return prev + elem.second; });
-    uint64_t total_blocks = 0;
-    std::map<uint64_t, uint64_t> control_region_tag_mapping;
-    for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
-      if (it->data.ip_tag && utilise_regions(it->data.target_size) && REGION_BTB.at(this).check_hit({it->data.ip_tag})) {
-        total_blocks++;
-        control_region_tag_mapping[(it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK]++;
-      }
-    }
-    assert(sum == total_blocks);
+    // uint64_t sum = std::accumulate(std::begin(region_tag_entry_count), std::end(region_tag_entry_count), 0,
+    //                                [](const auto prev, const auto& elem) { return prev + elem.second; });
+    // uint64_t total_blocks = 0;
+    // std::map<uint64_t, uint64_t> control_region_tag_mapping;
+    // for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
+    //   if (it->data.ip_tag && utilise_regions(it->data.target_size) && REGION_BTB.at(this).check_hit({it->data.ip_tag})) {
+    //     total_blocks++;
+    //     control_region_tag_mapping[(it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK]++;
+    //   }
+    // }
+    // assert(sum == total_blocks);
   }
 
   sim_stats.btb_updates++;
@@ -529,6 +535,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       sim_stats.min_regions = min2ref;
     }
 
+    assert(sum_count == total_blocks);
     sim_stats.region_history.push_back(stats_entry);
     last_stats_cycle = current_cycle;
   }
