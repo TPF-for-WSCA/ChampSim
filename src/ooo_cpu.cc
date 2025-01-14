@@ -187,7 +187,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     arch_instr.branch_mispredicted = 1;
     arch_instr.branch_prediction = 0;
     arch_instr.branch_taken = 0;
-    // TODO: Should this be included in the BTB MPKI?
+    // TODO: Should this be included in the BTB MPKI? --> NOTE: Fix it up, keeping those seperately
   }
 
   if (!warmup && arch_instr.branch_prediction && arch_instr.ip != branch_ip && arch_instr.branch_type != NOT_BRANCH) {
@@ -197,7 +197,9 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       sim_stats.negative_aliasing += 1;
     }
   }
-  if (arch_instr.branch_taken && predicted_branch_target != arch_instr.branch_target) {
+
+  // TODO: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately
+  if (arch_instr.branch_taken && predicted_branch_target == 0) {
     sim_stats.branch_type_misses[arch_instr.branch_type]++;
     sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
   }
