@@ -502,10 +502,13 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // TODO: count current valid entries in btb
     // TODO: Track 90, 95, 99, 99.5% and add to queue whenever we sample
     uint64_t total_blocks = 0;
-    for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
-      if (it->data.ip_tag && utilise_regions(it->data.target_size) && REGION_BTB.at(this).check_hit({it->data.ip_tag})) {
-        total_blocks++;
-      }
+    // for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
+    //   if (it->data.ip_tag && utilise_regions(it->data.target_size) && REGION_BTB.at(this).check_hit({it->data.ip_tag})) {
+    //     total_blocks++;
+    //   }
+    // }
+    for (auto [tag, count] : sort_vec) {
+      total_blocks += count;
     }
 
     for (auto [tag, count] : sort_vec) {
@@ -515,9 +518,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       }
       min2ref += 1;
       sum_count += count;
-      if (std::get<4>(stats_entry) == 0 && sum_count == total_blocks) {
-        std::get<4>(stats_entry) = min2ref;
-      }
       if (std::get<3>(stats_entry) == 0 && sum_count > 0.995 * total_blocks) {
         std::get<3>(stats_entry) = min2ref;
       }
@@ -534,6 +534,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     if (sim_stats.min_regions < min2ref) {
       sim_stats.min_regions = min2ref;
     }
+    std::get<4>(stats_entry) = min2ref;
 
     // assert(sum_count == total_blocks);
     sim_stats.region_history.push_back(stats_entry);
@@ -543,3 +544,4 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   /********* UPDATE STATE *********/
   prev_branch_ip = ip;
 }
+// TODO: Reactivate asserts and double check for small/big configurations
