@@ -33,6 +33,7 @@ if [ $# -lt 1 ]; then
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BTB_TOTAL_ALIASING  &
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BTB_TAG_ENTROPY  &
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BTB_BIT_ORDERING  &
+        python ${chroot}/ChampSim/aggregation_scripts/json_data.py ./${b}/sizes_btb_tag_number_of_regions/ &
 
         # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL &
         # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi FRONTEND_STALLS &
