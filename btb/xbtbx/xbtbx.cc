@@ -502,17 +502,17 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // TODO: count current valid entries in btb
     // TODO: Track 90, 95, 99, 99.5% and add to queue whenever we sample
     uint64_t total_blocks = 0;
-    // for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
-    //   if (it->data.ip_tag && utilise_regions(it->data.target_size) && REGION_BTB.at(this).check_hit({it->data.ip_tag})) {
-    //     total_blocks++;
-    //   }
-    // }
-    for (auto [tag, count] : sort_vec) {
-      total_blocks += count;
+    for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
+      if (it->data.ip_tag && utilise_regions(it->data.target_size) && REGION_BTB.at(this).check_hit({it->data.ip_tag})) {
+        total_blocks++;
+      }
     }
+    // for (auto [tag, count] : sort_vec) {
+    //   total_blocks += count;
+    // }
 
     for (auto [tag, count] : sort_vec) {
-      // assert(count < total_blocks);
+      assert(count < total_blocks);
       if (tag == 0) {
         continue;
       }
@@ -536,7 +536,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
     std::get<4>(stats_entry) = min2ref;
 
-    // assert(sum_count == total_blocks);
+    assert(sum_count == total_blocks);
     sim_stats.region_history.push_back(stats_entry);
     last_stats_cycle = current_cycle;
   }
