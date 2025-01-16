@@ -24,7 +24,7 @@
       "decode_buffer_size": 32,
       "dispatch_buffer_size": 32,
       "rob_size": 512,
-      "lq_size": 192,
+      "lq_size": 192,lau
       "sq_size": 114,
       "fetch_width": 8,
       "decode_width": 6,

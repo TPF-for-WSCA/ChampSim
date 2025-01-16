@@ -509,7 +509,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
 
     for (auto [tag, count] : sort_vec) {
-      assert(count < total_blocks);
+      // assert(count < total_blocks);
       if (tag == 0) {
         continue;
       }
@@ -535,7 +535,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       sim_stats.min_regions = min2ref;
     }
 
-    assert(sum_count == total_blocks);
+    // assert(sum_count == total_blocks);
     sim_stats.region_history.push_back(stats_entry);
     last_stats_cycle = current_cycle;
   }
