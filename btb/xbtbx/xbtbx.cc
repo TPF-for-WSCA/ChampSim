@@ -19,6 +19,7 @@
 #include "ooo_cpu.h"
 
 #define SMALL_BIG_WAY_SPLIT 14
+#define SAMPLING_DISTANCE 100000
 
 constexpr uint64_t pow2(uint8_t exp)
 {
@@ -390,8 +391,10 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   bool small_region = small_hit.has_value() && num_bits <= small_hit.value().target_size && utilise_regions(small_hit.value().target_size);
   bool big_region = big_hit.has_value() && num_bits <= big_hit.value().target_size && utilise_regions(big_hit.value().target_size);
   bool lru_region = utilise_regions(lru_elem.target_size);
-  bool require_region = small_region || big_region || (lru_region && !small_hit.has_value() && !big_hit.has_value())
-                        || (tmp_region_idx.has_value() && (small_hit.has_value() || big_hit.has_value())); // add if we have a hit
+  bool require_region =
+      small_region || big_region || (lru_region && (!small_hit.has_value() || !small_way_regions_enabled) && (!big_hit.has_value() || !big_way_regions_enabled))
+      || (tmp_region_idx.has_value()
+          && ((small_hit.has_value() && small_way_regions_enabled) || (big_hit.has_value() && big_way_regions_enabled))); // add if we have a hit
   if (require_region) {
     region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     if (!region_idx.has_value() && BTB_PARTIAL_TAG_RESOLUTION) {
@@ -447,8 +450,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
     // TODO: TAKE REGION BTB REPLACEMENTS INTO ACCOUNT
     uint64_t new_region = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-    if (utilise_regions(replaced_entry.value_or(::BTBEntry{0, 0}).target_size)) {
-      region_tag_entry_count[new_region] += require_region;
+    region_tag_entry_count[new_region] += utilise_regions(replaced_entry.value().target_size);
+    if (replaced_entry.has_value() && replaced_entry.value().ip_tag && utilise_regions(replaced_entry.value().target_size)) {
       if (replaced_entry.has_value() && replaced_entry.value().ip_tag != 0 && replaced_entry.value().target != 0) {
         uint64_t old_region = (replaced_entry.value().ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
         if (region_tag_entry_count[old_region] == 0) {
@@ -464,12 +467,14 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
     // region_tag_entry_count[new_region] += replaced_entry.has_value();
 
+    // DEBUG SUMS TO FIND EXACT PLACE WE GO WRONG
     // uint64_t sum = std::accumulate(std::begin(region_tag_entry_count), std::end(region_tag_entry_count), 0,
     //                                [](const auto prev, const auto& elem) { return prev + elem.second; });
     // uint64_t total_blocks = 0;
     // std::map<uint64_t, uint64_t> control_region_tag_mapping;
     // for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
-    //   if (it->data.ip_tag && utilise_regions(it->data.target_size) && REGION_BTB.at(this).check_hit({it->data.ip_tag})) {
+    //   if (it->data.ip_tag
+    //       && utilise_regions(it->data.target_size)) { // ignore REGION_BTB.at(this).check_hit({it->data.ip_tag}) as we do not remove/invalidate those entries
     //     total_blocks++;
     //     control_region_tag_mapping[(it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK]++;
     //   }
@@ -491,7 +496,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       sim_stats.btb_tag_entropy[idx] += ip_bits[idx];
     }
   }
-  if (!warmup && 100000 < current_cycle - last_stats_cycle) {
+  if (!warmup && SAMPLING_DISTANCE < current_cycle - last_stats_cycle) {
     if (sim_stats.max_regions < region_tag_entry_count.size()) {
       sim_stats.max_regions = region_tag_entry_count.size();
     }
@@ -503,7 +508,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // TODO: Track 90, 95, 99, 99.5% and add to queue whenever we sample
     uint64_t total_blocks = 0;
     for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
-      if (it->data.ip_tag && utilise_regions(it->data.target_size) && REGION_BTB.at(this).check_hit({it->data.ip_tag})) {
+      if (it->data.ip_tag && utilise_regions(it->data.target_size)) { // REGION_BTB.at(this).check_hit({it->data.ip_tag}) not used as we might have stale
+                                                                      // entries that were covered by regions = we want to know how many we would have needed
         total_blocks++;
       }
     }
