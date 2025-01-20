@@ -241,7 +241,7 @@ void O3_CPU::initialize_btb()
     _BTB_CLIPPED_TAG = 1;
     _BTB_TAG_SIZE = this->BTB_TAG_SIZE;
     _BTB_TAG_REGIONS = this->BTB_TAG_REGIONS;
-    _BTB_TAG_REGION_SIZE = this->BTB_TAG_REGION_SIZE;
+    _BTB_TAG_REGION_SIZE = (this->BTB_TAG_REGIONS) ? this->BTB_TAG_REGION_SIZE : 0;
     _REGION_MASK = _BTB_TAG_REGIONS ? (pow2(_BTB_TAG_REGION_SIZE) - 1) : (pow2(62 - _BTB_SET_BITS - _BTB_TAG_SIZE) - 1);
     _BTB_REGION_BITS = champsim::lg2(_BTB_TAG_REGIONS);
   } else {
@@ -518,7 +518,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // }
 
     for (auto [tag, count] : sort_vec) {
-      assert(count < total_blocks);
+      assert(count <= total_blocks);
       if (tag == 0) {
         continue;
       }
