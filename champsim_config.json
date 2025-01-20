@@ -1,5 +1,5 @@
 {
-  "executable_name": "champsim_small_region",
+  "executable_name": "champsim_full",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 1000000,
@@ -43,9 +43,9 @@
       "btb_ways": 9,
       "btb_non_indirect": 9,
       "btb_sets": 512,
-      "btb_clipped_tag": 1,
+      "btb_clipped_tag": 0,
       "btb_partial_tag_resolution": 0,
-      "btb_small_way_regions_enabled": 1,
+      "btb_small_way_regions_enabled": 0,
       "btb_big_way_regions_enabled": 0,
       "btb_target_sizes": [
         0,
@@ -58,8 +58,8 @@
         25,
         64
       ],
-      "btb_tag_size": 8,
-      "btb_tag_regions": 256,
+      "btb_tag_size": 64,
+      "btb_tag_regions": 0,
       "btb_tag_region_size": 8,
       "align_bits": 5
     }
