@@ -118,6 +118,7 @@ void O3_CPU::initialize_instruction()
     if (stop_fetch)
       instrs_to_read_this_cycle = 0;
 
+    std::cout << "Current cycle: " << current_cycle << ", instr_id: " << input_queue.front().instr_id << ", ip: " << input_queue.front().ip << std::endl;
     // Add to IFETCH_BUFFER
     IFETCH_BUFFER.push_back(input_queue.front());
     input_queue.pop_front();
@@ -166,6 +167,9 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   sim_stats.total_branch_types[arch_instr.branch_type]++;
   // TODO: Check if this is good enough to identify branches
   auto [predicted_branch_target, branch_ip, always_taken] = impl_btb_prediction(arch_instr.ip);
+  if (arch_instr.is_branch && predicted_branch_target != arch_instr.branch_target) {
+    std::cout << "Current cycle: " << current_cycle << ", instr_id: " << arch_instr.instr_id << ", ip: " << arch_instr.ip << std::endl;
+  }
   if (perfect_btb) {
     predicted_branch_target = arch_instr.branch_target;
     branch_ip = arch_instr.ip;

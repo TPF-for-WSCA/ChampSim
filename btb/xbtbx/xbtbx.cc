@@ -80,6 +80,7 @@ std::map<uint32_t, uint64_t> offset_reuse_freq;
 std::map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 std::set<uint64_t> branch_ip;
 std::set<uint8_t> regions_inserted;
+size_t region_btb_insers = 0;
 std::array<uint64_t, 64> dynamic_bit_counts;
 std::array<uint64_t, 64> static_bit_counts;
 
@@ -280,15 +281,18 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   std::optional<::BTBEntry> btb_entry = std::nullopt;
   if (_BTB_TAG_REGIONS) {
     auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
-    auto partial_btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0}, true);
-    if (BTB_PARTIAL_TAG_RESOLUTION || !utilise_regions(partial_btb_entry.value_or(::BTBEntry{ip, 0, ::branch_info::CONDITIONAL, 0, 0}).target_size)) {
-      btb_entry = partial_btb_entry;
+    if (BTB_PARTIAL_TAG_RESOLUTION) {
+      btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0}, true);
     }
-    if (region_idx_.has_value()) {
-      auto entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, region_idx_.value()});
-      if (entry.has_value()) {
-        btb_entry = entry;
-      }
+    if (small_way_regions_enabled && region_idx_.has_value()) {
+      btb_entry = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, region_idx_.value(), 0});
+    } else if (!small_way_regions_enabled) {
+      btb_entry = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, (uint16_t)-1, 0});
+    }
+    if (big_way_regions_enabled && region_idx_.has_value()) {
+      btb_entry = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, region_idx_.value(), 64});
+    } else if (!big_way_regions_enabled) {
+      btb_entry = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, (uint16_t)-1, 64});
     }
   } else {
     btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0});
@@ -414,17 +418,23 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     if (!region_idx.has_value() && BTB_PARTIAL_TAG_RESOLUTION) {
       opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, 0}, true);
       if (!opt_entry.has_value() || (opt_entry.has_value() && opt_entry.value().get_prediction() != branch_target)) {
-        auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
-        assert(rv.second);
-        ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
+        // TODO: these asserts are only ok if we have as many regions as 2**region_bits - add guard for that
+        // auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
+        // assert(rv.second);
+        auto replaced_element = ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
+        region_btb_insers++;
+        // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
         region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
       }
     } else if (!region_idx.has_value()) {
-      auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
-      assert(rv.second);
-      ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
+      // auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
+      // assert(rv.second);
+      auto replaced_element = ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
+      region_btb_insers++;
+      // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
       region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     }
+    assert(region_btb_insers <= 256);
   }
   // else {
   //   if (small_hit.has_value()) {
