@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "targetArchitecture": "x64",
-            "program": "${workspaceRoot}/bin/champsim_full",
+            "program": "${workspaceRoot}/bin/champsim_small_enabled",
             "args": [
                 "--warmup_instructions",
                 "0",

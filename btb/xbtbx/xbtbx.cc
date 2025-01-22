@@ -79,6 +79,7 @@ uint64_t prev_branch_ip = 0;
 std::map<uint32_t, uint64_t> offset_reuse_freq;
 std::map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 std::set<uint64_t> branch_ip;
+std::set<uint8_t> regions_inserted;
 std::array<uint64_t, 64> dynamic_bit_counts;
 std::array<uint64_t, 64> static_bit_counts;
 
@@ -376,58 +377,74 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   else if ((branch_type == BRANCH_CONDITIONAL) || (branch_type == BRANCH_OTHER))
     type = ::branch_info::CONDITIONAL;
 
-  // TODO: Only update region btb if partial was wrong?
   std::optional<uint8_t> region_idx = std::nullopt;
   std::optional<::BTBEntry> opt_entry;
   uint8_t entry_size = num_bits;
   // TODO: ADD REGION INFORMATION IF AVAILABLE
   std::optional<uint8_t> tmp_region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
-  std::optional<::BTBEntry> small_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value_or(-1), 0});
-  std::optional<::BTBEntry> big_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value_or(-1), 64});
-  ::BTBEntry lru_elem = ::BTB.at(this).get_lru_elem(::BTBEntry{ip, 0}, num_bits);
+  std::optional<::BTBEntry> small_hit = std::nullopt;
+  std::optional<::BTBEntry> big_hit = std::nullopt;
+  std::optional<::BTBEntry> lru_elem = std::nullopt;
+  if (small_way_regions_enabled && tmp_region_idx.has_value()) {
+    small_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value(), 0});
+  } else if (!small_way_regions_enabled) {
+    small_hit = ::BTB.at(this).check_hit({ip, 0, type, (uint16_t)-1, 0});
+  }
+  if (big_way_regions_enabled && tmp_region_idx.has_value()) {
+    big_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value(), 64});
+  } else if (!big_way_regions_enabled) {
+    big_hit = ::BTB.at(this).check_hit({ip, 0, type, (uint16_t)-1, 64});
+  }
+  if (!small_hit.has_value() && !big_hit.has_value()) {
+    lru_elem = ::BTB.at(this).get_lru_elem(::BTBEntry{ip, 0}, num_bits);
+  }
+
   // TODO: pass way size and not num bits to utilise regions function here
   // TODO: check partial and check if utilise region is true -> update that value
   // TODO: get rid of hits that have the wrong size - those need to be updated and inserted into a larger way
   bool small_region = small_hit.has_value() && num_bits <= small_hit.value().target_size && utilise_regions(small_hit.value().target_size);
   bool big_region = big_hit.has_value() && num_bits <= big_hit.value().target_size && utilise_regions(big_hit.value().target_size);
-  bool lru_region = utilise_regions(lru_elem.target_size);
-  bool require_region =
-      small_region || big_region || (lru_region && (!small_hit.has_value() || !small_way_regions_enabled) && (!big_hit.has_value() || !big_way_regions_enabled))
-      || (tmp_region_idx.has_value()
-          && ((small_hit.has_value() && small_way_regions_enabled) || (big_hit.has_value() && big_way_regions_enabled))); // add if we have a hit
+  bool lru_region = lru_elem.has_value() && utilise_regions(lru_elem.value().target_size);
+  bool require_region = small_region || big_region || lru_region;
+  // || (lru_region && (!small_hit.has_value() || !small_way_regions_enabled) && (!big_hit.has_value() || !big_way_regions_enabled))
+  //|| (tmp_region_idx.has_value()
+  //   && ((small_hit.has_value() && small_way_regions_enabled) || (big_hit.has_value() && big_way_regions_enabled))); // add if we have a hit
   if (require_region) {
     region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     if (!region_idx.has_value() && BTB_PARTIAL_TAG_RESOLUTION) {
       opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, 0}, true);
       if (!opt_entry.has_value() || (opt_entry.has_value() && opt_entry.value().get_prediction() != branch_target)) {
+        auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
+        assert(rv.second);
         ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
         region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
       }
     } else if (!region_idx.has_value()) {
+      auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
+      assert(rv.second);
       ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
       region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     }
-    bool require_replaced = true;
-    if (small_hit.has_value() && small_way_regions_enabled) {
-      entry_size = std::max(entry_size, small_hit.value().target_size);
-      require_replaced = false;
-    }
-    if (big_hit.has_value() && big_way_regions_enabled) {
-      entry_size = std::max(entry_size, big_hit.value().target_size);
-      require_replaced = false;
-    }
-    if (require_replaced)
-      entry_size = std::max(entry_size, lru_elem.target_size);
-  } else {
-    if (small_hit.has_value()) {
-      entry_size = std::max(entry_size, small_hit.value().target_size);
-    }
-    if (big_hit.has_value()) {
-      entry_size = std::max(entry_size, big_hit.value().target_size);
-    }
-    if (!small_hit.has_value() && !big_hit.has_value()) {
-      entry_size = lru_elem.target_size;
-    }
+  }
+  // else {
+  //   if (small_hit.has_value()) {
+  //     entry_size = std::max(entry_size, small_hit.value().target_size);
+  //   }
+  //   if (big_hit.has_value()) {
+  //     entry_size = std::max(entry_size, big_hit.value().target_size);
+  //   }
+  //   if (!small_hit.has_value() && !big_hit.has_value()) {
+  //     entry_size = lru_elem.target_size;
+  //   }
+  // }
+  if (small_hit.has_value()) {
+    entry_size = std::max(entry_size, small_hit.value().target_size);
+    opt_entry = small_hit.value();
+  } else if (big_hit.has_value()) {
+    entry_size = std::max(entry_size, big_hit.value().target_size);
+    opt_entry = big_hit.value();
+  } else if (lru_elem.has_value()) {
+    entry_size = std::max(entry_size, lru_elem.value().target_size);
   }
 
   /*   opt_entry = std::nullopt;
@@ -441,8 +458,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
    */
 
   /********* STATS ACCOUNTING *********/
+  // TODO: Only update if prediction is wrong
   std::optional<::BTBEntry> replaced_entry = std::nullopt;
-  if (branch_target != 0) {
+  if (branch_target != 0 && (lru_elem.has_value() || opt_entry.value().get_prediction() != branch_target)) {
     // TODO: Check if (since we already know about region or not region) should make two distinct calls out of the below
     replaced_entry = ::BTB.at(this).fill(
         ::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS)), entry_size},
