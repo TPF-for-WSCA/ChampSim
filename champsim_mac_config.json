@@ -1,5 +1,5 @@
 {
-  "executable_name": "champsim_6b",
+  "executable_name": "champsim",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -45,8 +45,9 @@
       "btb_non_indirect": 9,
       "btb_sets": 512,
       "btb_clipped_tag": 1,
-      "btb_tag_size": 6,
-      "btb_tag_regions": 0,
+      "btb_big_way_regions_enabled": 1,
+      "btb_tag_size": 8,
+      "btb_tag_regions": 16,
       "btb_tag_region_size": 4,
       "btb_target_sizes": [
         0,

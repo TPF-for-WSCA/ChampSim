@@ -62,7 +62,7 @@
             "name": "C++ Mac Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/bin/champsim_6b",
+            "program": "${workspaceRoot}/bin/champsim",
             "externalConsole": false,
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
@@ -80,7 +80,8 @@
                 //"-stallonmiss",
                 // "/Users/robrunne/Workspace/traces/tanvir/clang/clang.gz",
                 // "/Users/robrunne/Workspace/traces/ipc1/client_001.champsimtrace.xz"
-                "/Users/robrunne/Workspace/traces/LLBP/renaissance-finagle-chirper.champsim.trace.gz"
+                //"/Users/robrunne/Workspace/traces/LLBP/renaissance-finagle-chirper.champsim.trace.gz"
+                "/Users/robrunne/Workspace/traces/dpc3/renaissance-finagle-chirper.champsim.trace.gz"
                 //"/Users/robrunne/Workspace/traces/ipc1/server_022.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/client_007.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/spec_gcc_001.champsimtrace.xz"
