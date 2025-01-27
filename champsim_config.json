@@ -1,8 +1,8 @@
 {
-  "executable_name": "champsim_16b",
+  "executable_name": "champsim_12b",
   "block_size": 64,
   "page_size": 4096,
-  "heartbeat_frequency": 30000000,
+  "heartbeat_frequency": 1000000,
   "num_cores": 1,
   "CFLAGS": [
     "-Wall -Wno-reorder -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
@@ -42,7 +42,7 @@
       "btb": "xbtbx",
       "btb_ways": 9,
       "btb_non_indirect": 9,
-      "btb_sets": 512,
+      "btb_sets": 512,/home/robrunne/OneDrive/Research/datasets/google/whiskey/champsim-1748052322638680856.426703.memtrace.gz 
       "btb_clipped_tag": 1,
       "btb_partial_tag_resolution": 0,
       "btb_small_way_regions_enabled": 0,
@@ -58,7 +58,7 @@
         25,
         64
       ],
-      "btb_tag_size": 16,
+      "btb_tag_size": 12,
       "btb_tag_regions": 0,
       "btb_tag_region_size": 0,
       "align_bits": 5

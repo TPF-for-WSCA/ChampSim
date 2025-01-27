@@ -80,7 +80,7 @@ std::map<uint32_t, uint64_t> offset_reuse_freq;
 std::map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 std::set<uint64_t> branch_ip;
 std::set<uint8_t> regions_inserted;
-size_t region_btb_insers = 0;
+// size_t region_btb_insers = 0;
 std::array<uint64_t, 64> dynamic_bit_counts;
 std::array<uint64_t, 64> static_bit_counts;
 

@@ -5,10 +5,10 @@
   "heartbeat_frequency": 1000000,
   "num_cores": 1,
   "CFLAGS": [
-    "-Wall -Wno-reorder -g -O0 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
   ],
   "CXXFLAGS": [
-    "-Wall -Wno-reorder -g -O0 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
   ],
   "LDLIBS": [
     "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem"
@@ -44,9 +44,6 @@
       "btb_non_indirect": 9,
       "btb_sets": 512,
       "btb_clipped_tag": 0,
-      "btb_partial_tag_resolution": 0,
-      "btb_small_way_regions_enabled": 0,
-      "btb_big_way_regions_enabled": 1,
       "btb_target_sizes": [
         0,
         4,
@@ -60,7 +57,6 @@
       ],
       "btb_tag_size": 64,
       "btb_tag_regions": 0,
-      "btb_tag_region_size": 8,
       "align_bits": 5
     }
   ],

@@ -47,9 +47,9 @@
       "btb_sets": 512,
       "btb_regions": 16,
       "btb_clipped_tag": 0,
-      "btb_tag_size": 6,
-      "btb_tag_regions": 4,
-      "btb_tag_region_size": 6
+      "btb_tag_size": 64,
+      "btb_tag_regions": 0,
+      "btb_tag_region_size": 0
     }
   ],
   "DIB": {
