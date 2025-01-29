@@ -12,7 +12,7 @@
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
 
-module load Python/3.12.3-GCCcore-13.3.0
+module load Python/3.10.8-GCCcore-12.2.0
 module load GCC/12.2.0
 module load GCCcore/12.2.0
 #binaries=("champsim64k" "champsim32k" "champsim128m" "champsim_vcl_buffer_16_a" "champsim_vcl_buffer_64d_arm" "champsim_vcl_buffer_16")

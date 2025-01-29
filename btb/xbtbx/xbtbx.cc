@@ -323,6 +323,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 }
 
 // TODO: ONLY UPDATE WHEN FITTING IN THE WAY
+//  __attribute__((optimize(0)))
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   // DONE: calculate size
@@ -534,22 +535,31 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t> stats_entry{};
     // TODO: count current valid entries in btb
     // TODO: Track 90, 95, 99, 99.5% and add to queue whenever we sample
+
+    // std::map<uint64_t, uint64_t> region_count_control = {};
     uint64_t total_blocks = 0;
     for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
       if (it->data.ip_tag && utilise_regions(it->data.target_size)) { // REGION_BTB.at(this).check_hit({it->data.ip_tag}) not used as we might have stale
                                                                       // entries that were covered by regions = we want to know how many we would have needed
         total_blocks++;
+        // auto region = (it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+        // region_count_control[region]++;
       }
     }
+    // TODO: Debug only, remove afterwards / comment out
+    // for (auto const& [region, cnt] : region_count_control) {
+    //   if (region_tag_entry_count[region] != cnt) {
+    //     std::cout << "mismatch in region " << region << " current cycle: " << current_cycle << std::endl;
+    //   }
+    //   assert(region_tag_entry_count[region] == cnt);
+    // }
+
     // for (auto [tag, count] : sort_vec) {
     //   total_blocks += count;
     // }
 
     for (auto [tag, count] : sort_vec) {
       assert(count <= total_blocks);
-      if (tag == 0) {
-        continue;
-      }
       min2ref += 1;
       sum_count += count;
       if (std::get<3>(stats_entry) == 0 && sum_count > 0.995 * total_blocks) {
