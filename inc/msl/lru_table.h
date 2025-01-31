@@ -130,7 +130,7 @@ private:
   }
 
 public:
-  std::optional<value_type> check_hit(const value_type& elem, bool partial = false)
+  std::optional<value_type> check_hit(const value_type& elem, bool partial = false) // TODO: Check only small or only big hits
   {
     auto [set_begin, set_end] = get_set_span(elem);
     typename std::vector<block_t>::iterator hit;

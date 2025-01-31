@@ -1,0 +1,4 @@
+break O3_CPU::btb_btbDxbtbx_update_btb(unsigned long, unsigned long, unsigned char, unsigned char)
+  condition $bpnum ip==187649998592208
+break /home/robrunne/Workspace/Simulators/ChampSim/btb/xbtbx/xbtbx.cc:409
+break /home/robrunne/Workspace/Simulators/ChampSim/btb/xbtbx/xbtbx.cc:531

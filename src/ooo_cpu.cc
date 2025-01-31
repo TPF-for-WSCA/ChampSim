@@ -115,7 +115,7 @@ void O3_CPU::initialize_instruction()
     instrs_to_read_this_cycle--;
 
     auto stop_fetch = do_init_instruction(input_queue.front());
-    // std::cout << "INSTR_ID: " << input_queue.front().instr_id << ", IP: " << input_queue.front().ip << ", CURRENT CYCLE: " << current_cycle << std::endl;
+    std::cout << "INSTR_ID: " << input_queue.front().instr_id << ", IP: " << input_queue.front().ip << ", CURRENT CYCLE: " << current_cycle << std::endl;
     if (stop_fetch)
       instrs_to_read_this_cycle = 0;
 
