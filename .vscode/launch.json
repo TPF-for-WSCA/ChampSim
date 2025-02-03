@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "targetArchitecture": "x64",
-            "program": "${workspaceRoot}/bin/champsim_small_region",
+            "program": "${workspaceRoot}/bin/champsim_partial_8b_region_2",
             "args": [
                 "--warmup_instructions",
                 "0",
@@ -29,10 +29,10 @@
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_019.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_004.champsimtrace.xz"
-                "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_001.champsimtrace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_001.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"
-                //"/home/robrunne/OneDrive/Research/datasets/dpc3/605.mcf_s-1536B.champsimtrace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/dpc3/403.gcc-16B.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/google/whiskey/champsim-1748052322638680856.426703.memtrace.gz"
                 //"/home/robrunne/OneDrive/Research/datasets/google/delta/champsim-10058381926338669845.507561.memtrace.gz"
                 //"/home/robrunne/Downloads/tmp/champsim_traces/whiskey/champsim-1748052322638680856.267686.memtrace.gz"

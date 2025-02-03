@@ -305,7 +305,9 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
     } else if (!big_way_regions_enabled) {
       partial_big = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, (uint16_t)-1, 64});
     }
-    assert(!(full_small.has_value() && full_big.has_value())); // This should never happen as then we should have updated the value instead of re-inserted
+    assert(
+        !(full_small.has_value() && full_big.has_value()
+          && full_small.value().ip_tag != full_big.value().ip_tag)); // This should never happen as then we should have updated the value instead of re-inserted
     if (full_small.has_value()) {
       btb_entry = full_small.value();
     } else if (full_big.has_value()) {
