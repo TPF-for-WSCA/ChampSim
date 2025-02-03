@@ -447,17 +447,17 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         // TODO: these asserts are only ok if we have as many regions as 2**region_bits - add guard for that
         // auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
         // assert(rv.second);
-        auto replaced_element = ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
+        ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
         // region_btb_insers++;
-        assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
+        // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
         region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
       }
     } else if (!region_idx.has_value()) {
       // auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
       // assert(rv.second);
-      auto replaced_element = ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
+      ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
       // region_btb_insers++;
-      assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
+      // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
       region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     }
     // assert(region_btb_insers <= 256);
