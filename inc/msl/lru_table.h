@@ -223,7 +223,7 @@ public:
         return replaced;
       }
     }
-    return std::nullopt;
+    assert(false);
   }
 
   std::optional<value_type> fill(const value_type& elem)
@@ -242,7 +242,7 @@ public:
         return rv;
       }
     }
-    return std::nullopt;
+    assert(false);
   }
 
   void invalidate_region(const value_type& elem)

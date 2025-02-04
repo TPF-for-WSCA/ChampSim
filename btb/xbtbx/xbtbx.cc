@@ -499,7 +499,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   if (branch_target != 0) {
     // TODO: Check if (since we already know about region or not region) should make two distinct calls out of the below
     replaced_entry = ::BTB.at(this).fill(
-        ::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS)), entry_size},
+        opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS)), entry_size}),
         entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
 
     // TODO: TAKE REGION BTB REPLACEMENTS INTO ACCOUNT
