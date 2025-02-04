@@ -177,10 +177,13 @@ public:
     while (set_begin->data.target_size < size && set_begin != set_end) {
       set_begin++;
     }
+    // TODO: update such that normal fill chooses smallest among unvalid entries
     auto [miss, _] = std::minmax_element(set_begin, set_end, [](const auto& x, const auto& y) {
       auto x_valid = x.last_used > 0;
+      auto y_valid = y.last_used > 0;
       auto cmp_lru = x.last_used < y.last_used;
-      return !x_valid || cmp_lru;
+      auto cmp_size = x.data.target_size < y.data.target_size;
+      return (!x_valid && !y_valid && cmp_size) || (!x_valid && y_valid) || cmp_lru;
     });
     return miss->data;
   }
@@ -193,7 +196,15 @@ public:
       set_begin++;
     }
     if (set_begin != set_end) {
-      auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
+      auto [miss, hit] = std::minmax_element(set_begin, set_end, [tag, proj = this->tag_projection](const auto& x, const auto& y) {
+        auto x_valid = x.last_used > 0;
+        auto y_valid = y.last_used > 0;
+        auto x_match = proj(x.data) == tag;
+        auto y_match = proj(y.data) == tag;
+        auto cmp_lru = x.last_used < y.last_used;
+        auto cmp_size = x.data.target_size < y.data.target_size;
+        return (!x_valid && !y_valid && cmp_size) || (!x_valid && y_valid && ((!x_match && y_match) || ((x_match == y_match) && cmp_lru)));
+      });
       if (tag_projection(hit->data) == tag) {
         std::optional<value_type> updated = std::optional<value_type>{hit->data};
         auto target_size = hit->data.target_size;

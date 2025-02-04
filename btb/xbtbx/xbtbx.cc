@@ -496,7 +496,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   /********* STATS ACCOUNTING *********/
   // TODO: Only update if prediction is wrong
   std::optional<::BTBEntry> replaced_entry = std::nullopt;
-  if (branch_target != 0 && (lru_elem.has_value() || opt_entry.value().get_prediction() != branch_target)) {
+  if (branch_target != 0) {
     // TODO: Check if (since we already know about region or not region) should make two distinct calls out of the below
     replaced_entry = ::BTB.at(this).fill(
         ::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS)), entry_size},
