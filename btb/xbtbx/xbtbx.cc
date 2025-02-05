@@ -21,6 +21,8 @@
 #define SMALL_BIG_WAY_SPLIT 14
 #define SAMPLING_DISTANCE 100000
 
+uint64_t invalid_replacements = 0;
+
 constexpr uint64_t pow2(uint8_t exp)
 {
   assert(exp <= 64);
@@ -498,10 +500,17 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   std::optional<::BTBEntry> replaced_entry = std::nullopt;
   if (branch_target != 0) {
     // TODO: Check if (since we already know about region or not region) should make two distinct calls out of the below
+    auto fill_entry = opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS)), entry_size});
     replaced_entry = ::BTB.at(this).fill(
-        opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS)), entry_size}),
-        entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
-
+        fill_entry, entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
+    // std::cout << "ip: " << fill_entry.ip_tag << " replaces ip: " << replaced_entry.value().ip_tag << " in cycle " << current_cycle << std::endl;
+    // invalid_replacements += replaced_entry.value().ip_tag == 0;
+    // uint64_t count_invalid_blocks = 0;
+    // for (auto it = ::BTB.at(this).begin(); it != ::BTB.at(this).end(); it++) {
+    //   count_invalid_blocks += it->data.ip_tag == 0;
+    // }
+    // assert(576 - invalid_replacements == count_invalid_blocks);
+    // assert(count_invalid_blocks < 576);
     // TODO: TAKE REGION BTB REPLACEMENTS INTO ACCOUNT
     uint64_t new_region = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
     region_tag_entry_count[new_region] += utilise_regions(replaced_entry.value().target_size);

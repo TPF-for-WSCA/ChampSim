@@ -203,7 +203,7 @@ public:
         auto y_match = proj(y.data) == tag;
         auto cmp_lru = x.last_used < y.last_used;
         auto cmp_size = x.data.target_size < y.data.target_size;
-        return (!x_valid && !y_valid && cmp_size) || (!x_valid && y_valid && ((!x_match && y_match) || ((x_match == y_match) && cmp_lru)));
+        return (!x_valid && !y_valid && cmp_size) || (y_valid && ((!x_match && y_match) || ((x_match == y_match) && cmp_lru)));
       });
       if (tag_projection(hit->data) == tag) {
         std::optional<value_type> updated = std::optional<value_type>{hit->data};
