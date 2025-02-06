@@ -90,7 +90,8 @@
         "queue": "cpp",
         "stack": "cpp",
         "*.inc": "cpp",
-        "*.def": "cpp"
+        "*.def": "cpp",
+        "*.btb": "cpp"
     },
     "cmake.sourceDirectory": "/Users/robrunne/Workspace/NTNU/ChampSim/vcpkg/ports/7zip",
     "cmake.ignoreCMakeListsMissing": true

@@ -19,7 +19,7 @@
 #include "ooo_cpu.h"
 
 #define SMALL_BIG_WAY_SPLIT 14
-#define SAMPLING_DISTANCE 100000
+#define SAMPLING_DISTANCE 1
 
 uint64_t invalid_replacements = 0;
 
@@ -431,6 +431,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     lru_elem = ::BTB.at(this).get_lru_elem(::BTBEntry{ip, 0}, num_bits);
   }
 
+  assert(!(small_hit.has_value() && big_hit.has_value()) || small_hit.value().ip_tag == big_hit.value().ip_tag);
+
   // TODO: pass way size and not num bits to utilise regions function here
   // TODO: check partial and check if utilise region is true -> update that value
   // TODO: get rid of hits that have the wrong size - those need to be updated and inserted into a larger way
@@ -515,16 +517,16 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     uint64_t new_region = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
     region_tag_entry_count[new_region] += utilise_regions(replaced_entry.value().target_size);
     if (replaced_entry.has_value() && replaced_entry.value().ip_tag && utilise_regions(replaced_entry.value().target_size)) {
-      if (replaced_entry.has_value() && replaced_entry.value().ip_tag != 0 && replaced_entry.value().target != 0) {
-        uint64_t old_region = (replaced_entry.value().ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+      uint64_t old_region = (replaced_entry.value().ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+      if (region_tag_entry_count[old_region] == 0) {
+        std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
+        std::cerr << "OLD REGION: " << old_region << std::endl;
+        std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+        std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
+      } else {
+        region_tag_entry_count[old_region] -= 1;
         if (region_tag_entry_count[old_region] == 0) {
-          std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
-          std::cerr << "OLD REGION: " << old_region << std::endl;
-        } else {
-          region_tag_entry_count[old_region] -= 1;
-          if (region_tag_entry_count[old_region] == 0) {
-            region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
-          }
+          region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
         }
       }
     }
@@ -576,14 +578,16 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       if (it->data.ip_tag && utilise_regions(it->data.target_size)) { // REGION_BTB.at(this).check_hit({it->data.ip_tag}) not used as we might have stale
                                                                       // entries that were covered by regions = we want to know how many we would have needed
         total_blocks++;
-        // auto region = (it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-        // region_count_control[region]++;
+        //    auto region = (it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+        //   region_count_control[region]++;
       }
     }
     // TODO: Debug only, remove afterwards / comment out
     // for (auto const& [region, cnt] : region_count_control) {
     //   if (region_tag_entry_count[region] != cnt) {
     //     std::cout << "mismatch in region " << region << " current cycle: " << current_cycle << std::endl;
+    //     std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+    //     std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
     //   }
     //   assert(region_tag_entry_count[region] == cnt);
     // }
@@ -614,7 +618,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
     std::get<4>(stats_entry) = min2ref;
 
-    assert(sum_count == total_blocks); // TEMPORARY DEACTIVATED
+    if (sum_count != total_blocks) {
+      std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+      std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
+      assert(false);
+    }
+    // assert(sum_count == total_blocks); // TEMPORARY DEACTIVATED
     sim_stats.region_history.push_back(stats_entry);
     last_stats_cycle = current_cycle;
   }
