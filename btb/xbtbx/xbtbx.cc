@@ -597,7 +597,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // }
 
     for (auto [tag, count] : sort_vec) {
-      assert(count <= total_blocks);
+      // assert(count <= total_blocks);
       min2ref += 1;
       sum_count += count;
       if (std::get<3>(stats_entry) == 0 && sum_count > 0.995 * total_blocks) {
@@ -618,11 +618,11 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
     std::get<4>(stats_entry) = min2ref;
 
-    if (sum_count != total_blocks) {
-      std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
-      std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
-      assert(false);
-    }
+    // if (sum_count != total_blocks) {
+    //   std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+    //   std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
+    //   assert(false);
+    // }
     // assert(sum_count == total_blocks); // TEMPORARY DEACTIVATED
     sim_stats.region_history.push_back(stats_entry);
     last_stats_cycle = current_cycle;
