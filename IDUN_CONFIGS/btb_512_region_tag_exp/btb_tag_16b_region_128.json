@@ -1,5 +1,5 @@
 {
-  "executable_name": "btb_512_region_tag_exp/btb_tag_16b_small_region_128",
+  "executable_name": "btb_512_region_tag_exp/btb_tag_16b_region_128",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
