@@ -513,16 +513,16 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // }
     // assert(576 - invalid_replacements == count_invalid_blocks);
     // assert(count_invalid_blocks < 576);
-    // TODO: TAKE REGION BTB REPLACEMENTS INTO ACCOUNT
+    // TODO: ONLY RUN THIS ANALYSIS FOR FULL REGION CONFIGURATIONS
     uint64_t new_region = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
     region_tag_entry_count[new_region] += utilise_regions(replaced_entry.value().target_size);
     if (replaced_entry.has_value() && replaced_entry.value().ip_tag && utilise_regions(replaced_entry.value().target_size)) {
       uint64_t old_region = (replaced_entry.value().ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
       if (region_tag_entry_count[old_region] == 0) {
-        std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
-        std::cerr << "OLD REGION: " << old_region << std::endl;
-        std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
-        std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
+        // std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
+        // std::cerr << "OLD REGION: " << old_region << std::endl;
+        // std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+        // std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
       } else {
         region_tag_entry_count[old_region] -= 1;
         if (region_tag_entry_count[old_region] == 0) {
