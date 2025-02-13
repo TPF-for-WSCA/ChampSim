@@ -82,7 +82,7 @@ std::map<uint32_t, uint64_t> offset_reuse_freq;
 std::map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 std::set<uint64_t> branch_ip;
 std::set<uint8_t> regions_inserted;
-// size_t region_btb_insers = 0;
+size_t region_btb_insers = 0;
 std::array<uint64_t, 64> dynamic_bit_counts;
 std::array<uint64_t, 64> static_bit_counts;
 
@@ -452,7 +452,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         // auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
         // assert(rv.second);
         ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
-        // region_btb_insers++;
+        region_btb_insers++;
         // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
         region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
       }
@@ -460,11 +460,11 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       // auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
       // assert(rv.second);
       ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
-      // region_btb_insers++;
+      region_btb_insers++;
       // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
       region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     }
-    // assert(region_btb_insers <= 256);
+    assert(region_btb_insers <= 256);
   }
   // else {
   //   if (small_hit.has_value()) {
@@ -505,14 +505,14 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     auto fill_entry = opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS)), entry_size});
     replaced_entry = ::BTB.at(this).fill(
         fill_entry, entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
-    // std::cout << "ip: " << fill_entry.ip_tag << " replaces ip: " << replaced_entry.value().ip_tag << " in cycle " << current_cycle << std::endl;
-    // invalid_replacements += replaced_entry.value().ip_tag == 0;
-    // uint64_t count_invalid_blocks = 0;
-    // for (auto it = ::BTB.at(this).begin(); it != ::BTB.at(this).end(); it++) {
-    //   count_invalid_blocks += it->data.ip_tag == 0;
-    // }
-    // assert(576 - invalid_replacements == count_invalid_blocks);
-    // assert(count_invalid_blocks < 576);
+    std::cout << "ip: " << fill_entry.ip_tag << " replaces ip: " << replaced_entry.value().ip_tag << " in cycle " << current_cycle << std::endl;
+    invalid_replacements += replaced_entry.value().ip_tag == 0;
+    uint64_t count_invalid_blocks = 0;
+    for (auto it = ::BTB.at(this).begin(); it != ::BTB.at(this).end(); it++) {
+      count_invalid_blocks += it->data.ip_tag == 0;
+    }
+    assert(288 - invalid_replacements == count_invalid_blocks);
+    assert(count_invalid_blocks < 288);
     // TODO: ONLY RUN THIS ANALYSIS FOR FULL REGION CONFIGURATIONS
     uint64_t new_region = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
     region_tag_entry_count[new_region] += utilise_regions(replaced_entry.value().target_size);
@@ -533,18 +533,18 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // region_tag_entry_count[new_region] += replaced_entry.has_value();
 
     // DEBUG SUMS TO FIND EXACT PLACE WE GO WRONG
-    // uint64_t sum = std::accumulate(std::begin(region_tag_entry_count), std::end(region_tag_entry_count), 0,
-    //                                [](const auto prev, const auto& elem) { return prev + elem.second; });
-    // uint64_t total_blocks = 0;
-    // std::map<uint64_t, uint64_t> control_region_tag_mapping;
-    // for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
-    //   if (it->data.ip_tag
-    //       && utilise_regions(it->data.target_size)) { // ignore REGION_BTB.at(this).check_hit({it->data.ip_tag}) as we do not remove/invalidate those entries
-    //     total_blocks++;
-    //     control_region_tag_mapping[(it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK]++;
-    //   }
-    // }
-    // assert(sum == total_blocks);
+    uint64_t sum = std::accumulate(std::begin(region_tag_entry_count), std::end(region_tag_entry_count), 0,
+                                   [](const auto prev, const auto& elem) { return prev + elem.second; });
+    uint64_t total_blocks = 0;
+    std::map<uint64_t, uint64_t> control_region_tag_mapping;
+    for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
+      if (it->data.ip_tag
+          && utilise_regions(it->data.target_size)) { // ignore REGION_BTB.at(this).check_hit({it->data.ip_tag}) as we do not remove/invalidate those entries
+        total_blocks++;
+        control_region_tag_mapping[(it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK]++;
+      }
+    }
+    assert(sum == total_blocks);
   }
 
   sim_stats.btb_updates++;
@@ -583,14 +583,14 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       }
     }
     // TODO: Debug only, remove afterwards / comment out
-    // for (auto const& [region, cnt] : region_count_control) {
-    //   if (region_tag_entry_count[region] != cnt) {
-    //     std::cout << "mismatch in region " << region << " current cycle: " << current_cycle << std::endl;
-    //     std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
-    //     std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
-    //   }
-    //   assert(region_tag_entry_count[region] == cnt);
-    // }
+    for (auto const& [region, cnt] : region_count_control) {
+      if (region_tag_entry_count[region] != cnt) {
+        std::cout << "mismatch in region " << region << " current cycle: " << current_cycle << std::endl;
+        std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+        std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
+      }
+      assert(region_tag_entry_count[region] == cnt);
+    }
 
     // for (auto [tag, count] : sort_vec) {
     //   total_blocks += count;
