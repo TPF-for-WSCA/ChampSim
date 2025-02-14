@@ -13,7 +13,7 @@ do
         echo -e "\tConfiguring ${build_script}"
         /usr/bin/time -p ./config.sh $build_script
         echo -e "\tBuilding ${build_script}"
-        /usr/bin/time -p make -j
+        /usr/bin/time -o /dev/tty -p make -j >&2 /cluster/work/romankb/build_${build_script%.json}.log
     done
 done
 cd $old_dir
