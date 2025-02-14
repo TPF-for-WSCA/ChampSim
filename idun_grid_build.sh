@@ -10,9 +10,10 @@ do
     echo "Building experiment $spec_dir"
     for build_script in ./IDUN_CONFIGS/$spec_dir/*;
     do
+        echo -e "\tConfiguring ${build_script}"
+        /usr/bin/time -p ./config.sh $build_script
         echo -e "\tBuilding ${build_script}"
-        ./config.sh $build_script
-        make -j
+        /usr/bin/time -p make -j
     done
 done
 cd $old_dir
