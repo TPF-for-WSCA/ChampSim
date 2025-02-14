@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 build_dir=("btb_region_tag_exp" "btb_512_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp" "btb_256_region_tag_exp")
 # build_dir=("btb_512_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp")
@@ -11,9 +11,9 @@ do
     for build_script in ./IDUN_CONFIGS/$spec_dir/*;
     do
         echo -e "\tConfiguring ${build_script}"
-        /usr/bin/time -p ./config.sh $build_script
+        ./config.sh $build_script
         echo -e "\tBuilding ${build_script}"
-        /usr/bin/time -o /dev/tty -p make -j >&2 /cluster/work/romankb/build_${build_script%.json}.log
+        make -j >&2 /cluster/work/romankb/build_${build_script%.json}.log
     done
 done
 cd $old_dir
