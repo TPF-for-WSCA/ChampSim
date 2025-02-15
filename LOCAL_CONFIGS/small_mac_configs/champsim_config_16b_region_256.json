@@ -30,7 +30,7 @@
       "dispatch_width": 6,
       "execute_width": 8,
       "lq_width": 2,
-      "sq_width": 2,
+for dir in ${binary_dir[@]}
       "retire_width": 8,
       "mispredict_penalty": 4,
       "scheduler_size": 205,
