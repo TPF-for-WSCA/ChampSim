@@ -74,9 +74,11 @@
                 "--warmup_instructions",
                 "0",
                 "--simulation_instructions",
-                "50000000",
+                "50000",
                 "--json",
                 "~/Downloads/stats.json",
+                "--tsv",
+                "~/Downloads/ip_stats.tsv",
                 // "--btb-tag-hash",
                 // "/Users/robrunne/Downloads/bit_ordering/server_022.champsimtrace_bit_ordering.txt"
                 // "-ptrace",

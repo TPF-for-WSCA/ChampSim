@@ -121,7 +121,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   fmt::print(stream, "Branch type MPKI\n");
   for (auto [str, idx] : types)
     fmt::print(stream, "{}: {:.3}\n", str, mpkis[idx]);
-  fmt::print(stream, "Branch count\n");
+  fmt::print(stream, "Branch count: {}\n", total_branch);
   for (auto [str, idx] : types) {
     fmt::print(stream, "{}:\t{}\n", str, stats.total_branch_types[idx]);
   }

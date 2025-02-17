@@ -5,10 +5,10 @@
   "heartbeat_frequency": 1000000,
   "num_cores": 1,
   "CFLAGS": [
-    "-Wall -Wno-reorder -g -O0 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
   ],
   "CXXFLAGS": [
-    "-Wall -Wno-reorder -g -O0 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
   ],
   "LDLIBS": [
     "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem"
@@ -30,7 +30,6 @@
       "dispatch_width": 6,
       "execute_width": 8,
       "lq_width": 2,
-for dir in ${binary_dir[@]}
       "retire_width": 8,
       "mispredict_penalty": 4,
       "scheduler_size": 205,
@@ -42,7 +41,7 @@ for dir in ${binary_dir[@]}
       "btb": "xbtbx",
       "btb_ways": 9,
       "btb_non_indirect": 9,
-      "btb_sets": 64,
+      "btb_sets": 32,
       "btb_clipped_tag": 1,
       "btb_big_way_regions_enabled": 1,
       "btb_small_way_regions_enabled": 1,
@@ -57,7 +56,7 @@ for dir in ${binary_dir[@]}
         25,
         64
       ],
-      "btb_tag_size": 8,
+      "btb_tag_size": 12,
       "btb_tag_regions": 256,
       "btb_tag_region_size": 8,
       "align_bits": 5

@@ -75,6 +75,7 @@ struct cpu_stats {
   uint64_t btb_updates = 0;
   uint64_t btb_static_updates = 0;
   uint16_t btb_tag_size = 0;
+  std::set<uint64_t> branch_ip_set = {};
   std::array<long double, 64> btb_tag_entropy = {}, btb_tag_switch_entropy = {};
 
   std::array<long long, 8> total_branch_types = {};

@@ -89,6 +89,10 @@ std::array<uint64_t, 64> static_bit_counts;
 // TODO: Only makes sense with BTB-X
 bool utilise_regions(size_t way_size)
 {
+  if (way_size == 64) {
+    return false;
+  }
+
   if (small_way_regions_enabled && big_way_regions_enabled) {
     return true;
   }
@@ -548,6 +552,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
 
   sim_stats.btb_updates++;
+  // if (branch_type != NOT_BRANCH)
+  //   sim_stats.branch_ip_set.insert((ip >> isa_shiftamount >> _BTB_SET_BITS));
 
   auto diff_tag = std::bitset<64>(ip ^ prev_branch_ip);
   for (size_t idx = 0; idx < 64; idx++) {
