@@ -53,7 +53,7 @@ def extract_branch_count(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile(r"\tTOTAL BRANCHES: (\d+)")
+    regex = re.compile(r"Branch count: (\d+)")
     logs.reverse()
     for line in logs:
         matches = regex.match(line)

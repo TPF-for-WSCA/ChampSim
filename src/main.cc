@@ -45,6 +45,7 @@ int main(int argc, char** argv)
   uint64_t warmup_instructions = 0;
   uint64_t simulation_instructions = std::numeric_limits<uint64_t>::max();
   std::string json_file_name;
+  std::string tsv_file_name;
   std::string btb_index_tag_hash_file_name;
   std::vector<std::string> trace_names;
 
@@ -71,6 +72,8 @@ int main(int argc, char** argv)
 
   auto json_option =
       app.add_option("--json", json_file_name, "The name of the file to receive JSON output. If no name is specified, stdout will be used")->expected(0, 1);
+  auto tsv_option =
+      app.add_option("--tsv", tsv_file_name, "The name of the file to receive TSV output. If no name is specified, stdout will be used")->expected(0, 1);
   auto btb_index_tag_hash = app.add_option("--btb-tag-hash", btb_index_tag_hash_file_name,
                                            "The name of the file that contains the ordering of the address bits to be used for indexing and tagging")
                                 ->expected(0, 1);
@@ -131,6 +134,15 @@ int main(int argc, char** argv)
 
   for (CACHE& cache : gen_environment.cache_view())
     cache.impl_replacement_final_stats();
+
+  if (tsv_option->count() > 0) {
+    if (tsv_file_name.empty()) {
+      champsim::tsv_printer{std::cout}.print(phase_stats);
+    } else {
+      std::ofstream tsv_file{tsv_file_name};
+      champsim::tsv_printer{tsv_file}.print(phase_stats);
+    }
+  }
 
   if (json_option->count() > 0) {
     if (json_file_name.empty()) {

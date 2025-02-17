@@ -53,4 +53,20 @@ public:
   json_printer(std::ostream& str) : stream(str) {}
   void print(std::vector<phase_stats>& stats);
 };
+
+class tsv_printer
+{
+  std::ostream& stream;
+
+private:
+  void to_tsv(const DRAM_CHANNEL::stats_type);
+  void to_tsv(const CACHE::stats_type);
+  void to_tsv(const O3_CPU::stats_type);
+  void write(std::string&);
+
+public:
+  tsv_printer(std::ostream& str) : stream(str) {}
+  void print(std::vector<phase_stats>& stats);
+};
+
 } // namespace champsim
