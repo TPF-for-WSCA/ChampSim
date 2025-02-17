@@ -89,10 +89,8 @@ std::array<uint64_t, 64> static_bit_counts;
 // TODO: Only makes sense with BTB-X
 bool utilise_regions(size_t way_size)
 {
-  =
 
-      if (small_way_regions_enabled && big_way_regions_enabled)
-  {
+  if (small_way_regions_enabled && big_way_regions_enabled) {
     return true;
   }
   if (small_way_regions_enabled) {
