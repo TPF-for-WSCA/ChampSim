@@ -506,6 +506,7 @@ def single_run(path):
             elif type == STATS.BTB_BIT_ORDERING:
                 bit_ordering = extract_btb_bit_ordering(f"{path}/{workload}/{logfile}")
                 raw_data_path = f"{path}/{workload}_bit_ordering.txt"
+                print(f"BIT ORDERING written to {raw_data_path}")
                 with open(raw_data_path, "x") as f:
                     for bit in bit_ordering:
                         f.write(f"{bit}\n")
