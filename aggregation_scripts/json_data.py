@@ -34,9 +34,9 @@ for percentage in [100, 99.5, 99, 95, 90]:
         while(1):
             for header in headers:
                 if (len(regions[percentage][header]) <= idx):
-                    outfile.write("\t''")
+                    outfile.write("\t")
                     continue
-                outfile.write(f"\t'{regions[percentage][header][idx]}'")
+                outfile.write(f"\t{regions[percentage][header][idx]}")
             outfile.write("\n")
             idx += 1
             if idx == max_idx:
