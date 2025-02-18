@@ -89,7 +89,8 @@ std::array<uint64_t, 64> static_bit_counts;
 // TODO: Only makes sense with BTB-X
 bool utilise_regions(size_t way_size)
 {
-
+  if (way_size == 64)
+    return false;
   if (small_way_regions_enabled && big_way_regions_enabled) {
     return true;
   }
@@ -292,6 +293,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
     std::optional<::BTBEntry> partial_small = std::nullopt;
     std::optional<::BTBEntry> full_big = std::nullopt;
     std::optional<::BTBEntry> partial_big = std::nullopt;
+    std::optional<::BTBEntry> full_64 = std::nullopt;
     if (small_way_regions_enabled && region_idx_.has_value()) {
       full_small = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, region_idx_.value(), 0});
       if (full_small.has_value() && !utilise_regions(full_small.value().target_size)) {
@@ -301,13 +303,15 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
       partial_small = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, (uint16_t)-1, 0});
     }
     if (big_way_regions_enabled && region_idx_.has_value()) {
-      full_big = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, region_idx_.value(), 64});
+      full_big = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, region_idx_.value(), BTB_TARGET_SIZES.end()[-2]});
       if (full_big.has_value() && !utilise_regions(full_big.value().target_size)) {
         full_small = std::nullopt;
       }
     } else if (!big_way_regions_enabled) {
-      partial_big = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, (uint16_t)-1, 64});
+      partial_big = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, (uint16_t)-1, BTB_TARGET_SIZES.end()[-2]});
     }
+    full_64 = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, (uint16_t)-1, 64});
+
     assert(
         !(full_small.has_value() && full_big.has_value()
           && full_small.value().ip_tag != full_big.value().ip_tag)); // This should never happen as then we should have updated the value instead of re-inserted
@@ -321,6 +325,8 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
       btb_entry = partial_big.value();
     } else if (partial.has_value()) { // could only ever be true if partial resolution is enabled
       btb_entry = partial.value();
+    } else if (full_64.has_value()) {
+      btb_entry = full_64.value();
     }
   } else {
     btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, 0, 0});
@@ -417,6 +423,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   std::optional<uint8_t> tmp_region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
   std::optional<::BTBEntry> small_hit = std::nullopt;
   std::optional<::BTBEntry> big_hit = std::nullopt;
+  std::optional<::BTBEntry> hit_64 = std::nullopt;
   std::optional<::BTBEntry> lru_elem = std::nullopt;
   if (small_way_regions_enabled && tmp_region_idx.has_value()) {
     small_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value(), 0});
@@ -424,11 +431,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     small_hit = ::BTB.at(this).check_hit({ip, 0, type, (uint16_t)-1, 0});
   }
   if (big_way_regions_enabled && tmp_region_idx.has_value()) {
-    big_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value(), 64});
+    big_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value(), BTB_TARGET_SIZES.end()[-2]});
   } else if (!big_way_regions_enabled) {
-    big_hit = ::BTB.at(this).check_hit({ip, 0, type, (uint16_t)-1, 64});
+    big_hit = ::BTB.at(this).check_hit({ip, 0, type, (uint16_t)-1, BTB_TARGET_SIZES.end()[-2]});
   }
-  if (!small_hit.has_value() && !big_hit.has_value()) {
+  hit_64 = ::BTB.at(this).check_hit({ip, 0, type, (uint16_t)-1, 64});
+  if (!small_hit.has_value() && !big_hit.has_value() && !hit_64.has_value()) {
     lru_elem = ::BTB.at(this).get_lru_elem(::BTBEntry{ip, 0}, num_bits);
   }
 
@@ -484,6 +492,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   } else if (big_hit.has_value()) {
     entry_size = std::max(entry_size, big_hit.value().target_size);
     opt_entry = big_hit.value();
+  } else if (hit_64.has_value()) {
+    entry_size = std::max(entry_size, hit_64.value().target_size);
+    opt_entry = hit_64.value();
   } else if (lru_elem.has_value()) {
     entry_size = std::max(entry_size, lru_elem.value().target_size);
   }
@@ -504,6 +515,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   if (branch_target != 0) {
     // TODO: Check if (since we already know about region or not region) should make two distinct calls out of the below
     auto fill_entry = opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx.value_or(pow2(_BTB_REGION_BITS)), entry_size});
+    fill_entry.target = branch_target; // make sure we update the actual target - ip does not matter as we have the same idx/tag/region
+    fill_entry.type = type;
     replaced_entry = ::BTB.at(this).fill(
         fill_entry, entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
     // std::cout << "ip: " << fill_entry.ip_tag << " replaces ip: " << replaced_entry.value().ip_tag << " in cycle " << current_cycle << std::endl;
