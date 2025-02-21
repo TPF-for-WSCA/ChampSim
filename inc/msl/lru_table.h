@@ -170,7 +170,7 @@ public:
       return std::nullopt;
 
     hit->last_used = ++access_count;
-    return hit - set_begin;
+    return hit - begin();
   }
 
   value_type get_lru_elem(const value_type& elem, uint8_t size)
