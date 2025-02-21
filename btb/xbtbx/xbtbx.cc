@@ -66,9 +66,9 @@ std::size_t _BTB_WAYS = 0;
 uint8_t _BTB_CLIPPED_TAG = 0;
 uint8_t _BTB_TAG_SIZE = 0;
 uint8_t _BTB_SET_BITS;
-uint16_t _BTB_TAG_REGIONS = 0;
-uint8_t _BTB_TAG_REGION_SIZE = 0;
-uint16_t _BTB_REGION_BITS = 0;
+uint16_t _BTB_TAG_REGIONS = 0;    // This is the number of regions in the region BTB
+uint8_t _BTB_TAG_REGION_SIZE = 0; // This is the size of a single region in bits
+uint16_t _BTB_REGION_BITS = 0;    // This is the number of bits required to assign an ID to all regions in the region BTB (log2(BTB_TAG_REGIONS))
 uint64_t last_stats_cycle = 0;
 uint64_t isa_shiftamount = 2;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
@@ -76,6 +76,7 @@ constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
 bool small_way_regions_enabled = 0;
 bool big_way_regions_enabled = 0;
+bool fully_associative_regions = true;
 
 uint64_t prev_branch_ip = 0;
 std::map<uint32_t, uint64_t> offset_reuse_freq;
@@ -205,7 +206,23 @@ struct BTBEntry {
 
 struct region_btb_entry_t {
   uint64_t ip_tag = 0;
-  auto index() const { return 0; }
+  auto index() const
+  {
+    if (fully_associative_regions) {
+      return 0;
+    }
+    auto raw_idx = (ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+    auto idx = 0;
+    if (_BTB_REGION_BITS < _BTB_TAG_REGION_SIZE) {
+      while (raw_idx) {
+        idx ^= (raw_idx & (_BTB_TAG_REGIONS - 1));
+        raw_idx >>= _BTB_REGION_BITS;
+      }
+      idx &= (_BTB_TAG_REGIONS - 1);
+    } else
+      idx = raw_idx;
+    return idx;
+  }
   auto tag() const
   {
     // TODO: calculate region tag
@@ -226,12 +243,15 @@ std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
 std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
 std::map<O3_CPU*, std::deque<uint64_t>> RAS;
 std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
+
 } // namespace
 
 void O3_CPU::initialize_btb()
 {
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
-  ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, BTB_TAG_REGIONS}});
+  // TODO: Make region BTB configurable for way/sets
+  ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{BTB_TAG_REGIONS, 1}});
+  fully_associative_regions = false;
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   ::btb_addressing_hash = btb_index_tag_hash;
   btb_addressing_masks.resize(btb_addressing_hash.size());

@@ -65,6 +65,8 @@ public:
   }
   auto begin() { return std::begin(block); }
   auto end() { return std::end(block); }
+  auto get_num_set() { return NUM_SET; }
+  auto get_num_way() { return NUM_WAY; }
 
 private:
   struct block_t {
