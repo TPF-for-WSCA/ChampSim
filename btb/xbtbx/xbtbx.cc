@@ -250,8 +250,8 @@ void O3_CPU::initialize_btb()
 {
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
   // TODO: Make region BTB configurable for way/sets
-  ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{BTB_TAG_REGIONS, 1}});
-  fully_associative_regions = false;
+  ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, BTB_TAG_REGIONS}});
+  // fully_associative_regions = false;
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   ::btb_addressing_hash = btb_index_tag_hash;
   btb_addressing_masks.resize(btb_addressing_hash.size());
@@ -548,6 +548,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // assert(288 - invalid_replacements == count_invalid_blocks);
     // assert(count_invalid_blocks < 288);
     // TODO: ONLY RUN THIS ANALYSIS FOR FULL REGION CONFIGURATIONS
+    // if (replaced_entry.has_value()) {
+    //   std::cout << "IP: " << ip << ", REPLACED: " << replaced_entry.value().ip_tag << ", CURRENT_CYCLE: " << current_cycle << std::endl;
+    // }
     uint64_t new_region = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
     region_tag_entry_count[new_region] += utilise_regions(replaced_entry.value().target_size);
     if (replaced_entry.has_value() && replaced_entry.value().ip_tag && utilise_regions(replaced_entry.value().target_size)) {

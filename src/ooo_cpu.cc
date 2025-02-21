@@ -200,6 +200,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       sim_stats.negative_aliasing += 1;
     }
   }
+  // std::cout << "INSTR_ID: " << arch_instr.instr_id << ", MISPREDICTED: " << (predicted_branch_target != arch_instr.branch_target)
+  //           << ", CURRENT CYCLE: " << current_cycle << std::endl;
 
   // NOTE: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately
   if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {
@@ -379,7 +381,8 @@ long O3_CPU::dispatch_instruction()
 
   // dispatch DISPATCH_WIDTH instructions into the ROB
   while (available_dispatch_bandwidth > 0 && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().event_cycle < current_cycle && std::size(ROB) != ROB_SIZE
-         && ((std::size_t)std::count_if(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
+         && ((std::size_t)std::count_if(
+                 std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
              >= std::size(DISPATCH_BUFFER.front().source_memory))
          && ((std::size(DISPATCH_BUFFER.front().destination_memory) + std::size(SQ)) <= SQ_SIZE)) {
     ROB.push_back(std::move(DISPATCH_BUFFER.front()));
