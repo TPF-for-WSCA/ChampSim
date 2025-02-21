@@ -250,8 +250,8 @@ void O3_CPU::initialize_btb()
 {
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
   // TODO: Make region BTB configurable for way/sets
-  ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, BTB_TAG_REGIONS}});
-  // fully_associative_regions = false;
+  ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{BTB_TAG_REGIONS, 1}});
+  fully_associative_regions = false;
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   ::btb_addressing_hash = btb_index_tag_hash;
   btb_addressing_masks.resize(btb_addressing_hash.size());

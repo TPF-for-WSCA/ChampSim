@@ -58,9 +58,9 @@
         25,
         64
       ],
-      "btb_tag_size": 13,
+      "btb_tag_size": 8,
       "btb_tag_regions": 8,
-      "btb_tag_region_size": 3,
+      "btb_tag_region_size": 8,
       "align_bits": 5
     }
   ],
