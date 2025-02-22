@@ -74,7 +74,7 @@
                 "--warmup_instructions",
                 "0",
                 "--simulation_instructions",
-                "50000",
+                "500000",
                 "--json",
                 "~/Downloads/stats.json",
                 "--tsv",
