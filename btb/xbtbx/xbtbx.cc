@@ -19,7 +19,7 @@
 #include "ooo_cpu.h"
 
 #define SMALL_BIG_WAY_SPLIT 14
-#define SAMPLING_DISTANCE 100
+#define SAMPLING_DISTANCE 1000000
 
 uint64_t invalid_replacements = 0;
 
