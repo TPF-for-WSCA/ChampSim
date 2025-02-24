@@ -250,7 +250,10 @@ void O3_CPU::initialize_btb()
 {
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
   // TODO: Make region BTB configurable for way/sets
-  ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{BTB_TAG_REGIONS, 1}});
+  if (BTB_TAG_REGIONS)
+    ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{BTB_TAG_REGIONS, 1}});
+  else
+    ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, 1}}); // no regions used, dummy entry to allow region lookup where not predicated
   fully_associative_regions = false;
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   ::btb_addressing_hash = btb_index_tag_hash;
@@ -440,7 +443,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   std::optional<::BTBEntry> opt_entry;
   uint8_t entry_size = num_bits;
   // TODO: ADD REGION INFORMATION IF AVAILABLE
-  std::optional<uint8_t> tmp_region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
+  std::optional<uint8_t> tmp_region_idx = (small_way_regions_enabled || big_way_regions_enabled) ? ::REGION_BTB.at(this).check_hit_idx({ip}) : std::nullopt;
   std::optional<::BTBEntry> small_hit = std::nullopt;
   std::optional<::BTBEntry> big_hit = std::nullopt;
   std::optional<::BTBEntry> hit_64 = std::nullopt;
