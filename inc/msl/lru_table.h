@@ -161,7 +161,7 @@ public:
     }
     */
 
-  std::optional<uint8_t> check_hit_idx(const value_type& elem)
+  std::optional<std::pair<uint16_t, uint64_t>> check_hit_idx(const value_type& elem)
   {
     auto [set_begin, set_end] = get_set_span(elem);
     auto hit = std::find_if(set_begin, set_end, match_func(elem));
@@ -170,7 +170,7 @@ public:
       return std::nullopt;
 
     hit->last_used = ++access_count;
-    return hit - begin();
+    return std::pair<uint16_t, uint64_t>{hit - begin(), hit->data.tag()};
   }
 
   value_type get_lru_elem(const value_type& elem, uint8_t size)
@@ -250,7 +250,7 @@ public:
   void invalidate_region(const value_type& elem)
   {
     for (auto entry = std::begin(block); entry != std::end(block); entry++) {
-      if (entry->data.offset_tag == elem.offset_tag) {
+      if (entry->data.region_idx_tag.first == elem.region_idx_tag.first) {
         std::exchange(*entry, {});
       }
     }

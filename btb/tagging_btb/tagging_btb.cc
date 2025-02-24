@@ -51,7 +51,7 @@ struct btb_entry_t {
   uint64_t ip_tag = 0;
   uint64_t target = 0;
   branch_info type = branch_info::ALWAYS_TAKEN;
-  uint16_t offset_tag = 0;
+  uint16_t region_idx_tag = 0;
 
   auto index() const { return (ip_tag >> 2) & _INDEX_MASK; }
   auto tag() const
@@ -65,7 +65,7 @@ struct btb_entry_t {
       // TODO: check if zeroed out proper bits
       auto masked_bits = tag & (_REGION_MASK << _BTB_TAG_SIZE);
       tag ^= masked_bits;
-      tag |= offset_tag << _BTB_TAG_SIZE;
+      tag |= region_idx_tag << _BTB_TAG_SIZE;
     }
     return tag;
   }
