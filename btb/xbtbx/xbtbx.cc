@@ -615,7 +615,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       // TODO: count current valid entries in btb
       // TODO: Track 90, 95, 99, 99.5% and add to queue whenever we sample
 
-      std::map<uint64_t, uint64_t> region_count_control = {};
+      // std::map<uint8_t, std::map<uint64_t, uint64_t>> region_count_control = {};
       uint64_t total_blocks = 0;
       for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
         if (it->data.ip_tag && utilise_regions(it->data.target_size)
@@ -623,17 +623,22 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
                                                // entries that were covered by regions = we want to know how many we would have needed
           total_blocks++;
           // auto region = (it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-          // region_count_control[region]++;
+          // region_count_control[it->data.target_size][region]++;
         }
       }
       // TODO: Debug only, remove afterwards / comment out
-      // for (auto const& [region, cnt] : region_count_control) {
-      //   if (region_tag_entry_count[region] != cnt) {
-      //     std::cout << "mismatch in region " << region << " current cycle: " << current_cycle << std::endl;
-      //     std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
-      //     std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
+      // for (auto const& [way_size, cnt_per_size] : region_count_control) {
+      //   for (auto const& [region_size, cnt] : cnt_per_size) {
+      //     if (region_tag_entry_count[way_size][region_size] != cnt) {
+      //       std::cout << "mismatch in region " << region_size << " in way " << way_size << " current cycle: " << current_cycle << std::endl;
+      //       std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+      //       std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
+      //     }
+      //     assert(region_tag_entry_count[way_size][region_size] == cnt);
+      //     if (way_size == 64) {
+      //       assert(region_tag_entry_count[64][region_size] == 0);
+      //     }
       //   }
-      //   assert(region_tag_entry_count[region] == cnt);
       // }
 
       // for (auto [tag, count] : sort_vec) {
@@ -642,7 +647,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
       for (auto [tag, count] : sort_vec) {
         // assert(count <= total_blocks);
-        min2ref += 1;
+        min2ref += (count != 0);
         sum_count += count;
         if (std::get<3>(stats_entry[size]) == 0 && sum_count > 0.995 * total_blocks) {
           std::get<3>(stats_entry[size]) = min2ref;
