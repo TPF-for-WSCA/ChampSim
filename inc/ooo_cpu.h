@@ -71,7 +71,7 @@ struct cpu_stats {
   uint64_t total_aliasing = 0, positive_aliasing = 0, negative_aliasing = 0;
   uint64_t max_regions = 0;
   uint64_t min_regions = 0;
-  std::vector<std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>> region_history;
+  std::vector<std::map<uint8_t, std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>>> region_history;
   uint64_t btb_updates = 0;
   uint64_t btb_static_updates = 0;
   uint16_t btb_tag_size = 0;

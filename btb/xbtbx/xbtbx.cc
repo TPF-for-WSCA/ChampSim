@@ -50,7 +50,7 @@ enum class branch_info {
 // size_t _37_updated = 0;
 // DEBUGGING END
 
-std::map<uint64_t, uint64_t> region_tag_entry_count = {};
+std::map<uint8_t, std::map<uint64_t, uint64_t>> region_tag_entry_count = {};
 std::vector<uint8_t> index_bits;
 std::vector<uint8_t> tag_bits;
 std::vector<uint8_t> btb_addressing_hash;
@@ -555,18 +555,18 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     //   std::cout << "IP: " << ip << ", REPLACED: " << replaced_entry.value().ip_tag << ", CURRENT_CYCLE: " << current_cycle << std::endl;
     // }
     uint64_t new_region = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-    region_tag_entry_count[new_region] += utilise_regions(replaced_entry.value().target_size);
+    region_tag_entry_count[replaced_entry.value().target_size][new_region] += utilise_regions(replaced_entry.value().target_size);
     if (replaced_entry.has_value() && replaced_entry.value().ip_tag && utilise_regions(replaced_entry.value().target_size)) {
       uint64_t old_region = (replaced_entry.value().ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-      if (region_tag_entry_count[old_region] == 0) {
+      if (region_tag_entry_count[replaced_entry.value().target_size][old_region] == 0) {
         // std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
         // std::cerr << "OLD REGION: " << old_region << std::endl;
         // std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
         // std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
       } else {
-        region_tag_entry_count[old_region] -= 1;
-        if (region_tag_entry_count[old_region] == 0) {
-          region_tag_entry_count.erase(region_tag_entry_count.find(old_region));
+        region_tag_entry_count[replaced_entry.value().target_size][old_region] -= 1;
+        if (region_tag_entry_count[replaced_entry.value().target_size][old_region] == 0) {
+          region_tag_entry_count[replaced_entry.value().target_size].erase(region_tag_entry_count[replaced_entry.value().target_size].find(old_region));
         }
       }
     }
@@ -604,68 +604,71 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   }
   if (!warmup && SAMPLING_DISTANCE < current_cycle - last_stats_cycle) {
-    if (sim_stats.max_regions < region_tag_entry_count.size()) {
-      sim_stats.max_regions = region_tag_entry_count.size();
-    }
-    std::vector<std::pair<uint64_t, uint64_t>> sort_vec(region_tag_entry_count.begin(), region_tag_entry_count.end());
-    std::sort(sort_vec.begin(), sort_vec.end(), [](auto& a, auto& b) { return a.second > b.second; });
-    uint64_t min2ref = 0, sum_count = 0;
-    std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t> stats_entry{};
-    // TODO: count current valid entries in btb
-    // TODO: Track 90, 95, 99, 99.5% and add to queue whenever we sample
+    std::map<uint8_t, std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>> stats_entry{};
+    for (auto const& [size, region_count] : region_tag_entry_count) {
+      if (sim_stats.max_regions < region_count.size()) {
+        sim_stats.max_regions = region_count.size();
+      }
+      std::vector<std::pair<uint64_t, uint64_t>> sort_vec(region_count.begin(), region_count.end());
+      std::sort(sort_vec.begin(), sort_vec.end(), [](auto& a, auto& b) { return a.second > b.second; });
+      uint64_t min2ref = 0, sum_count = 0;
+      // TODO: count current valid entries in btb
+      // TODO: Track 90, 95, 99, 99.5% and add to queue whenever we sample
 
-    std::map<uint64_t, uint64_t> region_count_control = {};
-    uint64_t total_blocks = 0;
-    for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
-      if (it->data.ip_tag && utilise_regions(it->data.target_size)) { // REGION_BTB.at(this).check_hit({it->data.ip_tag}) not used as we might have stale
-                                                                      // entries that were covered by regions = we want to know how many we would have needed
-        total_blocks++;
-        // auto region = (it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-        // region_count_control[region]++;
+      std::map<uint64_t, uint64_t> region_count_control = {};
+      uint64_t total_blocks = 0;
+      for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
+        if (it->data.ip_tag && utilise_regions(it->data.target_size)
+            && size == it->data.target_size) { // REGION_BTB.at(this).check_hit({it->data.ip_tag}) not used as we might have stale
+                                               // entries that were covered by regions = we want to know how many we would have needed
+          total_blocks++;
+          // auto region = (it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+          // region_count_control[region]++;
+        }
       }
-    }
-    // TODO: Debug only, remove afterwards / comment out
-    // for (auto const& [region, cnt] : region_count_control) {
-    //   if (region_tag_entry_count[region] != cnt) {
-    //     std::cout << "mismatch in region " << region << " current cycle: " << current_cycle << std::endl;
-    //     std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
-    //     std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
-    //   }
-    //   assert(region_tag_entry_count[region] == cnt);
-    // }
+      // TODO: Debug only, remove afterwards / comment out
+      // for (auto const& [region, cnt] : region_count_control) {
+      //   if (region_tag_entry_count[region] != cnt) {
+      //     std::cout << "mismatch in region " << region << " current cycle: " << current_cycle << std::endl;
+      //     std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+      //     std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
+      //   }
+      //   assert(region_tag_entry_count[region] == cnt);
+      // }
 
-    // for (auto [tag, count] : sort_vec) {
-    //   total_blocks += count;
-    // }
+      // for (auto [tag, count] : sort_vec) {
+      //   total_blocks += count;
+      // }
 
-    for (auto [tag, count] : sort_vec) {
-      // assert(count <= total_blocks);
-      min2ref += 1;
-      sum_count += count;
-      if (std::get<3>(stats_entry) == 0 && sum_count > 0.995 * total_blocks) {
-        std::get<3>(stats_entry) = min2ref;
+      for (auto [tag, count] : sort_vec) {
+        // assert(count <= total_blocks);
+        min2ref += 1;
+        sum_count += count;
+        if (std::get<3>(stats_entry[size]) == 0 && sum_count > 0.995 * total_blocks) {
+          std::get<3>(stats_entry[size]) = min2ref;
+        }
+        if (std::get<2>(stats_entry[size]) == 0 && sum_count > 0.99 * total_blocks) {
+          std::get<2>(stats_entry[size]) = min2ref;
+        }
+        if (std::get<1>(stats_entry[size]) == 0 && sum_count > 0.95 * total_blocks) {
+          std::get<1>(stats_entry[size]) = min2ref;
+        }
+        if (std::get<0>(stats_entry[size]) == 0 && sum_count > 0.9 * total_blocks) {
+          std::get<0>(stats_entry[size]) = min2ref;
+        }
       }
-      if (std::get<2>(stats_entry) == 0 && sum_count > 0.99 * total_blocks) {
-        std::get<2>(stats_entry) = min2ref;
+      if (sim_stats.min_regions < min2ref) {
+        sim_stats.min_regions = min2ref;
       }
-      if (std::get<1>(stats_entry) == 0 && sum_count > 0.95 * total_blocks) {
-        std::get<1>(stats_entry) = min2ref;
-      }
-      if (std::get<0>(stats_entry) == 0 && sum_count > 0.9 * total_blocks) {
-        std::get<0>(stats_entry) = min2ref;
-      }
-    }
-    if (sim_stats.min_regions < min2ref) {
-      sim_stats.min_regions = min2ref;
-    }
-    std::get<4>(stats_entry) = min2ref;
+      std::get<4>(stats_entry[size]) = min2ref;
 
-    // if (sum_count != total_blocks) {
-    //   std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
-    //   std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
-    //   assert(false);
-    // }
-    // assert(sum_count == total_blocks); // TEMPORARY DEACTIVATED
+      // if (sum_count != total_blocks) {
+      //   std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+      //   std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
+      //   assert(false);
+      // }
+      // assert(sum_count == total_blocks); // TEMPORARY DEACTIVATED
+    }
     sim_stats.region_history.push_back(stats_entry);
     last_stats_cycle = current_cycle;
   }
