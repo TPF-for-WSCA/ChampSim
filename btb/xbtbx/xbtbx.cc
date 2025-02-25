@@ -18,7 +18,8 @@
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
-#define PERFECT_MAPPING true
+#define FULLY_ASSOCIATIVE_REGIONS false // if this is false it is direct mapped region btb
+#define PERFECT_MAPPING false
 #define SMALL_BIG_WAY_SPLIT 14
 #define SAMPLING_DISTANCE 1000000
 
@@ -77,7 +78,6 @@ constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
 bool small_way_regions_enabled = 0;
 bool big_way_regions_enabled = 0;
-bool fully_associative_regions = true;
 
 uint64_t prev_branch_ip = 0;
 std::map<uint32_t, uint64_t> offset_reuse_freq;
@@ -212,7 +212,7 @@ struct region_btb_entry_t {
   uint64_t ip_tag = 0;
   auto index() const
   {
-    if (fully_associative_regions) {
+    if (FULLY_ASSOCIATIVE_REGIONS) {
       return 0;
     }
     auto raw_idx = (ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
@@ -252,13 +252,17 @@ std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 
 void O3_CPU::initialize_btb()
 {
+  std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << FULLY_ASSOCIATIVE_REGIONS << "\nPERFECT MAPPING: " << PERFECT_MAPPING << std::endl;
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
   // TODO: Make region BTB configurable for way/sets
-  if (BTB_TAG_REGIONS)
+  if (BTB_TAG_REGIONS && FULLY_ASSOCIATIVE_REGIONS) {
     ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, BTB_TAG_REGIONS}});
-  else
+  } else if (BTB_TAG_REGIONS && !FULLY_ASSOCIATIVE_REGIONS) {
+    ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{BTB_TAG_REGIONS, 1}});
+  } else {
     ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, 1}}); // no regions used, dummy entry to allow region lookup where not predicated
-  // fully_associative_regions = false;
+  }
+  // FULLY_ASSOCIATIVE_REGIONS = false;
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   ::btb_addressing_hash = btb_index_tag_hash;
   btb_addressing_masks.resize(btb_addressing_hash.size());
@@ -547,7 +551,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     fill_entry.target = branch_target; // make sure we update the actual target - ip does not matter as we have the same idx/tag/region
     fill_entry.type = type;
     replaced_entry = ::BTB.at(this).fill(
-        fill_entry, entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
+        fill_entry,
+        entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
     // std::cout << "ip: " << fill_entry.ip_tag << " replaces ip: " << replaced_entry.value().ip_tag << " in cycle " << current_cycle << std::endl;
     // invalid_replacements += replaced_entry.value().ip_tag == 0;
     // uint64_t count_invalid_blocks = 0;
@@ -585,7 +590,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // std::map<uint64_t, uint64_t> control_region_tag_mapping;
     // for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
     //   if (it->data.ip_tag
-    //       && utilise_regions(it->data.target_size)) { // ignore REGION_BTB.at(this).check_hit({it->data.ip_tag}) as we do not remove/invalidate those entries
+    //       && utilise_regions(it->data.target_size)) { // ignore REGION_BTB.at(this).check_hit({it->data.ip_tag}) as we do not remove/invalidate those
+    //       entries
     //     total_blocks++;
     //     // control_region_tag_mapping[(it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK]++;
     //   }
