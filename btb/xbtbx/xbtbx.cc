@@ -18,8 +18,8 @@
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
-#define FULLY_ASSOCIATIVE_REGIONS false // if this is false it is direct mapped region btb
-#define PERFECT_MAPPING false
+#define FULLY_ASSOCIATIVE_REGIONS true // if this is false it is direct mapped region btb
+#define PERFECT_MAPPING true
 #define SMALL_BIG_WAY_SPLIT 14
 #define SAMPLING_DISTANCE 1000000
 
@@ -392,7 +392,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   // DONE: calculate size
-  uint64_t offset_size = ip ^ branch_target;
+  uint64_t offset_size = (ip >> isa_shiftamount) ^ (branch_target >> isa_shiftamount);
   uint8_t num_bits = 0;
   while (offset_size) {
     offset_size >>= 1;

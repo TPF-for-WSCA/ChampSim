@@ -1,5 +1,5 @@
 {
-  "executable_name": "champsim_16b_region_256",
+  "executable_name": "champsim_16b_region_2",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 1000000,
@@ -57,7 +57,7 @@
         64
       ],
       "btb_tag_size": 8,
-      "btb_tag_regions": 256,
+      "btb_tag_regions": 2,
       "btb_tag_region_size": 8,
       "align_bits": 5
     }
