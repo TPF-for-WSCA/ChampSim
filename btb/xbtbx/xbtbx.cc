@@ -118,8 +118,10 @@ struct BTBEntry {
   // TODO: shift indexes and tags into place
   auto index() const
   {
-    if (btb_addressing_hash.empty())
-      return (ip_tag >> isa_shiftamount) & _INDEX_MASK;
+    if (btb_addressing_hash.empty()) {
+      auto idx = (ip_tag >> isa_shiftamount) & _INDEX_MASK;
+      return idx;
+    }
     assert(btb_addressing_hash.size() <= _BTB_SETS);
     auto ip = ip_tag >> isa_shiftamount;
     uint64_t idx = 0;
@@ -342,6 +344,10 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
       partial_big = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, std::pair<uint16_t, uint64_t>{(uint16_t)-1, 0}, BTB_TARGET_SIZES.end()[-2]});
     }
     full_64 = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, std::pair<uint16_t, uint64_t>{(uint16_t)-1, 0}, 64});
+    if (full_64.has_value() && full_64.value().target_size != 64) {
+      full_64 = std::nullopt; // fixing up for when we are using perfect matching, as in this case we will alias as we use the actual region bits instead of
+                              // their index
+    }
 
     assert(
         !(full_small.has_value() && full_big.has_value()
@@ -453,21 +459,51 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   // TODO: ADD REGION INFORMATION IF AVAILABLE
   std::optional<std::pair<uint16_t, uint64_t>> tmp_region_idx =
       (small_way_regions_enabled || big_way_regions_enabled) ? ::REGION_BTB.at(this).check_hit_idx({ip}) : std::nullopt;
+
+  //{ NOTE: VERY VERBOSE DEBUGGING OUTPUT BELOW
+  // std::cout << "Current Regions in Region BTB:" << std::endl;
+  // for (auto it = ::REGION_BTB.at(this).begin(); it != ::REGION_BTB.at(this).end(); it++) {
+  //   if (it->last_used == 0)
+  //     continue;
+  //   std::cout << "\tBlock" << it - ::REGION_BTB.at(this).begin() << ": " << it->data.tag() << std::endl;
+  // }
+  // std::cout << "Number of Blocks in Ways: " << std::endl;
+  // std::map<size_t, size_t> count_per_way{};
+  // for (auto it = ::BTB.at(this).begin(); it != ::BTB.at(this).end(); it++) {
+  //   if (it->last_used == 0)
+  //     continue;
+  //   count_per_way[it->data.target_size]++;
+  // }
+  // for (auto const& [way_size, count] : count_per_way) {
+  //   std::cout << "\tWay " << way_size << "\tCount: " << count << std::endl;
+  // }
+  //}
+
   std::optional<::BTBEntry> small_hit = std::nullopt;
   std::optional<::BTBEntry> big_hit = std::nullopt;
   std::optional<::BTBEntry> hit_64 = std::nullopt;
   std::optional<::BTBEntry> lru_elem = std::nullopt;
   if (small_way_regions_enabled && tmp_region_idx.has_value()) {
     small_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value(), 0});
+    if (small_hit.has_value() && !utilise_regions(small_hit.value().target_size)) {
+      small_hit = std::nullopt;
+    }
   } else if (!small_way_regions_enabled) {
     small_hit = ::BTB.at(this).check_hit({ip, 0, type, std::pair<uint16_t, uint64_t>{(uint16_t)-1, 0}, 0});
   }
   if (big_way_regions_enabled && tmp_region_idx.has_value()) {
     big_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value(), BTB_TARGET_SIZES.end()[-2]});
+    if (big_hit.has_value() && !utilise_regions(big_hit.value().target_size)) {
+      big_hit = std::nullopt;
+    }
   } else if (!big_way_regions_enabled) {
     big_hit = ::BTB.at(this).check_hit({ip, 0, type, std::pair<uint16_t, uint64_t>{(uint16_t)-1, 0}, BTB_TARGET_SIZES.end()[-2]});
   }
   hit_64 = ::BTB.at(this).check_hit({ip, 0, type, std::pair<uint16_t, uint64_t>{(uint16_t)-1, 0}, 64});
+  if (hit_64.has_value() && hit_64.value().target_size != 64) {
+    hit_64 =
+        std::nullopt; // fixing up for when we are using perfect matching, as in this case we will alias as we use the actual region bits instead of their index
+  }
   if (!small_hit.has_value() && !big_hit.has_value() && !hit_64.has_value()) {
     lru_elem = ::BTB.at(this).get_lru_elem(::BTBEntry{ip, 0}, num_bits);
   }
@@ -479,8 +515,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   // TODO: get rid of hits that have the wrong size - those need to be updated and inserted into a larger way
   bool small_region = small_hit.has_value() && num_bits <= small_hit.value().target_size && utilise_regions(small_hit.value().target_size);
   bool big_region = big_hit.has_value() && num_bits <= big_hit.value().target_size && utilise_regions(big_hit.value().target_size);
-  bool lru_region = lru_elem.has_value() && utilise_regions(lru_elem.value().target_size);
-  bool require_region = small_region || big_region || lru_region;
+  bool could_require_region = utilise_regions(entry_size);
+  bool require_region = small_region || big_region || could_require_region;
   // || (lru_region && (!small_hit.has_value() || !small_way_regions_enabled) && (!big_hit.has_value() || !big_way_regions_enabled))
   //|| (tmp_region_idx.has_value()
   //   && ((small_hit.has_value() && small_way_regions_enabled) || (big_hit.has_value() && big_way_regions_enabled))); // add if we have a hit
@@ -527,8 +563,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   } else if (hit_64.has_value()) {
     entry_size = std::max(entry_size, hit_64.value().target_size);
     opt_entry = hit_64.value();
-  } else if (lru_elem.has_value()) {
-    entry_size = std::max(entry_size, lru_elem.value().target_size);
   }
 
   /*   opt_entry = std::nullopt;

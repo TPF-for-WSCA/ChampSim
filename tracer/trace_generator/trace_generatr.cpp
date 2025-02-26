@@ -19,7 +19,7 @@ trace_instr_format_t curr_instr;
 int main(int argc, char* argv[])
 {
   std::string outFilePath = "";
-  uint64_t num_instructions = 1024;
+  uint64_t num_instructions = 2048;
 
   auto cli = (value("output trace file", outFilePath), opt_value("-t", num_instructions));
 
@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
   while (double_iteration < 2) {
     for (int i = 0; i < num_instructions / 2; i++) {
       curr_instr = {};
-      curr_instr.ip = (i << 2) + (i << 2 << 9) + 0x88880000;
+      curr_instr.ip = (i << 2) + (i << 2 << 9) + 0x88880000; // One entry per set for each region
       curr_instr.is_branch = 1;
       curr_instr.branch_taken = 1;
 
