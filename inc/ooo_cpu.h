@@ -114,8 +114,8 @@ private:
   size_t BTB_SETS;
   uint8_t BTB_CLIPPED_TAG;
   uint8_t BTB_TAG_SIZE;
-  uint16_t BTB_TAG_REGIONS;
-  uint16_t BTB_TAG_REGION_WAYS;
+  size_t BTB_TAG_REGIONS;
+  size_t BTB_TAG_REGION_WAYS;
   uint8_t BTB_TAG_REGION_SIZE;
   uint8_t BTB_REGIONS = 1;
   size_t EXTENDED_BTB_MAX_LOOP_BRANCH;
@@ -333,8 +333,8 @@ public:
     unsigned char m_btb_partial_tag_resolution{};
     std::vector<uint8_t> m_btb_target_sizes{};
     unsigned char m_btb_tag_size{};
-    unsigned short m_btb_tag_regions{};
-    unsigned short m_btb_tag_region_ways{};
+    size_t m_btb_tag_regions{};
+    size_t m_btb_tag_region_ways{};
     unsigned char m_btb_tag_region_size{};
     bool m_perfect_btb{};
     bool m_btb_small_way_regions_enabled{};
@@ -531,14 +531,17 @@ public:
       m_btb_tag_size = btb_tag_size_;
       return *this;
     }
-    self_type& btb_tag_regions(unsigned short btb_tag_regions_)
+    self_type& btb_tag_regions(size_t btb_tag_regions_)
     {
       m_btb_tag_regions = btb_tag_regions_;
       return *this;
     }
-    self_type& btb_tag_region_ways(unsigned short btb_tag_region_ways_)
+    self_type& btb_tag_region_ways(size_t btb_tag_region_ways_)
     {
       m_btb_tag_region_ways = btb_tag_region_ways_;
+      if (btb_tag_region_ways_ == 0) {
+        m_btb_tag_region_ways = m_btb_tag_regions; // Is assigned after so it is defined once we get around to here
+      }
       return *this;
     }
     self_type& btb_tag_region_size(unsigned short btb_tag_region_size_)
