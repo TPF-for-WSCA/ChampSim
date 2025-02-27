@@ -18,7 +18,7 @@
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
-#define FULLY_ASSOCIATIVE_REGIONS true // if this is false it is direct mapped region btb
+#define FULLY_ASSOCIATIVE_REGIONS false // if this is false it is direct mapped region btb
 #define PERFECT_MAPPING false
 #define SMALL_BIG_WAY_SPLIT 14
 #define SAMPLING_DISTANCE 1000000
