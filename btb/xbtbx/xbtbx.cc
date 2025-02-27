@@ -107,6 +107,31 @@ bool utilise_regions(size_t way_size)
 
 enum BTB_ReplacementStrategy { LRU, REF0, REF };
 
+uint64_t shuffle_ip_tag(uint64_t ip_tag)
+{
+  if (btb_addressing_hash.empty()) {
+    return ip_tag;
+  } else {
+    auto ip = 0;
+    uint8_t i = 0;
+    for (; i < btb_addressing_masks.size(); i++) {
+      auto mask = btb_addressing_masks[i];
+      auto shift = btb_addressing_shifts[i];
+      auto bit = ip_tag & mask;
+      if (shift > 0) {
+        bit >>= shift;
+      } else if (shift < 0) {
+        bit <<= (-1 * shift);
+      }
+      ip |= bit;
+    }
+    uint64_t upper_mask = (1 << i) - 1;
+    upper_mask = ~upper_mask;
+    ip |= (upper_mask & ip_tag);
+    return ip;
+  }
+}
+
 struct BTBEntry {
   uint64_t ip_tag = 0;
   uint64_t target;
@@ -118,51 +143,20 @@ struct BTBEntry {
   // TODO: shift indexes and tags into place
   auto index() const
   {
-    if (btb_addressing_hash.empty()) {
-      auto idx = (ip_tag >> isa_shiftamount) & _INDEX_MASK;
-      return idx;
-    }
-    assert(btb_addressing_hash.size() <= _BTB_SETS);
-    auto ip = ip_tag >> isa_shiftamount;
-    uint64_t idx = 0;
-    for (uint8_t i = 0; i < _BTB_SET_BITS; i++) {
-      auto mask = btb_addressing_masks[i];
-      auto shift = btb_addressing_shifts[i];
-      auto bit = ip & mask;
-      if (shift > 0) {
-        bit >>= shift;
-      } else if (shift < 0) {
-        bit <<= (-1 * shift);
-      }
-      idx |= bit;
-    }
+    ip = shuffle_ip_tag();
+    auto idx = (ip >> isa_shiftamount) & _INDEX_MASK;
     return idx;
   }
   auto tag() const
   {
-    auto tag = ip_tag >> isa_shiftamount >> _BTB_SET_BITS;
+    ip = shuffle_ip_tag();
+    auto tag = ip >> isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
     }
-    if (btb_addressing_hash.empty()) {
-      tag &= _FULL_TAG_MASK;
-    } else {
-      tag = 0;
-      auto ip = ip_tag >> isa_shiftamount;
-      for (uint8_t i = _BTB_SET_BITS; i < _BTB_SET_BITS + _BTB_TAG_SIZE; i++) {
-        auto mask = btb_addressing_masks[i];
-        auto shift = btb_addressing_shifts[i];
-        auto bit = ip & mask;
-        if (shift > 0) {
-          bit >>= shift;
-        } else if (shift < 0) {
-          bit <<= (-1 * shift);
-        }
-        tag |= bit;
-      }
-      tag = tag >> _BTB_SET_BITS;
-    }
-    if (ip_tag && _BTB_TAG_REGIONS && utilise_regions(target_size)) {
+
+    tag &= _FULL_TAG_MASK;
+    if (ip && _BTB_TAG_REGIONS && utilise_regions(target_size)) {
       // TODO: double check if the shift amount of the BTB TAG size is correct and we are not overriding the actual tag bits
       auto masked_bits = tag & (_REGION_MASK << _BTB_TAG_SIZE);
       tag ^= masked_bits;
@@ -176,28 +170,13 @@ struct BTBEntry {
 
   auto partial_tag() const
   {
-    uint64_t tag = ip_tag >> isa_shiftamount >> _BTB_SET_BITS;
+    auto ip = shuffle_ip_tag();
+    uint64_t tag = ip >> isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
     }
-    if (btb_addressing_hash.empty())
-      tag &= _TAG_MASK;
-    else {
-      tag = 0;
-      auto ip = ip_tag >> isa_shiftamount;
-      for (uint8_t i = _BTB_SET_BITS; i < _BTB_SET_BITS + _BTB_TAG_SIZE; i++) {
-        auto mask = btb_addressing_masks[i];
-        auto shift = btb_addressing_shifts[i];
-        auto bit = ip & mask;
-        if (shift > 0) {
-          bit >>= shift;
-        } else if (shift < 0) {
-          bit <<= (-1 * shift);
-        }
-        tag |= bit;
-      }
-      tag = tag >> _BTB_SET_BITS;
-    }
+
+    tag &= _TAG_MASK;
     return tag;
   }
 
@@ -214,10 +193,11 @@ struct region_btb_entry_t {
   uint64_t ip_tag = 0;
   auto index() const
   {
+    auto ip = shuffle_ip_tag(ip_tag);
     if (FULLY_ASSOCIATIVE_REGIONS) {
       return 0;
     }
-    auto raw_idx = (ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+    auto raw_idx = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
     auto idx = 0;
     if (_BTB_REGION_BITS < _BTB_TAG_REGION_SIZE) {
       while (raw_idx) {
@@ -232,7 +212,8 @@ struct region_btb_entry_t {
   auto tag() const
   {
     // TODO: calculate region tag
-    auto tag = ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+    auto ip = shuffle_ip_tag(ip_tag);
+    auto tag = ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
     tag &= _REGION_MASK;
     return tag;
   }
