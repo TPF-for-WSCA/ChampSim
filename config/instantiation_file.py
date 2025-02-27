@@ -255,7 +255,7 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
 
     for cpu in cores:
         yield "std::vector<uint8_t> btb_sizes_{} = {{".format(cpu["name"])
-        for (idx, btb_way_sizes) in enumerate(cpu.get("btb_target_sizes", [])):
+        for idx, btb_way_sizes in enumerate(cpu.get("btb_target_sizes", [])):
             if idx < (len(cpu["btb_target_sizes"]) - 1):
                 yield "{}, ".format(btb_way_sizes)
             else:
@@ -290,13 +290,20 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         yield ".btb_ways({})".format(cpu.get("btb_ways", 8))
         yield ".btb_sets({})".format(cpu.get("btb_sets", 1024))
         yield ".btb_clipped_tag({})".format(cpu.get("btb_clipped_tag", 1))
-        yield ".btb_partial_tag_resolution({})".format(cpu.get("btb_partial_tag_resolution", 0))
+        yield ".btb_partial_tag_resolution({})".format(
+            cpu.get("btb_partial_tag_resolution", 0)
+        )
         yield ".btb_target_sizes(btb_sizes_{})".format(cpu["name"])
         yield ".perfect_btb({})".format(cpu.get("perfect_btb", 0))
-        yield ".btb_small_way_regions_enabled({})".format(cpu.get("btb_small_way_regions_enabled", 0))
-        yield ".btb_big_way_regions_enabled({})".format(cpu.get("btb_big_way_regions_enabled", 0))
+        yield ".btb_small_way_regions_enabled({})".format(
+            cpu.get("btb_small_way_regions_enabled", 0)
+        )
+        yield ".btb_big_way_regions_enabled({})".format(
+            cpu.get("btb_big_way_regions_enabled", 0)
+        )
         yield ".btb_tag_size({})".format(cpu.get("btb_tag_size", 12))
         yield ".btb_tag_regions({})".format(cpu.get("btb_tag_regions", 0))
+        yield ".btb_tag_region_ways({})".format(cpu.get("btb_tag_region_ways", 0))
         yield ".btb_tag_region_size({})".format(cpu.get("btb_tag_region_size", 16))
 
         yield ".fetch_queues({})".format(

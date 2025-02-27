@@ -170,7 +170,8 @@ public:
       return std::nullopt;
 
     hit->last_used = ++access_count;
-    return std::pair<uint16_t, uint64_t>{hit - begin(), hit->data.tag()};
+    // TODO: make this configurable that either its full index or it is set idx
+    return std::pair<uint16_t, uint64_t>{hit->data.index(), hit->data.tag()};
   }
 
   value_type get_lru_elem(const value_type& elem, uint8_t size)

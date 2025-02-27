@@ -143,6 +143,7 @@ def normalize_config(config_file):
         "btb_big_way_regions_enabled",
         "btb_tag_size",
         "btb_tag_regions",
+        "btb_tag_region_ways",
         "btb_tag_region_size",
         "btb_target_sizes",
     )

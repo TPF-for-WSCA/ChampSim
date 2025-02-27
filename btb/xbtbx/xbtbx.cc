@@ -18,7 +18,8 @@
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
-#define FULLY_ASSOCIATIVE_REGIONS false // if this is false it is direct mapped region btb
+#define USE_SET_IDX_ONLY true
+#define FULLY_ASSOCIATIVE_REGIONS true // if this is false it is direct mapped region btb
 #define PERFECT_MAPPING false
 #define SMALL_BIG_WAY_SPLIT 14
 #define SAMPLING_DISTANCE 1000000
@@ -68,7 +69,9 @@ std::size_t _BTB_WAYS = 0;
 uint8_t _BTB_CLIPPED_TAG = 0;
 uint8_t _BTB_TAG_SIZE = 0;
 uint8_t _BTB_SET_BITS;
-uint16_t _BTB_TAG_REGIONS = 0;    // This is the number of regions in the region BTB
+uint16_t _BTB_TAG_REGIONS = 0; // This is the number of regions in the region BTB
+uint16_t _BTB_TAG_REGION_WAYS = 0;
+uint16_t _BTB_TAG_REGION_SETS = 0;
 uint8_t _BTB_TAG_REGION_SIZE = 0; // This is the size of a single region in bits
 uint16_t _BTB_REGION_BITS = 0;    // This is the number of bits required to assign an ID to all regions in the region BTB (log2(BTB_TAG_REGIONS))
 uint64_t last_stats_cycle = 0;
@@ -215,10 +218,21 @@ struct region_btb_entry_t {
   auto index() const
   {
     if (FULLY_ASSOCIATIVE_REGIONS) {
-      return 0;
+      uint64_t raw_idx = (ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
+      if (champsim::lg2(_BTB_TAG_REGION_SETS) < _BTB_TAG_REGION_SIZE) {
+        auto tmp_idx = raw_idx;
+        raw_idx = 0;
+        while (tmp_idx) {
+          raw_idx ^= (tmp_idx & (_BTB_TAG_REGION_SETS - 1));
+          tmp_idx >>= champsim::lg2(_BTB_TAG_REGION_SETS);
+        }
+        raw_idx &= (_BTB_TAG_REGION_SETS - 1);
+      }
+      return raw_idx;
     }
     auto raw_idx = (ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-    auto idx = 0;
+    uint64_t idx = 0;
+    // XOR index
     if (_BTB_REGION_BITS < _BTB_TAG_REGION_SIZE) {
       while (raw_idx) {
         idx ^= (raw_idx & (_BTB_TAG_REGIONS - 1));
@@ -258,13 +272,12 @@ void O3_CPU::initialize_btb()
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
   // TODO: Make region BTB configurable for way/sets
   if (BTB_TAG_REGIONS && FULLY_ASSOCIATIVE_REGIONS) {
-    ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, BTB_TAG_REGIONS}});
+    ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{BTB_TAG_REGIONS / BTB_TAG_REGION_WAYS, BTB_TAG_REGION_WAYS}});
   } else if (BTB_TAG_REGIONS && !FULLY_ASSOCIATIVE_REGIONS) {
     ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{BTB_TAG_REGIONS, 1}});
   } else {
     ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, 1}}); // no regions used, dummy entry to allow region lookup where not predicated
   }
-  // FULLY_ASSOCIATIVE_REGIONS = false;
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   ::btb_addressing_hash = btb_index_tag_hash;
   btb_addressing_masks.resize(btb_addressing_hash.size());
@@ -280,6 +293,8 @@ void O3_CPU::initialize_btb()
     _BTB_CLIPPED_TAG = 1;
     _BTB_TAG_SIZE = this->BTB_TAG_SIZE;
     _BTB_TAG_REGIONS = this->BTB_TAG_REGIONS;
+    _BTB_TAG_REGION_WAYS = this->BTB_TAG_REGION_WAYS;
+    _BTB_TAG_REGION_SETS = this->BTB_TAG_REGIONS / this->BTB_TAG_REGION_WAYS;
     _BTB_TAG_REGION_SIZE = (this->BTB_TAG_REGIONS) ? this->BTB_TAG_REGION_SIZE : 0;
     _REGION_MASK = _BTB_TAG_REGIONS ? (pow2(_BTB_TAG_REGION_SIZE) - 1) : (pow2(62 - _BTB_SET_BITS - _BTB_TAG_SIZE) - 1);
     _BTB_REGION_BITS = champsim::lg2(_BTB_TAG_REGIONS);
