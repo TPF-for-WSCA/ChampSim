@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
 
   outfile.open(KnobOutputFile.Value().c_str(), std::ios_base::binary | std::ios_base::trunc);
   if (!outfile) {
-    std::cout << "Couldn't open output trace file. Exiting." << std::endl;
+    std::cerr << "Couldn't open output trace file. Exiting." << std::endl;
     exit(1);
   }
 

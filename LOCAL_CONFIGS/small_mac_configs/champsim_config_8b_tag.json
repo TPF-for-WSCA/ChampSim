@@ -44,7 +44,6 @@
       "btb_non_indirect": 9,
       "btb_sets": 512,
       "btb_clipped_tag": 1,
-      "btb_big_way_regions_enabled": 1,
       "btb_target_sizes": [
         0,
         4,
@@ -57,8 +56,8 @@
         64
       ],
       "btb_tag_size": 8,
-      "btb_tag_regions": 2,
-      "btb_tag_region_size": 4,
+      "btb_tag_regions": 0,
+      "btb_tag_region_size": 0,
       "align_bits": 5
     }
   ],
