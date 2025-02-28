@@ -1,5 +1,5 @@
 {
-  "executable_name": "btb_4k_region_tag_exp/btb_tag_16b_region_2",
+  "executable_name": "btb_4k_baseline/btb_tag_16b_region_2",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
