@@ -30,7 +30,7 @@ do
     echo $dir
     for bin in /cluster/projects/nn4650k/workspace/ChampSim/bin/$dir/*
     do
-        echo "\t${bin}"
+        echo -e "\t${bin}"
         # IPC-1 Benchmarks
         srun --account=nn4650k -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=20G -n1 -c8 -t$timelimit -o /cluster/work/users/romankb/latency-spec-$(basename ${bin})-%j.out   -e /cluster/work/users/romankb/latency-spec-$(basename ${bin})-%j.err     python /cluster/projects/nn4650k/workspace/ChampSim/data_collector.py --warmup 30000000 --evaluation 30000000 --experiment_executable ${bin} --traces_directory /cluster/projects/nn4650k/dataset/ipc1_new/spec   --nosub --output_dir /cluster/work/users/romankb/results/${dir}_${count}/ipc1_spec/sizes_$(basename ${bin})/   &>> /cluster/work/users/romankb/pyrunner_latency_fixed_ipc1_spec_$(basename ${bin}).log &
         srun --account=nn4650k -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=20G -n1 -c8 -t$timelimit -o /cluster/work/users/romankb/latency-client-$(basename ${bin})-%j.out -e /cluster/work/users/romankb/latency-client-$(basename ${bin})-%j.err   python /cluster/projects/nn4650k/workspace/ChampSim/data_collector.py --warmup 30000000 --evaluation 30000000 --experiment_executable ${bin} --traces_directory /cluster/projects/nn4650k/dataset/ipc1_new/client --nosub --output_dir /cluster/work/users/romankb/results/${dir}_${count}/ipc1_client/sizes_$(basename ${bin})/ &>> /cluster/work/users/romankb/pyrunner_latency_fixed_ipc1_client_$(basename ${bin}).log &
