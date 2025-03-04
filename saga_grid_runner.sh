@@ -18,8 +18,8 @@ module load GCCcore/13.3.0
 #binaries=("champsim32k" "ubs_10_small_ways_not_extending" "ubs_10_small_ways" "ubs_10_ways_not_extending" "ubs_10_ways" "ubs_12_small_ways_not_extending" "ubs_12_small_ways" "ubs_14_small_ways_not_extending" "ubs_14_small_ways" "ubs_16_ways" "ubs_16_ways_not_extending" "ubs_17_ways" "ubs_17_ways_not_extending" "ubs_8_ways" "ubs_8_ways_not_extending")
 #binaries=("champsim32k" "ubs_12_ways_not_extending" "ubs_12_ways" "ubs_14_ways" "ubs_14_small_ways" "ubs_12_small_ways_not_extending" "ubs_12_small_ways" "ubs_14_small_ways_not_extending" "ubs_14_small_ways" "ubs_16_ways_precise" "ubs_16_ways_precise_not_extending")
 #binaries=("champsim32k_base_btb" "champsim32k_base_btbx" "champsim32k_hash_btbx" "champsim32k_perfect_l1i" "champsim32k_perfect_btb")
-binary_dir=("btb_4k_region_tag_exp" "btb_256_region_tag_exp")
-count=1
+binary_dir=("btb_4k_small_regions")
+count=0
 timelimit="3:00:00"
 #binary_dir=("size_sensitivity")
 #binaries=("ubs" "ubs_unaligned" "ubs_extended" "ubs_unaligned_extended")
@@ -30,7 +30,7 @@ do
     echo $dir
     for bin in /cluster/projects/nn4650k/workspace/ChampSim/bin/$dir/*
     do
-        echo "\t${bin}"
+        echo -e "\t${bin}"
         # IPC-1 Benchmarks
         srun --account=nn4650k -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=20G -n1 -c8 -t$timelimit -o /cluster/work/users/romankb/latency-spec-$(basename ${bin})-%j.out   -e /cluster/work/users/romankb/latency-spec-$(basename ${bin})-%j.err     python /cluster/projects/nn4650k/workspace/ChampSim/data_collector.py --warmup 30000000 --evaluation 30000000 --experiment_executable ${bin} --traces_directory /cluster/projects/nn4650k/dataset/ipc1_new/spec   --nosub --output_dir /cluster/work/users/romankb/results/${dir}_${count}/ipc1_spec/sizes_$(basename ${bin})/   &>> /cluster/work/users/romankb/pyrunner_latency_fixed_ipc1_spec_$(basename ${bin}).log &
         srun --account=nn4650k -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=20G -n1 -c8 -t$timelimit -o /cluster/work/users/romankb/latency-client-$(basename ${bin})-%j.out -e /cluster/work/users/romankb/latency-client-$(basename ${bin})-%j.err   python /cluster/projects/nn4650k/workspace/ChampSim/data_collector.py --warmup 30000000 --evaluation 30000000 --experiment_executable ${bin} --traces_directory /cluster/projects/nn4650k/dataset/ipc1_new/client --nosub --output_dir /cluster/work/users/romankb/results/${dir}_${count}/ipc1_client/sizes_$(basename ${bin})/ &>> /cluster/work/users/romankb/pyrunner_latency_fixed_ipc1_client_$(basename ${bin}).log &
