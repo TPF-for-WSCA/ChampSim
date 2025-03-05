@@ -13,11 +13,11 @@ regions = {
 }
 
 all_ways = {
-    100: {},
-    99.5: {},
-    99: {},
-    95: {},
-    90: {},
+    100: defaultdict(int),
+    99.5: defaultdict(int),
+    99: defaultdict(int),
+    95: defaultdict(int),
+    90: defaultdict(int),
 }
 
 assert len(sys.argv) == 2
