@@ -90,6 +90,7 @@ void O3_CPU::begin_phase()
   stats.name = "CPU " + std::to_string(cpu);
   stats.begin_instrs = num_retired;
   stats.begin_cycles = current_cycle;
+  stats.big_region_small_region_mapping = sim_stats.big_region_small_region_mapping;
   sim_stats = stats;
 }
 
