@@ -41,6 +41,12 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
              (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch, (1000.0 * total_mispredictions) / std::ceil(stats.instrs()),
              std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions);
 
+  fmt::print(stream, "{} REGION BTB BIG REGIONS: {}\n", stats.name, stats.big_region_small_region_mapping.size());
+  fmt::print(stream, "\tBIG_REGION_IDX:\tSUB_REGION_COUNT\n");
+  for (auto const& [big_region, tags] : stats.big_region_small_region_mapping){
+    fmt::print(stream, "\t{}:\t{}\n",big_region, tags.size());
+  }
+
   fmt::print(stream, "\nPositive Aliasing: {}\nNegative Aliasing: {}\nNone-Branch Aliasing: {}\nTotal Aliasing: {}", stats.positive_aliasing,
              stats.negative_aliasing, stats.non_branch_btb_hits, stats.total_aliasing);
   fmt::print(stream, "\nMAX BTB Regions: {}\nMIN BTB Regions: {}\n", stats.max_regions, stats.min_regions);

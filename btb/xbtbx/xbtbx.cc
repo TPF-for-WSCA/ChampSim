@@ -72,6 +72,7 @@ uint8_t _BTB_SET_BITS;
 uint16_t _BTB_TAG_REGIONS = 0; // This is the number of regions in the region BTB
 uint16_t _BTB_TAG_REGION_WAYS = 0;
 uint16_t _BTB_TAG_REGION_SETS = 0;
+uint16_t _BTB_TAG_REGION_SET_IDX_BITS = 0;
 uint8_t _BTB_TAG_REGION_SIZE = 0; // This is the size of a single region in bits
 uint16_t _BTB_REGION_BITS = 0;    // This is the number of bits required to assign an ID to all regions in the region BTB (log2(BTB_TAG_REGIONS))
 uint64_t last_stats_cycle = 0;
@@ -128,7 +129,7 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
       }
       ip |= bit;
     }
-    uint64_t upper_mask = (1 << i) - 1;
+    uint64_t upper_mask = (1 << btb_addressing_masks.size()) - 1;
     upper_mask = ~upper_mask;
     ip |= (upper_mask & ip_tag);
     return ip;
@@ -146,13 +147,13 @@ struct BTBEntry {
   // TODO: shift indexes and tags into place
   auto index() const
   {
-    ip = shuffle_ip_tag();
+    auto ip = shuffle_ip_tag(ip_tag);
     auto idx = (ip >> isa_shiftamount) & _INDEX_MASK;
     return idx;
   }
   auto tag() const
   {
-    ip = shuffle_ip_tag();
+    auto ip = shuffle_ip_tag(ip_tag);
     auto tag = ip >> isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
@@ -173,7 +174,7 @@ struct BTBEntry {
 
   auto partial_tag() const
   {
-    auto ip = shuffle_ip_tag();
+    auto ip = shuffle_ip_tag(ip_tag);
     uint64_t tag = ip >> isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
@@ -197,31 +198,33 @@ struct region_btb_entry_t {
   auto index() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    if (FULLY_ASSOCIATIVE_REGIONS) {
-      uint64_t raw_idx = (ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
-      if (champsim::lg2(_BTB_TAG_REGION_SETS) < _BTB_TAG_REGION_SIZE) {
-        auto tmp_idx = raw_idx;
-        raw_idx = 0;
-        while (tmp_idx) {
-          raw_idx ^= (tmp_idx & (_BTB_TAG_REGION_SETS - 1));
-          tmp_idx >>= champsim::lg2(_BTB_TAG_REGION_SETS);
-        }
-        raw_idx &= (_BTB_TAG_REGION_SETS - 1);
-      }
-      return raw_idx;
-    }
-    auto raw_idx = (ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-    uint64_t idx = 0;
-    // XOR index
-    if (_BTB_REGION_BITS < _BTB_TAG_REGION_SIZE) {
-      while (raw_idx) {
-        idx ^= (raw_idx & (_BTB_TAG_REGIONS - 1));
-        raw_idx >>= _BTB_REGION_BITS;
-      }
-      idx &= (_BTB_TAG_REGIONS - 1);
-    } else
-      idx = raw_idx;
-    return idx;
+    // NOTE: We are currently big indexing for regions = big regions = fewer sets
+    uint64_t raw_idx = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE >> (_BTB_TAG_REGION_SIZE - _BTB_TAG_REGION_SET_IDX_BITS)) & (_BTB_TAG_REGION_SETS - 1);
+    return raw_idx;  // NOTE: keep track how many entries we observe per set
+    // if (FULLY_ASSOCIATIVE_REGIONS) {
+    //   
+    //   if (champsim::lg2(_BTB_TAG_REGION_SETS) < _BTB_TAG_REGION_SIZE) {
+    //     auto tmp_idx = raw_idx;
+    //     raw_idx = 0;
+    //     while (tmp_idx) {
+    //       raw_idx ^= (tmp_idx & (_BTB_TAG_REGION_SETS - 1));
+    //       tmp_idx >>= champsim::lg2(_BTB_TAG_REGION_SETS);
+    //     }
+    //     raw_idx &= (_BTB_TAG_REGION_SETS - 1);
+    //   }
+    //   return raw_idx;
+    // }
+    // uint64_t idx = 0;
+    // // XOR index
+    // if (_BTB_REGION_BITS < _BTB_TAG_REGION_SIZE) {
+    //   while (raw_idx) {
+    //     idx ^= (raw_idx & (_BTB_TAG_REGIONS - 1));
+    //     raw_idx >>= _BTB_REGION_BITS;
+    //   }
+    //   idx &= (_BTB_TAG_REGIONS - 1);
+    // } else
+    //   idx = raw_idx;
+    // return idx;
   }
   auto tag() const
   {
@@ -277,6 +280,7 @@ void O3_CPU::initialize_btb()
       _BTB_TAG_REGIONS = this->BTB_TAG_REGIONS;
       _BTB_TAG_REGION_WAYS = this->BTB_TAG_REGION_WAYS;
       _BTB_TAG_REGION_SETS = this->BTB_TAG_REGIONS / this->BTB_TAG_REGION_WAYS;
+      _BTB_TAG_REGION_SET_IDX_BITS = champsim::lg2(_BTB_TAG_REGION_SETS);
       _BTB_TAG_REGION_SIZE = (this->BTB_TAG_REGIONS) ? this->BTB_TAG_REGION_SIZE : 0;
       _REGION_MASK = _BTB_TAG_REGIONS ? (pow2(_BTB_TAG_REGION_SIZE) - 1) : (pow2(62 - _BTB_SET_BITS - _BTB_TAG_SIZE) - 1);
       _BTB_REGION_BITS = champsim::lg2(_BTB_TAG_REGIONS);
@@ -526,7 +530,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         // TODO: these asserts are only ok if we have as many regions as 2**region_bits - add guard for that
         // auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
         // assert(rv.second);
-        ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
+        auto elem = ::region_btb_entry_t{ip};
+        sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
+        ::REGION_BTB.at(this).fill(elem);
         // region_btb_insers++;
         // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
         region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
@@ -534,7 +540,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     } else if (!region_idx.has_value()) {
       // auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
       // assert(rv.second);
-      ::REGION_BTB.at(this).fill(::region_btb_entry_t{ip});
+        auto elem = ::region_btb_entry_t{ip};
+        sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
+        ::REGION_BTB.at(this).fill(elem);
       // region_btb_insers++;
       // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
       region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});

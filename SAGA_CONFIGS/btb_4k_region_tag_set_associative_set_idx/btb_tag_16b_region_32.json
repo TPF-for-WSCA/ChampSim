@@ -1,5 +1,5 @@
 {
-  "executable_name": "btb_4k_region_tag_set_associative_exp/btb_tag_16b_region_32",
+  "executable_name": "btb_4k_region_tag_set_associative_exp/btb_tag_16b_region_32_fa",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -61,6 +61,7 @@
       "btb_tag_size": 8,
       "btb_tag_regions": 32,
       "btb_tag_region_size": 8,
+      "btb_tag_region_ways": 32,
       "align_bits": 5
     }
   ],
