@@ -13,11 +13,11 @@ regions = {
 }
 
 all_ways = {
-    100: defaultdict(int),
-    99.5: defaultdict(int),
-    99: defaultdict(int),
-    95: defaultdict(int),
-    90: defaultdict(int),
+    100: defaultdict(list),
+    99.5: defaultdict(list),
+    99: defaultdict(list),
+    95: defaultdict(list),
+    90: defaultdict(list),
 }
 
 assert len(sys.argv) == 2
@@ -36,11 +36,20 @@ for dir in os.listdir(sys.argv[1]):
         regions[99][int(way)][dir] = regions_data[way]["99%"]
         regions[95][int(way)][dir] = regions_data[way]["95%"]
         regions[90][int(way)][dir] = regions_data[way]["90%"]
-        all_ways[100][dir] += regions_data[way]["100%"]
-        all_ways[99.5][dir] += regions_data[way]["99.5%"]
-        all_ways[99][dir] += regions_data[way]["99%"]
-        all_ways[95][dir] += regions_data[way]["95%"]
-        all_ways[90][dir] += regions_data[way]["90%"]
+        if len(all_ways[100][dir]) == 0:
+            all_ways[100][dir] = regions_data[way]["100%"]
+            all_ways[99.5][dir] = regions_data[way]["99.5%"]
+            all_ways[99][dir] = regions_data[way]["99%"]
+            all_ways[95][dir] = regions_data[way]["95%"]
+            all_ways[90][dir] = regions_data[way]["90%"]
+        else:
+            for idx, _ in enumerate(all_ways[100][dir]):
+                all_ways[100][dir][idx] += regions_data[way]["100%"][idx]
+                all_ways[99.5][dir][idx] += regions_data[way]["99.5%"][idx]
+                all_ways[99][dir][idx] += regions_data[way]["99%"][idx]
+                all_ways[95][dir][idx] += regions_data[way]["95%"][idx]
+                all_ways[90][dir][idx] += regions_data[way]["90%"][idx]
+
 
 for percentage in [100, 99.5, 99, 95, 90]:
     outname = os.path.join(sys.argv[1], "overall_region_sampling.tsv")
