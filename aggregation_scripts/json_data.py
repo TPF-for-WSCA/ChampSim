@@ -52,7 +52,7 @@ for dir in os.listdir(sys.argv[1]):
 
 
 for percentage in [100, 99.5, 99, 95, 90]:
-    outname = os.path.join(sys.argv[1], "overall_region_sampling.tsv")
+    outname = os.path.join(sys.argv[1], f"{percentage}%_overall_region_sampling.tsv")
     max_idx = 0
     with open(outname, "w+") as outfile:
         headers = list(all_ways[percentage].keys())
