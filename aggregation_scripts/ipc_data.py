@@ -30,6 +30,7 @@ class STATS(Enum):
     BTB_BIT_ORDERING = 21
     BTB_BIT_ORDERING_SWITCHED = 22
     ABSOLUTE_ALIASING = 23
+    REGION_SPLIT = 22
 
 
 type = STATS.IPC
@@ -95,6 +96,16 @@ def extract_btb_tag_entropy(path):
         if matches:
             return float(matches.groups()[0])
 
+def extract_btb_region_split(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    region_split_re = re.compile(r"CPU 0 REGION BTB BIG REGIONS: (\d+)")
+    for line in logs:
+        matches = region_split_re.search(line)
+        if matches:
+            return int(matches.groups()[0])
 
 def extract_btb_bit_ordering(path):
     import itertools
@@ -507,6 +518,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_btb_tag_entropy(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.REGION_SPLIT:
+                stat_by_workload[workload] = extract_btb_region_split(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.BTB_BIT_ORDERING:
                 bit_ordering = extract_btb_bit_ordering(f"{path}/{workload}/{logfile}")
                 raw_data_path = f"{path}/{workload}_bit_ordering.txt"
@@ -642,6 +657,8 @@ def write_tsv(data, out_path=None):
         filename = "address_bit_information"
     elif type == STATS.BTB_TAG_ENTROPY:
         filename = "btb_tag_entropy"
+    elif type == STATS.REGION_SPLIT:
+        filename = "btb_region_tag_split"
     if buffer:
         filename += "_buffer"
     filename += ".tsv"
@@ -734,6 +751,8 @@ elif sys.argv[3] == "BTB_BIT_INFORMATION":
     type = STATS.BIT_INFORMATION
 elif sys.argv[3] == "BTB_TAG_ENTROPY":
     type = STATS.BTB_TAG_ENTROPY
+elif sys.argv[3] == "REGION_SPLIT":
+    type = STATS.REGION_SPLIT
 elif sys.argv[3] == "BTB_BIT_ORDERING":
     type = STATS.BTB_BIT_ORDERING
 if len(sys.argv) == 5 and sys.argv[4]:
