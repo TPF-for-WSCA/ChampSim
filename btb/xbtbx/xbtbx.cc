@@ -18,9 +18,6 @@
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
-#define USE_SET_IDX_ONLY true
-#define FULLY_ASSOCIATIVE_REGIONS true // if this is false it is direct mapped region btb
-#define PERFECT_MAPPING false
 #define SMALL_BIG_WAY_SPLIT 14
 #define SAMPLING_DISTANCE 1000000
 
@@ -82,6 +79,7 @@ constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
 bool small_way_regions_enabled = 0;
 bool big_way_regions_enabled = 0;
+bool _PERFECT_MAPPING = false;
 
 uint64_t prev_branch_ip = 0;
 std::map<uint32_t, uint64_t> offset_reuse_freq;
@@ -116,7 +114,7 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
   if (btb_addressing_hash.empty()) {
     return ip_tag;
   } else {
-    auto ip = 0;
+    uint64_t ip = 0;
     uint8_t i = 0;
     for (; i < btb_addressing_masks.size(); i++) {
       auto mask = btb_addressing_masks[i];
@@ -164,7 +162,7 @@ struct BTBEntry {
       // TODO: double check if the shift amount of the BTB TAG size is correct and we are not overriding the actual tag bits
       auto masked_bits = tag & (_REGION_MASK << _BTB_TAG_SIZE);
       tag ^= masked_bits;
-      if (PERFECT_MAPPING)
+      if (_PERFECT_MAPPING)
         tag |= (region_idx_tag.second << _BTB_TAG_SIZE);
       else
         tag |= (region_idx_tag.first << _BTB_TAG_SIZE);
@@ -199,9 +197,9 @@ struct region_btb_entry_t {
   {
     auto ip = shuffle_ip_tag(ip_tag);
     // NOTE: We are currently big indexing for regions = big regions = fewer sets
-    uint64_t raw_idx = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE >> (_BTB_TAG_REGION_SIZE - _BTB_TAG_REGION_SET_IDX_BITS)) & (_BTB_TAG_REGION_SETS - 1);
+    uint64_t raw_idx = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
     return raw_idx;  // NOTE: keep track how many entries we observe per set
-    // if (FULLY_ASSOCIATIVE_REGIONS) {
+    // if (btb_associative_regions) {
     //   
     //   if (champsim::lg2(_BTB_TAG_REGION_SETS) < _BTB_TAG_REGION_SIZE) {
     //     auto tmp_idx = raw_idx;
@@ -252,13 +250,12 @@ std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 
 void O3_CPU::initialize_btb()
 {
-  std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << FULLY_ASSOCIATIVE_REGIONS << "\nPERFECT MAPPING: " << PERFECT_MAPPING << std::endl;
+  std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == 1) << "\nPERFECT MAPPING: " << btb_perfect_mapping << std::endl;
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
+  _PERFECT_MAPPING = btb_perfect_mapping;
   // TODO: Make region BTB configurable for way/sets
-  if (BTB_TAG_REGIONS && FULLY_ASSOCIATIVE_REGIONS) {
+  if (BTB_TAG_REGIONS) {
     ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{BTB_TAG_REGIONS / BTB_TAG_REGION_WAYS, BTB_TAG_REGION_WAYS}});
-  } else if (BTB_TAG_REGIONS && !FULLY_ASSOCIATIVE_REGIONS) {
-    ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{BTB_TAG_REGIONS, 1}});
   } else {
     ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, 1}}); // no regions used, dummy entry to allow region lookup where not predicated
   }

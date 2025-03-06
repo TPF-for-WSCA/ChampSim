@@ -127,6 +127,7 @@ private:
   bool BTB_PARTIAL_TAG_RESOLUTION = false;
   bool btb_small_way_regions_enabled;
   bool btb_big_way_regions_enabled;
+  bool btb_perfect_mapping;
   bool perfect_branch_predict;
   bool full_tag, clipped_tag;
   uint8_t clipped_tag_size;
@@ -340,6 +341,7 @@ public:
     bool m_perfect_btb{};
     bool m_btb_small_way_regions_enabled{};
     bool m_btb_big_way_regions_enabled{};
+    bool m_btb_perfect_mapping{};
 
     CACHE* m_l1i{};
     long int m_l1i_bw{};
@@ -520,6 +522,11 @@ public:
     self_type& btb_small_way_regions_enabled(bool btb_small_way_regions_enabled_)
     {
       m_btb_small_way_regions_enabled = btb_small_way_regions_enabled_;
+      return *this;
+    }
+    self_type& btb_perfect_mapping(bool btb_perfect_mapping_)
+    {
+      m_btb_perfect_mapping = btb_perfect_mapping_;
       return *this;
     }
     self_type& btb_big_way_regions_enabled(bool btb_big_way_regions_enabled_)

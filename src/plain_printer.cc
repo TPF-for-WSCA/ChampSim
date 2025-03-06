@@ -83,6 +83,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   std::vector<std::pair<long double, uint8_t>> filtered_tag_bit_order, filtered_switch_bit_order;
   prev_counter = 0.0;
   prev_switch = 0.0;
+  // TODO: Double check if this filtering is correct
   for (size_t i = 0; i < tag_bit_order.size(); i++) {
     if (prev_counter != tag_bit_order[i].first) {
       filtered_tag_bit_order.push_back(tag_bit_order[i]);

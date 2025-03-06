@@ -90,7 +90,13 @@ void O3_CPU::begin_phase()
   stats.name = "CPU " + std::to_string(cpu);
   stats.begin_instrs = num_retired;
   stats.begin_cycles = current_cycle;
+
+  // We care about those things globally, so we copy them over 
   stats.big_region_small_region_mapping = sim_stats.big_region_small_region_mapping;
+  stats.btb_tag_entropy = sim_stats.btb_tag_entropy;
+  stats.btb_tag_switch_entropy = sim_stats.btb_tag_switch_entropy;
+  stats.btb_updates = sim_stats.btb_updates;
+  stats.btb_static_updates = sim_stats.btb_static_updates;
   sim_stats = stats;
 }
 
