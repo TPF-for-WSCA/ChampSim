@@ -42,6 +42,7 @@
       "btb_ways": 9,
       "btb_non_indirect": 9,
       "btb_sets": 512,
+      "bp_ignore_non_branch": 1,
       "btb_clipped_tag": 1,
       "btb_big_way_regions_enabled": 1,
       "btb_small_way_regions_enabled": 1,

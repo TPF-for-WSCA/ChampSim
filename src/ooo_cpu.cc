@@ -91,7 +91,7 @@ void O3_CPU::begin_phase()
   stats.begin_instrs = num_retired;
   stats.begin_cycles = current_cycle;
 
-  // We care about those things globally, so we copy them over 
+  // We care about those things globally, so we copy them over
   stats.big_region_small_region_mapping = sim_stats.big_region_small_region_mapping;
   stats.btb_tag_entropy = sim_stats.btb_tag_entropy;
   stats.btb_tag_switch_entropy = sim_stats.btb_tag_switch_entropy;
@@ -158,6 +158,9 @@ void do_stack_pointer_folding(ooo_model_instr& arch_instr)
 
 bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 {
+  if (!arch_instr.is_branch && bp_ignore_non_branch) {
+    return false;
+  }
   bool stop_fetch = false;
   // TODO: Make kernel address constant at top file and find how to disitinguish between 48b and 56b configurations
   if (KERNEL_IGNORE_ENABLE && arch_instr.ip > KERNEL_LOWER_BOUND) { // Check if kernel space
