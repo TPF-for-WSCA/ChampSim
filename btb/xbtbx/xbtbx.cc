@@ -51,6 +51,7 @@ enum class branch_info {
 // DEBUGGING END
 
 std::map<uint8_t, std::map<uint64_t, uint64_t>> region_tag_entry_count = {};
+std::map<uint64_t, uint16_t> region_count_in_small_btb = {};
 std::vector<uint8_t> index_bits;
 std::vector<uint8_t> tag_bits;
 std::vector<uint8_t> btb_addressing_hash;
@@ -241,6 +242,8 @@ struct region_btb_entry_t {
 
 std::map<O3_CPU*, champsim::msl::lru_table<BTBEntry>> BTB;
 std::map<O3_CPU*, champsim::msl::lru_table<region_btb_entry_t>> REGION_BTB;
+// TODO: make sure that the BTBEntry types here are always calculating full tags - might require another type
+std::map<O3_CPU*, champsim::msl::lru_table<BTBEntry>> REGION_FILTER_BTB;
 std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
 std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
 std::map<O3_CPU*, std::deque<uint64_t>> RAS;
@@ -252,6 +255,7 @@ void O3_CPU::initialize_btb()
 {
   std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == 1) << "\nPERFECT MAPPING: " << btb_perfect_mapping << std::endl;
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
+  ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS / 8, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
   _PERFECT_MAPPING = btb_perfect_mapping;
   // TODO: Make region BTB configurable for way/sets
   if (BTB_TAG_REGIONS) {
@@ -482,6 +486,10 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   std::optional<::BTBEntry> big_hit = std::nullopt;
   std::optional<::BTBEntry> hit_64 = std::nullopt;
   std::optional<::BTBEntry> lru_elem = std::nullopt;
+  if (!tmp_region_idx.has_value() && REGION_BTB_FILTER_ENABLED) {
+    ::REGION_FILTER_BTB.at(this).fill({}); // TODO: add element, only if we cross threshold insert into region and add future branches there and only when
+                                           // replaced from filter btb add to big btb
+  }
   if (small_way_regions_enabled && tmp_region_idx.has_value()) {
     small_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value(), 0});
     if (small_hit.has_value() && !utilise_regions(small_hit.value().target_size)) {
