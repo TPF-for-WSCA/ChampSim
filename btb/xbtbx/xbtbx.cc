@@ -198,9 +198,9 @@ struct region_btb_entry_t {
     auto ip = shuffle_ip_tag(ip_tag);
     // NOTE: We are currently big indexing for regions = big regions = fewer sets
     uint64_t raw_idx = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
-    return raw_idx;  // NOTE: keep track how many entries we observe per set
+    return raw_idx; // NOTE: keep track how many entries we observe per set
     // if (btb_associative_regions) {
-    //   
+    //
     //   if (champsim::lg2(_BTB_TAG_REGION_SETS) < _BTB_TAG_REGION_SIZE) {
     //     auto tmp_idx = raw_idx;
     //     raw_idx = 0;
@@ -537,9 +537,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     } else if (!region_idx.has_value()) {
       // auto rv = regions_inserted.insert(::region_btb_entry_t{ip}.tag());
       // assert(rv.second);
-        auto elem = ::region_btb_entry_t{ip};
-        sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
-        ::REGION_BTB.at(this).fill(elem);
+      auto elem = ::region_btb_entry_t{ip};
+      sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
+      ::REGION_BTB.at(this).fill(elem);
       // region_btb_insers++;
       // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
       region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});

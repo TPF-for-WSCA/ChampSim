@@ -141,6 +141,7 @@ def normalize_config(config_file):
         "perfect_btb",
         "btb_small_way_regions_enabled",
         "btb_perfect_mapping",
+        "bp_ignore_non_branch",
         "btb_big_way_regions_enabled",
         "btb_tag_size",
         "btb_tag_regions",

@@ -1,20 +1,21 @@
 {
-  "executable_name": "champsim_16b_region_256",
+  "executable_name": "btb_4k_config_spread_small_tag/btb_tag_16b_4w_pm_region_64",
   "block_size": 64,
+  "bucket_size": 100,
   "page_size": 4096,
-  "heartbeat_frequency": 1000000,
+  "heartbeat_frequency": 10000000,
   "num_cores": 1,
   "CFLAGS": [
-    "-Wall -Wno-reorder -g -O0 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include"
   ],
   "CXXFLAGS": [
-    "-Wall -Wno-reorder -g -O0 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include"
   ],
   "LDLIBS": [
     "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem"
   ],
   "LDFLAGS": [
-    "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib -fsanitize=bounds -fsanitize=address"
+    "-L/cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/lib -fsanitize=bounds -fsanitize=address"
   ],
   "ooo_cpu": [
     {
@@ -30,6 +31,7 @@
       "dispatch_width": 6,
       "execute_width": 8,
       "lq_width": 2,
+      "sq_width": 2,
       "retire_width": 8,
       "mispredict_penalty": 4,
       "scheduler_size": 205,
@@ -57,11 +59,11 @@
         25,
         64
       ],
-      "btb_tag_size": 8,
-      "btb_tag_regions": 256,
-      "btb_tag_region_size": 8,
-      "btb_tag_region_ways": 1,
+      "btb_tag_size": 6,
+      "btb_tag_regions": 64,
+      "btb_tag_region_ways": 4,
       "btb_perfect_mapping": 1,
+      "btb_tag_region_size": 6,
       "align_bits": 5
     }
   ],
@@ -94,30 +96,30 @@
     "mshr_size": 16,
     "latency": 5,
     "max_tag_check": 2,
-    "max_fill": 2,
+    "max_fill": 3,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
     "prefetcher": "next_line"
   },
   "L2C": {
-    "sets": 1024,
-    "ways": 8,
+    "sets": 2048,
+    "ways": 10,
     "rq_size": 32,
     "wq_size": 32,
     "pq_size": 16,
     "mshr_size": 32,
-    "latency": 10,
+    "latency": 12,
     "max_tag_check": 1,
     "max_fill": 1,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "ip_stride"
+    "prefetcher": "next_line"
   },
   "ITLB": {
-    "sets": 16,
-    "ways": 4,
+    "sets": 32,
+    "ways": 8,
     "rq_size": 16,
     "wq_size": 16,
     "pq_size": 0,
@@ -129,7 +131,7 @@
   },
   "DTLB": {
     "sets": 16,
-    "ways": 4,
+    "ways": 6,
     "rq_size": 16,
     "wq_size": 16,
     "pq_size": 0,
@@ -166,9 +168,9 @@
     "max_write": 2
   },
   "LLC": {
-    "frequency": 4000,
-    "sets": 2048,
-    "ways": 16,
+    "frequency": 2000,
+    "sets": 32768,
+    "ways": 15,
     "rq_size": 32,
     "wq_size": 32,
     "pq_size": 32,
@@ -179,13 +181,13 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "ip_stride",
+    "prefetcher": "next_line",
     "replacement": "lru"
   },
   "physical_memory": {
     "frequency": 3200,
-    "channels": 4,
-    "ranks": 2,
+    "channels": 2,
+    "ranks": 1,
     "banks": 8,
     "rows": 65536,
     "columns": 128,

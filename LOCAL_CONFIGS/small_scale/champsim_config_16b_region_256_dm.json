@@ -62,6 +62,7 @@
       "btb_tag_region_ways": 1,
       "btb_tag_region_size": 8,
       "btb_perfect_mapping": 0,
+      "bp_ignore_non_branch": 1,
       "align_bits": 5
     }
   ],

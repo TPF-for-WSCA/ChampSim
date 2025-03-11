@@ -68,7 +68,7 @@
             "name": "C++ Mac Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/bin/champsim_12b",
+            "program": "${workspaceRoot}/bin/champsim_16b_region_256",
             "externalConsole": false,
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
