@@ -135,6 +135,42 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
   }
 }
 
+struct FilterBTBEntry {
+  uint64_t ip_tag = 0;
+  uint64_t target;
+  branch_info type = branch_info::ALWAYS_TAKEN;
+  std::pair<uint16_t, uint64_t> region_idx_tag = {0, 0};
+  uint8_t target_size = 64; // TODO: Only update for which we have sizes
+  uint64_t offset_mask = -1;
+
+  // TODO: shift indexes and tags into place
+  auto index() const
+  {
+    auto ip = shuffle_ip_tag(ip_tag);
+    auto idx = (ip >> isa_shiftamount) & _INDEX_MASK;
+    return idx;
+  }
+  auto tag() const
+  {
+    auto ip = shuffle_ip_tag(ip_tag);
+    auto tag = ip >> isa_shiftamount >> _BTB_SET_BITS;
+
+    return tag;
+  }
+
+  auto partial_tag() const
+  {
+    auto ip = shuffle_ip_tag(ip_tag);
+    uint64_t tag = ip >> isa_shiftamount >> _BTB_SET_BITS;
+    return tag;
+  }
+
+  auto get_prediction() const
+  {
+    return target;
+  }
+};
+
 struct BTBEntry {
   uint64_t ip_tag = 0;
   uint64_t target;
