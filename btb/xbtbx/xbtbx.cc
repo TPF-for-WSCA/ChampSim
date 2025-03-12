@@ -87,8 +87,6 @@ std::map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 std::set<uint64_t> branch_ip;
 std::set<uint8_t> regions_inserted;
 // size_t region_btb_insers = 0;
-std::array<uint64_t, 64> dynamic_bit_counts;
-std::array<uint64_t, 64> static_bit_counts;
 
 // TODO: Only makes sense with BTB-X
 bool utilise_regions(size_t way_size)
@@ -406,10 +404,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
   // TODO: Integrate with sim
   bool is_static = branch_ip.insert(ip).second;
+  sim_stats.static_branch_count += is_static;
+  sim_stats.dynamic_branch_count += 1;
   for (int j = 0; j < 64; j++) {
     if ((ip >> j) & 0x1) {
-      static_bit_counts[j] += (is_static) ? 1 : 0;
-      dynamic_bit_counts[j] += 1;
+      sim_stats.static_bit_counts[j] += (is_static) ? 1 : 0;
+      sim_stats.dynamic_bit_counts[j] += 1;
     }
   }
 

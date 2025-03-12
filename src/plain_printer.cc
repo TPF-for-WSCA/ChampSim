@@ -43,9 +43,22 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
 
   fmt::print(stream, "{} REGION BTB BIG REGIONS: {}\n", stats.name, stats.big_region_small_region_mapping.size());
   fmt::print(stream, "\tBIG_REGION_IDX:\tSUB_REGION_COUNT\n");
-  for (auto const& [big_region, tags] : stats.big_region_small_region_mapping){
-    fmt::print(stream, "\t{}:\t{}\n",big_region, tags.size());
+  for (auto const& [big_region, tags] : stats.big_region_small_region_mapping) {
+    fmt::print(stream, "\t{}:\t{}\n", big_region, tags.size());
   }
+
+  cout << "XXX Total dynamic branch IPs: " << dynamic_branch_count << endl;
+  cout << "XXX Total dynamic 1 bits in branch IPs:" << endl;
+  for (int j = 0; j < 64; j++) {
+    cout << j << ":\t" << (double)dynamic_bit_counts[j] / (double)dynamic_branch_count << endl;
+  }
+
+  cout << "XXX Total static branch IPs: " << static_branch_count << endl;
+  cout << "XXX Total static 1 bits in branch IPs:" << endl;
+  for (int j = 0; j < 64; j++) {
+    cout << j << ":\t" << (double)static_bit_counts[j] / (double)static_branch_count << endl;
+  }
+  cout << "XXX END BTB STATS" << endl;
 
   fmt::print(stream, "\nPositive Aliasing: {}\nNegative Aliasing: {}\nNone-Branch Aliasing: {}\nTotal Aliasing: {}", stats.positive_aliasing,
              stats.negative_aliasing, stats.non_branch_btb_hits, stats.total_aliasing);
