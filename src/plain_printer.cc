@@ -47,19 +47,6 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     fmt::print(stream, "\t{}:\t{}\n", big_region, tags.size());
   }
 
-  cout << "XXX Total dynamic branch IPs: " << dynamic_branch_count << endl;
-  cout << "XXX Total dynamic 1 bits in branch IPs:" << endl;
-  for (int j = 0; j < 64; j++) {
-    cout << j << ":\t" << (double)dynamic_bit_counts[j] / (double)dynamic_branch_count << endl;
-  }
-
-  cout << "XXX Total static branch IPs: " << static_branch_count << endl;
-  cout << "XXX Total static 1 bits in branch IPs:" << endl;
-  for (int j = 0; j < 64; j++) {
-    cout << j << ":\t" << (double)static_bit_counts[j] / (double)static_branch_count << endl;
-  }
-  cout << "XXX END BTB STATS" << endl;
-
   fmt::print(stream, "\nPositive Aliasing: {}\nNegative Aliasing: {}\nNone-Branch Aliasing: {}\nTotal Aliasing: {}", stats.positive_aliasing,
              stats.negative_aliasing, stats.non_branch_btb_hits, stats.total_aliasing);
   fmt::print(stream, "\nMAX BTB Regions: {}\nMIN BTB Regions: {}\n", stats.max_regions, stats.min_regions);
@@ -124,6 +111,19 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   for (auto [entropy, bit_idx] : filtered_switch_bit_order) {
     fmt::print(stream, "{}\t{}\n", bit_idx, entropy);
   }
+
+  fmt::print("XXX Total dynamic branch IPs: {}\n", stats.dynamic_branch_count);
+  fmt::print("XXX Total dynamic 1 bits in branch IPs:\n");
+  for (int j = 0; j < 64; j++) {
+    fmt::print("{}:\t{}\n", j, (double)stats.dynamic_bit_counts[j] / (double)stats.dynamic_branch_count);
+  }
+
+  fmt::print("XXX Total static branch IPs: {}\n", stats.static_branch_count);
+  fmt::print("XXX Total static 1 bits in branch IPs:\n");
+  for (int j = 0; j < 64; j++) {
+    fmt::print("{}:\t{}\n", j, (double)stats.static_bit_counts[j] / (double)stats.static_branch_count);
+  }
+  fmt::print("XXX END BTB STATS\n");
 
   std::vector<double> mpkis;
   double total_mpki = 0.0;
