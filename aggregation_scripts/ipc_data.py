@@ -137,7 +137,7 @@ def extract_bit_information(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    title_re = re.compile(r"XXX Total dynamic 1 bits in branch IPs:")
+    title_re = re.compile(r"XXX Total 1 bits in branch IPs:")
     ilogs = iter(logs)
     for line in ilogs:
         if title_re.match(line):
