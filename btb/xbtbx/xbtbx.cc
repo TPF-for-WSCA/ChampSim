@@ -19,6 +19,8 @@
 #include "ooo_cpu.h"
 
 #define SMALL_BIG_WAY_SPLIT 14
+#define USE_REGIONALIZED_BTB_OFFSET 3
+#define REGION_BTB_FILTER_ENABLED true
 #define SAMPLING_DISTANCE 1000000
 
 uint64_t invalid_replacements = 0;
@@ -165,10 +167,7 @@ struct FilterBTBEntry {
     return tag;
   }
 
-  auto get_prediction() const
-  {
-    return target;
-  }
+  auto get_prediction() const { return target; }
 };
 
 struct BTBEntry {
@@ -279,7 +278,8 @@ struct region_btb_entry_t {
 std::map<O3_CPU*, champsim::msl::lru_table<BTBEntry>> BTB;
 std::map<O3_CPU*, champsim::msl::lru_table<region_btb_entry_t>> REGION_BTB;
 // TODO: make sure that the BTBEntry types here are always calculating full tags - might require another type
-std::map<O3_CPU*, champsim::msl::lru_table<BTBEntry>> REGION_FILTER_BTB;
+std::map<O3_CPU*, std::map<uint64_t, uint64_t>> REGION_REF_COUNT = {};
+std::map<O3_CPU*, champsim::msl::lru_table<FilterBTBEntry>> REGION_FILTER_BTB;
 std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
 std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
 std::map<O3_CPU*, std::deque<uint64_t>> RAS;
@@ -291,7 +291,7 @@ void O3_CPU::initialize_btb()
 {
   std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == 1) << "\nPERFECT MAPPING: " << btb_perfect_mapping << std::endl;
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
-  ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS / 8, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
+  ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<FilterBTBEntry>{BTB_SETS / 8, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
   _PERFECT_MAPPING = btb_perfect_mapping;
   // TODO: Make region BTB configurable for way/sets
   if (BTB_TAG_REGIONS) {
@@ -437,6 +437,8 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   // DONE: calculate size
+  uint64_t new_region = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+
   uint64_t offset_size = (ip >> isa_shiftamount) ^ (branch_target >> isa_shiftamount);
   uint8_t num_bits = 0;
   while (offset_size) {
@@ -459,6 +461,27 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     if (std::size(RAS[this]) > RAS_SIZE)
       RAS[this].pop_front();
   }
+
+  // COMMON STATS
+  {
+    sim_stats.btb_updates++;
+    // if (branch_type != NOT_BRANCH)
+    //   sim_stats.branch_ip_set.insert((ip >> isa_shiftamount >> _BTB_SET_BITS));
+
+    auto diff_tag = std::bitset<64>(ip ^ prev_branch_ip);
+    for (size_t idx = 0; idx < 64; idx++) {
+      sim_stats.btb_tag_switch_entropy[idx] += diff_tag[idx];
+    }
+
+    if (is_static) {
+      sim_stats.btb_static_updates++;
+      auto ip_bits = std::bitset<64>(ip);
+      for (size_t idx = 0; idx < 64; idx++) {
+        sim_stats.btb_tag_entropy[idx] += ip_bits[idx];
+      }
+    }
+  }
+  // END COMMON STATS
 
   // updates for indirect branches
   // if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL)) {
@@ -522,9 +545,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   std::optional<::BTBEntry> big_hit = std::nullopt;
   std::optional<::BTBEntry> hit_64 = std::nullopt;
   std::optional<::BTBEntry> lru_elem = std::nullopt;
-  if (!tmp_region_idx.has_value() && REGION_BTB_FILTER_ENABLED) {
-    ::REGION_FILTER_BTB.at(this).fill({}); // TODO: add element, only if we cross threshold insert into region and add future branches there and only when
-                                           // replaced from filter btb add to big btb
+  if (!tmp_region_idx.has_value() && REGION_BTB_FILTER_ENABLED && REGION_REF_COUNT.at(this)[new_region] < USE_REGIONALIZED_BTB_OFFSET) {
+    ::REGION_FILTER_BTB.at(this).fill(
+        {ip, branch_target, type, {0, new_region}}); // TODO: add element, only if we cross threshold insert into region and add future branches there and only
+                                                     // when replaced from filter btb add to big btb
+    REGION_REF_COUNT.at(this)[new_region]++;
+    return;
   }
   if (small_way_regions_enabled && tmp_region_idx.has_value()) {
     small_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value(), 0});
@@ -646,7 +672,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // if (replaced_entry.has_value()) {
     //   std::cout << "IP: " << ip << ", REPLACED: " << replaced_entry.value().ip_tag << ", CURRENT_CYCLE: " << current_cycle << std::endl;
     // }
-    uint64_t new_region = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
     region_tag_entry_count[replaced_entry.value().target_size][new_region] += utilise_regions(replaced_entry.value().target_size);
     if (replaced_entry.has_value() && replaced_entry.value().ip_tag && utilise_regions(replaced_entry.value().target_size)) {
       uint64_t old_region = (replaced_entry.value().ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
@@ -680,22 +705,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // assert(sum == total_blocks);
   }
 
-  sim_stats.btb_updates++;
-  // if (branch_type != NOT_BRANCH)
-  //   sim_stats.branch_ip_set.insert((ip >> isa_shiftamount >> _BTB_SET_BITS));
-
-  auto diff_tag = std::bitset<64>(ip ^ prev_branch_ip);
-  for (size_t idx = 0; idx < 64; idx++) {
-    sim_stats.btb_tag_switch_entropy[idx] += diff_tag[idx];
-  }
-
-  if (is_static) {
-    sim_stats.btb_static_updates++;
-    auto ip_bits = std::bitset<64>(ip);
-    for (size_t idx = 0; idx < 64; idx++) {
-      sim_stats.btb_tag_entropy[idx] += ip_bits[idx];
-    }
-  }
   if (!warmup && SAMPLING_DISTANCE < current_cycle - last_stats_cycle) {
     std::map<uint8_t, std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>> stats_entry{};
     for (auto const& [size, region_count] : region_tag_entry_count) {
