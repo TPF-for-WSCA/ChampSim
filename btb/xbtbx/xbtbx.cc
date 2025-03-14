@@ -278,7 +278,7 @@ struct region_btb_entry_t {
 std::map<O3_CPU*, champsim::msl::lru_table<BTBEntry>> BTB;
 std::map<O3_CPU*, champsim::msl::lru_table<region_btb_entry_t>> REGION_BTB;
 // TODO: make sure that the BTBEntry types here are always calculating full tags - might require another type
-std::map<O3_CPU*, std::map<uint64_t, uint64_t>> REGION_REF_COUNT = {};
+std::map<O3_CPU*, std::map<uint64_t, uint64_t>> REGION_REF_COUNT;
 std::map<O3_CPU*, champsim::msl::lru_table<FilterBTBEntry>> REGION_FILTER_BTB;
 std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
 std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
@@ -291,7 +291,9 @@ void O3_CPU::initialize_btb()
 {
   std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == 1) << "\nPERFECT MAPPING: " << btb_perfect_mapping << std::endl;
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
-  ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<FilterBTBEntry>{BTB_SETS / 8, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
+  if (REGION_BTB_FILTER_ENABLED)
+    ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<FilterBTBEntry>{BTB_SETS / 8, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
+  ::REGION_REF_COUNT.insert({this, {}});
   _PERFECT_MAPPING = btb_perfect_mapping;
   // TODO: Make region BTB configurable for way/sets
   if (BTB_TAG_REGIONS) {
@@ -355,7 +357,10 @@ void O3_CPU::initialize_btb()
 std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   std::optional<::BTBEntry> btb_entry = std::nullopt;
-  if (_BTB_TAG_REGIONS) {
+  std::optional<::FilterBTBEntry> filter_hit = std::nullopt;
+  if (REGION_BTB_FILTER_ENABLED)
+    filter_hit = ::REGION_FILTER_BTB.at(this).check_hit({ip});
+  if (_BTB_TAG_REGIONS && !filter_hit.has_value()) {
     auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
     std::optional<::BTBEntry> partial = std::nullopt;
     if (BTB_PARTIAL_TAG_RESOLUTION) {
@@ -404,8 +409,11 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
     } else if (full_64.has_value()) {
       btb_entry = full_64.value();
     }
-  } else {
+  } else if (!filter_hit.has_value()) {
     btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, std::pair<uint16_t, uint64_t>{0, 0}, 0});
+  } else {
+    auto v = filter_hit.value();
+    btb_entry = {v.ip_tag, v.target, v.type, v.region_idx_tag};
   }
 
   // no prediction for this IP
@@ -545,11 +553,23 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   std::optional<::BTBEntry> big_hit = std::nullopt;
   std::optional<::BTBEntry> hit_64 = std::nullopt;
   std::optional<::BTBEntry> lru_elem = std::nullopt;
-  if (!tmp_region_idx.has_value() && REGION_BTB_FILTER_ENABLED && REGION_REF_COUNT.at(this)[new_region] < USE_REGIONALIZED_BTB_OFFSET) {
-    ::REGION_FILTER_BTB.at(this).fill(
-        {ip, branch_target, type, {0, new_region}}); // TODO: add element, only if we cross threshold insert into region and add future branches there and only
-                                                     // when replaced from filter btb add to big btb
-    REGION_REF_COUNT.at(this)[new_region]++;
+  auto filter_hit = ::REGION_FILTER_BTB.at(this).check_hit({ip});
+  if (REGION_BTB_FILTER_ENABLED
+      && (filter_hit.has_value() || (!tmp_region_idx.has_value() && REGION_REF_COUNT.at(this)[new_region] < USE_REGIONALIZED_BTB_OFFSET))) {
+    if (!filter_hit.has_value()) {
+      REGION_REF_COUNT.at(this)[new_region]++;
+    } else if (!branch_target) {
+      branch_target = filter_hit.value().target; // This ensures we are not removing the target from a not taken branch
+    }
+    auto replaced = ::REGION_FILTER_BTB.at(this).fill(
+        {ip, branch_target, type, {0, new_region}}); // TODO: add element, only if we cross threshold insert into region and add future branches there and
+                                                     // only when replaced from filter btb add to big btb
+    if (replaced.has_value() && replaced.value().ip_tag && replaced.value().ip_tag != ip) { // if iptag is 0 its an invalid(ated) entry
+      uint64_t old_region = (replaced.value().ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+      assert(REGION_REF_COUNT.at(this)[old_region]);
+      REGION_REF_COUNT.at(this)[old_region]--;
+      // TODO: should old entry be inserted into big btb?
+    }
     return;
   }
   if (small_way_regions_enabled && tmp_region_idx.has_value()) {

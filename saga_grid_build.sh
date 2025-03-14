@@ -8,7 +8,7 @@
 #build_configs=("saga_4k_data_config.json" "saga_8k_data_config.json" "saga_16k_data_config.json" "saga_32k_data_config.json" "saga_64k_data_config.json" "saga_128k_data_config.json" "saga_256k_data_config.json")
 # build_dir=("btb_1k_region_tag_exp" "btb_4k_region_tag_exp")
 # build_dir=("btb_4k_region_tag_set_associative_set_idx")
-build_dir=("4k_config_spread_small_tags")
+build_dir=("4k_config_spread")
 
 old_dir=$(pwd)
 cd /cluster/projects/nn4650k/workspace/ChampSim/

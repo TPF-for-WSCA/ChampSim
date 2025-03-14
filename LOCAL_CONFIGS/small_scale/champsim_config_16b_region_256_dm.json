@@ -5,10 +5,10 @@
   "heartbeat_frequency": 1000000,
   "num_cores": 1,
   "CFLAGS": [
-    "-Wall -Wno-reorder -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O0 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
   ],
   "CXXFLAGS": [
-    "-Wall -Wno-reorder -g -O3 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O0 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
   ],
   "LDLIBS": [
     "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem"
@@ -61,7 +61,7 @@
       "btb_tag_regions": 256,
       "btb_tag_region_ways": 1,
       "btb_tag_region_size": 8,
-      "btb_perfect_mapping": false,
+      "btb_perfect_mapping": 0,
       "bp_ignore_non_branch": 1,
       "align_bits": 5
     }
