@@ -79,6 +79,11 @@ struct cpu_stats {
   std::set<uint64_t> branch_ip_set = {};
   std::array<long double, 64> btb_tag_entropy = {}, btb_tag_switch_entropy = {};
 
+  uint64_t dynamic_branch_count = 0;
+  uint64_t static_branch_count = 0;
+  std::array<uint64_t, 64> dynamic_bit_counts;
+  std::array<uint64_t, 64> static_bit_counts;
+
   std::array<long long, 8> total_branch_types = {};
   std::array<long long, 8> branch_type_misses = {};
   long long non_branch_btb_hits = 0;

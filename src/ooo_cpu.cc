@@ -97,6 +97,10 @@ void O3_CPU::begin_phase()
   stats.btb_tag_switch_entropy = sim_stats.btb_tag_switch_entropy;
   stats.btb_updates = sim_stats.btb_updates;
   stats.btb_static_updates = sim_stats.btb_static_updates;
+  stats.dynamic_bit_counts = sim_stats.dynamic_bit_counts;
+  stats.static_bit_counts = sim_stats.static_bit_counts;
+  stats.dynamic_branch_count = sim_stats.dynamic_branch_count;
+  stats.static_branch_count = sim_stats.static_branch_count;
   sim_stats = stats;
 }
 

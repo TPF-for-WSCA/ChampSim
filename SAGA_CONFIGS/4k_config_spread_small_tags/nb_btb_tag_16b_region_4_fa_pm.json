@@ -1,5 +1,5 @@
-4{
-  "executable_name": "btb_4k_config_spread_small_tag/btb_tag_16b_fa_pm_region_32",
+{
+  "executable_name": "btb_4k_config_spread_small_tag/btb_tag_16b_fa_pm_region_4",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
