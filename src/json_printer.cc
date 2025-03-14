@@ -33,10 +33,28 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
     mpki.emplace(branch_type_names.at(champsim::to_underlying(type)), stats.branch_type_misses.value_or(type, 0));
   }
 
+  auto kernel_total_mispredictions = std::ceil(std::accumulate(
+      std::begin(types), std::end(types), 0LL, [btm = stats.kernel_branch_type_misses](auto acc, auto next) { return acc + btm.value_or(next, 0); }));
+
+  std::map<std::string, std::size_t> kernel_mpki{};
+  for (auto type : types) {
+    kernel_mpki.emplace(branch_type_names.at(champsim::to_underlying(type)), stats.kernel_branch_type_misses.value_or(type, 0));
+  }
+
+  auto user_total_mispredictions = std::ceil(std::accumulate(
+      std::begin(types), std::end(types), 0LL, [btm = stats.user_branch_type_misses](auto acc, auto next) { return acc + btm.value_or(next, 0); }));
+
+  std::map<std::string, std::size_t> user_mpki{};
+  for (auto type : types) {
+    user_mpki.emplace(branch_type_names.at(champsim::to_underlying(type)), stats.user_branch_type_misses.value_or(type, 0));
+  }
+
   j = nlohmann::json{{"instructions", stats.instrs()},
                      {"cycles", stats.cycles()},
                      {"Avg ROB occupancy at mispredict", std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions)},
-                     {"mispredict", mpki}};
+                     {"mispredict", mpki},
+                     {"user_mispredict", user_mpki},
+                     {"kernel_mispredict", kernel_mpki}};
 }
 
 void to_json(nlohmann::json& j, const CACHE::stats_type& stats)

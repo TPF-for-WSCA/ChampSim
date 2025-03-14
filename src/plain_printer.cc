@@ -46,6 +46,14 @@ std::vector<std::string> champsim::plain_printer::format(O3_CPU::stats_type stat
       std::accumulate(std::begin(types), std::end(types), 0LL, [tbt = stats.total_branch_types](auto acc, auto next) { return acc + tbt.value_or(next, 0); }));
   auto total_mispredictions = std::ceil(
       std::accumulate(std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.value_or(next, 0); }));
+  auto kernel_total_branch = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0LL, [tbt = stats.kernel_branch_types](auto acc, auto next) { return acc + tbt.value_or(next, 0); }));
+  auto kernel_total_mispredictions = std::ceil(std::accumulate(
+      std::begin(types), std::end(types), 0LL, [btm = stats.kernel_branch_type_misses](auto acc, auto next) { return acc + btm.value_or(next, 0); }));
+  auto user_total_branch = std::ceil(
+      std::accumulate(std::begin(types), std::end(types), 0LL, [tbt = stats.user_branch_types](auto acc, auto next) { return acc + tbt.value_or(next, 0); }));
+  auto user_total_mispredictions = std::ceil(std::accumulate(
+      std::begin(types), std::end(types), 0LL, [btm = stats.user_branch_type_misses](auto acc, auto next) { return acc + btm.value_or(next, 0); }));
 
   std::vector<std::string> lines{};
   lines.push_back(fmt::format("{} cumulative IPC: {} instructions: {} cycles: {}", stats.name, ::print_ratio(stats.instrs(), stats.cycles()), stats.instrs(),
@@ -55,11 +63,31 @@ std::vector<std::string> champsim::plain_printer::format(O3_CPU::stats_type stat
                               ::print_ratio(100 * (total_branch - total_mispredictions), total_branch),
                               ::print_ratio(std::kilo::num * total_mispredictions, stats.instrs()),
                               ::print_ratio(stats.total_rob_occupancy_at_branch_mispredict, total_mispredictions)));
+  lines.push_back(fmt::format("{} Kernel Branch Prediction Accuracy: {}% MPKI: {} Average ROB Occupancy at Mispredict: {}", stats.name,
+                              ::print_ratio(100 * (kernel_total_branch - kernel_total_mispredictions), kernel_total_branch),
+                              ::print_ratio(std::kilo::num * kernel_total_mispredictions, stats.instrs()),
+                              ::print_ratio(stats.total_rob_occupancy_at_branch_mispredict, kernel_total_mispredictions)));
+  lines.push_back(fmt::format("{} User Branch Prediction Accuracy: {}% MPKI: {} Average ROB Occupancy at Mispredict: {}", stats.name,
+                              ::print_ratio(100 * (user_total_branch - user_total_mispredictions), user_total_branch),
+                              ::print_ratio(std::kilo::num * user_total_mispredictions, stats.instrs()),
+                              ::print_ratio(stats.total_rob_occupancy_at_branch_mispredict, user_total_mispredictions)));
 
   lines.emplace_back("Branch type MPKI");
   for (auto idx : types) {
     lines.push_back(fmt::format("{}: {}", branch_type_names.at(champsim::to_underlying(idx)),
                                 ::print_ratio(std::kilo::num * stats.branch_type_misses.value_or(idx, 0), stats.instrs())));
+  }
+
+  lines.emplace_back("Kernel Branch type MPKI");
+  for (auto idx : types) {
+    lines.push_back(fmt::format("{}: {}", branch_type_names.at(champsim::to_underlying(idx)),
+                                ::print_ratio(std::kilo::num * stats.kernel_branch_type_misses.value_or(idx, 0), stats.instrs())));
+  }
+
+  lines.emplace_back("User Branch type MPKI");
+  for (auto idx : types) {
+    lines.push_back(fmt::format("{}: {}", branch_type_names.at(champsim::to_underlying(idx)),
+                                ::print_ratio(std::kilo::num * stats.user_branch_type_misses.value_or(idx, 0), stats.instrs())));
   }
 
   return lines;

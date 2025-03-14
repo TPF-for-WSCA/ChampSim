@@ -17,6 +17,10 @@ struct cpu_stats {
 
   champsim::stats::event_counter<branch_type> total_branch_types = {};
   champsim::stats::event_counter<branch_type> branch_type_misses = {};
+  champsim::stats::event_counter<branch_type> user_branch_types = {};
+  champsim::stats::event_counter<branch_type> user_branch_type_misses = {};
+  champsim::stats::event_counter<branch_type> kernel_branch_types = {};
+  champsim::stats::event_counter<branch_type> kernel_branch_type_misses = {};
 
   [[nodiscard]] auto instrs() const { return end_instrs - begin_instrs; }
   [[nodiscard]] auto cycles() const { return end_cycles - begin_cycles; }

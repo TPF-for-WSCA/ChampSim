@@ -30,9 +30,12 @@
 #include "instruction.h"
 #include "util/span.h"
 
-std::chrono::seconds elapsed_time();
+#define KERNEL_LOWER_BOUND 0xffff800000000000ul
 
-constexpr long long STAT_PRINTING_PERIOD = 10000000;
+std::chrono::seconds elapsed_time();
+nn //
+
+    constexpr long long STAT_PRINTING_PERIOD = 10000000;
 
 long O3_CPU::operate()
 {
@@ -150,7 +153,13 @@ void do_stack_pointer_folding(ooo_model_instr& arch_instr)
 bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 {
   bool stop_fetch = false;
-
+  // TODO: If context switch detected - wait until ROB is empty <-- check if that makes sense overall / when do we really empty the rob?
+  // TODO: Also count kernel/user insts separately, also count ROB at miss separately
+  if (arch_instr.ip > KERNEL_LOWER_BOUND) {
+    sim_stats.kernel_branch_types.increment(arch_instr.branch);
+  } else {
+    sim_stats.user_branch_types.increment(arch_instr.branch);
+  }
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types.increment(arch_instr.branch);
   auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip, arch_instr.branch);
@@ -172,6 +181,11 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
             && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
       sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
       sim_stats.branch_type_misses.increment(arch_instr.branch);
+      if (arch_instr.ip > KERNEL_LOWER_BOUND) {
+        sim_stats.kernel_branch_type_misses.increment(arch_instr.branch);
+      } else {
+        sim_stats.user_branch_type_misses.increment(arch_instr.branch);
+      }
       if (!warmup) {
         fetch_resume_time = champsim::chrono::clock::time_point::max();
         stop_fetch = true;
