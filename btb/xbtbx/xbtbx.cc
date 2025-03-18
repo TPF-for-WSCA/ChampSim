@@ -116,6 +116,7 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
   if (btb_addressing_hash.empty()) {
     return ip_tag;
   } else {
+    // std::cout << "shuffle ip: " << std::hex << ip_tag << std::dec << std::endl;
     uint64_t ip = 0;
     uint8_t i = 0;
     for (; i < btb_addressing_masks.size(); i++) {
@@ -132,8 +133,17 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
     uint64_t upper_mask = (1 << btb_addressing_masks.size()) - 1;
     upper_mask = ~upper_mask;
     ip |= (upper_mask & ip_tag);
+    // std::cout << "shuffled ip: " << std::hex << ip << std::dec << std::endl;
     return ip;
   }
+}
+
+auto get_region(uint64_t ip)
+{
+  ip = shuffle_ip_tag(ip);
+  ip = ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+  ip = ip & _REGION_MASK;
+  return ip;
 }
 
 struct FilterBTBEntry {
@@ -231,7 +241,6 @@ struct region_btb_entry_t {
   auto index() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    // NOTE: We are currently big indexing for regions = big regions = fewer sets
     uint64_t raw_idx = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
     return raw_idx; // NOTE: keep track how many entries we observe per set
     // if (btb_associative_regions) {
@@ -444,7 +453,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   // DONE: calculate size
-  uint64_t new_region = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+  uint64_t new_region = get_region(ip);
 
   uint64_t offset_size = (ip >> isa_shiftamount) ^ (branch_target >> isa_shiftamount);
   uint8_t num_bits = 0;
@@ -544,7 +553,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
                                                      // only when replaced from filter btb add to big btb
     bool valid_replacement = replaced.has_value() && replaced.value().ip_tag && replaced.value().ip_tag != ip;
     if (valid_replacement) { // if iptag is 0 its an invalid(ated) entry
-      uint64_t old_region = (replaced.value().ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+      uint64_t old_region = get_region(replaced.value().ip_tag);
       assert(REGION_REF_COUNT.at(this)[old_region]);
       REGION_REF_COUNT.at(this)[old_region]--;
       new_region = old_region;
@@ -711,7 +720,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // }
     region_tag_entry_count[replaced_entry.value().target_size][new_region] += utilise_regions(replaced_entry.value().target_size);
     if (replaced_entry.has_value() && replaced_entry.value().ip_tag && utilise_regions(replaced_entry.value().target_size)) {
-      uint64_t old_region = (replaced_entry.value().ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+      uint64_t old_region = get_region(replaced_entry.value().ip_tag);
       if (region_tag_entry_count[replaced_entry.value().target_size][old_region] == 0) {
         // std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
         // std::cerr << "OLD REGION: " << old_region << std::endl;

@@ -14,6 +14,7 @@ executable = "/cluster/work/romankb/dynamorio/build/clients/bin64/drcachesim"
 
 warmup_instructions = 1000000
 evaluation_instructions = 10000000
+bit_ordering = "~/data/bit_ordering.txt"
 
 
 class Color(Enum):
@@ -44,6 +45,9 @@ def run_experiment(
         "--json",
         f"{output_dir}/stats.json",
     ]
+    if args.btb_tag_hash:
+        cmd.append("--btb-tag-hash")
+        cmd.append(args.btb_tag_hash)
     if args.intel:
         cmd.append("--intel")
     if args.som:
@@ -207,6 +211,7 @@ if __name__ == "__main__":
         "--intel",
         action="store_true",
     )
+    parser.add_argument("--btb_tag_hash", type=str, default=None)
     parser.set_defaults(intel=False)
 
     parser.add_argument(
