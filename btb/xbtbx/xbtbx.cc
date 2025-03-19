@@ -62,6 +62,8 @@ std::vector<uint64_t> btb_addressing_masks;
 std::vector<int> btb_addressing_shifts; // negative shift amounts are left shifts by the given amount. 0 means no shift is necessary, positive shift amounts
                                         // are shifts to the right (max the bit idx)
 std::size_t _INDEX_MASK = 0;
+std::size_t _FILTER_INDEX_MASK = 0;
+std::size_t _FILTER_BTB_SET_BITS = 0;
 std::size_t _TAG_MASK = 0;
 std::size_t _FULL_TAG_MASK = 0;
 std::size_t _REGION_MASK = 0;
@@ -158,21 +160,20 @@ struct FilterBTBEntry {
   auto index() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    auto idx = (ip >> isa_shiftamount) & _INDEX_MASK;
+    auto idx = (ip >> isa_shiftamount) & _FILTER_INDEX_MASK;
     return idx;
   }
   auto tag() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    auto tag = ip >> isa_shiftamount >> _BTB_SET_BITS;
-
+    auto tag = ip >> isa_shiftamount >> _FILTER_BTB_SET_BITS;
     return tag;
   }
 
   auto partial_tag() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    uint64_t tag = ip >> isa_shiftamount >> _BTB_SET_BITS;
+    uint64_t tag = ip >> isa_shiftamount >> _FILTER_BTB_SET_BITS;
     return tag;
   }
 
@@ -299,8 +300,11 @@ void O3_CPU::initialize_btb()
 {
   std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == 1) << "\nPERFECT MAPPING: " << btb_perfect_mapping << std::endl;
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
-  if (REGION_BTB_FILTER_ENABLED)
-    ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<FilterBTBEntry>{BTB_SETS / 8, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
+  if (REGION_BTB_FILTER_ENABLED) {
+    ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
+    _FILTER_INDEX_MASK = (BTB_SETS / 16) - 1;
+    _FILTER_BTB_SET_BITS = champsim::lg2(BTB_SETS / 16);
+  }
   ::REGION_REF_COUNT.insert({this, {}});
   _PERFECT_MAPPING = btb_perfect_mapping;
   // TODO: Make region BTB configurable for way/sets
