@@ -26,9 +26,11 @@
 #include <bitset>
 #include <deque>
 #include <limits>
+#include <map>
 #include <memory>
 #include <optional>
 #include <queue>
+#include <set>
 #include <stdexcept>
 #include <vector>
 
@@ -66,12 +68,33 @@ struct cpu_stats {
   uint64_t begin_instrs = 0, begin_cycles = 0;
   uint64_t end_instrs = 0, end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
+  uint64_t total_aliasing = 0, positive_aliasing = 0, negative_aliasing = 0;
+  uint64_t max_regions = 0;
+  uint64_t min_regions = 0;
+  std::vector<std::map<uint8_t, std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>>> region_history;
+  std::map<uint64_t, std::set<uint64_t>> big_region_small_region_mapping;
+  uint64_t btb_updates = 0;
+  uint64_t btb_static_updates = 0;
+  uint16_t btb_tag_size = 0;
+  std::set<uint64_t> branch_ip_set = {};
+  std::array<long double, 64> btb_tag_entropy = {}, btb_tag_switch_entropy = {};
+
+  uint64_t dynamic_branch_count = 0;
+  uint64_t static_branch_count = 0;
+  std::array<uint64_t, 64> dynamic_bit_counts;
+  std::array<uint64_t, 64> static_bit_counts;
 
   std::array<long long, 8> total_branch_types = {};
   std::array<long long, 8> branch_type_misses = {};
+  long long non_branch_btb_hits = 0;
 
   uint64_t instrs() const { return end_instrs - begin_instrs; }
   uint64_t cycles() const { return end_cycles - begin_cycles; }
+
+  cpu_stats()
+  {
+    region_history.reserve(3000); // This is the reservation for the small scale experiments
+  }
 };
 
 struct LSQ_ENTRY {
@@ -93,7 +116,52 @@ struct LSQ_ENTRY {
 // cpu
 class O3_CPU : public champsim::operable
 {
+private:
+  size_t BTB_SETS;
+  uint8_t BTB_CLIPPED_TAG;
+  uint8_t BTB_TAG_SIZE;
+  size_t BTB_TAG_REGIONS;
+  size_t BTB_TAG_REGION_WAYS;
+  uint8_t BTB_TAG_REGION_SIZE;
+  uint8_t BTB_REGIONS = 1;
+  size_t EXTENDED_BTB_MAX_LOOP_BRANCH;
+  std::vector<uint8_t> BTB_TARGET_SIZES; // TODO: How to check length?
+  uint32_t* offset_btb_sets;
+  bool prev_was_branch = false;
+  bool perfect_btb;
+  bool BTB_PARTIAL_TAG_RESOLUTION = false;
+  bool btb_small_way_regions_enabled;
+  bool btb_big_way_regions_enabled;
+  bool btb_perfect_mapping;
+  bool bp_ignore_non_branch;
+  bool perfect_branch_predict;
+  bool full_tag, clipped_tag;
+  uint8_t clipped_tag_size;
+
 public:
+  std::vector<uint8_t> btb_index_tag_hash{};
+  size_t BTB_WAYS;
+  size_t BTB_NON_INDIRECT;
+  uint64_t rob_size_at_stall = 0;
+  std::map<uint64_t, uint64_t> branch_distance;
+  uint32_t branch_count;
+  uint64_t total_branch_distance;
+  std::array<std::set<std::pair<uint64_t, uint64_t>>, 64> pc_offset_pairs_by_size{};
+  std::array<std::set<std::pair<uint64_t, uint64_t>>, 64> pc_offset_pairs_by_partition{};
+  std::array<std::map<uint64_t, uint64_t>, 64> offset_counts_by_size{};
+  std::array<uint64_t, 64> offset_size_count{};
+  std::array<std::map<uint64_t, uint64_t>, 64> type_counts_by_size;
+  std::array<std::map<uint64_t, uint64_t>, 64> static_offset_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> static_branch_pc_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> static_target_pc_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> dynamic_offset_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> dynamic_branch_pc_counts_by_partition;
+  std::array<std::map<uint64_t, uint64_t>, 64> dynamic_target_pc_counts_by_partition;
+  std::vector<std::vector<uint64_t>> pc_bits_offset;
+  std::map<uint32_t, std::vector<std::map<uint32_t, uint16_t>>> sharing_in_btb_by_partition;
+  std::map<uint32_t, std::vector<std::map<uint64_t, uint64_t>>> offset_refcounts_by_partition;
+  size_t align_bits = LOG2_BLOCK_SIZE;
+
   uint32_t cpu = 0;
 
   // cycle
@@ -109,6 +177,7 @@ public:
   uint64_t num_retired = 0;
 
   bool show_heartbeat = true;
+  bool intel = false;
 
   using stats_type = cpu_stats;
 
@@ -119,7 +188,7 @@ public:
     std::size_t shamt;
     auto operator()(uint64_t val) const { return val >> shamt; }
   };
-  using dib_type = champsim::lru_table<uint64_t, dib_shift, dib_shift>;
+  using dib_type = champsim::lru_table<uint64_t, dib_shift, dib_shift, dib_shift>;
   dib_type DIB;
 
   // reorder buffer, load/store queue, register file
@@ -201,7 +270,7 @@ public:
 
     virtual void impl_initialize_btb() = 0;
     virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) = 0;
-    virtual std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
+    virtual std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
   };
 
   template <unsigned long long B_FLAG, unsigned long long T_FLAG>
@@ -215,7 +284,7 @@ public:
 
     void impl_initialize_btb();
     void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type);
-    std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
+    std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
   };
 
   std::unique_ptr<module_concept> module_pimpl;
@@ -232,7 +301,7 @@ public:
   {
     module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
   }
-  std::pair<uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
+  std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
 
   class builder_conversion_tag
   {
@@ -266,6 +335,20 @@ public:
     unsigned m_dispatch_latency{};
     unsigned m_schedule_latency{};
     unsigned m_execute_latency{};
+    unsigned long m_btb_ways{};
+    unsigned long m_btb_sets{};
+    unsigned char m_btb_clipped_tag{};
+    unsigned char m_btb_partial_tag_resolution{};
+    std::vector<uint8_t> m_btb_target_sizes{};
+    unsigned char m_btb_tag_size{};
+    size_t m_btb_tag_regions{};
+    size_t m_btb_tag_region_ways{};
+    unsigned char m_btb_tag_region_size{};
+    bool m_perfect_btb{};
+    bool m_btb_small_way_regions_enabled{};
+    bool m_btb_big_way_regions_enabled{};
+    bool m_btb_perfect_mapping{};
+    bool m_bp_ignore_non_branch{};
 
     CACHE* m_l1i{};
     long int m_l1i_bw{};
@@ -284,7 +367,9 @@ public:
           m_schedule_width(other.m_schedule_width), m_execute_width(other.m_execute_width), m_lq_width(other.m_lq_width), m_sq_width(other.m_sq_width),
           m_retire_width(other.m_retire_width), m_mispredict_penalty(other.m_mispredict_penalty), m_decode_latency(other.m_decode_latency),
           m_dispatch_latency(other.m_dispatch_latency), m_schedule_latency(other.m_schedule_latency), m_execute_latency(other.m_execute_latency),
-          m_l1i(other.m_l1i), m_l1i_bw(other.m_l1i_bw), m_l1d_bw(other.m_l1d_bw), m_fetch_queues(other.m_fetch_queues), m_data_queues(other.m_data_queues)
+          m_perfect_btb(other.m_perfect_btb), m_btb_clipped_tag(other.m_btb_clipped_tag), m_btb_target_sizes(other.m_btb_target_sizes),
+          m_btb_sets(other.m_btb_sets), m_btb_tag_size(other.m_btb_tag_size), m_btb_ways(other.m_btb_ways), m_l1i(other.m_l1i), m_l1i_bw(other.m_l1i_bw),
+          m_l1d_bw(other.m_l1d_bw), m_fetch_queues(other.m_fetch_queues), m_data_queues(other.m_data_queues)
     {
     }
 
@@ -411,6 +496,79 @@ public:
       m_execute_latency = execute_latency_;
       return *this;
     }
+    self_type& btb_ways(unsigned long btb_ways_)
+    {
+      m_btb_ways = btb_ways_;
+      return *this;
+    }
+    self_type& btb_sets(unsigned long btb_sets_)
+    {
+      m_btb_sets = btb_sets_;
+      return *this;
+    }
+    self_type& btb_clipped_tag(unsigned char btb_clipped_tag_)
+    {
+      m_btb_clipped_tag = btb_clipped_tag_;
+      return *this;
+    }
+    self_type& btb_partial_tag_resolution(unsigned char btb_partial_tag_resolution_)
+    {
+      m_btb_partial_tag_resolution = btb_partial_tag_resolution_;
+      return *this;
+    }
+    self_type& btb_target_sizes(std::vector<uint8_t>& btb_target_sizes_)
+    {
+      m_btb_target_sizes = btb_target_sizes_;
+      return *this;
+    }
+    self_type& perfect_btb(bool perfect_btb_)
+    {
+      m_perfect_btb = perfect_btb_;
+      return *this;
+    }
+    self_type& btb_small_way_regions_enabled(bool btb_small_way_regions_enabled_)
+    {
+      m_btb_small_way_regions_enabled = btb_small_way_regions_enabled_;
+      return *this;
+    }
+    self_type& btb_perfect_mapping(bool btb_perfect_mapping_)
+    {
+      m_btb_perfect_mapping = btb_perfect_mapping_;
+      return *this;
+    }
+    self_type& bp_ignore_non_branch(bool bp_ignore_non_branch_)
+    {
+      m_bp_ignore_non_branch = bp_ignore_non_branch_;
+      return *this;
+    }
+    self_type& btb_big_way_regions_enabled(bool btb_big_way_regions_enabled_)
+    {
+      m_btb_big_way_regions_enabled = btb_big_way_regions_enabled_;
+      return *this;
+    }
+    self_type& btb_tag_size(unsigned char btb_tag_size_)
+    {
+      m_btb_tag_size = btb_tag_size_;
+      return *this;
+    }
+    self_type& btb_tag_regions(size_t btb_tag_regions_)
+    {
+      m_btb_tag_regions = btb_tag_regions_;
+      return *this;
+    }
+    self_type& btb_tag_region_ways(size_t btb_tag_region_ways_)
+    {
+      m_btb_tag_region_ways = btb_tag_region_ways_;
+      if (btb_tag_region_ways_ == 0) {
+        m_btb_tag_region_ways = m_btb_tag_regions; // Is assigned after so it is defined once we get around to here
+      }
+      return *this;
+    }
+    self_type& btb_tag_region_size(unsigned short btb_tag_region_size_)
+    {
+      m_btb_tag_region_size = btb_tag_region_size_;
+      return *this;
+    }
     self_type& l1i(CACHE* l1i_)
     {
       m_l1i = l1i_;
@@ -457,8 +615,15 @@ public:
         SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),
         BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency),
         SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
-        L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
+        BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), perfect_btb(b.m_perfect_btb), btb_small_way_regions_enabled(b.m_btb_small_way_regions_enabled),
+        btb_big_way_regions_enabled(b.m_btb_big_way_regions_enabled), BTB_CLIPPED_TAG(b.m_btb_clipped_tag), btb_perfect_mapping(b.m_btb_perfect_mapping),
+        bp_ignore_non_branch(b.m_bp_ignore_non_branch), BTB_PARTIAL_TAG_RESOLUTION(b.m_btb_partial_tag_resolution), BTB_TARGET_SIZES(b.m_btb_target_sizes),
+        BTB_TAG_SIZE(b.m_btb_tag_size), BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_TAG_REGION_WAYS(b.m_btb_tag_region_ways),
+        BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),
+        module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
   {
+    sim_stats.btb_tag_size = b.m_btb_tag_size;
+    roi_stats.btb_tag_size = b.m_btb_tag_size;
   }
 };
 

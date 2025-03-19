@@ -17,3 +17,4 @@ vcpkg_installed/
 
 **/_build
 **/_doxygen
+.DS_Store

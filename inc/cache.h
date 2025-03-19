@@ -149,6 +149,7 @@ class CACHE : public champsim::operable
 
   template <bool>
   auto initiate_tag_check(champsim::channel* ul = nullptr);
+  bool hit_test(uint64_t addr);
 
   std::deque<tag_lookup_type> internal_PQ{};
   std::deque<tag_lookup_type> inflight_tag_check{};
@@ -228,7 +229,7 @@ public:
     virtual uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) = 0;
     virtual void impl_prefetcher_cycle_operate() = 0;
     virtual void impl_prefetcher_final_stats() = 0;
-    virtual void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) = 0;
+    virtual void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target, uint8_t size) = 0;
 
     virtual void impl_initialize_replacement() = 0;
     virtual uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
@@ -248,7 +249,7 @@ public:
     uint32_t impl_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in);
     void impl_prefetcher_cycle_operate();
     void impl_prefetcher_final_stats();
-    void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
+    void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target, uint8_t size);
 
     void impl_initialize_replacement();
     uint32_t impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t full_addr,
@@ -271,9 +272,9 @@ public:
   }
   void impl_prefetcher_cycle_operate() { module_pimpl->impl_prefetcher_cycle_operate(); }
   void impl_prefetcher_final_stats() { module_pimpl->impl_prefetcher_final_stats(); }
-  void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)
+  void impl_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target, uint8_t size)
   {
-    module_pimpl->impl_prefetcher_branch_operate(ip, branch_type, branch_target);
+    module_pimpl->impl_prefetcher_branch_operate(ip, branch_type, branch_target, size);
   }
 
   void impl_initialize_replacement() { module_pimpl->impl_initialize_replacement(); }

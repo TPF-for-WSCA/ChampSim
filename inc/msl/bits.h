@@ -22,6 +22,7 @@
 
 namespace champsim::msl
 {
+
 constexpr unsigned lg2(uint64_t n) { return n < 2 ? 0 : 1 + lg2(n / 2); }
 
 constexpr uint64_t bitmask(std::size_t begin, std::size_t end = 0)

@@ -1,0 +1,112 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "C++ Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "targetArchitecture": "x64",
+            "program": "${workspaceRoot}/bin/champsim_16b_region_256",
+            //"${workspaceRoot}/bin/champsim_16b_region_256",
+            "args": [
+                "--warmup_instructions",
+                "30000000",
+                "--simulation_instructions",
+                "30000000",
+                "--json",
+                "~/Downloads/stats.json",
+                //"--btb-tag-hash",
+                // "/home/robrunne/tmp/bitordering/server_001.champsimtrace_bit_ordering.txt",
+                //"/home/robrunne/OneDrive/Research/results/saga_baseline_and_ways/raw_data/server_001.champsimtrace_bit_ordering.txt",
+                // "-result_dir",
+                // "~/Downloads/results/test/",
+                // "-ptrace",
+                // "-cloudsuite",
+                //"-intel",
+                // "-stallonmiss",
+                // "-traces",
+                // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_019.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_004.champsimtrace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_001.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/test_trace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_036.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/dpc3/403.gcc-16B.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/google/whiskey/champsim-1748052322638680856.426703.memtrace.gz"
+                //"/home/robrunne/OneDrive/Research/datasets/google/delta/champsim-10058381926338669845.507561.memtrace.gz"
+                //"/home/robrunne/Downloads/tmp/champsim_traces/whiskey/champsim-1748052322638680856.267686.memtrace.gz"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib"
+                }
+            ],
+            "MIMode": "gdb",
+            "setupCommands": [
+                // {
+                //     "description": "Pretty Printer Registration",
+                //     "text": "python import sys;sys.path.insert(0, '/usr/share/gcc/python');from libstdcxx.v6.printers import register_libstdcxx_printers;register_libstdcxx_printers(None)",
+                //     "ignoreFailures": false
+                // },
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": false
+                }
+            ],
+            "preLaunchTask": "make DebugBuild"
+        },
+        {
+            "name": "C++ Mac Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceRoot}/bin/champsim_16b_region_256",
+            "externalConsole": false,
+            "internalConsoleOptions": "openOnSessionStart",
+            "args": [
+                "--warmup_instructions",
+                "3000",
+                "--simulation_instructions",
+                "100000",
+                "--json",
+                "~/Downloads/stats.json",
+                // "--tsv",
+                // "~/Downloads/ip_stats.tsv",
+                // "--btb-tag-hash",
+                // "/Users/robrunne/Downloads/bit_ordering/server_022.champsimtrace_bit_ordering.txt"
+                // "-ptrace",
+                // "-cloudsuite",
+                // "-intel",
+                //"-stallonmiss",
+                // "/Users/robrunne/Workspace/traces/tanvir/clang/clang.gz",
+                // "/Users/robrunne/Workspace/traces/ipc1/client_001.champsimtrace.xz"
+                //"/Users/robrunne/Workspace/traces/LLBP/renaissance-finagle-chirper.champsim.trace.gz"
+                //"/Users/robrunne/Workspace/traces/LLBP/renaissance-finagle-chirper.champsim.trace.gz"
+                // "/Users/robrunne/Workspace/traces/dpc3/renaissance-finagle-chirper.champsim.trace.gz"
+                //"/Users/robrunne/Workspace/traces/ipc1/server_022.champsimtrace.xz"
+                //"/Users/robrunne/Workspace/traces/ipc1/server_001.champsimtrace.xz"
+                // "/Users/robrunne/OneDrive - NTNU/Research/datasets/test_trace.xz"
+                //"/Users/robrunne/Workspace/traces/ipc1/server_036.champsimtrace.xz"
+                // "/Users/robrunne/Workspace/traces/ipc1/client_007.champsimtrace.xz"
+                // "/Users/robrunne/Workspace/traces/ipc1/spec_gcc_001.champsimtrace.xz"
+                // "/Users/robrunne/Workspace/traces/ipc1/server_014.champsimtrace.xz"
+                "/Users/robrunne/Workspace/traces/ipc1/server_009.champsimtrace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/crc2/astar_163B.trace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}",
+            "environment": [],
+            "MIMode": "lldb",
+            "preLaunchTask": "make DebugBuild"
+        }
+    ]
+}

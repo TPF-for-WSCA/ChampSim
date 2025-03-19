@@ -85,7 +85,7 @@ std::pair<uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   return {btb_entry->target, btb_entry->type != ::branch_info::CONDITIONAL};
 }
 
-void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type, uint64_t current_cycle)
 {
   // add something to the RAS
   if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL) {

@@ -26,6 +26,37 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
       {std::pair{"BRANCH_DIRECT_JUMP", BRANCH_DIRECT_JUMP}, std::pair{"BRANCH_INDIRECT", BRANCH_INDIRECT}, std::pair{"BRANCH_CONDITIONAL", BRANCH_CONDITIONAL},
        std::pair{"BRANCH_DIRECT_CALL", BRANCH_DIRECT_CALL}, std::pair{"BRANCH_INDIRECT_CALL", BRANCH_INDIRECT_CALL},
        std::pair{"BRANCH_RETURN", BRANCH_RETURN}}};
+  std::map<std::string, uint64_t> aliasing = {
+      {"positive", stats.positive_aliasing},
+      {"negative", stats.negative_aliasing},
+      {"total", stats.total_aliasing},
+  };
+  std::map<std::string, uint64_t> btb_regions = {
+      {"max", stats.max_regions},
+      {"min", stats.min_regions},
+  };
+  std::vector<uint64_t> percentile90;
+  percentile90.reserve(stats.region_history.size());
+  std::vector<uint64_t> percentile95;
+  percentile95.reserve(stats.region_history.size());
+  std::vector<uint64_t> percentile99;
+  percentile99.reserve(stats.region_history.size());
+  std::vector<uint64_t> percentile995;
+  percentile995.reserve(stats.region_history.size());
+  std::vector<uint64_t> full;
+  full.reserve(stats.region_history.size());
+
+  std::map<std::string, std::map<std::string, std::vector<uint64_t>>> regions_by_way = {};
+  // TODO: FIX FOR SIZE
+  for (auto const& entry : stats.region_history) {
+    for (auto const& [size, tuple] : entry) {
+      regions_by_way[std::to_string(size)]["90%"].push_back(std::get<0>(tuple));
+      regions_by_way[std::to_string(size)]["95%"].push_back(std::get<1>(tuple));
+      regions_by_way[std::to_string(size)]["99%"].push_back(std::get<2>(tuple));
+      regions_by_way[std::to_string(size)]["99.5%"].push_back(std::get<3>(tuple));
+      regions_by_way[std::to_string(size)]["100%"].push_back(std::get<4>(tuple));
+    }
+  }
 
   auto total_mispredictions = std::ceil(
       std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
@@ -34,10 +65,15 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
   for (auto [name, idx] : types)
     mpki.emplace(name, stats.branch_type_misses[idx]);
 
-  j = nlohmann::json{{"instructions", stats.instrs()},
-                     {"cycles", stats.cycles()},
-                     {"Avg ROB occupancy at mispredict", std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions)},
-                     {"mispredict", mpki}};
+  j = nlohmann::json{
+      {"instructions", stats.instrs()},
+      {"cycles", stats.cycles()},
+      {"Avg ROB occupancy at mispredict", std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions)},
+      {"mispredict", mpki},
+      {"aliasing", aliasing},
+      {"btb_regions", btb_regions},
+      {"regions_covered", regions_by_way},
+  };
 }
 
 void to_json(nlohmann::json& j, const CACHE::stats_type stats)

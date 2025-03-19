@@ -30,6 +30,9 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
+#define KERNEL_LOWER_BOUND 0xffff800000000000ul
+#define KERNEL_IGNORE_ENABLE false
+
 std::chrono::seconds elapsed_time();
 
 long O3_CPU::operate()
@@ -87,6 +90,17 @@ void O3_CPU::begin_phase()
   stats.name = "CPU " + std::to_string(cpu);
   stats.begin_instrs = num_retired;
   stats.begin_cycles = current_cycle;
+
+  // We care about those things globally, so we copy them over
+  stats.big_region_small_region_mapping = sim_stats.big_region_small_region_mapping;
+  stats.btb_tag_entropy = sim_stats.btb_tag_entropy;
+  stats.btb_tag_switch_entropy = sim_stats.btb_tag_switch_entropy;
+  stats.btb_updates = sim_stats.btb_updates;
+  stats.btb_static_updates = sim_stats.btb_static_updates;
+  stats.dynamic_bit_counts = sim_stats.dynamic_bit_counts;
+  stats.static_bit_counts = sim_stats.static_bit_counts;
+  stats.dynamic_branch_count = sim_stats.dynamic_branch_count;
+  stats.static_branch_count = sim_stats.static_branch_count;
   sim_stats = stats;
 }
 
@@ -112,6 +126,7 @@ void O3_CPU::initialize_instruction()
     instrs_to_read_this_cycle--;
 
     auto stop_fetch = do_init_instruction(input_queue.front());
+    // std::cout << "INSTR_ID: " << input_queue.front().instr_id << ", IP: " << input_queue.front().ip << ", CURRENT CYCLE: " << current_cycle << std::endl;
     if (stop_fetch)
       instrs_to_read_this_cycle = 0;
 
@@ -147,34 +162,84 @@ void do_stack_pointer_folding(ooo_model_instr& arch_instr)
 
 bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 {
+  if (!arch_instr.is_branch && bp_ignore_non_branch) {
+    return false;
+  }
   bool stop_fetch = false;
+  // TODO: Make kernel address constant at top file and find how to disitinguish between 48b and 56b configurations
+  if (KERNEL_IGNORE_ENABLE && arch_instr.ip > KERNEL_LOWER_BOUND) { // Check if kernel space
+    if (arch_instr.is_branch) {
+      // TODO: Discuss with rakesh how to handle kernel branches
+      arch_instr.branch_mispredicted = 0;
+      arch_instr.branch_prediction = arch_instr.branch_target;
+      return true;
+    }
+    return false;
+  }
 
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types[arch_instr.branch_type]++;
-  auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip);
+  // TODO: Check if this is good enough to identify branches
+  auto [predicted_branch_target, branch_ip, always_taken] = impl_btb_prediction(arch_instr.ip);
+  if (arch_instr.is_branch && predicted_branch_target != arch_instr.branch_target) {
+  }
+  if (perfect_btb) {
+    predicted_branch_target = arch_instr.branch_target;
+    branch_ip = arch_instr.ip;
+    always_taken = (arch_instr.branch_type == BRANCH_CONDITIONAL || arch_instr.branch_type == BRANCH_OTHER)
+                       ? 0
+                       : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
+  }
+  if (!warmup and branch_ip != arch_instr.ip) {
+    sim_stats.total_aliasing++;
+  }
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
-  if (arch_instr.branch_prediction == 0)
+  if (arch_instr.branch_prediction == 0) {
     predicted_branch_target = 0;
+  } else if (!warmup && branch_ip && predicted_branch_target && arch_instr.branch_type == NOT_BRANCH && arch_instr.branch_prediction) {
+    // NOTE: HERE WE GO WRONGPATH ON NON-BRANCHING INSTRUCTIONS
+    sim_stats.non_branch_btb_hits++;
+    sim_stats.negative_aliasing++;
+    fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
+    stop_fetch = true;
+    arch_instr.branch_mispredicted = 1;
+    arch_instr.branch_prediction = 0;
+    arch_instr.branch_taken = 0;
+  }
 
+  if (!warmup && arch_instr.branch_prediction && arch_instr.ip != branch_ip && arch_instr.branch_type != NOT_BRANCH) {
+    if (predicted_branch_target == arch_instr.branch_target && arch_instr.branch_taken) {
+      sim_stats.positive_aliasing += 1;
+    } else {
+      sim_stats.negative_aliasing += 1;
+    }
+  }
+  // std::cout << "INSTR_ID: " << arch_instr.instr_id << ", MISPREDICTED: " << (predicted_branch_target != arch_instr.branch_target)
+  //           << ", CURRENT CYCLE: " << current_cycle << std::endl;
+
+  // NOTE: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately
+  if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {
+    sim_stats.branch_type_misses[arch_instr.branch_type]++;
+    sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
+  }
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
       fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
     }
 
     // call code prefetcher every time the branch predictor is used
-    l1i->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target);
+    l1i->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target,
+                                        4); // TODO: Fix to actual instruction size for x86 instructions
 
     if (predicted_branch_target != arch_instr.branch_target
         || (((arch_instr.branch_type == BRANCH_CONDITIONAL) || (arch_instr.branch_type == BRANCH_OTHER))
             && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
-      sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
-      sim_stats.branch_type_misses[arch_instr.branch_type]++;
       if (!warmup) {
         fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
         stop_fetch = true;
         arch_instr.branch_mispredicted = 1;
       }
-    } else {
+    } else if (predicted_branch_target && predicted_branch_target != arch_instr.ip + 4) {
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
     }
 
@@ -202,7 +267,7 @@ long O3_CPU::check_dib()
   // scan through IFETCH_BUFFER to find instructions that hit in the decoded instruction buffer
   auto begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.dib_checked; });
   auto [window_begin, window_end] = champsim::get_span(begin, std::end(IFETCH_BUFFER), FETCH_WIDTH);
-  std::for_each(window_begin, window_end, [this](auto& ifetch_entry){ this->do_check_dib(ifetch_entry); });
+  std::for_each(window_begin, window_end, [this](auto& ifetch_entry) { this->do_check_dib(ifetch_entry); });
   return std::distance(window_begin, window_end);
 }
 
@@ -299,10 +364,12 @@ long O3_CPU::decode_instruction()
     this->do_dib_update(db_entry);
 
     // Resume fetch
+    // TODO: Mispredicts on no-branches should be detected at decode the latest
     if (db_entry.branch_mispredicted) {
       // These branches detect the misprediction at decode
       if ((db_entry.branch_type == BRANCH_DIRECT_JUMP) || (db_entry.branch_type == BRANCH_DIRECT_CALL)
-          || (((db_entry.branch_type == BRANCH_CONDITIONAL) || (db_entry.branch_type == BRANCH_OTHER)) && db_entry.branch_taken == db_entry.branch_prediction)) {
+          || (((db_entry.branch_type == BRANCH_CONDITIONAL) || (db_entry.branch_type == BRANCH_OTHER) || (db_entry.branch_type == NOT_BRANCH))
+              && db_entry.branch_taken == db_entry.branch_prediction)) {
         // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
         db_entry.branch_mispredicted = 0;
         // pay misprediction penalty
@@ -328,7 +395,8 @@ long O3_CPU::dispatch_instruction()
 
   // dispatch DISPATCH_WIDTH instructions into the ROB
   while (available_dispatch_bandwidth > 0 && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().event_cycle < current_cycle && std::size(ROB) != ROB_SIZE
-         && ((std::size_t)std::count_if(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
+         && ((std::size_t)std::count_if(
+                 std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
              >= std::size(DISPATCH_BUFFER.front().source_memory))
          && ((std::size(DISPATCH_BUFFER.front().destination_memory) + std::size(SQ)) <= SQ_SIZE)) {
     ROB.push_back(std::move(DISPATCH_BUFFER.front()));
@@ -638,7 +706,9 @@ void O3_CPU::print_deadlock()
   fmt::print("DEADLOCK! CPU {} cycle {}\n", cpu, current_cycle);
 
   auto instr_pack = [](const auto& entry) {
-    return std::tuple{entry.instr_id, +entry.fetched, +entry.scheduled, +entry.executed, +entry.num_reg_dependent, entry.num_mem_ops() - entry.completed_mem_ops, entry.event_cycle};
+    return std::tuple{entry.instr_id,   +entry.fetched,           +entry.scheduled,
+                      +entry.executed,  +entry.num_reg_dependent, entry.num_mem_ops() - entry.completed_mem_ops,
+                      entry.event_cycle};
   };
   std::string_view instr_fmt{"instr_id: {} fetched: {} scheduled: {} executed: {} num_reg_dependent: {} num_mem_ops: {} event: {}"};
   champsim::range_print_deadlock(IFETCH_BUFFER, "cpu" + std::to_string(cpu) + "_IFETCH", instr_fmt, instr_pack);
@@ -659,7 +729,7 @@ void O3_CPU::print_deadlock()
   auto sq_pack = [](const auto& entry) {
     std::vector<uint64_t> depend_ids;
     std::transform(std::begin(entry.lq_depend_on_me), std::end(entry.lq_depend_on_me), std::back_inserter(depend_ids),
-        [](const std::optional<LSQ_ENTRY>& lq_entry) { return lq_entry->producer_id; });
+                   [](const std::optional<LSQ_ENTRY>& lq_entry) { return lq_entry->producer_id; });
     return std::tuple{entry.instr_id, entry.virtual_address, entry.fetch_issued, entry.event_cycle, depend_ids};
   };
   std::string_view sq_fmt{"instr_id: {} address: {:#x} fetch_issued: {} event_cycle: {} LQ waiting: {}"};
