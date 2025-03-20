@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "targetArchitecture": "x64",
-            "program": "${workspaceRoot}/bin/champsim_16b_region_256",
+            "program": "${workspaceRoot}/bin/champsim_16b_region_16",
             //"${workspaceRoot}/bin/champsim_16b_region_256",
             "args": [
                 "--warmup_instructions",
@@ -18,8 +18,8 @@
                 "30000000",
                 "--json",
                 "~/Downloads/stats.json",
-                "--btb-tag-hash",
-                "${workspaceRoot}/data/btb_tag_hash.txt",
+                // "--btb-tag-hash",
+                // "${workspaceRoot}/data/server18_btb_tag_hash.txt",
                 //"/home/robrunne/OneDrive/Research/results/saga_baseline_and_ways/raw_data/server_001.champsimtrace_bit_ordering.txt",
                 // "-result_dir",
                 // "~/Downloads/results/test/",
@@ -31,7 +31,7 @@
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_019.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_004.champsimtrace.xz"
-                "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_001.champsimtrace.xz"
+                "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_018.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/test_trace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_036.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"

@@ -35,6 +35,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   auto total_mispredictions = std::ceil(
       std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
 
+  fmt::print(stream, "\nREGION BTB REPLACEMENTS: {}\n", stats.region_btb_conflicts);
   fmt::print(stream, "\n{} cumulative IPC: {:.4g} instructions: {} cycles: {}\n", stats.name, std::ceil(stats.instrs()) / std::ceil(stats.cycles()),
              stats.instrs(), stats.cycles());
   fmt::print(stream, "{} Branch Prediction Accuracy: {:.4g}% MPKI: {:.4g} Average ROB Occupancy at Mispredict: {:.4g}\n", stats.name,

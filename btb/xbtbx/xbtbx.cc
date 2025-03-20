@@ -304,8 +304,8 @@ void O3_CPU::initialize_btb()
     ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
     _FILTER_INDEX_MASK = (BTB_SETS / 16) - 1;
     _FILTER_BTB_SET_BITS = champsim::lg2(BTB_SETS / 16);
+    ::REGION_REF_COUNT.insert({this, {}});
   }
-  ::REGION_REF_COUNT.insert({this, {}});
   _PERFECT_MAPPING = btb_perfect_mapping;
   // TODO: Make region BTB configurable for way/sets
   if (BTB_TAG_REGIONS) {
@@ -333,7 +333,7 @@ void O3_CPU::initialize_btb()
       _BTB_TAG_REGION_SETS = this->BTB_TAG_REGIONS / this->BTB_TAG_REGION_WAYS;
       _BTB_TAG_REGION_SET_IDX_BITS = champsim::lg2(_BTB_TAG_REGION_SETS);
       _BTB_TAG_REGION_SIZE = (this->BTB_TAG_REGIONS) ? this->BTB_TAG_REGION_SIZE : 0;
-      _REGION_MASK = _BTB_TAG_REGIONS ? (pow2(_BTB_TAG_REGION_SIZE) - 1) : (pow2(62 - _BTB_SET_BITS - _BTB_TAG_SIZE) - 1);
+      _REGION_MASK = _BTB_TAG_REGIONS ? (pow2(_BTB_TAG_REGION_SIZE + _BTB_TAG_REGION_SET_IDX_BITS) - 1) : (pow2(62 - _BTB_SET_BITS - _BTB_TAG_SIZE) - 1);
       _BTB_REGION_BITS = champsim::lg2(_BTB_TAG_REGIONS);
     }
   } else {
@@ -472,7 +472,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   sim_stats.dynamic_branch_count += 1;
   for (int j = 0; j < 64; j++) {
     if ((ip >> j) & 0x1) {
-      sim_stats.static_bit_counts[j] += (is_static) ? 1 : 0;
+      sim_stats.static_bit_counts[j] += is_static;
       sim_stats.dynamic_bit_counts[j] += 1;
     }
   }
@@ -544,38 +544,39 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   std::optional<std::pair<uint16_t, uint64_t>> tmp_region_idx =
       (small_way_regions_enabled || big_way_regions_enabled) ? ::REGION_BTB.at(this).check_hit_idx({ip}) : std::nullopt;
 
-  auto filter_hit = ::REGION_FILTER_BTB.at(this).check_hit({ip});
-  if (REGION_BTB_FILTER_ENABLED && _BTB_TAG_REGIONS
-      && (filter_hit.has_value() || (!tmp_region_idx.has_value() && REGION_REF_COUNT.at(this)[new_region] < USE_REGIONALIZED_BTB_OFFSET))) {
-    if (!filter_hit.has_value()) {
-      REGION_REF_COUNT.at(this)[new_region]++;
-    } else if (!branch_target) {
-      branch_target = filter_hit.value().target; // This ensures we are not removing the target from a not taken branch
-    }
-    auto replaced = ::REGION_FILTER_BTB.at(this).fill(
-        {ip, branch_target, type, {0, new_region}}); // TODO: add element, only if we cross threshold insert into region and add future branches there and
-                                                     // only when replaced from filter btb add to big btb
-    bool valid_replacement = replaced.has_value() && replaced.value().ip_tag && replaced.value().ip_tag != ip;
-    if (valid_replacement) { // if iptag is 0 its an invalid(ated) entry
-      uint64_t old_region = get_region(replaced.value().ip_tag);
-      assert(REGION_REF_COUNT.at(this)[old_region]);
-      REGION_REF_COUNT.at(this)[old_region]--;
-      new_region = old_region;
-    }
-    if (valid_replacement && INSERT_FILTER_VICTIMS
-        && REGION_REF_COUNT.at(this)[new_region] >= USE_REGIONALIZED_BTB_OFFSET - 1) { // We exchange the state and re-run the insert (this time ignoring the
-                                                                                       // filter), if we are an entry in regionalized region
-      auto v = replaced.value();
-      ip = v.ip_tag;
-      type = v.type;
-      branch_target = v.get_prediction();
-      tmp_region_idx = (small_way_regions_enabled || big_way_regions_enabled) ? ::REGION_BTB.at(this).check_hit_idx({ip}) : std::nullopt;
+  if (REGION_BTB_FILTER_ENABLED && _BTB_TAG_REGIONS) {
+    auto filter_hit = ::REGION_FILTER_BTB.at(this).check_hit({ip});
+    if ((filter_hit.has_value() || (!tmp_region_idx.has_value() && REGION_REF_COUNT.at(this)[new_region] < USE_REGIONALIZED_BTB_OFFSET))) {
+      if (!filter_hit.has_value()) {
+        REGION_REF_COUNT.at(this)[new_region]++;
+      } else if (!branch_target) {
+        branch_target = filter_hit.value().target; // This ensures we are not removing the target from a not taken branch
+      }
+      auto replaced = ::REGION_FILTER_BTB.at(this).fill(
+          {ip, branch_target, type, {0, new_region}}); // TODO: add element, only if we cross threshold insert into region and add future branches there and
+                                                       // only when replaced from filter btb add to big btb
+      bool valid_replacement = replaced.has_value() && replaced.value().ip_tag && replaced.value().ip_tag != ip;
+      if (valid_replacement) { // if iptag is 0 its an invalid(ated) entry
+        uint64_t old_region = get_region(replaced.value().ip_tag);
+        assert(REGION_REF_COUNT.at(this)[old_region]);
+        REGION_REF_COUNT.at(this)[old_region]--;
+        new_region = old_region;
+      }
+      if (valid_replacement && INSERT_FILTER_VICTIMS) { // try always insert
+        //&& REGION_REF_COUNT.at(this)[new_region] >= USE_REGIONALIZED_BTB_OFFSET - 1) { // We exchange the state and re-run the insert (this time ignoring the
+        // filter), if we are an entry in regionalized region
+        auto v = replaced.value();
+        ip = v.ip_tag;
+        type = v.type;
+        branch_target = v.get_prediction();
+        tmp_region_idx = (small_way_regions_enabled || big_way_regions_enabled) ? ::REGION_BTB.at(this).check_hit_idx({ip}) : std::nullopt;
 
-    } else {
-      // if (valid_replacement) {
-      //   std::cout << "Getting rid for good" << std::endl;
-      // }
-      return;
+      } else {
+        // if (valid_replacement) {
+        //   std::cout << "Getting rid for good" << std::endl;
+        // }
+        return;
+      }
     }
   }
   //{ NOTE: VERY VERBOSE DEBUGGING OUTPUT BELOW
@@ -641,6 +642,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   //   && ((small_hit.has_value() && small_way_regions_enabled) || (big_hit.has_value() && big_way_regions_enabled))); // add if we have a hit
   if (require_region) {
     region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
+    std::optional<::region_btb_entry_t> replaced = std::nullopt;
     if (!region_idx.has_value() && BTB_PARTIAL_TAG_RESOLUTION) {
       opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, std::pair<uint16_t, uint64_t>{0, 0}}, true);
       if (!opt_entry.has_value() || (opt_entry.has_value() && opt_entry.value().get_prediction() != branch_target)) {
@@ -649,7 +651,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         // assert(rv.second);
         auto elem = ::region_btb_entry_t{ip};
         sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
-        ::REGION_BTB.at(this).fill(elem);
+        replaced = ::REGION_BTB.at(this).fill(elem);
         // region_btb_insers++;
         // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
         region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
@@ -659,10 +661,13 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       // assert(rv.second);
       auto elem = ::region_btb_entry_t{ip};
       sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
-      ::REGION_BTB.at(this).fill(elem);
+      replaced = ::REGION_BTB.at(this).fill(elem);
       // region_btb_insers++;
       // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
       region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
+    }
+    if (replaced.has_value() && replaced.value().ip_tag != 0) {
+      sim_stats.region_btb_conflicts++;
     }
     // assert(region_btb_insers <= 256);
   }
