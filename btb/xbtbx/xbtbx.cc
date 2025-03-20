@@ -300,7 +300,7 @@ void O3_CPU::initialize_btb()
 {
   std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == 1) << "\nPERFECT MAPPING: " << btb_perfect_mapping << std::endl;
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
-  if (REGION_BTB_FILTER_ENABLED) {
+  if (REGION_BTB_FILTER_ENABLED && this->BTB_TAG_REGIONS) {
     ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
     _FILTER_INDEX_MASK = (BTB_SETS / 16) - 1;
     _FILTER_BTB_SET_BITS = champsim::lg2(BTB_SETS / 16);
@@ -370,7 +370,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   std::optional<::BTBEntry> btb_entry = std::nullopt;
   std::optional<::FilterBTBEntry> filter_hit = std::nullopt;
-  if (REGION_BTB_FILTER_ENABLED)
+  if (REGION_BTB_FILTER_ENABLED && _BTB_TAG_REGIONS)
     filter_hit = ::REGION_FILTER_BTB.at(this).check_hit({ip});
   if (_BTB_TAG_REGIONS && !filter_hit.has_value()) {
     auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
@@ -545,7 +545,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       (small_way_regions_enabled || big_way_regions_enabled) ? ::REGION_BTB.at(this).check_hit_idx({ip}) : std::nullopt;
 
   auto filter_hit = ::REGION_FILTER_BTB.at(this).check_hit({ip});
-  if (REGION_BTB_FILTER_ENABLED
+  if (REGION_BTB_FILTER_ENABLED && _BTB_TAG_REGIONS
       && (filter_hit.has_value() || (!tmp_region_idx.has_value() && REGION_REF_COUNT.at(this)[new_region] < USE_REGIONALIZED_BTB_OFFSET))) {
     if (!filter_hit.has_value()) {
       REGION_REF_COUNT.at(this)[new_region]++;
