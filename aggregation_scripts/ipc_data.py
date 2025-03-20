@@ -96,6 +96,7 @@ def extract_btb_tag_entropy(path):
         if matches:
             return float(matches.groups()[0])
 
+
 def extract_btb_region_split(path):
     logs = []
     with open(path) as f:
@@ -106,6 +107,7 @@ def extract_btb_region_split(path):
         matches = region_split_re.search(line)
         if matches:
             return int(matches.groups()[0])
+
 
 def extract_btb_bit_ordering(path):
     import itertools
@@ -137,7 +139,7 @@ def extract_bit_information(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    title_re = re.compile(r"XXX Total 1 bits in branch IPs:")
+    title_re = re.compile(r"XXX Total dynamic 1 bits in branch IPs:")
     ilogs = iter(logs)
     for line in ilogs:
         if title_re.match(line):

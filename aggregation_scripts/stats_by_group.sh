@@ -60,7 +60,7 @@ if [ $# -lt 1 ]; then
         #     echo "Extract ${config}"
         #     python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ${config} single BTB_ALIASING &
         # done
-        # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_btbx_full_tag single BTB_BIT_INFORMATION &
+        python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b}/sizes_btb_tag_full single BTB_BIT_INFORMATION &
     done
 else echo "skip aggregation";
 fi
