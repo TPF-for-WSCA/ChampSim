@@ -101,6 +101,8 @@ void O3_CPU::begin_phase()
   stats.static_bit_counts = sim_stats.static_bit_counts;
   stats.dynamic_branch_count = sim_stats.dynamic_branch_count;
   stats.static_branch_count = sim_stats.static_branch_count;
+  stats.region_btb_inserts_per_set = sim_stats.region_btb_inserts_per_set;
+  stats.region_btb_conflicts = sim_stats.region_btb_conflicts;
   sim_stats = stats;
 }
 
@@ -192,6 +194,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   }
   if (!warmup and branch_ip != arch_instr.ip) {
     sim_stats.total_aliasing++;
+    // std::cout << "ALIASING ON " << arch_instr.ip << " WITH BRANCH AT " << branch_ip << std::endl;
   }
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
   if (arch_instr.branch_prediction == 0) {
@@ -214,7 +217,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       sim_stats.negative_aliasing += 1;
     }
   }
-  // std::cout << "INSTR_ID: " << arch_instr.instr_id << ", MISPREDICTED: " << (predicted_branch_target != arch_instr.branch_target)
+  // std::cout << "INSTR_ID: " << arch_instr.instr_id << ", IP:" << arch_instr.ip << ", MISPREDICTED: " << (predicted_branch_target != arch_instr.branch_target)
   //           << ", CURRENT CYCLE: " << current_cycle << std::endl;
 
   // NOTE: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately

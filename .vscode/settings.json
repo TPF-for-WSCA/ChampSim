@@ -95,5 +95,8 @@
         "__config": "cpp"
     },
     "cmake.sourceDirectory": "/Users/robrunne/Workspace/NTNU/ChampSim/vcpkg/ports/7zip",
-    "cmake.ignoreCMakeListsMissing": true
+    "cmake.ignoreCMakeListsMissing": true,
+    "files.watcherExclude": {
+        "**/target": true
+    }
 }

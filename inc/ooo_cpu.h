@@ -74,6 +74,7 @@ struct cpu_stats {
   std::vector<std::map<uint8_t, std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>>> region_history;
   std::map<uint64_t, std::set<uint64_t>> big_region_small_region_mapping;
   uint64_t region_btb_conflicts = 0;
+  std::map<uint16_t, uint64_t> region_btb_inserts_per_set = {};
   uint64_t btb_updates = 0;
   uint64_t btb_static_updates = 0;
   uint16_t btb_tag_size = 0;

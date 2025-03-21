@@ -48,6 +48,11 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     fmt::print(stream, "\t{}:\t{}\n", big_region, tags.size());
   }
 
+  fmt::print(stream, "\nREGION SET IDX\tINSERTS\n");
+  for (auto const& [idx, cnt] : stats.region_btb_inserts_per_set) {
+    fmt::print(stream, "{}\t{}\n", idx, cnt);
+  }
+
   fmt::print(stream, "\nPositive Aliasing: {}\nNegative Aliasing: {}\nNone-Branch Aliasing: {}\nTotal Aliasing: {}", stats.positive_aliasing,
              stats.negative_aliasing, stats.non_branch_btb_hits, stats.total_aliasing);
   fmt::print(stream, "\nMAX BTB Regions: {}\nMIN BTB Regions: {}\n", stats.max_regions, stats.min_regions);

@@ -58,9 +58,7 @@ std::map<uint64_t, uint16_t> region_count_in_small_btb = {};
 std::vector<uint8_t> index_bits;
 std::vector<uint8_t> tag_bits;
 std::vector<uint8_t> btb_addressing_hash;
-std::vector<uint64_t> btb_addressing_masks;
-std::vector<int> btb_addressing_shifts; // negative shift amounts are left shifts by the given amount. 0 means no shift is necessary, positive shift amounts
-                                        // are shifts to the right (max the bit idx)
+
 std::size_t _INDEX_MASK = 0;
 std::size_t _FILTER_INDEX_MASK = 0;
 std::size_t _FILTER_BTB_SET_BITS = 0;
@@ -118,25 +116,16 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
   if (btb_addressing_hash.empty()) {
     return ip_tag;
   } else {
-    // std::cout << "shuffle ip: " << std::hex << ip_tag << std::dec << std::endl;
-    uint64_t ip = 0;
-    uint8_t i = 0;
-    for (; i < btb_addressing_masks.size(); i++) {
-      auto mask = btb_addressing_masks[i];
-      auto shift = btb_addressing_shifts[i];
-      auto bit = ip_tag & mask;
-      if (shift > 0) {
-        bit >>= shift;
-      } else if (shift < 0) {
-        bit <<= (-1 * shift);
-      }
-      ip |= bit;
+    std::bitset<64> ip_tag_b{ip_tag};
+    std::bitset<64> ip_b{0};
+    int i = 0;
+    for (; i < btb_addressing_hash.size(); i++) {
+      ip_b[i] = ip_tag_b[btb_addressing_hash.at(i)];
     }
-    uint64_t upper_mask = (1 << btb_addressing_masks.size()) - 1;
-    upper_mask = ~upper_mask;
-    ip |= (upper_mask & ip_tag);
-    // std::cout << "shuffled ip: " << std::hex << ip << std::dec << std::endl;
-    return ip;
+    for (; i < 64; i++) {
+      ip_b[i] = ip_tag_b[i];
+    }
+    return ip_b.to_ullong();
   }
 }
 
@@ -315,12 +304,6 @@ void O3_CPU::initialize_btb()
   }
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   ::btb_addressing_hash = btb_index_tag_hash;
-  btb_addressing_masks.resize(btb_addressing_hash.size());
-  btb_addressing_shifts.resize(btb_addressing_hash.size());
-  for (size_t i = 0; i < btb_index_tag_hash.size(); i++) {
-    btb_addressing_masks[i] = ((uint64_t)1) << btb_index_tag_hash[i];
-    btb_addressing_shifts[i] = (btb_index_tag_hash[i] > i) ? (btb_index_tag_hash[i] - i) : -1 * (i - (int)btb_index_tag_hash[i]);
-  }
   std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
   ::CONDITIONAL_HISTORY[this] = 0;
   _BTB_SET_BITS = champsim::lg2(BTB_SETS);
@@ -331,8 +314,11 @@ void O3_CPU::initialize_btb()
       _BTB_TAG_REGIONS = this->BTB_TAG_REGIONS;
       _BTB_TAG_REGION_WAYS = this->BTB_TAG_REGION_WAYS;
       _BTB_TAG_REGION_SETS = this->BTB_TAG_REGIONS / this->BTB_TAG_REGION_WAYS;
+      for (uint16_t i = 0; i < _BTB_TAG_REGION_SETS; i++) {
+        sim_stats.region_btb_inserts_per_set.insert({i, 0});
+      }
       _BTB_TAG_REGION_SET_IDX_BITS = champsim::lg2(_BTB_TAG_REGION_SETS);
-      _BTB_TAG_REGION_SIZE = (this->BTB_TAG_REGIONS) ? this->BTB_TAG_REGION_SIZE : 0;
+      _BTB_TAG_REGION_SIZE = (this->BTB_TAG_REGIONS) ? this->BTB_TAG_REGION_SIZE + _BTB_TAG_REGION_SET_IDX_BITS : 0;
       _REGION_MASK = _BTB_TAG_REGIONS ? (pow2(_BTB_TAG_REGION_SIZE + _BTB_TAG_REGION_SET_IDX_BITS) - 1) : (pow2(62 - _BTB_SET_BITS - _BTB_TAG_SIZE) - 1);
       _BTB_REGION_BITS = champsim::lg2(_BTB_TAG_REGIONS);
     }
@@ -643,6 +629,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   if (require_region) {
     region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     std::optional<::region_btb_entry_t> replaced = std::nullopt;
+    bool insert = false;
     if (!region_idx.has_value() && BTB_PARTIAL_TAG_RESOLUTION) {
       opt_entry = ::BTB.at(this).check_hit({ip, branch_target, type, std::pair<uint16_t, uint64_t>{0, 0}}, true);
       if (!opt_entry.has_value() || (opt_entry.has_value() && opt_entry.value().get_prediction() != branch_target)) {
@@ -652,6 +639,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         auto elem = ::region_btb_entry_t{ip};
         sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
         replaced = ::REGION_BTB.at(this).fill(elem);
+        insert = true;
         // region_btb_insers++;
         // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
         region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
@@ -662,12 +650,18 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       auto elem = ::region_btb_entry_t{ip};
       sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
       replaced = ::REGION_BTB.at(this).fill(elem);
+      insert = true;
       // region_btb_insers++;
       // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
       region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     }
-    if (replaced.has_value() && replaced.value().ip_tag != 0) {
-      sim_stats.region_btb_conflicts++;
+    if (insert) {
+      if (!replaced.has_value() || replaced.value().ip_tag == 0 || get_region(ip) != get_region(replaced.value().ip_tag)) {
+        sim_stats.region_btb_inserts_per_set.at(::region_btb_entry_t{ip}.index())++;
+      }
+      if (replaced.has_value() && replaced.value().ip_tag != 0) {
+        sim_stats.region_btb_conflicts++;
+      }
     }
     // assert(region_btb_insers <= 256);
   }
