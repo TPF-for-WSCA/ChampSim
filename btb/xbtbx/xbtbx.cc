@@ -20,8 +20,8 @@
 
 #define SMALL_BIG_WAY_SPLIT 14
 #define USE_REGIONALIZED_BTB_OFFSET 8
-#define REGION_BTB_FILTER_ENABLED false
-#define INSERT_FILTER_VICTIMS false
+#define REGION_BTB_FILTER_ENABLED true
+#define INSERT_FILTER_VICTIMS true
 #define SAMPLING_DISTANCE 1000000
 
 uint64_t invalid_replacements = 0;
