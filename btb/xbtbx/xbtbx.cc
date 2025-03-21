@@ -20,8 +20,8 @@
 
 #define SMALL_BIG_WAY_SPLIT 14
 #define USE_REGIONALIZED_BTB_OFFSET 8
-#define REGION_BTB_FILTER_ENABLED true
-#define INSERT_FILTER_VICTIMS true
+#define REGION_BTB_FILTER_ENABLED false
+#define INSERT_FILTER_VICTIMS false
 #define SAMPLING_DISTANCE 1000000
 
 uint64_t invalid_replacements = 0;
@@ -287,7 +287,8 @@ std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 
 void O3_CPU::initialize_btb()
 {
-  std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == 1) << "\nPERFECT MAPPING: " << btb_perfect_mapping << std::endl;
+  std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == BTB_TAG_REGIONS) << "\nPERFECT MAPPING: " << btb_perfect_mapping
+            << ", FILTER BTB: " << REGION_BTB_FILTER_ENABLED << std::endl;
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
   if (REGION_BTB_FILTER_ENABLED && this->BTB_TAG_REGIONS) {
     ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
