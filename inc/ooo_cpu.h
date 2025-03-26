@@ -123,6 +123,7 @@ private:
   uint8_t BTB_CLIPPED_TAG;
   uint8_t BTB_TAG_SIZE;
   size_t BTB_TAG_REGIONS;
+  size_t BTB_FILTER_BTB_LIMIT;
   size_t BTB_TAG_REGION_WAYS;
   uint8_t BTB_TAG_REGION_SIZE;
   uint8_t BTB_REGIONS = 1;
@@ -344,6 +345,7 @@ public:
     std::vector<uint8_t> m_btb_target_sizes{};
     unsigned char m_btb_tag_size{};
     size_t m_btb_tag_regions{};
+    size_t m_btb_filter_btb_limit{};
     size_t m_btb_tag_region_ways{};
     unsigned char m_btb_tag_region_size{};
     bool m_perfect_btb{};
@@ -558,6 +560,11 @@ public:
       m_btb_tag_regions = btb_tag_regions_;
       return *this;
     }
+    self_type& btb_filter_btb_limit(size_t btb_filter_btb_limit_)
+    {
+      m_btb_filter_btb_limit = btb_filter_btb_limit_;
+      return *this;
+    }
     self_type& btb_tag_region_ways(size_t btb_tag_region_ways_)
     {
       m_btb_tag_region_ways = btb_tag_region_ways_;
@@ -620,9 +627,9 @@ public:
         BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), perfect_btb(b.m_perfect_btb), btb_small_way_regions_enabled(b.m_btb_small_way_regions_enabled),
         btb_big_way_regions_enabled(b.m_btb_big_way_regions_enabled), BTB_CLIPPED_TAG(b.m_btb_clipped_tag), btb_perfect_mapping(b.m_btb_perfect_mapping),
         bp_ignore_non_branch(b.m_bp_ignore_non_branch), BTB_PARTIAL_TAG_RESOLUTION(b.m_btb_partial_tag_resolution), BTB_TARGET_SIZES(b.m_btb_target_sizes),
-        BTB_TAG_SIZE(b.m_btb_tag_size), BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_TAG_REGION_WAYS(b.m_btb_tag_region_ways),
-        BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),
-        module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
+        BTB_TAG_SIZE(b.m_btb_tag_size), BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_FILTER_BTB_LIMIT(b.m_btb_filter_btb_limit),
+        BTB_TAG_REGION_WAYS(b.m_btb_tag_region_ways), BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), L1I_bus(b.m_cpu, b.m_fetch_queues),
+        L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), module_pimpl(std::make_unique<module_model<B_FLAG, T_FLAG>>(this))
   {
     sim_stats.btb_tag_size = b.m_btb_tag_size;
     roi_stats.btb_tag_size = b.m_btb_tag_size;

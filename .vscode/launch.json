@@ -73,9 +73,9 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "--warmup_instructions",
-                "30",
+                "10000000",
                 "--simulation_instructions",
-                "100000",
+                "10000000",
                 "--json",
                 "~/Downloads/stats.json",
                 // "--tsv",
