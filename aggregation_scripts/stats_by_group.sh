@@ -109,6 +109,7 @@ do
 
     for config in ./${b}/*
     do
+        echo "Plotting regions for ${config}"
         for percentage in ${percentages[@]}
         do
             for way in ${ways[@]}
