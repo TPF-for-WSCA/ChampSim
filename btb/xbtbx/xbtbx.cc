@@ -550,10 +550,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         assert(REGION_REF_COUNT.at(this)[old_region]);
         REGION_REF_COUNT.at(this)[old_region]--;
         new_region = old_region;
+        tmp_region_idx = ::REGION_BTB.at(this).check_hit_idx({replaced.value().ip_tag});
       }
-      if (valid_replacement && INSERT_FILTER_VICTIMS) { // try always insert
-        //&& REGION_REF_COUNT.at(this)[new_region] >= USE_REGIONALIZED_BTB_OFFSET - 1) { // We exchange the state and re-run the insert (this time ignoring the
-        // filter), if we are an entry in regionalized region
+      // TODO: Do insert if already in regionalized btb / do insert if not in regionalized btb but we are right at the boundary / do not insert every
+      // replacement
+      if (valid_replacement && INSERT_FILTER_VICTIMS
+          && (REGION_REF_COUNT.at(this)[new_region] >= USE_REGIONALIZED_BTB_OFFSET - 1 || tmp_region_idx.has_value())) { // try always insert
         auto v = replaced.value();
         ip = v.ip_tag;
         type = v.type;
