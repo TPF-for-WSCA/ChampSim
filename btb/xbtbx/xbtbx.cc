@@ -728,10 +728,10 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     if (replaced_entry.has_value() && replaced_entry.value().ip_tag && utilise_regions(replaced_entry.value().target_size)) {
       uint64_t old_region = get_region(replaced_entry.value().ip_tag);
       if (region_tag_entry_count[replaced_entry.value().target_size][old_region] == 0) {
-        // std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
-        // std::cerr << "OLD REGION: " << old_region << std::endl;
-        // std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
-        // std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
+        std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
+        std::cerr << "OLD REGION: " << old_region << std::endl;
+        std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+        std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
       } else {
         region_tag_entry_count[replaced_entry.value().target_size][old_region] -= 1;
         if (region_tag_entry_count[replaced_entry.value().target_size][old_region] == 0) {
