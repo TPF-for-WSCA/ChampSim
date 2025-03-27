@@ -109,35 +109,39 @@ do
 
     for config in ./${b}/*
     do
-        for percentage in ${percentages[@]}
-        do
-            for way in ${ways[@]}
+        if [ -d "$config" ]; then
+            for percentage in ${percentages[@]}
             do
-                ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_256_regions_${percentage}_way_${way}_regions_${b}.html &
-            
-                ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv  --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_128_regions_${percentage}_way_${way}_regions_${b}.html &
+                for way in ${ways[@]}
+                do
+                    ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_256_regions_${percentage}_way_${way}_regions_${b}.html &
+                
+                    ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv  --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_128_regions_${percentage}_way_${way}_regions_${b}.html &
 
-                ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv  --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_64_regions_${percentage}_way_${way}_regions_${b}.html  &
+                    ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv  --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_64_regions_${percentage}_way_${way}_regions_${b}.html  &
 
-                ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv  --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_32_regions_${percentage}_way_${way}_regions_${b}.html &
+                    ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv  --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_32_regions_${percentage}_way_${way}_regions_${b}.html &
 
-                ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv  --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_16_regions_${percentage}_way_${way}_regions_${b}.html &
+                    ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv  --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_16_regions_${percentage}_way_${way}_regions_${b}.html &
 
-                ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv  --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_8_regions_${percentage}_way_${way}_regions_${b}.html &
+                    ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv  --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_8_regions_${percentage}_way_${way}_regions_${b}.html &
+                done
+                ${pg_dir}plotgen --debug -i ${config}/${percentage}%_overall_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_${percentage}_256_overall_region_sampling.html &
+                ${pg_dir}plotgen --debug -i ${config}/${percentage}%_overall_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_${percentage}_128_overall_region_sampling.html &
+                ${pg_dir}plotgen --debug -i ${config}/${percentage}%_overall_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_${percentage}_64_overall_region_sampling.html &
+                ${pg_dir}plotgen --debug -i ${config}/${percentage}%_overall_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_${percentage}_32_overall_region_sampling.html &
+                ${pg_dir}plotgen --debug -i ${config}/${percentage}%_overall_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_${percentage}_16_overall_region_sampling.html &
+                ${pg_dir}plotgen --debug -i ${config}/${percentage}%_overall_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_${percentage}_8_overall_region_sampling.html &
+                echo "Waiting for way plotting jobs to finish:"
+                for job in `jobs -p`
+                do
+                    echo $job
+                    wait $job
+                done
             done
-            ${pg_dir}plotgen --debug -i ${config}/${percentage}%_overall_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_${percentage}_256_overall_region_sampling.html &
-            ${pg_dir}plotgen --debug -i ${config}/${percentage}%_overall_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_${percentage}_128_overall_region_sampling.html &
-            ${pg_dir}plotgen --debug -i ${config}/${percentage}%_overall_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_${percentage}_64_overall_region_sampling.html &
-            ${pg_dir}plotgen --debug -i ${config}/${percentage}%_overall_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_${percentage}_32_overall_region_sampling.html &
-            ${pg_dir}plotgen --debug -i ${config}/${percentage}%_overall_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_${percentage}_16_overall_region_sampling.html &
-            ${pg_dir}plotgen --debug -i ${config}/${percentage}%_overall_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_${percentage}_8_overall_region_sampling.html &
-            echo "Waiting for way plotting jobs to finish:"
-            for job in `jobs -p`
-            do
-                echo $job
-                wait $job
-            done
-        done
+        else
+            echo "Ignoring $config - not a directory"
+        fi
     done
     # ${pg_dir}plotgen --debug -i ./${b}/partial.tsv --drop-any-nan-col --apply-func div 100 --apply-icolumns : --palette bright --apply-function cset = nan 0 --apply-icolumns : --x-type category --y-tick-format ',.2%' --plot bar --transpose --sort-function name --sort-rows --column-names 'sizes_champsim_vcl_buffer_fdip_64d:UBS cache' --file ./raw_data/partial_relative_${b}.tsv  --width 1350 --height 300 -o ./graphs/partial_relative_${b}.html  &
     # ${pg_dir}plotgen --debug -i ./${b}/frontend_stalls.tsv --drop-any-nan-col --palette bright --normalise-to-row ${normalise_to_row} --apply-func sub 1 --apply-icolumns : --apply-function cset = nan 0 --apply-icolumns : --x-type category --y-tick-format ',.2%' --plot bar --transpose --sort-by-column sizes_champsim_vcl_buffer_fdip_64d --row-names --renameregex '(.*)\..*trace' --add-function mean --add-row AVG --ignore-columns $((2**15)) --column-names 'sizes_champsim_vcl_buffer_fdip_64d:UBS cache' --file ./raw_data/frontend_stalls_${b}.tsv  --width 1350 --height 300 -o ./graphs/frontend_stalls_${b}.html  &
