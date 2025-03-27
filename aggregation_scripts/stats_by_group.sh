@@ -110,6 +110,7 @@ do
     for config in ./${b}/*
     do
         if [ -d "$config" ]; then
+            echo "Plotting regions for ${config}"
             for percentage in ${percentages[@]}
             do
                 for way in ${ways[@]}
