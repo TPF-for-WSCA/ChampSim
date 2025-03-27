@@ -35,16 +35,16 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
       {"max", stats.max_regions},
       {"min", stats.min_regions},
   };
-  std::vector<uint64_t> percentile90;
-  percentile90.reserve(stats.region_history.size());
-  std::vector<uint64_t> percentile95;
-  percentile95.reserve(stats.region_history.size());
-  std::vector<uint64_t> percentile99;
-  percentile99.reserve(stats.region_history.size());
-  std::vector<uint64_t> percentile995;
-  percentile995.reserve(stats.region_history.size());
-  std::vector<uint64_t> full;
-  full.reserve(stats.region_history.size());
+  // std::vector<uint64_t> percentile90;
+  // percentile90.reserve(stats.region_history.size());
+  // std::vector<uint64_t> percentile95;
+  // percentile95.reserve(stats.region_history.size());
+  // std::vector<uint64_t> percentile99;
+  // percentile99.reserve(stats.region_history.size());
+  // std::vector<uint64_t> percentile995;
+  // percentile995.reserve(stats.region_history.size());
+  // std::vector<uint64_t> full;
+  // full.reserve(stats.region_history.size());
 
   std::map<std::string, std::map<std::string, std::vector<uint64_t>>> regions_by_way = {};
   // TODO: FIX FOR SIZE
