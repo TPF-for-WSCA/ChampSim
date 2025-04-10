@@ -60,7 +60,7 @@
       ],
       "btb_tag_size": 11,
       "btb_tag_regions": 32,
-      "btb_filter_btb_limit": 2,
+      "btb_filter_btb_limit": 0,
       "btb_tag_region_size": 5,
       "btb_tag_region_ways": 32,
       "align_bits": 5

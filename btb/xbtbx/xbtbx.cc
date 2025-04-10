@@ -19,7 +19,7 @@
 #include "ooo_cpu.h"
 
 #define SMALL_BIG_WAY_SPLIT 14
-#define REGION_BTB_FILTER_ENABLED true
+#define REGION_BTB_FILTER_ENABLED false
 #define SAMPLING_DISTANCE 1000000
 
 uint64_t invalid_replacements = 0;
