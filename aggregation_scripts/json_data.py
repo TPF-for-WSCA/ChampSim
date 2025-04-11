@@ -12,13 +12,7 @@ regions = {
     90: defaultdict(dict),
 }
 
-all_ways = {
-    100: defaultdict(list),
-    99.5: defaultdict(list),
-    99: defaultdict(list),
-    95: defaultdict(list),
-    90: defaultdict(list),
-}
+all_ways = {}
 
 assert len(sys.argv) == 2
 for dir in os.listdir(sys.argv[1]):
@@ -39,6 +33,7 @@ for dir in os.listdir(sys.argv[1]):
         regions[95][int(way)][dir] = regions_data[way]["95%"]
         regions[90][int(way)][dir] = regions_data[way]["90%"]
 
+all_ways = dict(sorted(all_ways.items()))
 outname = os.path.join(sys.argv[1], f"overall_max_region.tsv")
 with open(outname, "w+") as outfile:
     headers = list(all_ways.keys())
