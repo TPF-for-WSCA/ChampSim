@@ -51,7 +51,7 @@ enum class branch_info {
 // size_t _37_updated = 0;
 // DEBUGGING END
 
-std::map<uint8_t, std::map<uint64_t, uint64_t>> region_tag_entry_count = {};
+std::map<uint32_t, std::map<uint64_t, uint64_t>> region_tag_entry_count = {};
 std::map<uint64_t, uint16_t> region_count_in_small_btb = {};
 std::vector<uint8_t> index_bits;
 std::vector<uint8_t> tag_bits;
@@ -89,7 +89,7 @@ uint64_t prev_branch_ip = 0;
 std::map<uint32_t, uint64_t> offset_reuse_freq;
 std::map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 std::set<uint64_t> branch_ip;
-std::set<uint8_t> regions_inserted;
+std::set<uint32_t> regions_inserted;
 // size_t region_btb_insers = 0;
 
 // TODO: Only makes sense with BTB-X
