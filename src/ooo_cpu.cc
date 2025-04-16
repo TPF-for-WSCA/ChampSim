@@ -167,6 +167,10 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (!arch_instr.is_branch && bp_ignore_non_branch) {
     return false;
   }
+  if (arch_instr.is_branch) {
+    // TODO: Should we do this per size of tag only?
+    sim_stats.dynamic_branch_count_per_address_space_global_region[(arch_instr.ip >> (intel ? 0 : 2) >> champsim::lg2(BTB_SETS))] += 1;
+  }
   bool stop_fetch = false;
   // TODO: Make kernel address constant at top file and find how to disitinguish between 48b and 56b configurations
   if (KERNEL_IGNORE_ENABLE && arch_instr.ip > KERNEL_LOWER_BOUND) { // Check if kernel space

@@ -73,6 +73,7 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
       {"aliasing", aliasing},
       {"btb_regions", btb_regions},
       {"regions_covered", regions_by_way},
+      {"dynamic_branch_count_by_region", stats.dynamic_branch_count_per_address_space_global_region},
   };
 }
 
