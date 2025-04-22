@@ -13,7 +13,7 @@
             //"${workspaceRoot}/bin/champsim_16b_region_256",
             "args": [
                 "--warmup-instructions",
-                "10000000",
+                "0000000",
                 "--simulation-instructions",
                 "30000000",
                 "--json",

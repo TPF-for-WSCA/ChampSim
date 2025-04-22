@@ -70,12 +70,12 @@ std::size_t _BTB_WAYS = 0;
 uint8_t _BTB_CLIPPED_TAG = 0;
 uint8_t _BTB_TAG_SIZE = 0;
 uint8_t _BTB_SET_BITS;
-uint16_t _BTB_TAG_REGIONS = 0; // This is the number of regions in the region BTB
-uint16_t _BTB_TAG_REGION_WAYS = 0;
-uint16_t _BTB_TAG_REGION_SETS = 0;
-uint16_t _BTB_TAG_REGION_SET_IDX_BITS = 0;
+uint64_t _BTB_TAG_REGIONS = 0; // This is the number of regions in the region BTB
+uint64_t _BTB_TAG_REGION_WAYS = 0;
+uint64_t _BTB_TAG_REGION_SETS = 0;
+uint64_t _BTB_TAG_REGION_SET_IDX_BITS = 0;
 uint8_t _BTB_TAG_REGION_SIZE = 0; // This is the size of a single region in bits
-uint16_t _BTB_REGION_BITS = 0;    // This is the number of bits required to assign an ID to all regions in the region BTB (log2(BTB_TAG_REGIONS))
+uint64_t _BTB_REGION_BITS = 0;    // This is the number of bits required to assign an ID to all regions in the region BTB (log2(BTB_TAG_REGIONS))
 uint64_t last_stats_cycle = 0;
 uint64_t isa_shiftamount = 2;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
