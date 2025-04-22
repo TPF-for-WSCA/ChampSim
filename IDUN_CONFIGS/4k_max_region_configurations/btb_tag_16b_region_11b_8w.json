@@ -58,7 +58,7 @@
         25,
         64
       ],
-      "btb_tag_size": 9,
+      "btb_tag_size": 5,
       "btb_tag_regions": 256,
       "btb_filter_btb_limit": 0,
       "btb_tag_region_size": 7,
