@@ -267,6 +267,7 @@ public:
 
     auto new_val = *hit;
     new_val.last_used = 0;
+    new_val.data.ip_tag = 0;
     return std::exchange(*hit, new_val).data;
   }
 

@@ -222,6 +222,9 @@ struct BTBEntry {
     auto offset = target & offset_mask;
     auto prediction = ip_tag & (~offset_mask);
     prediction |= offset;
+    if (target != prediction) {
+      std::cerr << "Warning: differing prediction from target\n\tPrediction: " << prediction << "\n\tTarget: " << target << std::endl;
+    }
     return prediction;
   }
 };
@@ -700,6 +703,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   // TODO: Only update if prediction is wrong
   std::optional<::BTBEntry> replaced_entry = std::nullopt;
   if (branch_target != 0) {
+
+    // Mark entry invalid if we moved it to a bigger target
+    if (branch_type != BRANCH_RETURN && opt_entry.has_value() && opt_entry.value().get_prediction() != branch_target) {
+      ::BTB.at(this).invalidate(opt_entry.value());
+    }
+
     // TODO: Check if (since we already know about region or not region) should make two distinct calls out of the below
     auto fill_entry =
         opt_entry.value_or(::BTBEntry{ip, branch_target, type, region_idx.value_or(std::pair<uint16_t, uint64_t>{pow2(_BTB_REGION_BITS), 0}), entry_size});
