@@ -222,9 +222,9 @@ struct BTBEntry {
     auto offset = target & offset_mask;
     auto prediction = ip_tag & (~offset_mask);
     prediction |= offset;
-    if (target != prediction) {
-      std::cerr << "Warning: differing prediction from target\n\tPrediction: " << prediction << "\n\tTarget: " << target << std::endl;
-    }
+    // if (target != prediction) {
+    //   std::cerr << "Warning: differing prediction from target\n\tPrediction: " << prediction << "\n\tTarget: " << target << std::endl;
+    // }
     return prediction;
   }
 };
