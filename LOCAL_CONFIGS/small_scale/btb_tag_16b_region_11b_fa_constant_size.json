@@ -39,6 +39,7 @@
       "schedule_latency": 1,
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
+      "perfect_branch_predict": 1,
       "btb": "xbtbx",
       "btb_ways": 10,
       "btb_non_indirect": 10,

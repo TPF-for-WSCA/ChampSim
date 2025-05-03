@@ -201,6 +201,9 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     // std::cout << "ALIASING ON " << arch_instr.ip << " WITH BRANCH AT " << branch_ip << std::endl;
   }
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
+  if (perfect_branch_predict) {
+    arch_instr.branch_prediction = arch_instr.branch_taken;
+  }
   if (arch_instr.branch_prediction == 0) {
     predicted_branch_target = 0;
   } else if (!warmup && branch_ip && predicted_branch_target && arch_instr.branch_type == NOT_BRANCH && arch_instr.branch_prediction) {
@@ -221,13 +224,13 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       sim_stats.negative_aliasing += 1;
     }
   }
-  // if (!warmup) {
-  //   std::cout << "INSTR_ID: " << arch_instr.instr_id << ", IP:" << arch_instr.ip << ", MISPREDICTED: " << (predicted_branch_target !=
-  //   arch_instr.branch_target); if (predicted_branch_target != arch_instr.branch_target)
-  //     std::cout << ", CURRENT CYCLE: " << current_cycle;
+  if (!warmup) {
+    std::cout << "INSTR_ID: " << arch_instr.instr_id << ", IP:" << arch_instr.ip << ", MISPREDICTED: " << (predicted_branch_target != arch_instr.branch_target);
+    if (predicted_branch_target != arch_instr.branch_target)
+      std::cout << ", CURRENT CYCLE: " << current_cycle;
 
-  //   std::cout << std::endl;
-  // }
+    std::cout << std::endl;
+  }
 
   // NOTE: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately
   if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {

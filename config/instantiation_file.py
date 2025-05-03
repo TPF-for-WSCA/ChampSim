@@ -295,15 +295,12 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
         )
         yield ".btb_target_sizes(btb_sizes_{})".format(cpu["name"])
         yield ".perfect_btb({})".format(cpu.get("perfect_btb", 0))
+        yield ".perfect_branch_predict({})".format(cpu.get("perfect_branch_predict", 0))
         yield ".btb_small_way_regions_enabled({})".format(
             cpu.get("btb_small_way_regions_enabled", 0)
         )
-        yield ".btb_perfect_mapping({})".format(
-            cpu.get("btb_perfect_mapping", 0)
-        )
-        yield ".bp_ignore_non_branch({})".format(
-            cpu.get("bp_ignore_non_branch", 0)
-        )
+        yield ".btb_perfect_mapping({})".format(cpu.get("btb_perfect_mapping", 0))
+        yield ".bp_ignore_non_branch({})".format(cpu.get("bp_ignore_non_branch", 0))
         yield ".btb_big_way_regions_enabled({})".format(
             cpu.get("btb_big_way_regions_enabled", 0)
         )

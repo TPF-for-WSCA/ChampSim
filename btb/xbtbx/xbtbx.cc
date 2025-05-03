@@ -362,8 +362,12 @@ void O3_CPU::initialize_btb()
   }
 }
 
-std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+__attribute__((optimize(0))) std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
+  // TODO: add if condition with breaking condition
+  // if (!warmup && ip == 18446462598868070740 && current_cycle >= 7103429) {
+  //   std::cout << "this is one of the faulting branches" << std::endl;
+  // }
   std::optional<::BTBEntry> btb_entry = std::nullopt;
   std::optional<::FilterBTBEntry> filter_hit = std::nullopt;
   if (REGION_BTB_FILTER_ENABLED && _BTB_TAG_REGIONS)

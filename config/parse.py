@@ -139,6 +139,7 @@ def normalize_config(config_file):
         "btb_clipped_tag",
         "btb_partial_tag_resolution",
         "perfect_btb",
+        "perfect_branch_predict",
         "btb_small_way_regions_enabled",
         "btb_perfect_mapping",
         "bp_ignore_non_branch",
