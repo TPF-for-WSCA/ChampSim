@@ -201,7 +201,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     // std::cout << "ALIASING ON " << arch_instr.ip << " WITH BRANCH AT " << branch_ip << std::endl;
   }
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
-  if (perfect_branch_predict) {
+  if (perfect_branch_predict && arch_instr.is_branch) {
     arch_instr.branch_prediction = arch_instr.branch_taken;
   }
   if (arch_instr.branch_prediction == 0) {
