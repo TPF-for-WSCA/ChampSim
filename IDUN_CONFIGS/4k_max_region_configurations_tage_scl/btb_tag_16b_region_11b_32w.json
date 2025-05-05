@@ -1,5 +1,5 @@
 {
-  "executable_name": "btb_4k_max_region_configuration_hashed_perceptron/btb_tag_16b_region_11b_32w",
+  "executable_name": "btb_4k_max_region_configuration_tage_scl/btb_tag_16b_region_11b_32w",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
