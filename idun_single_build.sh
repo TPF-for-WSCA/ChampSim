@@ -8,9 +8,9 @@ cd ~/ChampSim/
 for spec_dir in ${build_configs[@]}
 do
     echo "Building experiment $spec_dir"
-    echo -e "\tConfiguring ./IDUN_CONFIGS/${build_script}"
-    ./config.sh ./IDUN_CONFIGS/$build_script
-    echo -e "\tBuilding ./IDUN_CONFIGS/${build_script}"
-    make -j &>> /cluster/work/romankb/build_$(basename ${build_script%.json}).log
+    echo -e "\tConfiguring ./IDUN_CONFIGS/${spec_dir}"
+    ./config.sh ./IDUN_CONFIGS/$spec_dir
+    echo -e "\tBuilding ./IDUN_CONFIGS/${spec_dir}"
+    make -j &>> /cluster/work/romankb/build_$(basename ${spec_dir%.json}).log
 done
 cd $old_dir
