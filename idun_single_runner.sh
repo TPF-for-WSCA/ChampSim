@@ -22,7 +22,7 @@ module load GCCcore/12.2.0
 #binaries=("champsim32k_base_btb" "champsim32k_base_btbx" "champsim32k_hash_btbx" "champsim32k_perfect_l1i" "champsim32k_perfect_btb")
 # binary_dir=("btb_region_tag" "btb_4k_region_tag_split_exp" "btb_512_region_tag_exp" "btb_256_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp")
 suffix="not_perfect"
-binary_paths=("btb_4k_max_region_configuration/abtb_tag_12b_constant_size" "btb_4k_max_region_configuration/abtb_tag_12b_constant_size_plus_2")
+binary_paths=("./bin/btb_4k_max_region_configuration/abtb_tag_12b_constant_size" "./bin/btb_4k_max_region_configuration/abtb_tag_12b_constant_size_plus_2")
 count=7
 timelimit="4:00:00"
 warmup=30000000

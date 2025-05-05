@@ -1,6 +1,6 @@
 #!/bin/bash
 
-build_configs=("4k_max_region_configurations/btbx_tag_12_constant_size_pluss_2.json" "IDUN_CONFIGS/4k_max_region_configurations/btbx_tag_12_constant_size.json") #  "btb_512_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp" "btb_256_region_tag_exp")
+build_configs=("4k_max_region_configurations/btbx_tag_12_constant_size_pluss_2.json" "4k_max_region_configurations/btbx_tag_12_constant_size.json") #  "btb_512_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp" "btb_256_region_tag_exp")
 # build_dir=("btb_512_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp")
 
 old_dir=$(pwd)
