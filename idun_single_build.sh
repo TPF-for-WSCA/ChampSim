@@ -5,7 +5,7 @@ build_configs=("4k_max_region_configurations/btbx_tag_12_constant_size_pluss_2.j
 
 old_dir=$(pwd)
 cd ~/ChampSim/
-for spec_dir in ${build_dir[@]}
+for spec_dir in ${build_configs[@]}
 do
     echo "Building experiment $spec_dir"
     echo -e "\tConfiguring ./IDUN_CONFIGS/${build_script}"
