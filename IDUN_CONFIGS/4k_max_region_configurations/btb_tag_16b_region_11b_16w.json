@@ -1,5 +1,5 @@
 {
-  "executable_name": "btb_4k_max_region_configuration_hashed_perceptron/btb_tag_16b_region_7b_dm",
+  "executable_name": "btb_4k_max_region_configuration_hashed_perceptron/btb_tag_16b_region_11b_16w",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -40,7 +40,6 @@
       "schedule_latency": 1,
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
-      "perfect_branch_predict": 0,
       "btb": "xbtbx",
       "btb_ways": 9,
       "btb_non_indirect": 9,
@@ -59,11 +58,12 @@
         25,
         64
       ],
-      "btb_tag_size": 9,
-      "btb_tag_regions": 32,
+      "btb_tag_size": 5,
+      "btb_tag_regions": 256,
       "btb_filter_btb_limit": 0,
-      "btb_tag_region_size": 7,
-      "btb_tag_region_ways": 1,
+      "btb_tag_region_size": 11,
+      "btb_tag_region_ways": 16,
+      "btb_perfect_mapping": 0,
       "align_bits": 5
     }
   ],

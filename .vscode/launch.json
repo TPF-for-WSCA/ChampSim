@@ -70,7 +70,7 @@
             "name": "C++ Mac Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/bin/champsim_full",
+            "program": "${workspaceRoot}/bin/champsim_16b",
             "externalConsole": false,
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
