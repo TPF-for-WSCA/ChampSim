@@ -19,6 +19,7 @@
 #include "ooo_cpu.h"
 
 #define SMALL_BIG_WAY_SPLIT 14
+#define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
 #define SAMPLING_DISTANCE 1000000
 
@@ -95,7 +96,7 @@ std::set<uint32_t> regions_inserted;
 // TODO: Only makes sense with BTB-X
 bool utilise_regions(size_t way_size)
 {
-  if (way_size == 64)
+  if (way_size > BIGGEST_BTB_X_WAY)
     return false;
   if (small_way_regions_enabled && big_way_regions_enabled) {
     return true;
@@ -362,10 +363,11 @@ void O3_CPU::initialize_btb()
   }
 }
 
-__attribute__((optimize(0))) std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+// __attribute__((optimize(0)))
+std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   // TODO: add if condition with breaking condition
-  // if (!warmup && ip == 18446462598868070740 && current_cycle >= 7103429) {
+  // if (!warmup && ip == 18446462598868070740 && current_cycle >= 7113112) {
   //   std::cout << "this is one of the faulting branches" << std::endl;
   // }
   std::optional<::BTBEntry> btb_entry = std::nullopt;
@@ -449,13 +451,16 @@ __attribute__((optimize(0))) std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb
       return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
     }*/
 
-  return {btb_entry->get_prediction(), btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL || btb_entry->type != ::branch_info::INDIRECT};
+  return {btb_entry->get_prediction(), btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL};
 }
 
 // TODO: ONLY UPDATE WHEN FITTING IN THE WAY
-//  __attribute__((optimize(0)))
+// __attribute__((optimize(0)))
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
+  // if (!warmup && ip == 18446462598868070740 && current_cycle >= 7109931) {
+  //   std::cout << "this is one of the faulting branches" << std::endl;
+  // }
   // DONE: calculate size
   uint64_t new_region = get_region(ip);
 
