@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+// TODO:
+// 1. There is already the notion of a way, so we will use that concept to store the size of a way
+// 2. For keeping track of whatever happens, we will use a mask per block and evaluate it at eviction time. Per instruction we will have a struct, that contains
+// information on if it was visited, what type the instruction is and so forth
+
 #include "cache.h"
 
 #include <algorithm>
