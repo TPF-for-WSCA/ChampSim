@@ -1,5 +1,5 @@
 {
-  "executable_name": "btb_4k_max_region_configuration_hashed_perceptron/btb_tag_16b_region_11b_4w_constant_size_pluss_2",
+  "executable_name": "btb_4k_max_region_configuration_hashed_perceptron/btb_tag_16b_region_11b_4w_constant_size_option1",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -42,8 +42,8 @@
       "branch_predictor": "hashed_perceptron",
       "perfect_branch_predict": 0,
       "btb": "xbtbx",
-      "btb_ways": 11,
-      "btb_non_indirect": 11,
+      "btb_ways": 10,
+      "btb_non_indirect": 10,
       "btb_sets": 512,
       "btb_clipped_tag": 1,
       "btb_big_way_regions_enabled": 1,
@@ -51,13 +51,12 @@
       "btb_target_sizes": [
         0,
         4,
-        4,
-        5,
         5,
         7,
         9,
         11,
         19,
+        25,
         25,
         64
       ],

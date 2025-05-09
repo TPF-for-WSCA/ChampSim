@@ -1,5 +1,5 @@
 {
-  "executable_name": "btb_4k_max_region_configuration_hashed_perceptron/btb_tag_16b_region_11b_4w_constant_size_pluss_2",
+  "executable_name": "btb_4k_max_region_configuration_hashed_perceptron/btb_tag_16b_region_11b_2w_constant_size_pluss_2_option1",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -50,7 +50,7 @@
       "btb_small_way_regions_enabled": 1,
       "btb_target_sizes": [
         0,
-        4,
+        0,
         4,
         5,
         5,
@@ -65,7 +65,7 @@
       "btb_tag_regions": 256,
       "btb_filter_btb_limit": 0,
       "btb_tag_region_size": 11,
-      "btb_tag_region_ways": 4,
+      "btb_tag_region_ways": 2,
       "btb_perfect_mapping": 0,
       "align_bits": 5
     }
