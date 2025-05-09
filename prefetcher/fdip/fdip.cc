@@ -6,7 +6,7 @@
 
 #include "cache.h"
 #define MAX_PFETCHQ_ENTRIES 48
-#define MAX_RECENT_PFETCH 16
+#define MAX_RECENT_PFETCH 10
 
 std::deque<std::tuple<uint64_t, uint64_t, uint8_t>> prefetch_queue; // Storage: 64-bits * 48 (queue size) = 384 bytes
 std::deque<uint64_t> recent_prefetches;                             // Storage: 64-bits * 10 (queue size) = 80 bytes
