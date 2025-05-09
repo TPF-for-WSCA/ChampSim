@@ -1,0 +1,8 @@
+Package: cli11
+Version: 2.3.2
+Depends: vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-linux
+Multi-Arch: same
+Abi: 9bbeb79340e6672ea9994bd885fd7da34a032bce74e82347e31b1f1ee2e06c04
+Description: CLI11 is a command line parser for C++11 and beyond that provides a rich feature set with a simple and intuitive interface.
+Status: install ok installed

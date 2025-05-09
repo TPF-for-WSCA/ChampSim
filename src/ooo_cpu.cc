@@ -502,6 +502,7 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   fetch_packet.trace = begin->trace;
   fetch_packet.to_return = {&L1I_bus};
   fetch_packet.instr_depend_on_me.push_back(begin);
+  fetch_packet.ending_branch = end->branch_type;
   uint64_t min_addr = begin->instruction_pa;
   uint64_t max_addr = min_addr + begin->size;
   for (; begin != end; ++begin) {
@@ -528,6 +529,9 @@ void O3_CPU::do_fetch_instruction(champsim::circular_buffer<ooo_model_instr>::it
   }
 
   fetch_packet.size = max_addr - min_addr;
+  if (warmup_complete[cpu] && fetch_packet.size == 4 && fetch_packet.ending_branch == NOT_BRANCH && max_addr % 64 == 0) {
+    std::cout << "end address must be end of Block: " << fetch_packet.address + fetch_packet.size << std::endl;
+  }
 
   // std::cout << "fetch: " << std::setw(16) << fetch_packet.ip << ", size: " << std::setw(3) << fetch_packet.size << std::endl;
   int rq_index = L1I_bus.lower_level->add_rq(&fetch_packet);

@@ -21,7 +21,7 @@ public:
   bool trace = false;
 
   uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()}, type = 0, fill_level = 0, pf_origin_level = 0,
-          branch_type = NOT_BRANCH;
+          branch_type = NOT_BRANCH, ending_branch = NOT_BRANCH;
 
   uint32_t pf_metadata;
   uint32_t cpu = NUM_CPUS;
