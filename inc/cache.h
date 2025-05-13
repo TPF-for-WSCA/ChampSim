@@ -56,8 +56,13 @@ struct cache_stats {
 class CACHE : public champsim::operable
 {
   enum [[deprecated(
-      "Prefetchers may not specify arbitrary fill levels. Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] FILL_LEVEL{
-      FILL_L1 = 1, FILL_L2 = 2, FILL_LLC = 4, FILL_DRC = 8, FILL_DRAM = 16};
+      "Prefetchers may not specify arbitrary fill levels. Use CACHE::prefetch_line(pf_addr, fill_this_level, prefetch_metadata) instead.")]] FILL_LEVEL {
+    FILL_L1 = 1,
+    FILL_L2 = 2,
+    FILL_LLC = 4,
+    FILL_DRC = 8,
+    FILL_DRAM = 16
+  };
 
   using channel_type = champsim::channel;
   using request_type = typename channel_type::request_type;
@@ -85,7 +90,6 @@ class CACHE : public champsim::operable
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
-
     explicit tag_lookup_type(request_type req) : tag_lookup_type(req, false, false) {}
     tag_lookup_type(request_type req, bool local_pref, bool skip);
   };
