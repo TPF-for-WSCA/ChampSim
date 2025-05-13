@@ -635,7 +635,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     lru_elem = ::BTB.at(this).get_lru_elem(::BTBEntry{ip, 0}, num_bits);
   }
 
-  assert(!(small_hit.has_value() && big_hit.has_value()) || small_hit.value().ip_tag == big_hit.value().ip_tag);
+  assert(!(small_hit.has_value() && big_hit.has_value()) || (small_hit.value().ip_tag == big_hit.value().ip_tag));
 
   // TODO: pass way size and not num bits to utilise regions function here
   // TODO: check partial and check if utilise region is true -> update that value

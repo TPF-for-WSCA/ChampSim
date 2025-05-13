@@ -57,6 +57,11 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
              stats.negative_aliasing, stats.non_branch_btb_hits, stats.total_aliasing);
   fmt::print(stream, "\nMAX BTB Regions: {}\nMIN BTB Regions: {}\n", stats.max_regions, stats.min_regions);
 
+  fmt::print(stream, "\nALIASING BIT COUNTS:\n");
+  for (uint64_t i = 0; i < 64; i++) {
+    fmt::print(stream, "\t{}: \t{}\n", i, stats.aliasing_bit_counts[i]);
+  }
+
   long double btb_tag_entropy = 0;
   long double switch_tag_entropy = 0;
   auto total_btb_updates = ((long double)stats.btb_updates);

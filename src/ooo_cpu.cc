@@ -196,6 +196,12 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   }
   if (!warmup and branch_ip != arch_instr.ip) {
     sim_stats.total_aliasing++;
+    auto differing_bits = std::bitset<64>{branch_ip ^ arch_instr.ip};
+    for (size_t i = 0; i < 64; i++) {
+      if (differing_bits[i]) {
+        sim_stats.aliasing_bit_counts[i]++;
+      }
+    }
     // std::cout << "ALIASING ON " << arch_instr.ip << " WITH BRANCH AT " << branch_ip << std::endl;
   }
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;

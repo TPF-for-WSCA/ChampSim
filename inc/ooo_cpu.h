@@ -84,6 +84,7 @@ struct cpu_stats {
   uint64_t dynamic_branch_count = 0;
   uint64_t static_branch_count = 0;
   std::array<uint64_t, 64> dynamic_bit_counts;
+  std::array<uint64_t, 64> aliasing_bit_counts = {};
   std::array<uint64_t, 64> static_bit_counts;
 
   std::array<long long, 8> total_branch_types = {};
