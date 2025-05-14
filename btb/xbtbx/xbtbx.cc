@@ -325,8 +325,9 @@ void O3_CPU::initialize_btb()
         sim_stats.region_btb_inserts_per_set.insert({i, 0});
       }
       _BTB_TAG_REGION_SET_IDX_BITS = champsim::lg2(_BTB_TAG_REGION_SETS);
-      _BTB_TAG_REGION_SIZE = (this->BTB_TAG_REGIONS) ? this->BTB_TAG_REGION_SIZE + _BTB_TAG_REGION_SET_IDX_BITS : 0;
-      _REGION_MASK = _BTB_TAG_REGIONS ? (pow2(_BTB_TAG_REGION_SIZE + _BTB_TAG_REGION_SET_IDX_BITS) - 1) : (pow2(62 - _BTB_SET_BITS - _BTB_TAG_SIZE) - 1);
+      _BTB_TAG_REGION_SIZE =
+          (this->BTB_TAG_REGIONS) ? this->BTB_TAG_REGION_SIZE : 0; // (this->BTB_TAG_REGIONS) ? this->BTB_TAG_REGION_SIZE + _BTB_TAG_REGION_SET_IDX_BITS : 0;
+      _REGION_MASK = _BTB_TAG_REGIONS ? (pow2(_BTB_TAG_REGION_SIZE) - 1) : (pow2(62 - _BTB_SET_BITS - _BTB_TAG_SIZE) - 1);
       _BTB_REGION_BITS = champsim::lg2(_BTB_TAG_REGIONS);
     }
   } else {
