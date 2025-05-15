@@ -187,6 +187,10 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   sim_stats.total_branch_types[arch_instr.branch_type]++;
   // TODO: Check if this is good enough to identify branches
   auto [predicted_branch_target, branch_ip, always_taken] = impl_btb_prediction(arch_instr.ip);
+  sim_stats.btb_reads++;
+  if (predicted_branch_target) {
+    sim_stats.btb_hits++;
+  }
   if (perfect_btb) {
     predicted_branch_target = arch_instr.branch_target;
     branch_ip = arch_instr.ip;
