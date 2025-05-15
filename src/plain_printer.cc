@@ -136,6 +136,9 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   }
   fmt::print("XXX END BTB STATS\n");
 
+  fmt::print("\n\nBTB\tREADS: {}\tHITS: {}\n", stats.btb_reads, stats.btb_hits);
+  fmt::print("\nBTB REGIONS:\tMAX: {}\tMIN: {}\n", stats.max_regions, stats.min_regions);
+
   std::vector<double> mpkis;
   double total_mpki = 0.0;
   for (auto it = std::begin(stats.branch_type_misses); it != std::end(stats.branch_type_misses); it++) {
