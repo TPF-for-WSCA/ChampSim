@@ -167,6 +167,9 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (!arch_instr.is_branch && bp_ignore_non_branch) {
     return false;
   }
+  if (arch_instr.ip % 4 == 2) {
+    return false;
+  }
   if (arch_instr.is_branch) {
     // TODO: Should we do this per size of tag only?
     sim_stats.dynamic_branch_count_per_address_space_global_region[(arch_instr.ip >> (intel ? 0 : 2) >> champsim::lg2(BTB_SETS))] += 1;
@@ -198,7 +201,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
                        ? 0
                        : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
   }
-  if (!warmup and branch_ip != arch_instr.ip) {
+  if (!warmup and predicted_branch_target and branch_ip != arch_instr.ip) {
     sim_stats.total_aliasing++;
     auto differing_bits = std::bitset<64>{branch_ip ^ arch_instr.ip};
     for (size_t i = 0; i < 64; i++) {

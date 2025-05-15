@@ -13,9 +13,9 @@
             //"${workspaceRoot}/bin/champsim_16b_region_256",
             "args": [
                 "--warmup-instructions",
-                "10000000",
+                "0000000",
                 "--simulation-instructions",
-                "10000000",
+                "20000000",
                 "--json",
                 "~/Downloads/stats.json",
                 // "--btb-tag-hash",

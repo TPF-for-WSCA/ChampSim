@@ -53,6 +53,7 @@ enum class branch_info {
 // DEBUGGING END
 
 std::map<uint32_t, std::map<uint64_t, uint64_t>> region_tag_entry_count = {};
+std::map<uint64_t, uint64_t> total_region_tag_entry_count = {};
 std::map<uint64_t, uint16_t> region_count_in_small_btb = {};
 std::vector<uint8_t> index_bits;
 std::vector<uint8_t> tag_bits;
@@ -444,7 +445,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
     auto target = ::RAS[this].back();
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
 
-    return {target + size, btb_entry->ip_tag, true};
+    return {target + 4, btb_entry->ip_tag, true}; // assume fixed size for now
   }
   /*
     if (btb_entry->type == ::branch_info::INDIRECT) {
@@ -727,18 +728,21 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     replaced_entry = ::BTB.at(this).fill(
         fill_entry,
         entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
-    region_tag_entry_count[replaced_entry.value().target_size][new_region] += utilise_regions(replaced_entry.value().target_size);
-    if (replaced_entry.has_value() && replaced_entry.value().ip_tag && utilise_regions(replaced_entry.value().target_size)) {
-      uint64_t old_region = get_region(replaced_entry.value().ip_tag);
-      if (region_tag_entry_count[replaced_entry.value().target_size][old_region] == 0) {
-        std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
-        std::cerr << "OLD REGION: " << old_region << std::endl;
-        std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
-        std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
-      } else {
-        region_tag_entry_count[replaced_entry.value().target_size][old_region] -= 1;
+    if (utilise_regions(replaced_entry.value().target_size)) {
+      region_tag_entry_count[replaced_entry.value().target_size][new_region] += 1;
+      if (replaced_entry.has_value() && replaced_entry.value().ip_tag) {
+        uint64_t old_region = get_region(replaced_entry.value().ip_tag);
         if (region_tag_entry_count[replaced_entry.value().target_size][old_region] == 0) {
+          std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
+          std::cerr << "OLD REGION: " << old_region << std::endl;
+          std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+          std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
           region_tag_entry_count[replaced_entry.value().target_size].erase(region_tag_entry_count[replaced_entry.value().target_size].find(old_region));
+        } else {
+          region_tag_entry_count[replaced_entry.value().target_size][old_region] -= 1;
+          if (region_tag_entry_count[replaced_entry.value().target_size][old_region] == 0) {
+            region_tag_entry_count[replaced_entry.value().target_size].erase(region_tag_entry_count[replaced_entry.value().target_size].find(old_region));
+          }
         }
       }
     }
@@ -763,7 +767,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     std::map<uint8_t, std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>> stats_entry{};
     for (auto const& [size, region_count] : region_tag_entry_count) {
       if (sim_stats.max_regions < region_count.size()) {
-        sim_stats.max_regions = region_count.size();
+        sim_stats.max_regions = std::count_if(region_count.begin(), region_count.end(), [](auto pair) { return pair.second; }); // TODO: Filter 0 entries
       }
       std::vector<std::pair<uint64_t, uint64_t>> sort_vec(region_count.begin(), region_count.end());
       std::sort(sort_vec.begin(), sort_vec.end(), [](auto& a, auto& b) { return a.second > b.second; });

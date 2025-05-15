@@ -1,20 +1,21 @@
 {
-  "executable_name": "btb_tag_16b_region_11b_128w",
+  "executable_name": "btb_full_grid_search/16k_btb_tag_14b",
   "block_size": 64,
+  "bucket_size": 100,
   "page_size": 4096,
-  "heartbeat_frequency": 1000000,
+  "heartbeat_frequency": 10000000,
   "num_cores": 1,
   "CFLAGS": [
-    "-Wall -Wno-reorder -g -O0 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
   ],
   "CXXFLAGS": [
-    "-Wall -Wno-reorder -g -O0 -I /home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
   ],
   "LDLIBS": [
     "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem"
   ],
   "LDFLAGS": [
-    "-L/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib -fsanitize=bounds -fsanitize=address"
+    "-L/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
   ],
   "ooo_cpu": [
     {
@@ -38,14 +39,12 @@
       "dispatch_latency": 1,
       "schedule_latency": 1,
       "execute_latency": 1,
-      "branch_predictor": "tage_scl",
+      "branch_predictor": "hashed_perceptron",
       "btb": "xbtbx",
       "btb_ways": 9,
       "btb_non_indirect": 9,
-      "btb_sets": 32,
-      "btb_clipped_tag": 1,
-      "btb_big_way_regions_enabled": 1,
-      "btb_small_way_regions_enabled": 1,
+      "btb_sets": 2048,
+      "btb_clipped_tag": 0,
       "btb_target_sizes": [
         0,
         4,
@@ -57,12 +56,8 @@
         25,
         64
       ],
-      "btb_tag_size": 5,
-      "btb_tag_regions": 16,
-      "btb_filter_btb_limit": 0,
-      "btb_tag_region_size": 11,
-      "btb_tag_region_ways": 16,
-      "btb_perfect_mapping": 0,
+      "btb_tag_size": 14,
+      "btb_regions": 0,
       "align_bits": 5
     }
   ],
