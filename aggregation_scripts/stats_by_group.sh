@@ -108,10 +108,10 @@ do
             echo "Plotting regions for ${config}"
             for percentage in ${percentages[@]}
             do
-                for way in ${ways[@]}
-                do
-                    ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_256_regions_${percentage}_way_${way}_regions_${b}.html &
-                done
+                # for way in ${ways[@]}
+                # do
+                #     ${pg_dir}plotgen --debug -i ${config}/${percentage}_way_${way}_region_sampling.tsv --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --sort-function name --sort-columns --plot violin -o ./graphs/$(basename ${config})_256_regions_${percentage}_way_${way}_regions_${b}.html &
+                # done
                 ${pg_dir}plotgen --debug -i ${config}/overall_max_region.tsv --palette bright --sort-function name --sort-columns --plot bar -o ./graphs/$(basename ${config})_overall_max_region.html &
                 echo "Waiting for way plotting jobs to finish:"
                 for job in `jobs -p`
