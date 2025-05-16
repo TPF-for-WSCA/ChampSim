@@ -44,7 +44,7 @@
       "btb_ways": 9,
       "btb_non_indirect": 9,
       "btb_sets": 2048,
-      "btb_clipped_tag": 0,
+      "btb_clipped_tag": 1,
       "btb_target_sizes": [
         0,
         4,
