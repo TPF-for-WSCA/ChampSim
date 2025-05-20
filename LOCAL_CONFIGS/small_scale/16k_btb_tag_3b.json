@@ -1,5 +1,5 @@
 {
-  "executable_name": "16k_btb_tag_6b",
+  "executable_name": "16k_btb_tag_3b",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 1000000,
@@ -55,7 +55,7 @@
         25,
         64
       ],
-      "btb_tag_size": 6,
+      "btb_tag_size": 3,
       "btb_regions": 0,
       "align_bits": 5
     }

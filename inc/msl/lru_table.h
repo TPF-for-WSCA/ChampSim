@@ -161,7 +161,19 @@ public:
     }
     */
 
-  std::optional<std::pair<uint16_t, uint64_t>> check_hit_idx(const value_type& elem)
+  /**
+   * @brief Check if the element hits in the structure and returns all indexes of the hit
+   *
+   * @param elem The lookup element
+   * @return std::optional<std::tuple<uint16_t, uint16_t, uint64_t>> The tuple contains the following indices:
+   *
+   *    - Set index: Calculated using the set indexing function, refers to an entire set of elements
+   *
+   *    - Precise index: Precise position in the entire structure, refers at most to a single element
+   *
+   *    - Magic index: This is the full tag. Since this is a property of the data, it "updates" magically when an element is moved to a different position
+   */
+  std::optional<std::tuple<uint16_t, uint16_t, uint64_t>> check_hit_idx(const value_type& elem)
   {
     auto [set_begin, set_end] = get_set_span(elem);
     auto hit = std::find_if(set_begin, set_end, match_func(elem));
@@ -170,8 +182,9 @@ public:
       return std::nullopt;
 
     hit->last_used = ++access_count;
-    // TODO: make this configurable that either its full index or it is set idx
-    return std::pair<uint16_t, uint64_t>{hit->data.index(), hit->data.tag()};
+
+    // Returns a tuple of <index, precise pointer, magic pointer>
+    return std::tuple<uint16_t, uint16_t, uint64_t>{hit->data.index(), hit - std::begin(block), hit->data.tag()};
   }
 
   value_type get_lru_elem(const value_type& elem, uint8_t size)
