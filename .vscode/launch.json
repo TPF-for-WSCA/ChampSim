@@ -70,12 +70,12 @@
             "name": "C++ Mac Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/bin/btb_tag_12b_region_2b",
+            "program": "${workspaceRoot}/bin/champsim_8b",
             "externalConsole": false,
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "--warmup_instructions",
-                "10000000",
+                "00000000",
                 "--simulation_instructions",
                 "10000000",
                 "--json",
@@ -99,8 +99,8 @@
                 //"/Users/robrunne/Workspace/traces/ipc1/server_036.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/client_007.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/spec_gcc_001.champsimtrace.xz"
-                // "/Users/robrunne/Workspace/traces/ipc1/server_014.champsimtrace.xz"
-                "/Users/robrunne/Workspace/traces/ipc1/server_011.champsimtrace.xz"
+                "/Users/robrunne/Workspace/traces/ipc1/server_014.champsimtrace.xz"
+                // "/Users/robrunne/Workspace/traces/ipc1/server_011.champsimtrace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/crc2/astar_163B.trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
             ],
