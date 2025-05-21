@@ -174,6 +174,8 @@ def extract_absolute_btb_aliasing(path):
     return total
 
 
+    """Extract relative aliasing - change the regexes to match the nominator (0) and denominator (1)
+    """
 def extract_aliasing_relative_to_total_hits(path):
     logs = []
     with open(path) as f:
