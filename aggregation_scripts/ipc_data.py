@@ -174,15 +174,15 @@ def extract_absolute_btb_aliasing(path):
     return total
 
 
-def extract_positive_btb_aliasing(path):
+def extract_aliasing_relative_to_total_hits(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
     logs.reverse()
     # order of values: total, aliasing, same block, different block
     re_list = [
-        re.compile(r"Negative Aliasing: (\d+)"),
         re.compile(r"Total Aliasing: (\d+)"),
+        re.compile(r"BTB\tREADS: \d+\tHITS: (\d+)"),
     ]
     lookups = [0, 0]
     for line in logs:
@@ -505,7 +505,7 @@ def single_run(path):
                     f"{path}/{workload}/{logfile}"
                 )
             elif type == STATS.ALIASING:
-                stat_by_workload[workload] = extract_positive_btb_aliasing(
+                stat_by_workload[workload] = extract_aliasing_relative_to_total_hits(
                     f"{path}/{workload}/{logfile}"
                 )
             elif type == STATS.ABSOLUTE_ALIASING:
