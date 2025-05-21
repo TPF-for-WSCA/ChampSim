@@ -42,7 +42,7 @@
       "btb": "xbtbx",
       "btb_ways": 9,
       "btb_non_indirect": 9,
-      "btb_sets": 32,
+      "btb_sets": 512,
       "btb_clipped_tag": 1,
       "btb_big_way_regions_enabled": 1,
       "btb_small_way_regions_enabled": 1,
@@ -58,11 +58,11 @@
         64
       ],
       "btb_tag_size": 5,
-      "btb_tag_regions": 16,
+      "btb_tag_regions": 256,
       "btb_filter_btb_limit": 0,
       "btb_tag_region_size": 11,
       "btb_tag_region_ways": 16,
-      "btb_perfect_mapping": 0,
+      "btb_perfect_mapping": 1,
       "align_bits": 5
     }
   ],

@@ -175,6 +175,7 @@ struct BTBEntry {
   uint64_t ip_tag = 0;
   uint64_t target;
   branch_info type = branch_info::ALWAYS_TAKEN;
+  // Set / precise / magic pointers
   std::tuple<uint16_t, uint16_t, uint64_t> region_idx_tag = {0, 0, 0};
   uint8_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
@@ -203,7 +204,7 @@ struct BTBEntry {
       if (_PERFECT_MAPPING)
         tag |= (std::get<2>(region_idx_tag) << _BTB_TAG_SIZE);
       else
-        tag |= (std::get<0>(region_idx_tag) << _BTB_TAG_SIZE);
+        tag |= (std::get<1>(region_idx_tag) << _BTB_TAG_SIZE); // Precise pointers
     }
     return tag;
   }
@@ -717,10 +718,15 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   std::optional<::BTBEntry> replaced_entry = std::nullopt;
   std::optional<::BTBEntry> invalidated_entry = std::nullopt;
   if (branch_target != 0) {
-
+    uint64_t invalidated_region = 0;
     // Mark entry invalid if we moved it to a bigger target
     if (branch_type != BRANCH_RETURN && opt_entry.has_value() && opt_entry.value().get_prediction() != branch_target) {
       invalidated_entry = ::BTB.at(this).invalidate(opt_entry.value());
+      if (invalidated_entry.has_value() && invalidated_entry.value().ip_tag && utilise_regions(invalidated_entry.value().target_size)) {
+        invalidated_region = get_region(invalidated_entry.value().ip_tag);
+        region_tag_entry_count[invalidated_entry.value().target_size][invalidated_region] -= 1;
+        total_region_tag_entry_count[invalidated_region] -= 1;
+      }
     }
 
     // TODO: Check if (since we already know about region or not region) should make two distinct calls out of the below
@@ -735,7 +741,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
     if (utilise_regions(replaced_entry.value().target_size)) {
       region_tag_entry_count[replaced_entry.value().target_size][new_region] += 1;
-      total_region_tag_entry_count[new_region] += !invalidated_entry.has_value();
+      total_region_tag_entry_count[new_region] += 1;
       if (replaced_entry.has_value() && replaced_entry.value().ip_tag) {
         old_region = get_region(replaced_entry.value().ip_tag);
         if (total_region_tag_entry_count[old_region] == 0) {
@@ -766,26 +772,26 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
 
     // DEBUG SUMS TO FIND EXACT PLACE WE GO WRONG
-    uint64_t sum = std::accumulate(std::begin(total_region_tag_entry_count), std::end(total_region_tag_entry_count), 0,
-                                   [](const auto prev, const auto& elem) { return prev + elem.second; });
-    uint64_t total_blocks = 0;
-    std::map<uint64_t, uint64_t> control_region_tag_mapping;
-    for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
-      if (it->data.ip_tag
-          && utilise_regions(it->data.target_size)) { // ignore REGION_BTB.at(this).check_hit({it->data.ip_tag}) as we do not remove/invalidate those
-        total_blocks++;
-        control_region_tag_mapping[get_region(it->data.ip_tag)]++;
-      }
-    }
-    bool problem = false;
-    for (auto const [region, count] : control_region_tag_mapping) {
-      if (count != total_region_tag_entry_count[region]) {
-        std::cout << "problem" << std::endl;
-        problem = true;
-      }
-    }
-    assert(!problem);
-    assert(sum == total_blocks);
+    // uint64_t sum = std::accumulate(std::begin(total_region_tag_entry_count), std::end(total_region_tag_entry_count), 0,
+    //                                [](const auto prev, const auto& elem) { return prev + elem.second; });
+    // uint64_t total_blocks = 0;
+    // std::map<uint64_t, uint64_t> control_region_tag_mapping;
+    // for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
+    //   if (it->data.ip_tag
+    //       && utilise_regions(it->data.target_size)) { // ignore REGION_BTB.at(this).check_hit({it->data.ip_tag}) as we do not remove/invalidate those
+    //     total_blocks++;
+    //     control_region_tag_mapping[get_region(it->data.ip_tag)]++;
+    //   }
+    // }
+    // bool problem = false;
+    // for (auto const [region, count] : control_region_tag_mapping) {
+    //   if (count != total_region_tag_entry_count[region]) {
+    //     std::cout << "problem" << std::endl;
+    //     problem = true;
+    //   }
+    // }
+    // assert(!problem);
+    // assert(sum == total_blocks);
   }
 
   if (!warmup && SAMPLING_DISTANCE < current_cycle - last_stats_cycle) {

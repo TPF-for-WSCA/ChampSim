@@ -15,7 +15,7 @@
                 "--warmup-instructions",
                 "0000000",
                 "--simulation-instructions",
-                "1000000",
+                "10000000",
                 "--json",
                 "~/Downloads/stats.json",
                 // "--btb-tag-hash",
