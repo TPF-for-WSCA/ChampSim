@@ -408,6 +408,7 @@ long O3_CPU::decode_instruction()
         this->fetch_resume_cycle = this->current_cycle + BRANCH_MISPREDICT_PENALTY;
 
         assert(fetch_stalled_cycle != 0 || current_cycle < 1000);
+        assert(fetch_stalled_cycle < fetch_resume_cycle);
         std::get<0>(sim_stats.squash_counts) += 1;
         std::get<2>(sim_stats.squash_counts) += 1;
         sim_stats.total_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
@@ -670,6 +671,7 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
 
   if (instr.branch_mispredicted) {
     fetch_resume_cycle = current_cycle + BRANCH_MISPREDICT_PENALTY;
+    assert(fetch_stalled_cycle < fetch_resume_cycle);
     assert(fetch_stalled_cycle != 0 || current_cycle < 1000);
     std::get<1>(sim_stats.squash_counts) += 1;
     std::get<2>(sim_stats.squash_counts) += 1;
