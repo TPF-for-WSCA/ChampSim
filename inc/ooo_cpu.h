@@ -32,6 +32,7 @@
 #include <queue>
 #include <set>
 #include <stdexcept>
+#include <tuple>
 #include <vector>
 
 #include "champsim.h"
@@ -80,6 +81,10 @@ struct cpu_stats {
   uint16_t btb_tag_size = 0;
   uint64_t btb_reads = 0;
   uint64_t btb_hits = 0;
+  uint64_t total_squashed_cycles;
+  uint64_t aliasing_squashed_cycles;
+  std::tuple<uint64_t, uint64_t, uint64_t> squash_counts = {0, 0, 0};          // <frontend squashes, full squashes, total squashes>
+  std::tuple<uint64_t, uint64_t, uint64_t> aliasing_squash_counts = {0, 0, 0}; // <frontend squashes, full squashes, total squashes>
   std::set<uint64_t> branch_ip_set = {};
   std::array<long double, 64> btb_tag_entropy = {}, btb_tag_switch_entropy = {};
 
@@ -218,7 +223,9 @@ public:
   const long int L1I_BANDWIDTH, L1D_BANDWIDTH;
 
   // branch
-  uint64_t fetch_resume_cycle = 0;
+  uint64_t fetch_resume_cycle = 0;  // Cycle at which we resume fetch after a branch mispredict
+  uint64_t fetch_stalled_cycle = 0; // Cycle at which we stalled fetch due to a branch mispredict
+  bool is_aliasing_stall = false;
 
   const long IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
   std::deque<ooo_model_instr> input_queue;

@@ -16,6 +16,7 @@
 
 #include <numeric>
 #include <sstream>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -52,6 +53,11 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   for (auto const& [idx, cnt] : stats.region_btb_inserts_per_set) {
     fmt::print(stream, "{}\t{}\n", idx, cnt);
   }
+
+  fmt::print(stream, "\nSQUASHED CYCLES:\tALIASING:{}\tTOTAL:{}\n", stats.aliasing_squashed_cycles, stats.total_squashed_cycles);
+  fmt::print(stream, "FRONTEND SQUASHES:\tALIASING:{}\tTOTAL:{}\n", std::get<0>(stats.aliasing_squash_counts), std::get<0>(stats.squash_counts));
+  fmt::print(stream, "FULL SQUASHES:\tALIASING:{}\tTOTAL:{}\n", std::get<1>(stats.aliasing_squash_counts), std::get<1>(stats.squash_counts));
+  fmt::print(stream, "TOTAL SQUASHES:\tALIASING:{}\tTOTAL:{}\n", std::get<2>(stats.aliasing_squash_counts), std::get<2>(stats.squash_counts));
 
   fmt::print(stream, "\nPositive Aliasing: {}\nNegative Aliasing: {}\nNone-Branch Aliasing: {}\nTotal Aliasing: {}", stats.positive_aliasing,
              stats.negative_aliasing, stats.non_branch_btb_hits, stats.total_aliasing);

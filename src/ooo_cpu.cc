@@ -164,6 +164,7 @@ void do_stack_pointer_folding(ooo_model_instr& arch_instr)
 
 bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 {
+  bool is_aliasing = false;
   if (!arch_instr.is_branch && bp_ignore_non_branch) {
     return false;
   }
@@ -203,6 +204,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   }
   if (!warmup and predicted_branch_target and branch_ip != arch_instr.ip) {
     sim_stats.total_aliasing++;
+    is_aliasing = true;
     auto differing_bits = std::bitset<64>{branch_ip ^ arch_instr.ip};
     for (size_t i = 0; i < 64; i++) {
       if (differing_bits[i]) {
@@ -222,6 +224,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     sim_stats.non_branch_btb_hits++;
     sim_stats.negative_aliasing++;
     fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
+    fetch_stalled_cycle = current_cycle;
+    is_aliasing_stall = true;
     stop_fetch = true;
     arch_instr.branch_mispredicted = 1;
     arch_instr.branch_prediction = 0;
@@ -262,6 +266,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
             && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
       if (!warmup) {
         fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
+        fetch_stalled_cycle = current_cycle;
+        is_aliasing_stall = is_aliasing;
         stop_fetch = true;
         arch_instr.branch_mispredicted = 1;
       }
@@ -400,6 +406,18 @@ long O3_CPU::decode_instruction()
         db_entry.branch_mispredicted = 0;
         // pay misprediction penalty
         this->fetch_resume_cycle = this->current_cycle + BRANCH_MISPREDICT_PENALTY;
+
+        assert(fetch_stalled_cycle != 0 || current_cycle < 1000);
+        std::get<0>(sim_stats.squash_counts) += 1;
+        std::get<2>(sim_stats.squash_counts) += 1;
+        sim_stats.total_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
+        if (is_aliasing_stall) {
+          std::get<0>(sim_stats.aliasing_squash_counts) += 1;
+          std::get<2>(sim_stats.aliasing_squash_counts) += 1;
+          sim_stats.aliasing_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
+        }
+        fetch_stalled_cycle = 0;
+        is_aliasing_stall = false;
       }
     }
 
@@ -650,8 +668,20 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
       dependent.scheduled = COMPLETED;
   }
 
-  if (instr.branch_mispredicted)
+  if (instr.branch_mispredicted) {
     fetch_resume_cycle = current_cycle + BRANCH_MISPREDICT_PENALTY;
+    assert(fetch_stalled_cycle != 0 || current_cycle < 1000);
+    std::get<1>(sim_stats.squash_counts) += 1;
+    std::get<2>(sim_stats.squash_counts) += 1;
+    sim_stats.total_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
+    if (is_aliasing_stall) {
+      std::get<1>(sim_stats.aliasing_squash_counts) += 1;
+      std::get<2>(sim_stats.aliasing_squash_counts) += 1;
+      sim_stats.aliasing_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
+    }
+    fetch_stalled_cycle = 0;
+    is_aliasing_stall = false;
+  }
 }
 
 long O3_CPU::complete_inflight_instruction()
