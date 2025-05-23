@@ -9,11 +9,11 @@
             "type": "cppdbg",
             "request": "launch",
             "targetArchitecture": "x64",
-            "program": "${workspaceRoot}/bin/16k_btb_tag_6b",
+            "program": "${workspaceRoot}/bin/256_btb_tag_6b",
             //"${workspaceRoot}/bin/champsim_16b_region_256",
             "args": [
                 "--warmup-instructions",
-                "0000000",
+                "10000000",
                 "--simulation-instructions",
                 "10000000",
                 "--json",

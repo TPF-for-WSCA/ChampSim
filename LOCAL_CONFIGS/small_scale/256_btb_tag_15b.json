@@ -1,5 +1,5 @@
 {
-  "executable_name": "256_btb_tag_15b",
+  "executable_name": "256_btb_tag_6b",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 1000000,
@@ -43,7 +43,7 @@
       "btb_ways": 9,
       "btb_non_indirect": 9,
       "btb_sets": 32,
-      "btb_clipped_tag": 0,
+      "btb_clipped_tag": 1,
       "btb_target_sizes": [
         0,
         4,
@@ -55,7 +55,7 @@
         25,
         64
       ],
-      "btb_tag_size": 15,
+      "btb_tag_size": 6,
       "btb_regions": 0,
       "align_bits": 5
     }
