@@ -183,7 +183,7 @@ def extract_aliasing_relative_to_total_hits(path):
     logs.reverse()
     # order of values: total, aliasing, same block, different block
     re_list = [
-        re.compile(r"Total Aliasing: (\d+)"),
+        re.compile(r"Negative Aliasing: (\d+)"),
         re.compile(r"BTB\tREADS: \d+\tHITS: (\d+)"),
     ]
     lookups = [0, 0]
