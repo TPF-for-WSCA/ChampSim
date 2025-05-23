@@ -30,13 +30,57 @@ class STATS(Enum):
     BTB_BIT_ORDERING = 21
     BTB_BIT_ORDERING_SWITCHED = 22
     ABSOLUTE_ALIASING = 23
-    REGION_SPLIT = 22
+    REGION_SPLIT = 24
+    ALIASING_SQUASH_CYCLES = 25  # this one is relative only
+    SQUASH_COUNTS = 26  # this one is absolute only
+
 
 
 type = STATS.IPC
 
 buffer = False
 
+
+def extract_aliasing_relative_squash_cycles(path):
+    logs=[]
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    reg = re.compile(r"SQUASHED CYCLES:\tALIASING:(\d+)\tTOTAL:(\d+)")
+    for line in logs:
+        match = reg.search(line)
+        if match:
+            return int(match.groups()[0]) / int(match.groups()[1])
+    return float('NaN')
+
+
+def extract_squash_counts(path) -> list[tuple[int,int]]:
+    """Extract squash counts.
+
+    :return: Squash counts in the following order: Frontend, Full, Total, where each of those is a pair of (ALIASED, TOTAL)
+    :rtype: list(tuple(int))
+    """
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+
+    re_list = [
+        re.compile(r"FRONTEND SQUASHES:\tALIASING:{}\tTOTAL:{}"),
+        re.compile(r"FULL SQUASHES:\tALIASING:{}\tTOTAL:{}"),
+        re.compile(r"TOTAL SQUASHES:\tALIASING:{}\tTOTAL:{}"),
+    ]
+    lookups_completed = [False, False, False]
+    lookups = [(0,0), (0,0), (0,0)]  # [FRONTEND SQUASHES, FULL SQUASHES, TOTAL SQUASHES], each a pair of (ALIASED, TOTAL)
+    for line in logs:
+        for idx, reg in enumerate(re_list):
+            matches = reg.search(line)
+            if (matches):
+                lookups[idx] = (int(matches.groups()[0]), int(matches.groups()[0]))
+                lookups_completed[idx] = True
+        if all(lookups_completed):
+            break
+    return [(-1,-1),(-1,-1),(-1,-1)] if not all(lookups_completed) else lookups
 
 def extract_ipc(path):
     logs = []
@@ -174,9 +218,10 @@ def extract_absolute_btb_aliasing(path):
     return total
 
 
+
+def extract_aliasing_relative_to_total_hits(path):
     """Extract relative aliasing - change the regexes to match the nominator (0) and denominator (1)
     """
-def extract_aliasing_relative_to_total_hits(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
@@ -514,6 +559,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_absolute_btb_aliasing(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.ALIASING_SQUASH_CYCLES:
+                stat_by_workload[workload] = extract_aliasing_relative_squash_cycles(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.BIT_INFORMATION:
                 stat_by_workload[workload] = extract_bit_information(
                     f"{path}/{workload}/{logfile}"
@@ -581,6 +630,20 @@ def mutliple_sizes_run(out_dir=None):
         ipc_by_cachesize_and_workload[name] = result
     return ipc_by_cachesize_and_workload
 
+def write_squash_counts(data, out_path="./"):
+    squash_causes = ["FRONTEND_ALIASING", "FRONTEND_TOTAL", "FULL_ALIASING", "FULL_TOTAL", "TOTAL_ALIASING", "TOTAL_TOTAL"]
+    file_path = os.path.join(out_path, "squash_counts.tsv")
+    with open(file_path, "w+") as outfile:
+        outfile.write(f"\t")
+        for title in squash_causes:
+            outfile.write(f"{title}\t")
+        outfile.write("\n")
+        for workload, values in data.items():
+            outfile.write(f"{workload}\t")
+            for tuple in values:
+                outfile.write(f"{tuple[0]}\t{tuple[1]}\t")
+            outfile.write("\n")
+
 
 def write_partial_misses(data, out_path="./"):
     base_filename = "partial_misses_"
@@ -627,6 +690,10 @@ def write_tsv(data, out_path=None):
         filename = "aliasing"
     elif type == STATS.ABSOLUTE_ALIASING:
         filename = "total_aliasing"
+    elif type == STATS.ALIASING_SQUASH_CYCLES:
+        filename = "relative_aliasing_squash_cycles"
+    elif type == STATS.SQUASH_COUNTS:
+        filename = "squash_counts"
     elif type == STATS.FETCH_COUNT:
         filename = "fetch_count"
     elif type == STATS.BRANCH_MPKI:
@@ -751,6 +818,8 @@ elif sys.argv[3] == "BTB_ALIASING":
     type = STATS.ALIASING
 elif sys.argv[3] == "BTB_TOTAL_ALIASING":
     type = STATS.ABSOLUTE_ALIASING
+elif sys.argv[3] == "BTB_RELATIVE_ALIASING_SQUASH_CYCLES":
+    type = STATS.ALIASING_SQUASH_CYCLES
 elif sys.argv[3] == "BTB_BIT_INFORMATION":
     type = STATS.BIT_INFORMATION
 elif sys.argv[3] == "BTB_TAG_ENTROPY":
@@ -774,6 +843,8 @@ if len(data) == 0:
 
 if type == STATS.PARTIAL_MISSES:
     write_partial_misses(data, sys.argv[1])
+elif type == STATS.SQUASH_COUNTS:
+    write_squash_counts(data, sys.argv[1])
 elif type == STATS.BRANCH_DISTANCES:
     write_series(data, sys.argv[1])
 elif type == STATS.NUM_BTB_BITS_PER_CL:

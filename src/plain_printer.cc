@@ -54,6 +54,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     fmt::print(stream, "{}\t{}\n", idx, cnt);
   }
 
+  // TODO: Fix whitespaces and fix ipc_data.py to extract the result with the fixed whitespace (if not done whitespace stripped)
   fmt::print(stream, "\nSQUASHED CYCLES:\tALIASING:{}\tTOTAL:{}\n", stats.aliasing_squashed_cycles, stats.total_squashed_cycles);
   fmt::print(stream, "FRONTEND SQUASHES:\tALIASING:{}\tTOTAL:{}\n", std::get<0>(stats.aliasing_squash_counts), std::get<0>(stats.squash_counts));
   fmt::print(stream, "FULL SQUASHES:\tALIASING:{}\tTOTAL:{}\n", std::get<1>(stats.aliasing_squash_counts), std::get<1>(stats.squash_counts));
