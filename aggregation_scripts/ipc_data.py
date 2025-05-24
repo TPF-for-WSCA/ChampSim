@@ -66,9 +66,9 @@ def extract_squash_counts(path) -> list[tuple[int,int]]:
     logs.reverse()
 
     re_list = [
-        re.compile(r"FRONTEND SQUASHES:\tALIASING:{}\tTOTAL:{}"),
-        re.compile(r"FULL SQUASHES:\tALIASING:{}\tTOTAL:{}"),
-        re.compile(r"TOTAL SQUASHES:\tALIASING:{}\tTOTAL:{}"),
+        re.compile(r"FRONTEND SQUASHES:\tALIASING:(\d+)\tTOTAL:(\d+)"),
+        re.compile(r"FULL SQUASHES:\tALIASING:(\d+)\tTOTAL:(\d+)"),
+        re.compile(r"TOTAL SQUASHES:\tALIASING:(\d+)\tTOTAL:(\d+)"),
     ]
     lookups_completed = [False, False, False]
     lookups = [(0,0), (0,0), (0,0)]  # [FRONTEND SQUASHES, FULL SQUASHES, TOTAL SQUASHES], each a pair of (ALIASED, TOTAL)
