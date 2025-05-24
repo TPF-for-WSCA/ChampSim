@@ -820,6 +820,8 @@ elif sys.argv[3] == "BTB_TOTAL_ALIASING":
     type = STATS.ABSOLUTE_ALIASING
 elif sys.argv[3] == "BTB_RELATIVE_ALIASING_SQUASH_CYCLES":
     type = STATS.ALIASING_SQUASH_CYCLES
+elif sys.argv[3] == "SQUASH_COUNTS":
+    type = STATS.SQUASH_COUNTS
 elif sys.argv[3] == "BTB_BIT_INFORMATION":
     type = STATS.BIT_INFORMATION
 elif sys.argv[3] == "BTB_TAG_ENTROPY":
