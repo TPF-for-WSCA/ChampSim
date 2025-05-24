@@ -563,6 +563,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_aliasing_relative_squash_cycles(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.SQUASH_COUNTS:
+                stat_by_workload[workload] = extract_squash_counts(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.BIT_INFORMATION:
                 stat_by_workload[workload] = extract_bit_information(
                     f"{path}/{workload}/{logfile}"
