@@ -35,6 +35,8 @@ if [ $# -lt 1 ]; then
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BTB_BIT_ORDERING  &
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BRANCH_COUNT &
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi REGION_SPLIT &
+        python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi ALIASING_SQUASH_CYCLES &
+        python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi SQUASH_COUNTS &
 
         for config in ./${b}/*
         do
