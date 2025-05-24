@@ -76,7 +76,7 @@ def extract_squash_counts(path) -> list[tuple[int,int]]:
         for idx, reg in enumerate(re_list):
             matches = reg.search(line)
             if (matches):
-                lookups[idx] = (int(matches.groups()[0]), int(matches.groups()[0]))
+                lookups[idx] = (int(matches.groups()[0]), int(matches.groups()[1]))
                 lookups_completed[idx] = True
         if all(lookups_completed):
             break
