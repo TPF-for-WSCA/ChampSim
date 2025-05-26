@@ -643,7 +643,7 @@ def write_squash_counts(data, out_path="./"):
             for title in squash_causes:
                 outfile.write(f"{title}\t")
             outfile.write("\n")
-            for workload, tuples in values:
+            for workload, tuples in values.items():
                 outfile.write(f"{workload}\t")
                 for tuple in tuples:
                     outfile.write(f"{tuple[0]}\t{tuple[1]}\t")
