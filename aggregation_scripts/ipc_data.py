@@ -636,17 +636,18 @@ def mutliple_sizes_run(out_dir=None):
 
 def write_squash_counts(data, out_path="./"):
     squash_causes = ["FRONTEND_ALIASING", "FRONTEND_TOTAL", "FULL_ALIASING", "FULL_TOTAL", "TOTAL_ALIASING", "TOTAL_TOTAL"]
-    file_path = os.path.join(out_path, "squash_counts.tsv")
-    with open(file_path, "w+") as outfile:
-        outfile.write(f"\t")
-        for title in squash_causes:
-            outfile.write(f"{title}\t")
-        outfile.write("\n")
-        for workload, values in data.items():
-            outfile.write(f"{workload}\t")
-            for tuple in values:
-                outfile.write(f"{tuple[0]}\t{tuple[1]}\t")
-            outfile.write("\n")
+        for config, values in data.items():
+            file_path = os.path.join(out_path, config, "squash_counts.tsv")
+            with open(file_path, "w+") as outfile:
+                outfile.write(f"\t")
+                for title in squash_causes:
+                    outfile.write(f"{title}\t")
+                outfile.write("\n")
+                for workload, tuples in values:
+                    outfile.write(f"{workload}\t")
+                    for tuple in tuples:
+                        outfile.write(f"{tuple[0]}\t{tuple[1]}\t")
+                    outfile.write("\n")
 
 
 def write_partial_misses(data, out_path="./"):
