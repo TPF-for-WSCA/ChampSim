@@ -50,6 +50,7 @@ def extract_aliasing_relative_squash_cycles(path):
     for line in logs:
         match = reg.search(line)
         if match:
+            return int(match.groups()[1])
             return int(match.groups()[0]) / int(match.groups()[1])
     return float('NaN')
 
