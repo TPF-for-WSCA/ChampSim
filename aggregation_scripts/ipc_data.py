@@ -411,12 +411,12 @@ def extract_l1i_mpki(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    regex = re.compile(r"cpu0\_L1I MPKI: (\d*\.?\d+)")
+    regex = re.compile(r"cpu0\_L1I\s+LOAD\s+ACCESS:\s+(\d+) HIT:\s+\d+ MISS:\s+(\d+)")
     logs.reverse()
     for line in logs:  # reverse to find last run first
-        matches = regex.match(line)
+        matches = regex.search(line)
         if matches:
-            return matches.groups()[0]
+            return int(matches.groups()[1])/int(matches.groups()[0])
 
 
 def extract_frontend_stalls_percentage(path):
