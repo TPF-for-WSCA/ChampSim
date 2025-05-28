@@ -59,7 +59,7 @@
         25,
         64
       ],
-      "btb_tag_size": 16,
+      "btb_tag_size": 8,
       "btb_regions": 0,
       "align_bits": 5
     }
