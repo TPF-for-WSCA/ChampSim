@@ -1,5 +1,5 @@
 {
-  "executable_name": "constant_set_2k_4k/btb_t8_w9",
+  "executable_name": "constant_set_16k_32k/btb_t8_w9",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
