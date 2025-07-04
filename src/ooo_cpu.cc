@@ -228,6 +228,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     is_aliasing_stall = true;
     stop_fetch = true;
     arch_instr.branch_mispredicted = 1;
+    sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
     arch_instr.branch_prediction = 0;
     arch_instr.branch_taken = 0;
   }
@@ -250,7 +251,6 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   // NOTE: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately
   if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {
     sim_stats.branch_type_misses[arch_instr.branch_type]++;
-    sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
   }
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
@@ -270,6 +270,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
         is_aliasing_stall = is_aliasing;
         stop_fetch = true;
         arch_instr.branch_mispredicted = 1;
+        sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
       }
     } else if (predicted_branch_target && predicted_branch_target != arch_instr.ip + 4) {
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
