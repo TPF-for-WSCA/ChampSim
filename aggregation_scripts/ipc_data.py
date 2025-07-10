@@ -33,6 +33,7 @@ class STATS(Enum):
     REGION_SPLIT = 24
     ALIASING_SQUASH_CYCLES = 25  # this one is relative only
     SQUASH_COUNTS = 26  # this one is absolute only
+    BTB_HIT_PKI = 27
 
 
 
@@ -218,7 +219,20 @@ def extract_absolute_btb_aliasing(path):
             break
     return total
 
-
+def extract_btb_hit_pki(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    # order of values: total, aliasing, same block, different block
+    re_total = re.compile(r"BTB\tREADS: \d+\tHITS: (\d+)")
+    total = 0
+    for line in logs:
+        matches = re_total.search(line)
+        if matches:
+            total = int(matches.groups()[0])
+            break
+    return total
 
 def extract_aliasing_relative_to_total_hits(path):
     """Extract relative aliasing - change the regexes to match the nominator (0) and denominator (1)
@@ -229,8 +243,9 @@ def extract_aliasing_relative_to_total_hits(path):
     logs.reverse()
     # order of values: total, aliasing, same block, different block
     re_list = [
-        re.compile(r"Negative Aliasing: (\d+)"),
-        re.compile(r"BTB\tREADS: \d+\tHITS: (\d+)"),
+        re.compile(r"Total Aliasing: (\d+)"),
+        re.compile(r"cpu0 cumulative IPC: \d+ instructions: (\d+) cycles: \d+"),
+        # re.compile(r"BTB\tREADS: \d+\tHITS: (\d+)"),
     ]
     lookups = [0, 0]
     for line in logs:
@@ -552,6 +567,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_btb_bits_per_cl(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.BTB_HIT_PKI:
+                stat_by_workload[workload] = extract_btb_hit_pki(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.ALIASING:
                 stat_by_workload[workload] = extract_aliasing_relative_to_total_hits(
                     f"{path}/{workload}/{logfile}"
@@ -692,6 +711,8 @@ def write_tsv(data, out_path=None):
     filename = "ipc"
     if type == STATS.MPKI:
         filename = "mpki"
+    elif type == STATS.BTB_HIT_PKI:
+        filename = "absolute_btb_hits"
     elif type == STATS.ALIASING:
         filename = "aliasing"
     elif type == STATS.ABSOLUTE_ALIASING:
@@ -820,6 +841,8 @@ elif sys.argv[3] == "CONTEXT_SWITCH":
     type = STATS.CONTEXT_SWITCH
 elif sys.argv[3] == "BTB_BITS_CL":
     type = STATS.NUM_BTB_BITS_PER_CL
+elif sys.argv[3] == "BTB_HITS":
+    type = STATS.BTB_HIT_PKI
 elif sys.argv[3] == "BTB_ALIASING":
     type = STATS.ALIASING
 elif sys.argv[3] == "BTB_TOTAL_ALIASING":
