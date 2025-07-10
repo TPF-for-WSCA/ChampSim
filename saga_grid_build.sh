@@ -9,7 +9,7 @@
 # build_dir=("btb_1k_region_tag_exp" "btb_4k_region_tag_exp")
 # build_dir=("btb_4k_region_tag_set_associative_set_idx")
 # build_dir=("small_set_configurations")
-build_dir=("constant_set_16k_32k")
+build_dir=("constant_set_16k_32k" "constant_set_512_1k" "constant_set_2k_4k" "equiperformance_configs")
 
 old_dir=$(pwd)
 cd /cluster/projects/nn4650k/workspace/ChampSim/
@@ -19,7 +19,7 @@ do
     do
         echo "Building ${build_script}"
         ./config.sh $build_script
-        make -j
+        make -j 16
     done
 done
 cd $old_dir
