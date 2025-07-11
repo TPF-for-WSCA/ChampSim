@@ -19,8 +19,8 @@ module load GCCcore/13.3.0
 #binaries=("champsim32k" "ubs_12_ways_not_extending" "ubs_12_ways" "ubs_14_ways" "ubs_14_small_ways" "ubs_12_small_ways_not_extending" "ubs_12_small_ways" "ubs_14_small_ways_not_extending" "ubs_14_small_ways" "ubs_16_ways_precise" "ubs_16_ways_precise_not_extending")
 #binaries=("champsim32k_base_btb" "champsim32k_base_btbx" "champsim32k_hash_btbx" "champsim32k_perfect_l1i" "champsim32k_perfect_btb")
 # binary_dir=("btb_small_tag_grid_search") # "btb_4k_config_spread")
-binary_dir=("constant_set_16k_32k") # "btb_4k_config_spread")
-count=0
+binary_dir=("constant_set_1k_2k" "constant_set_2k_4k") # "btb_4k_config_spread")
+count=1
 timelimit="4:00:00"
 warmup=50000000
 simulation=50000000
