@@ -19,7 +19,7 @@ do
     do
         echo "Building ${build_script}"
         ./config.sh $build_script
-        make -j 16
+        make -j 16 &>> /cluster/work/users/romankb/build_$(basename ${build_script%.json}).log
     done
 done
 cd $old_dir
