@@ -202,9 +202,9 @@ struct BTBEntry {
       tag ^= masked_bits;
       // TODO: add third option / replace _PERFECT_MAPPING with enum / right now we have a hard wired to precise pointers
       if (_PERFECT_MAPPING)
-        tag |= (std::get<2>(region_idx_tag) << _BTB_TAG_SIZE);
+        tag |= (std::get<1>(region_idx_tag) << _BTB_TAG_SIZE);
       else
-        tag |= (std::get<1>(region_idx_tag) << _BTB_TAG_SIZE); // Precise pointers
+        tag |= (std::get<0>(region_idx_tag) << _BTB_TAG_SIZE); // Precise pointers
     }
     return tag;
   }
