@@ -238,32 +238,9 @@ struct region_btb_entry_t {
   auto index() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    uint64_t raw_idx = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
+    // NOTE: The shift by (_BTB_REGION_BITS - _BTB_SET_BITS) this term results in "big idx" inserts, so the msbs of the region are used for indexing
+    uint64_t raw_idx = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE >> (_BTB_REGION_BITS - _BTB_SET_BITS)) & (_BTB_TAG_REGION_SETS - 1);
     return raw_idx; // NOTE: keep track how many entries we observe per set
-    // if (btb_associative_regions) {
-    //
-    //   if (champsim::lg2(_BTB_TAG_REGION_SETS) < _BTB_TAG_REGION_SIZE) {
-    //     auto tmp_idx = raw_idx;
-    //     raw_idx = 0;
-    //     while (tmp_idx) {
-    //       raw_idx ^= (tmp_idx & (_BTB_TAG_REGION_SETS - 1));
-    //       tmp_idx >>= champsim::lg2(_BTB_TAG_REGION_SETS);
-    //     }
-    //     raw_idx &= (_BTB_TAG_REGION_SETS - 1);
-    //   }
-    //   return raw_idx;
-    // }
-    // uint64_t idx = 0;
-    // // XOR index
-    // if (_BTB_REGION_BITS < _BTB_TAG_REGION_SIZE) {
-    //   while (raw_idx) {
-    //     idx ^= (raw_idx & (_BTB_TAG_REGIONS - 1));
-    //     raw_idx >>= _BTB_REGION_BITS;
-    //   }
-    //   idx &= (_BTB_TAG_REGIONS - 1);
-    // } else
-    //   idx = raw_idx;
-    // return idx;
   }
   auto tag() const
   {
