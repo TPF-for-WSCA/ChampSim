@@ -33,6 +33,8 @@
 #define KERNEL_LOWER_BOUND 0xffff800000000000ul
 #define KERNEL_IGNORE_ENABLE false
 
+uint64_t prev_branch_lookup_ip = 0;
+
 std::chrono::seconds elapsed_time();
 
 long O3_CPU::operate()
@@ -100,6 +102,8 @@ void O3_CPU::begin_phase()
   stats.dynamic_bit_counts = sim_stats.dynamic_bit_counts;
   stats.static_bit_counts = sim_stats.static_bit_counts;
   stats.dynamic_branch_count = sim_stats.dynamic_branch_count;
+  stats.dynamic_btb_lookup_count = sim_stats.dynamic_btb_lookup_count;
+  stats.btb_tag_lookup_switch_entropy = sim_stats.btb_tag_lookup_switch_entropy
   stats.static_branch_count = sim_stats.static_branch_count;
   stats.region_btb_inserts_per_set = sim_stats.region_btb_inserts_per_set;
   stats.region_btb_conflicts = sim_stats.region_btb_conflicts;
@@ -167,6 +171,12 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   bool is_aliasing = false;
   if (!arch_instr.is_branch && bp_ignore_non_branch) {
     return false;
+  }
+  sim_stats.dynamic_btb_lookup_count++;
+  auto diff_tag = std::bitset<64>(arch_instr.ip ^ prev_branch_lookup_ip);
+  prev_branch_lookup_ip = arch_instr.ip;
+  for (size_t idx = 0; idx < 64; idx++) {
+    sim_stats.btb_tag_lookup_switch_entropy[idx] += diff_tag[idx];
   }
   if (arch_instr.ip % 4 == 2) {
     return false;

@@ -86,9 +86,10 @@ struct cpu_stats {
   std::tuple<uint64_t, uint64_t, uint64_t> squash_counts = {0, 0, 0};          // <frontend squashes, full squashes, total squashes>
   std::tuple<uint64_t, uint64_t, uint64_t> aliasing_squash_counts = {0, 0, 0}; // <frontend squashes, full squashes, total squashes>
   std::set<uint64_t> branch_ip_set = {};
-  std::array<long double, 64> btb_tag_entropy = {}, btb_tag_switch_entropy = {};
+  std::array<long double, 64> btb_tag_entropy = {}, btb_tag_switch_entropy = {}, btb_tag_lookup_switch_entropy = {};
 
   uint64_t dynamic_branch_count = 0;
+  uint64_t dynamic_btb_lookup_count = 0;
   uint64_t static_branch_count = 0;
   std::array<uint64_t, 64> dynamic_bit_counts;
   std::array<uint64_t, 64> aliasing_bit_counts = {};

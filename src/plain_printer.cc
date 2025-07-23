@@ -141,6 +141,19 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   for (int j = 0; j < 64; j++) {
     fmt::print("{}:\t{}\n", j, (double)stats.static_bit_counts[j] / (double)stats.static_branch_count);
   }
+
+  fmt::print("XXX Total dynamic branch IPs: {}\n", stats.dynamic_branch_count);
+  fmt::print("XXX Total dynamic switched 1 bits in branch IPs:\n");
+  for (int j = 0; j < 64; j++) {
+    fmt::print("{}:\t{}\n", j, (double) stats.btb_tag_switch_entropy[j] / (double)stats.dynamic_branch_count);
+  }
+
+  fmt::print("XXX Total dynamic BTB lookup IPs: {}\n", stats.dynamic_btb_lookup_count);
+  fmt::print("XXX Total dynamic switched 1 bits in lookup IPs:\n");
+  for (int j = 0; j < 64; j++) {
+    fmt::print("{}:\t{}\n", j, (double) stats.btb_tag_lookup_switch_entropy[j] / (double)stats.dynamic_btb_lookup_count);
+  }
+
   fmt::print("XXX END BTB STATS\n");
 
   fmt::print("\n\nBTB\tREADS: {}\tHITS: {}\n", stats.btb_reads, stats.btb_hits);
