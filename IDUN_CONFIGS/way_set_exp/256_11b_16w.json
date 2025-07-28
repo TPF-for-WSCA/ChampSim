@@ -1,5 +1,5 @@
 {
-  "executable_name": "way_set_exp/256_btb_tag_11b",
+  "executable_name": "way_set_exp/256_btb_tag_11b_w16",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
