@@ -92,7 +92,9 @@
         "*.inc": "cpp",
         "*.def": "cpp",
         "*.btb": "cpp",
-        "__config": "cpp"
+        "__config": "cpp",
+        "format": "cpp",
+        "numbers": "cpp"
     },
     "cmake.sourceDirectory": "/Users/robrunne/Workspace/NTNU/ChampSim/vcpkg/ports/7zip",
     "cmake.ignoreCMakeListsMissing": true,

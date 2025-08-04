@@ -49,6 +49,11 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     fmt::print(stream, "\t{}:\t{}\n", big_region, tags.size());
   }
 
+  fmt::print(stream, "{} REGIONS BY SIZE:\n", stats.name);
+  for (uint64_t i = 0; i < 64; i++) {
+    fmt::print(stream, "\t{}:\t{}\n", 64-i, stats.max_regions_per_region_size[i]);
+  }
+
   fmt::print(stream, "\nREGION SET IDX\tINSERTS\n");
   for (auto const& [idx, cnt] : stats.region_btb_inserts_per_set) {
     fmt::print(stream, "{}\t{}\n", idx, cnt);

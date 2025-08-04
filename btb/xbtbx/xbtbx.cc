@@ -58,6 +58,7 @@ std::map<uint64_t, uint16_t> region_count_in_small_btb = {};
 std::vector<uint8_t> index_bits;
 std::vector<uint8_t> tag_bits;
 std::vector<uint8_t> btb_addressing_hash;
+std::array<std::set<uint64_t>, 64> observed_entries_per_region_size = {};
 
 bool INSERT_FILTER_VICTIMS = false;
 std::size_t USE_REGIONALIZED_BTB_OFFSET = 0;
@@ -89,7 +90,6 @@ bool _PERFECT_MAPPING = false;
 
 uint64_t prev_branch_ip = 0;
 std::map<uint32_t, uint64_t> offset_reuse_freq;
-std::map<uint64_t, std::set<uint8_t>> offset_sizes_by_target;
 std::set<uint64_t> branch_ip;
 std::set<uint32_t> regions_inserted;
 // size_t region_btb_insers = 0;
@@ -458,10 +458,13 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   sim_stats.static_branch_count += is_static;
   sim_stats.dynamic_branch_count += 1;
   for (int j = 0; j < 64; j++) {
-    if ((ip >> j) & 0x1) {
+    auto region_id = ip >> j;
+    if (region_id & 0x1) {
       sim_stats.static_bit_counts[j] += is_static;
       sim_stats.dynamic_bit_counts[j] += 1;
     }
+    bool first_observation = observed_entries_per_region_size[j].insert(region_id).second;
+    sim_stats.max_regions_per_region_size[j] += first_observation;
   }
 
   // add something to the RAS
