@@ -34,6 +34,7 @@ class STATS(Enum):
     ALIASING_SQUASH_CYCLES = 25  # this one is relative only
     SQUASH_COUNTS = 26  # this one is absolute only
     BTB_HIT_PKI = 27
+    NUM_REGIONS_PER_REGION_SIZE = 28
 
 
 
@@ -257,6 +258,25 @@ def extract_aliasing_relative_to_total_hits(path):
         if all(lookups):
             break
     return 0 if not lookups[1] else lookups[0] / lookups[1]
+
+def static_region_count_per_region_size(path):
+    import itertools
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    ilogs = iter(logs)
+    for line in ilogs:
+        if line.strip == "CPU 0 REGIONS BY SIZE:":
+            break
+    
+    data = {}
+    for data_line in ilogs:
+        if not data_line or data_line.startswith("REGION"):
+            break
+        [region_size, region_count] = [int(val.strip()) for val in data_line.split(":")]
+        data[region_size] = region_count
+    return data
+
 
 
 def extract_btb_bits_per_cl(path):
@@ -563,6 +583,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_context_switch_count(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.NUM_REGIONS_PER_REGION_SIZE:
+                stat_by_workload[workload] = static_region_count_per_region_size(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.NUM_BTB_BITS_PER_CL:
                 stat_by_workload[workload] = extract_btb_bits_per_cl(
                     f"{path}/{workload}/{logfile}"
@@ -749,6 +773,8 @@ def write_tsv(data, out_path=None):
         filename = "stall_cycles"
     elif type == STATS.ROB_AT_MISS:
         filename = "rob_at_miss"
+    elif type == STATS.NUM_REGIONS_PER_REGION_SIZE:
+        filename = "num_regions_per_region_size"
     elif type == STATS.NUM_BTB_BITS_PER_CL:
         filename = "num_btb_bits_per_cacheline"
     elif type == STATS.BIT_INFORMATION:
@@ -839,6 +865,8 @@ elif sys.argv[3] == "INSTRUCTION_COUNT":
     type = STATS.INSTRUCTION_COUNT
 elif sys.argv[3] == "CONTEXT_SWITCH":
     type = STATS.CONTEXT_SWITCH
+elif sys.argv[3] == "BTB_REGION_COUNT_BY_REGION_SIZE":
+    type = STATS.NUM_REGIONS_PER_REGION_SIZE
 elif sys.argv[3] == "BTB_BITS_CL":
     type = STATS.NUM_BTB_BITS_PER_CL
 elif sys.argv[3] == "BTB_HITS":
@@ -887,6 +915,16 @@ elif type == STATS.NUM_BTB_BITS_PER_CL:
                 outfile.write(f"\t{entry}")
             outfile.write("\n")
         outfile.flush()
+elif type == STATS.NUM_REGIONS_PER_REGION_SIZE:
+    file_path = os.path.join(sys.argv[1], "num_regions_per_region_size.tsv")
+    with open(file_path, "w+") as outfile:
+        for workload in data["const"].keys():
+            outfile.write(f"{workload}\t")
+        outfile.write("\n")
+        for i in range(1,64,1):
+            for _, values in data["const"].values():
+                outfile.write(f"{values[i]}\t")
+            outfile.write("\n")
 # elif type == STATS.ALIASING:
 #     file_path = os.path.join(sys.argv[1], "aliasing.tsv")
 #     with open(file_path, "w+") as outfile:
