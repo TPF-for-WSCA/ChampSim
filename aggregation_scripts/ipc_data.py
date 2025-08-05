@@ -266,11 +266,12 @@ def static_region_count_per_region_size(path):
         logs = f.readlines()
     ilogs = iter(logs)
     for line in ilogs:
-        if line.strip == "CPU 0 REGIONS BY SIZE:":
+        if line.strip() == "CPU 0 REGIONS BY SIZE:":
             break
     
     data = {}
     for data_line in ilogs:
+        data_line = data_line.strip()
         if not data_line or data_line.startswith("REGION"):
             break
         [region_size, region_count] = [int(val.strip()) for val in data_line.split(":")]
@@ -922,7 +923,7 @@ elif type == STATS.NUM_REGIONS_PER_REGION_SIZE:
             outfile.write(f"{workload}\t")
         outfile.write("\n")
         for i in range(1,64,1):
-            for _, values in data["const"].values():
+            for values in data["const"].values():
                 outfile.write(f"{values[i]}\t")
             outfile.write("\n")
 # elif type == STATS.ALIASING:
