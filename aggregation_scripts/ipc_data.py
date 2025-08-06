@@ -924,6 +924,8 @@ elif type == STATS.NUM_REGIONS_PER_REGION_SIZE:
         outfile.write("\n")
         for i in range(1,64,1):
             for values in data["const"].values():
+                if not values:
+                    break
                 outfile.write(f"{values[i]}\t")
             outfile.write("\n")
 # elif type == STATS.ALIASING:
