@@ -453,14 +453,16 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   bool is_static = branch_ip.insert(ip).second;
   sim_stats.static_branch_count += is_static;
   sim_stats.dynamic_branch_count += 1;
-  for (int j = 0; j < 64; j++) {
-    auto region_id = ip >> j;
-    if (region_id & 0x1) {
-      sim_stats.static_bit_counts[j] += is_static;
-      sim_stats.dynamic_bit_counts[j] += 1;
+  if (branch_target) { // static and dynamic is only branches inserted into the BTB -- not any branch
+    for (int j = 0; j < 64; j++) {
+      auto region_id = ip >> j;
+      if (region_id & 0x1) {
+        sim_stats.static_bit_counts[j] += is_static;
+        sim_stats.dynamic_bit_counts[j] += 1;
+      }
+      bool first_observation = observed_entries_per_region_size[j].insert(region_id).second;
+      sim_stats.max_regions_per_region_size[j] += first_observation;
     }
-    bool first_observation = observed_entries_per_region_size[j].insert(region_id).second;
-    sim_stats.max_regions_per_region_size[j] += first_observation;
   }
 
   // add something to the RAS
@@ -471,7 +473,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
 
   // COMMON STATS
-  {
+  if (branch_target){
     sim_stats.btb_updates++;
     // if (branch_type != NOT_BRANCH)
     //   sim_stats.branch_ip_set.insert((ip >> isa_shiftamount >> _BTB_SET_BITS));
@@ -641,6 +643,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         auto elem = ::region_btb_entry_t{ip};
         sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
         replaced = ::REGION_BTB.at(this).fill(elem);
+        sim_stats.branch_tag_set.insert(elem.tag());
         insert = true;
         // region_btb_insers++;
         // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);
@@ -652,6 +655,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       auto elem = ::region_btb_entry_t{ip};
       sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
       replaced = ::REGION_BTB.at(this).fill(elem);
+      sim_stats.branch_tag_set.insert(elem.tag());
       insert = true;
       // region_btb_insers++;
       // assert(!replaced_element.has_value() || replaced_element.value().ip_tag == 0);

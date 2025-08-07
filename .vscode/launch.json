@@ -79,7 +79,7 @@
                 "--simulation_instructions",
                 "10000000",
                 "--json",
-                "~/Downloads/stats.json",
+                "/Users/robrunne/Downloads/stats.json",
                 // "--tsv",
                 // "~/Downloads/ip_stats.tsv",
                 // "--btb-tag-hash",

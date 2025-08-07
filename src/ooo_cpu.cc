@@ -101,6 +101,7 @@ void O3_CPU::begin_phase()
   stats.btb_static_updates = sim_stats.btb_static_updates;
   stats.dynamic_bit_counts = sim_stats.dynamic_bit_counts;
   stats.max_regions_per_region_size = sim_stats.max_regions_per_region_size;
+  stats.branch_tag_set = sim_stats.branch_tag_set;
   stats.static_bit_counts = sim_stats.static_bit_counts;
   stats.dynamic_branch_count = sim_stats.dynamic_branch_count;
   stats.dynamic_btb_lookup_count = sim_stats.dynamic_btb_lookup_count;
