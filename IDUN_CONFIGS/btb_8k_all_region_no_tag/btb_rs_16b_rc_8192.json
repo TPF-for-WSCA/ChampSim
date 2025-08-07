@@ -1,5 +1,5 @@
 {
-  "executable_name": "all_region_no_tag/btb_rs_16b_rc_16",
+  "executable_name": "all_region_no_tag/btb_rs_16b_rc_8192",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
