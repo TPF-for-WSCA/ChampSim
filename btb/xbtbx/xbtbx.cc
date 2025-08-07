@@ -440,10 +440,6 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 // __attribute__((optimize(0)))
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
-  // if (!warmup && ip == 18446462598868070740 && current_cycle >= 7109931) {
-  //   std::cout << "this is one of the faulting branches" << std::endl;
-  // }
-  // DONE: calculate size
   uint64_t new_region = get_region(ip);
 
   uint64_t offset_size = (ip >> isa_shiftamount) ^ (branch_target >> isa_shiftamount);
