@@ -1,5 +1,5 @@
 {
-  "executable_name": "all_region_no_tag/abtb_tag_13b",
+  "executable_name": "ft_perf_all_region_no_tag/abtb_tag_13b",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
