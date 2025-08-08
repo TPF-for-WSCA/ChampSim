@@ -1,5 +1,5 @@
 {
-  "executable_name": "ft_perf_all_region_no_tag/btb_rs_13b_rc_512",
+  "executable_name": "ft_perf_all_region_no_tag/btb_rs_13b_rc_1024_rw_2_sp",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -59,10 +59,10 @@
         64
       ],
       "btb_tag_size": 0,
-      "btb_tag_regions": 512,
+      "btb_tag_regions": 1024,
       "btb_tag_region_size": 13,
-      "btb_tag_region_ways": 4,
-      "btb_perfect_mapping": 1,
+      "btb_tag_region_ways": 2,
+      "btb_perfect_mapping": 0,
       "align_bits": 5
     }
   ],

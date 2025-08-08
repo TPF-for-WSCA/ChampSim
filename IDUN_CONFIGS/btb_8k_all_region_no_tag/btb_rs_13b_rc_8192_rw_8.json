@@ -1,5 +1,5 @@
 {
-  "executable_name": "ft_perf_ft_perf_all_region_no_tag/btb_rs_13b_rc_8192_rw_8",
+  "executable_name": "ft_perf_all_region_no_tag/btb_rs_13b_rc_8192_rw_8",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
