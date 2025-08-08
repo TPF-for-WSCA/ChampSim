@@ -1,5 +1,5 @@
 {
-  "executable_name": "4k_ft_perf_all_region_no_tag/btb_rs_13b_rc_4096_rw_8",
+  "executable_name": "4k_ft_perf_all_region_no_tag/btb_rs_13b_rc_4096_rw_8_sp",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -62,7 +62,7 @@
       "btb_tag_regions": 4096,
       "btb_tag_region_size": 13,
       "btb_tag_region_ways": 8,
-      "btb_perfect_mapping": 1,
+      "btb_perfect_mapping": 0,
       "align_bits": 5
     }
   ],
