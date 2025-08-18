@@ -235,6 +235,7 @@ struct BTBEntry {
 
 struct region_btb_entry_t {
   uint64_t ip_tag = 0;
+  uint64_t max_pointer = 0;
   auto index() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
@@ -473,7 +474,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
 
   // COMMON STATS
-  if (branch_target){
+  if (branch_target) {
     sim_stats.btb_updates++;
     // if (branch_type != NOT_BRANCH)
     //   sim_stats.branch_ip_set.insert((ip >> isa_shiftamount >> _BTB_SET_BITS));
@@ -665,8 +666,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       if (!replaced.has_value() || replaced.value().ip_tag == 0 || get_region(ip) != get_region(replaced.value().ip_tag)) {
         sim_stats.region_btb_inserts_per_set.at(::region_btb_entry_t{ip}.index())++;
       }
-      if (replaced.has_value() && replaced.value().ip_tag != 0) {
+      if (replaced.has_value() && replaced.value().ip_tag != 0 && get_region(ip) != get_region(replaced.value().ip_tag)) {
         sim_stats.region_btb_conflicts++;
+        sim_stats.max_region_pointer_sum += replaced.value().max_pointer;
       }
     }
     // assert(region_btb_insers <= 256);
@@ -718,6 +720,17 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         fill_entry,
         entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
     uint64_t old_region = 0;
+    if (replaced_entry.value().ip_tag != 0 && sim_stats.region_pointer_count[get_region(replaced_entry.value().ip_tag)])
+      sim_stats.region_pointer_count[get_region(replaced_entry.value().ip_tag)]--;
+    if (region_idx.has_value()) {
+      sim_stats.region_pointer_count[get_region(fill_entry.ip_tag)]++;
+      auto region_elem = ::REGION_BTB.at(this).begin();
+      std::advance(region_elem, std::get<1>(region_idx.value()));
+      // if we achieved a new max count of region pointers on this entry increase here
+      if (region_elem->data.max_pointer < sim_stats.region_pointer_count[get_region(fill_entry.ip_tag)]) {
+        region_elem->data.max_pointer = sim_stats.region_pointer_count[get_region(fill_entry.ip_tag)];
+      }
+    }
 
     if (utilise_regions(replaced_entry.value().target_size)) {
       region_tag_entry_count[replaced_entry.value().target_size][new_region] += 1;

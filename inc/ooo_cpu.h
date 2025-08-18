@@ -84,6 +84,8 @@ struct cpu_stats {
   uint64_t btb_hits = 0;
   uint64_t total_squashed_cycles = 0;
   uint64_t aliasing_squashed_cycles = 0;
+  std::map<uint64_t, uint64_t> region_pointer_count = {};
+  uint64_t max_region_pointer_sum = 0;
   std::tuple<uint64_t, uint64_t, uint64_t> squash_counts = {0, 0, 0};          // <frontend squashes, full squashes, total squashes>
   std::tuple<uint64_t, uint64_t, uint64_t> aliasing_squash_counts = {0, 0, 0}; // <frontend squashes, full squashes, total squashes>
   std::set<uint64_t> branch_ip_set = {};
