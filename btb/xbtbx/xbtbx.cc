@@ -238,8 +238,8 @@ struct region_btb_entry_t {
   auto index() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    // NOTE: The shift by (_BTB_REGION_BITS - _BTB_SET_BITS) this term results in "big idx" inserts, so the msbs of the region are used for indexing
-    uint64_t raw_idx = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE >> (_BTB_REGION_BITS - _BTB_SET_BITS)) & (_BTB_TAG_REGION_SETS - 1);
+    // NOTE: If shifted by (_BTB_REGION_BITS - _BTB_SET_BITS) this term results in "big idx" inserts, so the msbs of the region are used for indexing
+    uint64_t raw_idx = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
     return raw_idx; // NOTE: keep track how many entries we observe per set
   }
   auto tag() const
