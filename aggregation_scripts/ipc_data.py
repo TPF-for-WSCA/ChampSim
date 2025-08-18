@@ -35,6 +35,7 @@ class STATS(Enum):
     SQUASH_COUNTS = 26  # this one is absolute only
     BTB_HIT_PKI = 27
     NUM_REGIONS_PER_REGION_SIZE = 28
+    REGION_BTB_REPLACEMENTS = 29
 
 
 
@@ -220,6 +221,22 @@ def extract_absolute_btb_aliasing(path):
             break
     return total
 
+
+def region_btb_replacements(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    # order of values: total, aliasing, same block, different block
+    re_total = re.compile(r"REGION BTB REPLACEMENTS: (\d+)")
+    total = 0
+    for line in logs:
+        matches = re_total.search(line)
+        if matches:
+            total = int(matches.groups()[0])
+            break
+    return total
+
 def extract_btb_hit_pki(path):
     logs = []
     with open(path) as f:
@@ -258,6 +275,7 @@ def extract_aliasing_relative_to_total_hits(path):
         if all(lookups):
             break
     return 0 if not lookups[1] else lookups[0] / lookups[1]
+
 
 def static_region_count_per_region_size(path):
     import itertools
@@ -600,6 +618,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_aliasing_relative_to_total_hits(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.REGION_BTB_REPLACEMENTS:
+                stat_by_workload[workload] = region_btb_replacements(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.ABSOLUTE_ALIASING:
                 stat_by_workload[workload] = extract_absolute_btb_aliasing(
                     f"{path}/{workload}/{logfile}"
@@ -740,6 +762,8 @@ def write_tsv(data, out_path=None):
         filename = "absolute_btb_hits"
     elif type == STATS.ALIASING:
         filename = "aliasing"
+    elif type == STATS.REGION_BTB_REPLACEMENTS:
+        filename = "region_btb_replacements"
     elif type == STATS.ABSOLUTE_ALIASING:
         filename = "total_aliasing"
     elif type == STATS.ALIASING_SQUASH_CYCLES:
@@ -874,6 +898,8 @@ elif sys.argv[3] == "BTB_HITS":
     type = STATS.BTB_HIT_PKI
 elif sys.argv[3] == "BTB_ALIASING":
     type = STATS.ALIASING
+elif sys.argv[3] == "REGION_BTB_REPLACEMENTS":
+    type = STATS.REGION_BTB_REPLACEMENTS
 elif sys.argv[3] == "BTB_TOTAL_ALIASING":
     type = STATS.ABSOLUTE_ALIASING
 elif sys.argv[3] == "BTB_RELATIVE_ALIASING_SQUASH_CYCLES":
