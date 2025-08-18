@@ -226,7 +226,6 @@ def region_btb_replacements(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    logs.reverse()
     # order of values: total, aliasing, same block, different block
     re_total = re.compile(r"REGION BTB REPLACEMENTS: (\d+)")
     total = 0
