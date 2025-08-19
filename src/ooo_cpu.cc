@@ -118,6 +118,8 @@ void O3_CPU::end_phase(unsigned finished_cpu)
   // Record where the phase ended (overwrite if this is later)
   sim_stats.end_instrs = num_retired;
   sim_stats.end_cycles = current_cycle;
+  impl_btb_end_phase(finished_cpu);
+
 
   if (finished_cpu == this->cpu) {
     finish_phase_instr = num_retired;

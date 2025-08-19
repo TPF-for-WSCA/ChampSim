@@ -42,12 +42,25 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   } else {
     fmt::print(stream, "\nAVG MAX POINTER REGIONS: ---\n");
   }
-  
+
   fmt::print(stream, "\n{} cumulative IPC: {:.4g} instructions: {} cycles: {}\n", stats.name, std::ceil(stats.instrs()) / std::ceil(stats.cycles()),
              stats.instrs(), stats.cycles());
   fmt::print(stream, "{} Branch Prediction Accuracy: {:.4g}% MPKI: {:.4g} Average ROB Occupancy at Mispredict: {:.4g}\n", stats.name,
              (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch, (1000.0 * total_mispredictions) / std::ceil(stats.instrs()),
              std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions);
+
+  fmt::print(stream, "\nXXX REGION BTB POINTER COUNT SAMPLED:\n");
+  for (auto it = stats.region_pointer_cycle_probe_stats.begin(); it != stats.region_pointer_cycle_probe_stats.end(); it++) {
+    fmt::print(stream, "{}:\t{}\n", it->first, it->second);
+  }
+  fmt::print(stream, "XXX END REGION BTB POINTER COUNT SAMPLED\n\n");
+
+  fmt::print(stream, "\nXXX REGION BTB POINTER COUNT MAX:\n");
+  for (auto it = stats.region_pointer_max_stats.begin(); it != stats.region_pointer_max_stats.end(); it++) {
+    fmt::print(stream, "{}:\t{}\n", it->first, it->second);
+  }
+  fmt::print(stream, "XXX END REGION BTB POINTER COUNT MAX\n\n");
+
 
   fmt::print(stream, "{} REGION BTB BIG REGIONS: {}\n", stats.name, stats.big_region_small_region_mapping.size());
   fmt::print(stream, "\tBIG_REGION_IDX:\tSUB_REGION_COUNT\n");

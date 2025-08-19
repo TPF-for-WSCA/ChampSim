@@ -669,6 +669,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       if (replaced.has_value() && replaced.value().ip_tag != 0 && get_region(ip) != get_region(replaced.value().ip_tag)) {
         sim_stats.region_btb_conflicts++;
         sim_stats.max_region_pointer_sum += replaced.value().max_pointer;
+        sim_stats.region_pointer_max_stats[replaced.value().max_pointer]++;
       }
     }
     // assert(region_btb_insers <= 256);
@@ -852,9 +853,22 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       std::get<4>(stats_entry[size]) = min2ref;
     }
     sim_stats.region_history.push_back(stats_entry);
+    for (auto it = sim_stats.region_pointer_count.begin(); it != sim_stats.region_pointer_count.end(); it++) {
+      if (!it->second) {
+        continue;
+      }
+      sim_stats.region_pointer_cycle_probe_stats[it->second]++;
+    }
     last_stats_cycle = current_cycle;
   }
   /********* STATS END *********/
   /********* UPDATE STATE *********/
   prev_branch_ip = ip;
+}
+
+void O3_CPU::btb_end_phase (unsigned finished_cpu) {
+  // TODO: go through all entries in the REGION BTB and read out max pointer values
+  for (auto it = ::REGION_BTB.at(this).begin(); it != ::REGION_BTB.at(this).end(); it++) {
+    sim_stats.region_pointer_max_stats[it->data.max_pointer]++;
+  }
 }

@@ -94,7 +94,7 @@ def get_branch_data(module_name):
 
 def get_btb_data(module_name):
     return data_getter(
-        "btb", module_name, ("initialize_btb", "update_btb", "btb_prediction")
+        "btb", module_name, ("initialize_btb", "update_btb", "btb_prediction", "btb_end_phase")
     )
 
 
@@ -360,6 +360,11 @@ def get_ooo_cpu_module_lines(branch_data, btb_data):
             (("uint64_t", "ip"),),
             "std::tuple<uint64_t, uint64_t, uint8_t>",
             "champsim::detail::take_last",
+        ),
+        (
+            "btb_end_phase",
+            (("unsigned", "finished_cpu"),),
+            "void"
         ),
     ]
 

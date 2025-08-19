@@ -85,6 +85,8 @@ struct cpu_stats {
   uint64_t total_squashed_cycles = 0;
   uint64_t aliasing_squashed_cycles = 0;
   std::map<uint64_t, uint64_t> region_pointer_count = {};
+  std::map<uint64_t, uint64_t> region_pointer_max_stats = {};
+  std::map<uint64_t, uint64_t> region_pointer_cycle_probe_stats = {};
   uint64_t max_region_pointer_sum = 0;
   std::tuple<uint64_t, uint64_t, uint64_t> squash_counts = {0, 0, 0};          // <frontend squashes, full squashes, total squashes>
   std::tuple<uint64_t, uint64_t, uint64_t> aliasing_squash_counts = {0, 0, 0}; // <frontend squashes, full squashes, total squashes>
@@ -290,6 +292,7 @@ public:
     virtual void impl_initialize_btb() = 0;
     virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) = 0;
     virtual std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
+    virtual void impl_btb_end_phase(unsigned finished_cpu) = 0;
   };
 
   template <unsigned long long B_FLAG, unsigned long long T_FLAG>
@@ -304,6 +307,7 @@ public:
     void impl_initialize_btb();
     void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type);
     std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
+    void impl_btb_end_phase(unsigned finished_cpu);
   };
 
   std::unique_ptr<module_concept> module_pimpl;
@@ -321,6 +325,10 @@ public:
     module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
   }
   std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
+
+  void impl_btb_end_phase(unsigned finished_cpu){
+    module_pimpl->impl_btb_end_phase(finished_cpu);
+  }
 
   class builder_conversion_tag
   {
