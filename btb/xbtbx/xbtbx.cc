@@ -872,3 +872,75 @@ void O3_CPU::btb_end_phase (unsigned finished_cpu) {
     sim_stats.region_pointer_max_stats[it->data.max_pointer]++;
   }
 }
+
+void O3_CPU::btb_invalidate_entry(uint64_t ip) {
+  std::optional<::BTBEntry> btb_entry = std::nullopt;
+  std::optional<::FilterBTBEntry> filter_hit = std::nullopt;
+  if (REGION_BTB_FILTER_ENABLED && _BTB_TAG_REGIONS)
+    filter_hit = ::REGION_FILTER_BTB.at(this).check_hit({ip});
+  if (_BTB_TAG_REGIONS && !filter_hit.has_value()) {
+    auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
+    std::optional<::BTBEntry> partial = std::nullopt;
+    if (BTB_PARTIAL_TAG_RESOLUTION) {
+      partial = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, std::tuple<uint16_t, uint16_t, uint64_t>{0, 0, 0}}, true);
+    }
+    std::optional<::BTBEntry> full_small = std::nullopt;
+    std::optional<::BTBEntry> partial_small = std::nullopt;
+    std::optional<::BTBEntry> full_big = std::nullopt;
+    std::optional<::BTBEntry> partial_big = std::nullopt;
+    std::optional<::BTBEntry> full_64 = std::nullopt;
+    if (small_way_regions_enabled && region_idx_.has_value()) {
+      full_small = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, region_idx_.value(), 0});
+      if (full_small.has_value() && !utilise_regions(full_small.value().target_size)) {
+        full_small = std::nullopt;
+      }
+    } else if (!small_way_regions_enabled) {
+      partial_small = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, std::tuple<uint16_t, uint16_t, uint64_t>{(uint16_t)-1, 0, 0}, 0});
+    }
+    if (big_way_regions_enabled && region_idx_.has_value()) {
+      full_big = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, region_idx_.value(), BTB_TARGET_SIZES.end()[-2]});
+      if (full_big.has_value() && !utilise_regions(full_big.value().target_size)) {
+        full_small = std::nullopt;
+      }
+    } else if (!big_way_regions_enabled) {
+      partial_big = ::BTB.at(this).check_hit(
+          {ip, 0, branch_info::ALWAYS_TAKEN, std::tuple<uint16_t, uint16_t, uint64_t>{(uint16_t)-1, 0, 0}, BTB_TARGET_SIZES.end()[-2]});
+    }
+    full_64 = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, std::tuple<uint16_t, uint16_t, uint64_t>{(uint16_t)-1, 0, 0}, 64});
+    if (full_64.has_value() && full_64.value().target_size != 64) {
+      full_64 = std::nullopt; // fixing up for when we are using perfect matching, as in this case we will alias as we use the actual region bits instead of
+                              // their index
+    }
+
+    assert(
+        !(full_small.has_value() && full_big.has_value()
+          && full_small.value().ip_tag != full_big.value().ip_tag)); // This should never happen as then we should have updated the value instead of re-inserted
+    if (full_small.has_value()) {
+      btb_entry = full_small.value();
+    } else if (full_big.has_value()) {
+      btb_entry = full_big.value();
+    } else if (partial_small.has_value()) {
+      btb_entry = partial_small.value();
+    } else if (partial_big.has_value()) {
+      btb_entry = partial_big.value();
+    } else if (partial.has_value()) { // could only ever be true if partial resolution is enabled
+      btb_entry = partial.value();
+    } else if (full_64.has_value()) {
+      btb_entry = full_64.value();
+    }
+  } else if (!filter_hit.has_value()) {
+    // TODO: Fix to only invalidate in the if condition, never else
+    btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, std::tuple<uint16_t, uint16_t, uint64_t>{0, 0, 0}, 0});
+  } else {
+    auto v = filter_hit.value();
+    btb_entry = {v.ip_tag, v.target, v.type, v.region_idx_tag};
+  }
+
+  // no prediction for this IP
+  // default: no aliasing, thus returning ip itself as recorded ip
+  if (!btb_entry.has_value()){
+    std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY - THIS SHOULD NEVER HAPPEN" << std::endl;
+    assert(0);
+  }
+  ::BTB.at(this).invalidate(btb_entry.value());
+}

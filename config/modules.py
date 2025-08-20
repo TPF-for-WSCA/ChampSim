@@ -94,7 +94,7 @@ def get_branch_data(module_name):
 
 def get_btb_data(module_name):
     return data_getter(
-        "btb", module_name, ("initialize_btb", "update_btb", "btb_prediction", "btb_end_phase")
+        "btb", module_name, ("initialize_btb", "update_btb", "btb_prediction", "btb_end_phase", "btb_invalidate_entry")
     )
 
 
@@ -364,6 +364,11 @@ def get_ooo_cpu_module_lines(branch_data, btb_data):
         (
             "btb_end_phase",
             (("unsigned", "finished_cpu"),),
+            "void"
+        ),
+        (
+            "btb_invalidate_entry",
+            (("uint64_t", "ip"),),
             "void"
         ),
     ]
