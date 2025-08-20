@@ -218,6 +218,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
                        : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
   }
   if (!warmup and predicted_branch_target and branch_ip != arch_instr.ip) {
+    std::cout << arch_instr.instr_id << std::endl;
     sim_stats.total_aliasing++;
     is_aliasing = true;
     auto differing_bits = std::bitset<64>{branch_ip ^ arch_instr.ip};
@@ -432,6 +433,8 @@ long O3_CPU::decode_instruction()
           std::get<0>(sim_stats.aliasing_squash_counts) += 1;
           std::get<2>(sim_stats.aliasing_squash_counts) += 1;
           sim_stats.aliasing_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
+          // TODO: Only invalidate *iff* we are doing region based BTB
+          impl_btb_invalidate_entry(db_entry.ip);
         }
         fetch_stalled_cycle = 0;
         is_aliasing_stall = false;

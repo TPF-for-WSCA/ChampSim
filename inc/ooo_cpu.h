@@ -293,6 +293,7 @@ public:
     virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) = 0;
     virtual std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
     virtual void impl_btb_end_phase(unsigned finished_cpu) = 0;
+    virtual void impl_btb_invalidate_entry(uint64_t ip) = 0;
   };
 
   template <unsigned long long B_FLAG, unsigned long long T_FLAG>
@@ -308,6 +309,7 @@ public:
     void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type);
     std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
     void impl_btb_end_phase(unsigned finished_cpu);
+    void impl_btb_invalidate_entry(uint64_t);
   };
 
   std::unique_ptr<module_concept> module_pimpl;
@@ -328,6 +330,10 @@ public:
 
   void impl_btb_end_phase(unsigned finished_cpu){
     module_pimpl->impl_btb_end_phase(finished_cpu);
+  }
+
+  void impl_btb_invalidate_entry(uint64_t ip) {
+    module_pimpl->impl_btb_invalidate_entry(ip);
   }
 
   class builder_conversion_tag
