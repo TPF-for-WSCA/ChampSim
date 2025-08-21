@@ -739,10 +739,10 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       if (replaced_entry.has_value() && replaced_entry.value().ip_tag) {
         old_region = get_region(replaced_entry.value().ip_tag);
         if (total_region_tag_entry_count[old_region] == 0) {
-          std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
-          std::cerr << "OLD REGION: " << old_region << std::endl;
-          std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
-          std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
+          // std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
+          // std::cerr << "OLD REGION: " << old_region << std::endl;
+          // std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+          // std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
           total_region_tag_entry_count.erase(total_region_tag_entry_count.find(old_region));
         } else {
           total_region_tag_entry_count[old_region] -= 1;
@@ -751,10 +751,10 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
           }
         }
         if (region_tag_entry_count[replaced_entry.value().target_size][old_region] == 0) {
-          std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
-          std::cerr << "OLD REGION: " << old_region << std::endl;
-          std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
-          std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
+          // std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
+          // std::cerr << "OLD REGION: " << old_region << std::endl;
+          // std::cerr << "INSTRUCTION TO BLAME: " << std::endl;
+          // std::cerr << "\tip: " << ip << ", cycle: " << current_cycle << std::endl;
           region_tag_entry_count[replaced_entry.value().target_size].erase(region_tag_entry_count[replaced_entry.value().target_size].find(old_region));
         } else {
           region_tag_entry_count[replaced_entry.value().target_size][old_region] -= 1;

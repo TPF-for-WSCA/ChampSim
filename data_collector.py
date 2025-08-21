@@ -82,6 +82,14 @@ def run_experiment(
         f.write(" ".join(cmd).encode())
         f.write(b"\n==================== STDOUT ====================\n")
         f.write(completed_experiment.stdout)
+    with open(path.join(output_dir, f"stderr_{config_file_name}.err"), mode="ab+") as f:
+        now = datetime.now()
+        datetimestring = now.strftime("%d.%m.%Y %H:%M")
+        f.write(
+            f"####################################################################################################\n#                                                                                                  #\n#                                                                                                  #\n#                                    NEW RUN - {datetimestring}                                    #\n#                                                                                                  #\n#                                                                                                  #\n####################################################################################################\n".encode()
+        )
+        f.write(b"==================== CMD ====================\n")
+        f.write(" ".join(cmd).encode())
         f.write(b"==================== STDERR ====================\n")
         f.write(completed_experiment.stderr)
         f.flush()
