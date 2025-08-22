@@ -218,7 +218,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
                        : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
   }
   if (!warmup and predicted_branch_target and branch_ip != arch_instr.ip) {
-    std::cout << arch_instr.instr_id << std::endl;
+    // std::cout << arch_instr.instr_id << std::endl;
     sim_stats.total_aliasing++;
     is_aliasing = true;
     auto differing_bits = std::bitset<64>{branch_ip ^ arch_instr.ip};
