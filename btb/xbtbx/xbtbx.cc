@@ -939,8 +939,10 @@ void O3_CPU::btb_invalidate_entry(uint64_t ip) {
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
   if (!btb_entry.has_value()){
-    std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY - THIS SHOULD NEVER HAPPEN" << std::endl;
-    assert(0);
+    std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR "<< ip << std::endl;
+    std::cerr << "ALREADY REPLACED?" << std::endl;
+    return;
+    // assert(0);
   }
   ::BTB.at(this).invalidate(btb_entry.value());
 }
