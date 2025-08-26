@@ -82,6 +82,8 @@ def run_experiment(
         f.write(" ".join(cmd).encode())
         f.write(b"\n==================== STDOUT ====================\n")
         f.write(completed_experiment.stdout)
+
+    # TODO: Filter Stderr if there are too many of the same message, only print the first n and then a line saying how many more there were of the same
     with open(path.join(output_dir, f"stderr_{config_file_name}.err"), mode="ab+") as f:
         now = datetime.now()
         datetimestring = now.strftime("%d.%m.%Y %H:%M")
