@@ -150,7 +150,7 @@ def extract_btb_region_split(path):
     with open(path) as f:
         logs = f.readlines()
     logs.reverse()
-    region_split_re = re.compile(r"CPU 0 REGION BTB BIG REGIONS: (\d+)")
+    region_split_re = re.compile(r"CPU 0 TOTAL REGIONS: (\d+)")
     for line in logs:
         matches = region_split_re.search(line)
         if matches:
