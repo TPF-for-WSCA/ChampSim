@@ -64,8 +64,10 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
 
   fmt::print(stream, "{} REGION BTB BIG REGIONS: {}\n", stats.name, stats.big_region_small_region_mapping.size());
   fmt::print(stream, "\tBIG_REGION_IDX:\tSUB_REGION_COUNT\n");
+  uint64_t total_regions = 0;
   for (auto const& [big_region, tags] : stats.big_region_small_region_mapping) {
     fmt::print(stream, "\t{}:\t{}\n", big_region, tags.size());
+    total_regions += tags.size();
   }
 
   fmt::print(stream, "{} REGIONS BY SIZE:\n", stats.name);
@@ -86,6 +88,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
 
   fmt::print(stream, "\nPositive Aliasing: {}\nNegative Aliasing: {}\nNone-Branch Aliasing: {}\nTotal Aliasing: {}", stats.positive_aliasing,
              stats.negative_aliasing, stats.non_branch_btb_hits, stats.total_aliasing);
+  fmt::print(stream, "\n{} TOTAL REGIONS: {}\n", stats.name, total_regions);
   fmt::print(stream, "\nMAX BTB Regions: {}\nMIN BTB Regions: {}\n", stats.max_regions, stats.min_regions);
 
   fmt::print(stream, "\nALIASING BIT COUNTS:\n");
