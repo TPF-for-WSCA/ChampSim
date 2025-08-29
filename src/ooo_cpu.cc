@@ -429,7 +429,7 @@ long O3_CPU::decode_instruction()
         std::get<0>(sim_stats.squash_counts) += 1;
         std::get<2>(sim_stats.squash_counts) += 1;
         sim_stats.total_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
-        if (is_aliasing_stall) {
+        if (is_aliasing_stall && (btb_small_way_regions_enabled || btb_big_way_regions_enabled)) {
           std::get<0>(sim_stats.aliasing_squash_counts) += 1;
           std::get<2>(sim_stats.aliasing_squash_counts) += 1;
           sim_stats.aliasing_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
