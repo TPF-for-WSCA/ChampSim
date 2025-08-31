@@ -76,9 +76,9 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "--warmup_instructions",
-                "10000000",
+                "0000000",
                 "--simulation_instructions",
-                "100000000",
+                "10000000",
                 "--json",
                 "/Users/robrunne/Downloads/stats.json",
                 // "--tsv",
@@ -92,14 +92,14 @@
                 // "/Users/robrunne/Workspace/traces/tanvir/clang/clang.gz",
                 // "/Users/robrunne/Workspace/traces/ipc1/client_001.champsimtrace.xz"
                 //"/Users/robrunne/Workspace/traces/LLBP/renaissance-finagle-chirper.champsim.trace.gz"
-                //"/Users/robrunne/Workspace/traces/LLBP/renaissance-finagle-chirper.champsim.trace.gz"
+                "/Users/robrunne/Workspace/traces/LLBP/renaissance-finagle-chirper.champsim.trace.gz"
                 // "/Users/robrunne/Workspace/traces/dpc3/renaissance-finagle-chirper.champsim.trace.gz"
                 //"/Users/robrunne/Workspace/traces/ipc1/server_022.champsimtrace.xz"
                 //"/Users/robrunne/Workspace/traces/ipc1/server_001.champsimtrace.xz"
                 // "/Users/robrunne/OneDrive - NTNU/Research/datasets/test_trace.xz"
                 //"/Users/robrunne/Workspace/traces/ipc1/server_036.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/client_007.champsimtrace.xz"
-                "/Users/robrunne/Workspace/traces/ipc1/spec_gcc_001.champsimtrace.xz"
+                //"/Users/robrunne/Workspace/traces/ipc1/spec_gcc_001.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/server_014.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/server_011.champsimtrace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/crc2/astar_163B.trace.xz"

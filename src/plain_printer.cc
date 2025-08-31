@@ -120,6 +120,10 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     auto local_switch_entropy =
         (switch_percentage) ? -1.0 * (switch_percentage * std::log2l(switch_percentage) + (1.0 - switch_percentage) * std::log2l(1.0 - switch_percentage)) : 0;
     auto local_entropy = (percentage) ? -1.0 * (percentage * std::log2l(percentage) + (1.0 - percentage) * std::log2l(1.0 - percentage)) : 0;
+    if (std::isnan(local_entropy)){
+      std::cerr << "local entropy was nan -- double check this" << std::endl;
+      continue;
+    }
     tag_bit_order.push_back({local_entropy, i});
     switch_bit_order.push_back({local_switch_entropy, i});
   }
