@@ -60,7 +60,7 @@ def run_experiment(
     print(f"EXECUTE {' '.join(cmd)}", flush=True)
     os.makedirs(output_dir, exist_ok=True)
     success = True
-    completed_experiment = subprocess.run(cmd, -1, capture_output=True)
+    completed_experiment = subprocess.run(cmd, -1, capture_output=True, check=False)
     if completed_experiment.returncode != 0:
         print(
             f"WARNING: EXPERIMENT {' '.join(cmd)} returned non-zero code",

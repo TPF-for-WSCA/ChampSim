@@ -23,10 +23,10 @@ module load GCCcore/12.2.0
 # binary_dir=("btb_region_tag" "btb_4k_region_tag_split_exp" "btb_512_region_tag_exp" "btb_256_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp")
 suffix=""
 binary_dir=("btb_4k_region_count_exp" "btb_8k_region_count_exp") # "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
-count=0
+count=2
 timelimit="6:00:00"
-warmup=100000000
-simulation=100000000
+warmup=30000000
+simulation=30000000
 
 mem_per_cpu="20G"
 max_core_count=8
