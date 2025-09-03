@@ -43,6 +43,8 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     fmt::print(stream, "\nAVG MAX POINTER REGIONS: ---\n");
   }
 
+  fmt::print(stream, "\nBACK TO BACK BRANCHES: {}\tUNIQUE BRANCHES: {}", stats.back_to_back_branches, stats.unique_aligned_branches);
+
   fmt::print(stream, "\n{} cumulative IPC: {:.4g} instructions: {} cycles: {}\n", stats.name, std::ceil(stats.instrs()) / std::ceil(stats.cycles()),
              stats.instrs(), stats.cycles());
   fmt::print(stream, "{} Branch Prediction Accuracy: {:.4g}% MPKI: {:.4g} Average ROB Occupancy at Mispredict: {:.4g}\n", stats.name,

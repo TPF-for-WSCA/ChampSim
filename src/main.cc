@@ -55,8 +55,10 @@ int main(int argc, char** argv)
   };
 
   auto set_intel_callback = [&](auto) {
-    for (O3_CPU& cpu : gen_environment.cpu_view())
+    for (O3_CPU& cpu : gen_environment.cpu_view()) {
       cpu.intel = true;
+      cpu.isa_shiftamount = 0;
+    }
   };
 
   app.add_flag("-c,--cloudsuite", knob_cloudsuite, "Read all traces using the cloudsuite format");

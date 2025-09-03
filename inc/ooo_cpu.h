@@ -82,6 +82,8 @@ struct cpu_stats {
   uint16_t btb_tag_size = 0;
   uint64_t btb_reads = 0;
   uint64_t btb_hits = 0;
+  uint64_t back_to_back_branches = 0;
+  uint64_t unique_aligned_branches = 0;
   uint64_t total_squashed_cycles = 0;
   uint64_t aliasing_squashed_cycles = 0;
   std::map<uint64_t, uint64_t> region_pointer_count = {};
@@ -158,6 +160,7 @@ private:
   uint8_t clipped_tag_size;
 
 public:
+  uint8_t isa_shiftamount = 2;
   std::vector<uint8_t> btb_index_tag_hash{};
   size_t BTB_WAYS;
   size_t BTB_NON_INDIRECT;

@@ -34,6 +34,7 @@
 #define KERNEL_IGNORE_ENABLE false
 
 uint64_t prev_branch_lookup_ip = 0;
+ooo_model_instr prev_instr = {0, input_instr() };
 
 std::chrono::seconds elapsed_time();
 
@@ -105,6 +106,8 @@ void O3_CPU::begin_phase()
   stats.static_bit_counts = sim_stats.static_bit_counts;
   stats.region_pointer_count = sim_stats.region_pointer_count;
   stats.dynamic_branch_count = sim_stats.dynamic_branch_count;
+  stats.back_to_back_branches = sim_stats.back_to_back_branches;
+  stats.unique_aligned_branches = sim_stats.unique_aligned_branches;
   stats.dynamic_btb_lookup_count = sim_stats.dynamic_btb_lookup_count;
   stats.btb_tag_lookup_switch_entropy = sim_stats.btb_tag_lookup_switch_entropy;
   stats.static_branch_count = sim_stats.static_branch_count;
@@ -143,7 +146,17 @@ void O3_CPU::initialize_instruction()
 
     // Add to IFETCH_BUFFER
     IFETCH_BUFFER.push_back(input_queue.front());
+    if (prev_instr.ip && prev_instr.ip >> isa_shiftamount >> 1 == input_queue.front().ip >> isa_shiftamount >> 1) {
+      uint8_t branch_count = prev_instr.is_branch + input_queue.front().is_branch;
+      if (branch_count == 2) {
+        sim_stats.back_to_back_branches++;
+      } else if (branch_count == 1) {
+        sim_stats.unique_aligned_branches++;
+      }
+    }
+    prev_instr = input_queue.front();
     input_queue.pop_front();
+
 
     IFETCH_BUFFER.back().event_cycle = current_cycle;
   }
