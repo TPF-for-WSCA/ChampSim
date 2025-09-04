@@ -22,8 +22,6 @@
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
 #define SAMPLING_DISTANCE 1000000
-#define invalidate_entry false
-#define invalidate_region true
 
 uint64_t invalid_replacements = 0;
 
@@ -876,7 +874,7 @@ void O3_CPU::btb_end_phase (unsigned finished_cpu) {
 }
 
 void O3_CPU::btb_invalidate_entry(uint64_t ip) {
-  if (!invalidate_entry && !invalidate_region)
+  if (!btb_invalidate_entry_on_alias && !btb_invalidate_region)
     return;
   std::optional<::BTBEntry> btb_entry = std::nullopt;
   std::optional<::FilterBTBEntry> filter_hit = std::nullopt;
@@ -951,8 +949,8 @@ void O3_CPU::btb_invalidate_entry(uint64_t ip) {
     return;
     // assert(0);
   }
-  if (invalidate_entry)
+  if (btb_invalidate_entry_on_alias)
     ::BTB.at(this).invalidate(btb_entry.value());
-  else 
+  else if (btb_invalidate_region)
     ::REGION_BTB.at(this).invalidate(region_entry.value());
 }
