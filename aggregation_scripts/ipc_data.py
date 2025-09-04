@@ -138,7 +138,7 @@ def extract_btb_tag_entropy(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    entropy_re = re.compile(r"BTB TAG Entropy: ([0-9]*(\.[0-9]+)?)")
+    entropy_re = re.compile(r"BTB TAG SWITCH Entropy: ([0-9]*(\.[0-9]+)?)")
     for line in logs:
         matches = entropy_re.search(line)
         if matches:
