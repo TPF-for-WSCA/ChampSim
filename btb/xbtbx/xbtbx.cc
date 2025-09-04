@@ -22,6 +22,8 @@
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
 #define SAMPLING_DISTANCE 1000000
+#define invalidate_entry false
+#define invalidate_region true
 
 uint64_t invalid_replacements = 0;
 
@@ -874,12 +876,17 @@ void O3_CPU::btb_end_phase (unsigned finished_cpu) {
 }
 
 void O3_CPU::btb_invalidate_entry(uint64_t ip) {
+  if (!invalidate_entry && !invalidate_region)
+    return;
   std::optional<::BTBEntry> btb_entry = std::nullopt;
   std::optional<::FilterBTBEntry> filter_hit = std::nullopt;
   if (REGION_BTB_FILTER_ENABLED && _BTB_TAG_REGIONS)
     filter_hit = ::REGION_FILTER_BTB.at(this).check_hit({ip});
+  std::optional<std::tuple<uint16_t, uint16_t, uint64_t>> region_idx_ = std::nullopt;
+  std::optional<::region_btb_entry_t> region_entry = std::nullopt;
   if (_BTB_TAG_REGIONS && !filter_hit.has_value()) {
-    auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
+    region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
+    region_entry = ::REGION_BTB.at(this).check_hit({ip});
     std::optional<::BTBEntry> partial = std::nullopt;
     if (BTB_PARTIAL_TAG_RESOLUTION) {
       partial = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, std::tuple<uint16_t, uint16_t, uint64_t>{0, 0, 0}}, true);
@@ -938,11 +945,14 @@ void O3_CPU::btb_invalidate_entry(uint64_t ip) {
 
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
-  if (!btb_entry.has_value()){
+  if (!btb_entry.has_value() || !region_idx_.has_value()){
     std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR "<< ip << std::endl;
     std::cerr << "ALREADY REPLACED?" << std::endl;
     return;
     // assert(0);
   }
-  ::BTB.at(this).invalidate(btb_entry.value());
+  if (invalidate_entry)
+    ::BTB.at(this).invalidate(btb_entry.value());
+  else 
+    ::REGION_BTB.at(this).invalidate(region_entry.value());
 }

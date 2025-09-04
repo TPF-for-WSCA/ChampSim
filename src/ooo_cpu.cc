@@ -446,7 +446,7 @@ long O3_CPU::decode_instruction()
           std::get<0>(sim_stats.aliasing_squash_counts) += 1;
           std::get<2>(sim_stats.aliasing_squash_counts) += 1;
           sim_stats.aliasing_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
-          // TODO: Only invalidate *iff* we are doing region based BTB
+          // TODO: Only invalidate *iff* this is a region based implemented part of the btb
           impl_btb_invalidate_entry(db_entry.ip);
         }
         fetch_stalled_cycle = 0;

@@ -154,6 +154,8 @@ private:
   bool btb_small_way_regions_enabled;
   bool btb_big_way_regions_enabled;
   bool btb_perfect_mapping;
+  bool btb_invalidate_entry;
+  bool btb_invalidate_region;
   bool bp_ignore_non_branch;
   bool perfect_branch_predict;
   bool full_tag, clipped_tag;
@@ -386,6 +388,8 @@ public:
     bool m_btb_small_way_regions_enabled{};
     bool m_btb_big_way_regions_enabled{};
     bool m_btb_perfect_mapping{};
+    bool m_btb_invalidate_entry{};
+    bool m_btb_invalidate_region{};
     bool m_bp_ignore_non_branch{};
 
     CACHE* m_l1i{};
@@ -579,6 +583,16 @@ public:
       m_btb_perfect_mapping = btb_perfect_mapping_;
       return *this;
     }
+    self_type& btb_invalidate_entry(bool btb_invalidate_entry_)
+    {
+      m_btb_invalidate_entry = btb_invalidate_entry_;
+      return *this;
+    }
+    self_type& btb_invalidate_region(bool btb_invalidate_region_)
+    {
+      m_btb_invalidate_region = btb_invalidate_region_;
+      return *this;
+    }
     self_type& bp_ignore_non_branch(bool bp_ignore_non_branch_)
     {
       m_bp_ignore_non_branch = bp_ignore_non_branch_;
@@ -665,7 +679,7 @@ public:
         SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
         BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), perfect_btb(b.m_perfect_btb), perfect_branch_predict(b.m_perfect_branch_predict),
         btb_small_way_regions_enabled(b.m_btb_small_way_regions_enabled), btb_big_way_regions_enabled(b.m_btb_big_way_regions_enabled),
-        BTB_CLIPPED_TAG(b.m_btb_clipped_tag), btb_perfect_mapping(b.m_btb_perfect_mapping), bp_ignore_non_branch(b.m_bp_ignore_non_branch),
+        BTB_CLIPPED_TAG(b.m_btb_clipped_tag), btb_perfect_mapping(b.m_btb_perfect_mapping), btb_invalidate_entry(b.m_btb_invalidate_entry), btb_invalidate_region(b.m_btb_invalidate_region), bp_ignore_non_branch(b.m_bp_ignore_non_branch),
         BTB_PARTIAL_TAG_RESOLUTION(b.m_btb_partial_tag_resolution), BTB_TARGET_SIZES(b.m_btb_target_sizes), BTB_TAG_SIZE(b.m_btb_tag_size),
         BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_FILTER_BTB_LIMIT(b.m_btb_filter_btb_limit), BTB_TAG_REGION_WAYS(b.m_btb_tag_region_ways),
         BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),

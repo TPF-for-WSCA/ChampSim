@@ -300,6 +300,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem):
             cpu.get("btb_small_way_regions_enabled", 0)
         )
         yield ".btb_perfect_mapping({})".format(cpu.get("btb_perfect_mapping", 0))
+        yield ".btb_invalidate_entry({})".format(cpu.get("btb_invalidate_entry")),
+        yield ".btb_invalidate_region({})".format(cpu.get("btb_invalidate_region")),
         yield ".bp_ignore_non_branch({})".format(cpu.get("bp_ignore_non_branch", 0))
         yield ".btb_big_way_regions_enabled({})".format(
             cpu.get("btb_big_way_regions_enabled", 0)

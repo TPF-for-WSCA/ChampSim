@@ -71,7 +71,7 @@
             "name": "C++ Mac Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/bin/champsim_perfect",
+            "program": "${workspaceRoot}/bin/champsim",
             "externalConsole": false,
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
@@ -100,8 +100,8 @@
                 //"/Users/robrunne/Workspace/traces/ipc1/server_036.champsimtrace.xz"
                 // "/Users/robrunne/Workspace/traces/ipc1/client_007.champsimtrace.xz"
                 //"/Users/robrunne/Workspace/traces/ipc1/spec_gcc_001.champsimtrace.xz"
-                "/Users/robrunne/Workspace/traces/ipc1/server_014.champsimtrace.xz"
-                // "/Users/robrunne/Workspace/traces/ipc1/server_011.champsimtrace.xz"
+                // "/Users/robrunne/Workspace/traces/ipc1/server_014.champsimtrace.xz"
+                "/Users/robrunne/Workspace/traces/ipc1/server_011.champsimtrace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/crc2/astar_163B.trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/dpc3/champsim-traces/speccpu/400.perlbench-41B.champsimtrace.xz"
             ],
