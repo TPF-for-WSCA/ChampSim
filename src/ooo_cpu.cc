@@ -33,6 +33,8 @@
 #define KERNEL_LOWER_BOUND 0xffff800000000000ul
 #define KERNEL_IGNORE_ENABLE false
 
+std::set<uint64_t> branch_seen = {}; 
+
 uint64_t prev_branch_lookup_ip = 0;
 ooo_model_instr prev_instr = {0, input_instr() };
 
@@ -223,7 +225,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (predicted_branch_target) {
     sim_stats.btb_hits++;
   }
-  if (perfect_btb) {
+  bool first_branch_occurrence = branch_seen.insert(arch_instr.ip).second;
+  if (perfect_btb && ((realistic_perfect && !first_branch_occurrence) || !realistic_perfect)) {
     predicted_branch_target = arch_instr.branch_target;
     branch_ip = arch_instr.ip;
     always_taken = (arch_instr.branch_type == BRANCH_CONDITIONAL || arch_instr.branch_type == BRANCH_OTHER)
@@ -244,7 +247,9 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   }
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
   if (perfect_branch_predict && arch_instr.is_branch) {
-    arch_instr.branch_prediction = arch_instr.branch_taken;
+    if (realistic_perfect && first_branch_occurrence) {}
+    else
+      arch_instr.branch_prediction = arch_instr.branch_taken;
   }
   if (arch_instr.branch_prediction == 0) {
     predicted_branch_target = 0;

@@ -158,6 +158,7 @@ private:
   bool btb_invalidate_region;
   bool bp_ignore_non_branch;
   bool perfect_branch_predict;
+  bool realistic_perfect;
   bool full_tag, clipped_tag;
   uint8_t clipped_tag_size;
 
@@ -385,6 +386,7 @@ public:
     unsigned char m_btb_tag_region_size{};
     bool m_perfect_btb{};
     bool m_perfect_branch_predict{};
+    bool m_realistic_perfect{};
     bool m_btb_small_way_regions_enabled{};
     bool m_btb_big_way_regions_enabled{};
     bool m_btb_perfect_mapping{};
@@ -573,6 +575,11 @@ public:
       m_perfect_branch_predict = perfect_branch_predict_;
       return *this;
     }
+    self_type& realistic_perfect(bool realistic_perfect_)
+    {
+      m_realistic_perfect = realistic_perfect_;
+      return *this;
+    }
     self_type& btb_small_way_regions_enabled(bool btb_small_way_regions_enabled_)
     {
       m_btb_small_way_regions_enabled = btb_small_way_regions_enabled_;
@@ -677,7 +684,7 @@ public:
         SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),
         BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency),
         SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
-        BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), perfect_btb(b.m_perfect_btb), perfect_branch_predict(b.m_perfect_branch_predict),
+        BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), perfect_btb(b.m_perfect_btb), realistic_perfect(b.m_realistic_perfect), perfect_branch_predict(b.m_perfect_branch_predict),
         btb_small_way_regions_enabled(b.m_btb_small_way_regions_enabled), btb_big_way_regions_enabled(b.m_btb_big_way_regions_enabled),
         BTB_CLIPPED_TAG(b.m_btb_clipped_tag), btb_perfect_mapping(b.m_btb_perfect_mapping), btb_invalidate_entry_on_alias(b.m_btb_invalidate_entry), btb_invalidate_region(b.m_btb_invalidate_region), bp_ignore_non_branch(b.m_bp_ignore_non_branch),
         BTB_PARTIAL_TAG_RESOLUTION(b.m_btb_partial_tag_resolution), BTB_TARGET_SIZES(b.m_btb_target_sizes), BTB_TAG_SIZE(b.m_btb_tag_size),

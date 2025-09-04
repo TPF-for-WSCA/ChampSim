@@ -140,6 +140,7 @@ def normalize_config(config_file):
         "btb_partial_tag_resolution",
         "perfect_btb",
         "perfect_branch_predict",
+        "realistic_perfect",
         "btb_small_way_regions_enabled",
         "btb_perfect_mapping",
         "btb_invalidate_entry",
