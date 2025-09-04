@@ -24,7 +24,7 @@ module load GCCcore/12.2.0
 suffix=""
 binary_dir=("btb_4k_region_count_exp" "btb_8k_region_count_exp") # "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
 count=2
-timelimit="6:00:00"
+timelimit="8:00:00"
 warmup=30000000
 simulation=30000000
 
