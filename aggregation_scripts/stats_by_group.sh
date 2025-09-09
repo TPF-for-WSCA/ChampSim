@@ -84,6 +84,8 @@ popd
 #     done
 # done
 
+# Violin graphs for observed regions: plotgen -i ./observed_regions.csv --print --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --legend-hide --plot violin --y-type log -o ./observed_regions.html
+
 echo "Waiting for jobs to finish:"
 for job in `jobs -p`
 do
