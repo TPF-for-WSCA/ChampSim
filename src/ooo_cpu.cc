@@ -226,7 +226,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     sim_stats.btb_hits++;
   }
   bool first_branch_occurrence = branch_seen.insert(arch_instr.ip).second;
-  if (perfect_btb && ((realistic_perfect && !first_branch_occurrence) || !realistic_perfect)) {
+  if (perfect_btb && ((realistic_perfect && !first_branch_occurrence) || !realistic_perfect) && !arch_instr.branch_type == BRANCH_INDIRECT) {
     predicted_branch_target = arch_instr.branch_target;
     branch_ip = arch_instr.ip;
     always_taken = (arch_instr.branch_type == BRANCH_CONDITIONAL || arch_instr.branch_type == BRANCH_OTHER)
