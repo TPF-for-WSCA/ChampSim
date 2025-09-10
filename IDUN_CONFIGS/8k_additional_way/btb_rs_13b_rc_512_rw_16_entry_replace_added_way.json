@@ -1,6 +1,6 @@
 
 {
-  "executable_name": "btb_8k_additional_ways/btb_rs_13b_rc_512_rw_16_entry_replace",
+  "executable_name": "btb_8k_additional_ways/btb_rs_13b_rc_512_rw_16_entry_replace_added_way",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
