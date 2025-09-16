@@ -75,9 +75,11 @@ struct cpu_stats {
   std::array<uint64_t, 64> max_regions_per_region_size = {};
   std::vector<std::map<uint8_t, std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>>> region_history;
   std::map<uint64_t, std::set<uint64_t>> big_region_small_region_mapping;
+  std::map<uint64_t, std::set<uint64_t>> regions_inserted_per_way = {};
   uint64_t region_btb_conflicts = 0;
   std::map<uint16_t, uint64_t> region_btb_inserts_per_set = {};
   uint64_t btb_updates = 0;
+  uint64_t btb_region_switching_dynamic = 0;
   uint64_t btb_static_updates = 0;
   uint16_t btb_tag_size = 0;
   uint64_t btb_reads = 0;

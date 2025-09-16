@@ -18,7 +18,7 @@
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
-#define SMALL_BIG_WAY_SPLIT 14
+#define SMALL_BIG_WAY_SPLIT 12  // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
 #define SAMPLING_DISTANCE 1000000
@@ -89,6 +89,7 @@ bool big_way_regions_enabled = 0;
 bool _PERFECT_MAPPING = false;
 
 uint64_t prev_branch_ip = 0;
+uint64_t prev_branch_tag = 0;
 std::map<uint32_t, uint64_t> offset_reuse_freq;
 std::set<uint64_t> branch_ip;
 std::set<uint32_t> regions_inserted;
@@ -450,6 +451,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     num_bits++;
   }
 
+  // THIS IS AN APPLICATION PROPERTY -- WE SHOULD MEASURE ALSO THE HW PROPERTY AND COMPARE THE TWO (at prediction time)
+  if (prev_branch_tag != new_region) {
+    sim_stats.btb_region_switching_dynamic++;
+    prev_branch_tag = new_region;
+  }
+
   // TODO: Integrate with sim
   bool is_static = branch_ip.insert(ip).second;
   sim_stats.static_branch_count += is_static;
@@ -544,6 +551,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       auto replaced = ::REGION_FILTER_BTB.at(this).fill(
           {ip, branch_target, type, {0, 0, new_region}}); // TODO: add element, only if we cross threshold insert into region and add future branches there and
                                                           // only when replaced from filter btb add to big btb
+      sim_stats.regions_inserted_per_way[replaced.value().target_size].insert(new_region);
       bool valid_replacement = replaced.has_value() && replaced.value().ip_tag && replaced.value().ip_tag != ip;
       if (valid_replacement) { // if iptag is 0 its an invalid(ated) entry
         uint64_t old_region = get_region(replaced.value().ip_tag);

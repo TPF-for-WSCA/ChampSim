@@ -101,6 +101,7 @@ void O3_CPU::begin_phase()
   stats.btb_tag_entropy = sim_stats.btb_tag_entropy;
   stats.btb_tag_switch_entropy = sim_stats.btb_tag_switch_entropy;
   stats.btb_updates = sim_stats.btb_updates;
+  stats.btb_region_switching_dynamic = sim_stats.btb_region_switching_dynamic;
   stats.btb_static_updates = sim_stats.btb_static_updates;
   stats.dynamic_bit_counts = sim_stats.dynamic_bit_counts;
   stats.max_regions_per_region_size = sim_stats.max_regions_per_region_size;

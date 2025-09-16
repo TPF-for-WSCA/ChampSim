@@ -102,6 +102,13 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   long double switch_tag_entropy = 0;
   auto total_btb_updates = ((long double)stats.btb_updates);
   auto total_btb_static_updates = ((long double)stats.btb_static_updates);
+  auto region_switching_frequency = 1.0f - (long double)stats.btb_region_switching_dynamic / total_btb_updates;
+  fmt::print(stream, "\nREGION SWITCHING FREQUENCY: {}\n", region_switching_frequency);
+
+  fmt::print(stream, "\n\nNumber of Regions Observed per Target Offset Way\n");
+  for (auto const [target_size, regions] : stats.regions_inserted_per_way) {
+    fmt::print(stream, "{}:\t{}\n", target_size, regions.size());
+  }
   long double prev_counter = 0, prev_switch = 0;
   std::vector<std::pair<long double, uint8_t>> tag_bit_order;
   std::vector<std::pair<long double, uint8_t>> switch_bit_order;
