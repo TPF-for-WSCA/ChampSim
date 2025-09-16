@@ -551,7 +551,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       auto replaced = ::REGION_FILTER_BTB.at(this).fill(
           {ip, branch_target, type, {0, 0, new_region}}); // TODO: add element, only if we cross threshold insert into region and add future branches there and
                                                           // only when replaced from filter btb add to big btb
-      sim_stats.regions_inserted_per_way[replaced.value().target_size].insert(new_region);
       bool valid_replacement = replaced.has_value() && replaced.value().ip_tag && replaced.value().ip_tag != ip;
       if (valid_replacement) { // if iptag is 0 its an invalid(ated) entry
         uint64_t old_region = get_region(replaced.value().ip_tag);
@@ -729,6 +728,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         fill_entry,
         entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
     uint64_t old_region = 0;
+    sim_stats.regions_inserted_per_way[replaced_entry.value().target_size].insert(new_region);
     if (replaced_entry.value().ip_tag != 0 && sim_stats.region_pointer_count[get_region(replaced_entry.value().ip_tag)])
       sim_stats.region_pointer_count[get_region(replaced_entry.value().ip_tag)]--;
     if (region_idx.has_value()) {
