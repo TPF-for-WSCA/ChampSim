@@ -228,11 +228,11 @@ def region_switching_frequency(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    re_freq = re.compile(r"REGION SWITCHING FREQUENCY: (\d+)")
+    re_freq = re.compile(r"REGION SWITCHING FREQUENCY: (0.\d+)")
     for line in logs:
         matches = re_freq.search(line)
         if matches:
-            return int(matches.groups()[0])
+            return float(matches.groups()[0])
 
 def region_btb_replacements(path):
     logs = []
