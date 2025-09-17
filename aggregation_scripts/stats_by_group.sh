@@ -41,6 +41,7 @@ if [ $# -lt 1 ]; then
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi SQUASH_COUNTS &
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BTB_RELATIVE_ALIASING_SQUASH_CYCLES &
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi REGION_SWITCHING_FREQUENCY &
+        python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi REGIONS_PER_WAY &
 
 
         for config in ./${b}/*

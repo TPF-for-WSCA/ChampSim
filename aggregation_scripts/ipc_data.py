@@ -223,6 +223,24 @@ def extract_absolute_btb_aliasing(path):
             break
     return total
 
+def regions_per_way(path):
+    import itertools
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    ilogs = iter(logs)
+    for line in ilogs:
+        if line.strip() == "Number of Regions Observed per Target Offset Way":
+            break
+    re_ = re.compile(r"(\d+):\t(\d+)")
+    result = {}
+    for line in ilogs:
+        matches = re_.search(line)
+        if not matches:
+            break
+        result[int(matches.groups()[0])] = int(matches.groups()[1])
+    return result
+
 # REGION_SWITCHING_FREQUENCY
 def region_switching_frequency(path):
     logs = []
@@ -637,6 +655,10 @@ def single_run(path):
                 stat_by_workload[workload] = region_switching_frequency(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.REGIONS_PER_WAY:
+                stat_by_workload[workload] = regions_per_way(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.ABSOLUTE_ALIASING:
                 stat_by_workload[workload] = extract_absolute_btb_aliasing(
                     f"{path}/{workload}/{logfile}"
@@ -781,6 +803,8 @@ def write_tsv(data, out_path=None):
         filename = "region_btb_replacements"
     elif type == STATS.REGION_SWITCHING_FREQUENCY:
         filename = "region_switching_frequency"
+    elif type == STATS.REGIONS_PER_WAY:
+        filename = "regions_per_way"
     elif type == STATS.ABSOLUTE_ALIASING:
         filename = "total_aliasing"
     elif type == STATS.ALIASING_SQUASH_CYCLES:
@@ -919,6 +943,8 @@ elif sys.argv[3] == "REGION_BTB_REPLACEMENTS":
     type = STATS.REGION_BTB_REPLACEMENTS
 elif sys.argv[3] == "REGION_SWITCHING_FREQUENCY":
     type = STATS.REGION_SWITCHING_FREQUENCY
+elif sys.argv[3] == "REGIONS_PER_WAY":
+    type = STATS.REGIONS_PER_WAY
 elif sys.argv[3] == "BTB_TOTAL_ALIASING":
     type = STATS.ABSOLUTE_ALIASING
 elif sys.argv[3] == "BTB_RELATIVE_ALIASING_SQUASH_CYCLES":
@@ -952,6 +978,19 @@ elif type == STATS.SQUASH_COUNTS:
     write_squash_counts(data, sys.argv[1])
 elif type == STATS.BRANCH_DISTANCES:
     write_series(data, sys.argv[1])
+elif type == STATS.REGIONS_PER_WAY:
+    file_path = os.path.join(sys.argv[1], "regions_per_way.tsv")
+    with open(file_path, "w+") as outfile:
+        outfile.write("\t")
+        for title in data[next(iter(data))].keys():
+            outfile.write(f"{title}\t")
+        outfile.write("\n")
+        for workload, data in data.items():
+            outfile.write(f"{workload}\t")
+            for value in data.values():
+                outfile.write(f"{value}\t")
+            outfile.write("\n")
+
 elif type == STATS.NUM_BTB_BITS_PER_CL:
     file_path = os.path.join(sys.argv[1], "num_btb_bits_per_cl.tsv")
     with open(file_path, "w+") as outfile:
