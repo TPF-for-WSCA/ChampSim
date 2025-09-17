@@ -36,6 +36,8 @@ class STATS(Enum):
     BTB_HIT_PKI = 27
     NUM_REGIONS_PER_REGION_SIZE = 28
     REGION_BTB_REPLACEMENTS = 29
+    REGION_SWITCHING_FREQUENCY = 30
+    REGIONS_PER_WAY = 31
 
 
 
@@ -221,6 +223,16 @@ def extract_absolute_btb_aliasing(path):
             break
     return total
 
+# REGION_SWITCHING_FREQUENCY
+def region_switching_frequency(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    re_freq = re.compile(r"REGION SWITCHING FREQUENCY: (\d+)")
+    for line in logs:
+        matches = re_freq.search(line)
+        if matches:
+            return int(matches.groups()[0])
 
 def region_btb_replacements(path):
     logs = []
@@ -621,6 +633,10 @@ def single_run(path):
                 stat_by_workload[workload] = region_btb_replacements(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.REGION_SWITCHING_FREQUENCY:
+                stat_by_workload[workload] = region_switching_frequency(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.ABSOLUTE_ALIASING:
                 stat_by_workload[workload] = extract_absolute_btb_aliasing(
                     f"{path}/{workload}/{logfile}"
@@ -763,6 +779,8 @@ def write_tsv(data, out_path=None):
         filename = "aliasing"
     elif type == STATS.REGION_BTB_REPLACEMENTS:
         filename = "region_btb_replacements"
+    elif type == STATS.REGION_SWITCHING_FREQUENCY:
+        filename = "region_switching_frequency"
     elif type == STATS.ABSOLUTE_ALIASING:
         filename = "total_aliasing"
     elif type == STATS.ALIASING_SQUASH_CYCLES:
@@ -899,6 +917,8 @@ elif sys.argv[3] == "BTB_ALIASING":
     type = STATS.ALIASING
 elif sys.argv[3] == "REGION_BTB_REPLACEMENTS":
     type = STATS.REGION_BTB_REPLACEMENTS
+elif sys.argv[3] == "REGION_SWITCHING_FREQUENCY":
+    type = STATS.REGION_SWITCHING_FREQUENCY
 elif sys.argv[3] == "BTB_TOTAL_ALIASING":
     type = STATS.ABSOLUTE_ALIASING
 elif sys.argv[3] == "BTB_RELATIVE_ALIASING_SQUASH_CYCLES":

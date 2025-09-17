@@ -452,7 +452,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   }
 
   // THIS IS AN APPLICATION PROPERTY -- WE SHOULD MEASURE ALSO THE HW PROPERTY AND COMPARE THE TWO (at prediction time)
-  if (prev_branch_tag != new_region) {
+  if (taken && prev_branch_tag != new_region) {
     sim_stats.btb_region_switching_dynamic++;
     prev_branch_tag = new_region;
   }
