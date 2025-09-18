@@ -21,7 +21,7 @@
 #define SMALL_BIG_WAY_SPLIT 12  // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
-#define SAMPLING_DISTANCE 1000000
+#define SAMPLING_DISTANCE 1000
 
 uint64_t invalid_replacements = 0;
 
@@ -810,15 +810,23 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
       // std::map<uint8_t, std::map<uint64_t, uint64_t>> region_count_control = {};
       uint64_t total_blocks = 0;
+      std::map<uint64_t, std::set<uint64_t>> regions_per_way;
       for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
         if (it->data.ip_tag && utilise_regions(it->data.target_size)
             && size == it->data.target_size) { // REGION_BTB.at(this).check_hit({it->data.ip_tag}) not used as we might have stale
                                                // entries that were covered by regions = we want to know how many we would have needed
           total_blocks++;
+          regions_per_way[it->data.target_size].insert(get_region(it->data.ip_tag));
+
           // auto region = (it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
           // region_count_control[it->data.target_size][region]++;
         }
       }
+      std::map<uint64_t, uint64_t> region_count_sample;
+      for (auto const [way, set] : regions_per_way) {
+        region_count_sample[way] = set.size();
+      }
+      sim_stats.regions_per_way_samples.push_back(region_count_sample);
       // TODO: Debug only, remove afterwards / comment out
       // for (auto const& [way_size, cnt_per_size] : region_count_control) {
       //   for (auto const& [region_size, cnt] : cnt_per_size) {
