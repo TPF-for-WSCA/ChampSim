@@ -14,6 +14,8 @@ regions = {
 
 all_ways = {}
 
+regions_per_way_data = {}
+
 assert len(sys.argv) == 2
 for dir in os.listdir(sys.argv[1]):
     if not os.path.isdir(os.path.join(sys.argv[1], dir)):
@@ -25,6 +27,7 @@ for dir in os.listdir(sys.argv[1]):
         json_data = json.load(f)
     regions_data = json_data[0]["roi"]["cores"][0]["regions_covered"]
     overall_regions = json_data[0]["roi"]["cores"][0]["btb_regions"]["max"]
+    regions_per_way_data = json_data[0]["roi"]["cores"][0]["region_samples_per_way"]
     all_ways[dir] = overall_regions
     for way in regions_data.keys():
         regions[100][int(way)][dir] = regions_data[way]["100%"]
