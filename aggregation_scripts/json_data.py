@@ -12,6 +12,17 @@ regions = {
     90: defaultdict(dict),
 }
 
+regions_per_way = {
+    0: [],
+    4: [],
+    5: [],
+    7: [],
+    9: [],
+    11: [],
+    19: [],
+    25: []
+}
+
 all_ways = {}
 
 regions_per_way_data = {}
@@ -35,6 +46,18 @@ for dir in os.listdir(sys.argv[1]):
         regions[99][int(way)][dir] = regions_data[way]["99%"]
         regions[95][int(way)][dir] = regions_data[way]["95%"]
         regions[90][int(way)][dir] = regions_data[way]["90%"]
+
+    for measurement in regions_per_way_data:
+        for size, reg_cnt in measurement:
+            regions_per_way[size].append(reg_cnt)
+
+    with open(f"{sys.argv[1]}{dir.split('.')[0]}_regions_per_way.tsv", "w+") as outfile:
+        headers = list(regions_per_way.keys())
+        for header, counts in regions_per_way.items():
+            outfile.write(f"{header}\t")
+            for count in counts:
+                outfile.write(f"{count}\t")
+            outfile.write("\n")
 
 all_ways = dict(sorted(all_ways.items()))
 outname = os.path.join(sys.argv[1], f"overall_max_region.tsv")

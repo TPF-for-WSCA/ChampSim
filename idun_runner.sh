@@ -22,11 +22,11 @@ module load GCCcore/12.2.0
 #binaries=("champsim32k_base_btb" "champsim32k_base_btbx" "champsim32k_hash_btbx" "champsim32k_perfect_l1i" "champsim32k_perfect_btb")
 # binary_dir=("btb_region_tag" "btb_4k_region_tag_split_exp" "btb_512_region_tag_exp" "btb_256_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp")
 suffix=""
-binary_dir=("btb_4k_region_count_exp" "btb_8k_region_count_exp") # "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
-count=2
+binary_dir=("btb_size_region_sensitivity") # "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
+count=0
 timelimit="8:00:00"
-warmup=30000000
-simulation=30000000
+warmup=50000000
+simulation=50000000
 
 mem_per_cpu="20G"
 max_core_count=8
@@ -47,7 +47,7 @@ do
         # SPECCPU / DPC-3 Benchmarks # Deactivated for now - most have little impact, biggest impact however also here
         # srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=${mem_per_cpu} -n1 -c${max_core_count} -t$timelimit -o /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --intel --traces_directory /cluster/work/romankb/dataset/dpc3                       --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}/dpc3/sizes_$(basename ${bin})/           &>> /cluster/work/romankb/pyrunner_latency_fixed_dpc3_$(basename ${bin}).log &
         # LLBP Benchmarks --intel
-        srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=${mem_per_cpu} -n1 -c${max_core_count} -t$timelimit -o /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --intel --traces_directory /cluster/work/romankb/dataset/LLBP                       --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}/LLBP/sizes_$(basename ${bin})/           &>> /cluster/work/romankb/pyrunner_latency_fixed_llbp_$(basename ${bin}).log &
+#        srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=${mem_per_cpu} -n1 -c${max_core_count} -t$timelimit -o /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --intel --traces_directory /cluster/work/romankb/dataset/LLBP                       --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}/LLBP/sizes_$(basename ${bin})/           &>> /cluster/work/romankb/pyrunner_latency_fixed_llbp_$(basename ${bin}).log &
         # Google Traces / No performance benchmark as no dependency information --intel
 #         srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=${mem_per_cpu} -n1 -c${max_core_count} -t$timelimit -o /cluster/work/romankb/latency-whiskey-${dir}-$(basename ${bin})-%j.out -e /cluster/work/romankb/latency-whiskey-${dir}-$(basename ${bin})-%j.err python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --intel --traces_directory /cluster/work/romankb/dataset/google/whiskey             --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}/google_whiskey/sizes_$(basename ${bin})/ &>> /cluster/work/romankb/pyrunner_latency_fixed_google_whiskey_$(basename ${bin}).log &
 #         srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=${mem_per_cpu} -n1 -c${max_core_count} -t$timelimit -o /cluster/work/romankb/latency-delta-${dir}-$(basename ${bin})-%j.out   -e /cluster/work/romankb/latency-delta-${dir}-$(basename ${bin})-%j.err   python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --intel --traces_directory /cluster/work/romankb/dataset/google/delta               --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}/google_delta/sizes_$(basename ${bin})/   &>> /cluster/work/romankb/pyrunner_latency_fixed_google_delta_$(basename ${bin}).log &
