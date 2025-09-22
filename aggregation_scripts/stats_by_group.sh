@@ -218,3 +218,4 @@ echo "DONE"
 # combining tsv's with same column headers: combine_tsv.sh
 # aliasing plot: ~/plotgen/plotgen -i ./aliasing.tsv --sort-function name --sort-rows --drop-any-nan-col --normalise-to-column "Total Lookups" --y-tick-format ',.2%' --plot bar -o ../graphs/btb_16b_aliasing.html
 # address heatmap:  ~/plotgen/plotgen -i ./aggregated/btb_bit_information.tsv --sort-function name --sort-rows --palette PiYG --drop-any-nan-col --plot heatmap -o ./graphs/btb_address_heatmap.html
+# ~/plotgen/plotgen --debug -i ./ipc1_server/sizes_256_btb_rs_13b_rc_1024_rw_16_entry_replace/*_regions_per_way.tsv --join index --drop-any-nan-col --sort-function name --sort-columns --row-names --renameregex '(.*)\..*trace(.*)' --palette bright --violin-mode overlay --violin-mean line --violin-points none --violin-gap 0.25 --print --plot violin -o ./graphs/ipc1_server_256_btb.html
