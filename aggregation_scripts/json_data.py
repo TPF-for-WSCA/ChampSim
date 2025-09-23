@@ -1,6 +1,10 @@
 import json
+import math
 import os
 import sys
+
+import plotly.express as px
+import pandas as pd
 
 from collections import defaultdict
 
@@ -22,6 +26,15 @@ regions_per_way = {
     19: [],
     25: []
 }
+class workload_stats():
+    def __init__(self, name):
+        self.name = name
+        self.stdev_per_way = {}
+        self.mean_per_way = {}
+        self.max_per_way = {}
+        self.min_per_way = {}
+
+workloads = []
 
 all_ways = {}
 
@@ -34,8 +47,12 @@ for dir in os.listdir(sys.argv[1]):
     if dir.startswith(".") or ".tsv" in dir or ".txt" in dir:
         continue
     json_data = None
-    with open(os.path.join(sys.argv[1], dir, "stats.json")) as f:
-        json_data = json.load(f)
+    try:
+        with open(os.path.join(sys.argv[1], dir, "stats.json")) as f:
+            json_data = json.load(f)
+    except FileNotFoundError as e:
+        print(f"File not found, ignoring {dir}")
+        continue
     regions_data = json_data[0]["roi"]["cores"][0]["regions_covered"]
     overall_regions = json_data[0]["roi"]["cores"][0]["btb_regions"]["max"]
     regions_per_way_data = json_data[0]["roi"]["cores"][0]["region_samples_per_way"]
@@ -51,13 +68,45 @@ for dir in os.listdir(sys.argv[1]):
         for size, reg_cnt in measurement:
             regions_per_way[size].append(reg_cnt)
 
+    workload = workload_stats(name = dir.split(".")[0])
     with open(f"{sys.argv[1]}{dir.split('.')[0]}_regions_per_way.tsv", "w+") as outfile:
         headers = list(regions_per_way.keys())
         for header, counts in regions_per_way.items():
             outfile.write(f"{header}\t")
+            mean = sum(counts)/len(counts)
+            stdev = 0
             for count in counts:
+                stdev += (count-mean)**2
                 outfile.write(f"{count}\t")
+            workload.mean_per_way[header] = mean
+            workload.max_per_way[header] = max(counts)
+            workload.min_per_way[header] = min(counts)
+            workload.stdev_per_way[header] = math.sqrt(stdev / len(counts))
             outfile.write("\n")
+    workloads.append(workload)
+
+
+with open(f"{sys.argv[1]}summary_regions_per_way.tsv", "w+") as outfile:
+    headers = list(regions_per_way.keys())
+    for header in headers:
+        outfile.write(f"\t{header}")
+    outfile.write("\n")
+
+    for workload in workloads:
+        outfile.write(f"{workload.name}")  # TODO: Replace with propert stringify method
+        for header in headers:
+            outfile.write(f"\t{workload.mean_per_way[header]}")
+        outfile.write("\n")
+        for header in headers:
+            outfile.write(f"\t{workload.max_per_way[header]}")
+        outfile.write("\n")
+        for header in headers:
+            outfile.write(f"\t{workload.min_per_way[header]}")
+        outfile.write("\n")
+        for header in headers:
+            outfile.write(f"\t{workload.stdev_per_way[header]}")
+        outfile.write("\n")
+        outfile.write("\n")
 
 all_ways = dict(sorted(all_ways.items()))
 outname = os.path.join(sys.argv[1], f"overall_max_region.tsv")

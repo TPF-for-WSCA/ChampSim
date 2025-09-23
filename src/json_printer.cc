@@ -71,6 +71,7 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
       {"cycles", stats.cycles()},
       {"Avg ROB occupancy at mispredict", std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions)},
       {"region_samples_per_way", stats.regions_per_way_samples},
+      {"region_count_samples", stats.region_count_samples},
       {"mispredict", mpki},
       {"aliasing", aliasing},
       {"btb_regions", btb_regions},
