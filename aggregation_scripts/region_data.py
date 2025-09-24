@@ -9,6 +9,7 @@ import pandas as pd
 from collections import defaultdict
 import re
 
+ignore_directories = ["graphs", "raw_data"]
 def parse_config_value(config_name):
     match = re.search(r'(\d+)([kmg]?)', config_name, re.IGNORECASE)
     if not match:
@@ -27,7 +28,7 @@ grouped_plot_data = []
 benchmarks = sorted(os.listdir(sys.argv[1]))
 for benchmark in benchmarks:
     full_path = os.path.join(sys.argv[1], benchmark)
-    if not os.path.isdir(full_path) or benchmark == "graphs":
+    if not os.path.isdir(full_path) or benchmark in ignore_directories:
         continue
     for config in os.listdir(full_path):
         subdir_path = os.path.join(full_path, config)
@@ -35,6 +36,8 @@ for benchmark in benchmarks:
             continue
         config_name = config.split("_")[1]
         for app in os.listdir(subdir_path):
+            if not os.path.isdir(os.path.join(subdir_path, app)):
+                continue
             try:
                 with open(os.path.join(subdir_path, app, "stats.json")) as f:
                     json_data = json.load(f)
@@ -58,6 +61,7 @@ import plotly.graph_objects as go
 fig = go.Figure()
 fig.update_layout(showlegend=False)
 fig.update_yaxes(tickformat=".0%")
+fig.update_yaxes(range=[0, df["Region Count"].max()])
 for config in df["Config"].unique():
     config_data = df[df["Config"] == config]["Region Count"]
     fig.add_trace(go.Violin(
