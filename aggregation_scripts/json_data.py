@@ -85,6 +85,37 @@ for dir in os.listdir(sys.argv[1]):
             outfile.write("\n")
     workloads.append(workload)
 
+# Flatten regions_per_way into a long-form DataFrame for plotting
+plot_data = []
+for workload in workloads:
+    for way, counts in workload.mean_per_way.items():
+        # Instead of only mean, use all raw samples if available
+        # Assuming regions_per_way_data holds the samples per workload
+        if way in regions_per_way_data:
+            for c in regions_per_way_data[way]:
+                plot_data.append({
+                    "Workload": workload.name,
+                    "Way": way,
+                    "Regions": c
+                })
+
+df = pd.DataFrame(plot_data)
+
+# Make violin plot
+fig = px.violin(
+    df,
+    x="Workload",
+    y="Regions",
+    color="Way",   # Separate violins per way
+    box=True,      # Also show a mini boxplot inside
+    points="all"   # Show all data points
+)
+
+fig.update_layout(
+    title="Regions per Way per Workload",
+    yaxis_title="Region Counts",
+    xaxis_title="Workloads"
+)
 
 with open(f"{sys.argv[1]}summary_regions_per_way.tsv", "w+") as outfile:
     headers = list(regions_per_way.keys())
