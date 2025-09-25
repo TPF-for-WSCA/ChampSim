@@ -722,7 +722,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // TODO: Check if (since we already know about region or not region) should make two distinct calls out of the below
     auto fill_entry = opt_entry.value_or(
         ::BTBEntry{ip, branch_target, type, region_idx.value_or(std::tuple<uint16_t, uint16_t, uint64_t>{pow2(_BTB_REGION_BITS), 0, 0}), entry_size});
-    fill_entry.target = branch_target; // make sure we update the actual target - ip does not matter as we have the same idx/tag/region
+    fill_entry.target = branch_target;
+    fill_entry.ip_tag = ip;
     fill_entry.type = type;
     replaced_entry = ::BTB.at(this).fill(
         fill_entry,
@@ -968,6 +969,9 @@ void O3_CPU::btb_invalidate_entry(uint64_t ip) {
     std::cerr << "ALREADY REPLACED?" << std::endl;
     return;
     // assert(0);
+  }
+  if (btb_entry.value().ip_tag == ip) {
+    return;  // we already updated the entry in simulation -- evicting it now would result in a double penalty - updating and then throwing away the just updated entry
   }
   if (btb_invalidate_entry_on_alias)
     ::BTB.at(this).invalidate(btb_entry.value());
