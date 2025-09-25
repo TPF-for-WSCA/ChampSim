@@ -72,6 +72,8 @@ for dir in os.listdir(sys.argv[1]):
     with open(f"{sys.argv[1]}{dir.split('.')[0]}_regions_per_way.tsv", "w+") as outfile:
         headers = list(regions_per_way.keys())
         for header, counts in regions_per_way.items():
+            if not counts:
+                continue
             outfile.write(f"{header}\t")
             mean = sum(counts)/len(counts)
             stdev = 0
@@ -84,7 +86,6 @@ for dir in os.listdir(sys.argv[1]):
             workload.stdev_per_way[header] = math.sqrt(stdev / len(counts))
             outfile.write("\n")
     workloads.append(workload)
-
 
 with open(f"{sys.argv[1]}summary_regions_per_way.tsv", "w+") as outfile:
     headers = list(regions_per_way.keys())
