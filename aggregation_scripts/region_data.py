@@ -55,32 +55,76 @@ for benchmark in benchmarks:
 plot_data = grouped_plot_data
 
 df = pd.DataFrame(plot_data)
-df["Region Count"] = df.apply(lambda row: row["Region Count"] / parse_config_value(row["Config"]), axis=1)
+# df["Region Count"] = df.apply(lambda row: row["Region Count"] / parse_config_value(row["Config"]), axis=1)
 import plotly.graph_objects as go
 
 fig = go.Figure()
+fig.update_layout(
+    # width=400,  # typical single-column width in points (~3.3in)
+    # height=300, # adjust as needed for aspect ratio
+    template="plotly_white"
+)
 fig.update_layout(showlegend=False)
-fig.update_yaxes(tickformat=".0%")
+# fig.update_yaxes(tickformat=".0%")
 fig.update_yaxes(range=[0, df["Region Count"].max()])
+violincolor="lightblue"
+whiskerscolor="#096BA6"
+line_size=2
+marker=dict(symbol='line-ew', color=whiskerscolor, size=2*line_size, line=dict(color=whiskerscolor, width=line_size))
 for config in df["Config"].unique():
     config_data = df[df["Config"] == config]["Region Count"]
+    mean = config_data.mean()
+    min_val = config_data.min()
+    max_val = config_data.max()
+    fig.add_trace(go.Scatter(
+        x=[config],
+        y=[mean],
+        mode='markers',
+        marker=marker,
+        showlegend=False,
+        hoverinfo='skip'
+    ))
+    fig.add_trace(go.Scatter(
+        x=[config],
+        y=[max_val],
+        mode='markers',
+        marker=marker,
+        showlegend=False,
+        hoverinfo='skip'
+    ))
+    fig.add_trace(go.Scatter(
+        x=[config],
+        y=[min_val],
+        mode='markers',
+        marker=marker,
+        showlegend=False,
+        hoverinfo='skip'
+    ))
+    fig.add_trace(go.Scatter(
+        x=[config, config],
+        y=[min_val, max_val],
+        mode='lines',
+        line=dict(color=whiskerscolor, width=line_size),
+        showlegend=False,
+        hoverinfo='skip'
+    ))
     fig.add_trace(go.Violin(
         y=config_data,
         x=[config] * len(config_data),
         box_visible=False,
-        points=False,
+        points="outliers",
         width=0.75,
-        line_width=4,
-        jitter=True,
-        meanline_visible=True,
-        line_color='rgba(0,0,155,0.5)',
+        line_width=0,
+        jitter=False,
+        meanline_visible=False,
+        line_color=violincolor,
     ))
 
 fig.update_layout(
     title="Region Count Distribution per Config",
     violingap=0,
     xaxis_title="Config",
-    yaxis_title="Region Count"
+    yaxis_title="% Unique Tags of all BTB Tags"
 )
 
 """
