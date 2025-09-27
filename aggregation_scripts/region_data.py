@@ -9,6 +9,9 @@ import pandas as pd
 from collections import defaultdict
 import re
 
+output_dir = os.path.join(sys.argv[1], "graphs")
+os.makedirs(output_dir, exist_ok=True)
+
 ignore_directories = ["graphs", "raw_data"]
 def parse_config_value(config_name):
     match = re.search(r'(\d+)([kmg]?)', config_name, re.IGNORECASE)
@@ -55,8 +58,12 @@ for benchmark in benchmarks:
 plot_data = grouped_plot_data
 
 df = pd.DataFrame(plot_data)
-# df["Region Count"] = df.apply(lambda row: row["Region Count"] / parse_config_value(row["Config"]), axis=1)
+df["Region Count"] = df.apply(lambda row: row["Region Count"] / parse_config_value(row["Config"]), axis=1)
 import plotly.graph_objects as go
+#garbage graph to get rid of the loading bullshit
+fig = px.scatter(x=[0, 1, 2, 3, 4], y=[0, 1, 4, 9, 16])
+fig.show()
+fig.write_image(os.path.join(output_dir,"random.pdf"))
 
 fig = go.Figure()
 fig.update_layout(
@@ -65,20 +72,21 @@ fig.update_layout(
     template="plotly_white"
 )
 fig.update_layout(showlegend=False)
-# fig.update_yaxes(tickformat=".0%")
-fig.update_yaxes(range=[0, df["Region Count"].max()])
-violincolor="lightblue"
+fig.update_yaxes(tickformat=".0%")
+fig.update_yaxes(minor=dict(ticks="", showgrid=True))
+fig.update_yaxes(range=[0, 0.48], dtick=0.08)
+violincolor="rgba(173,216,230,0.5)"
 whiskerscolor="#096BA6"
 line_size=2
 marker=dict(symbol='line-ew', color=whiskerscolor, size=2*line_size, line=dict(color=whiskerscolor, width=line_size))
 for config in df["Config"].unique():
     config_data = df[df["Config"] == config]["Region Count"]
-    mean = config_data.mean()
+    median = config_data.median()
     min_val = config_data.min()
     max_val = config_data.max()
     fig.add_trace(go.Scatter(
         x=[config],
-        y=[mean],
+        y=[median],
         mode='markers',
         marker=marker,
         showlegend=False,
@@ -112,7 +120,7 @@ for config in df["Config"].unique():
         y=config_data,
         x=[config] * len(config_data),
         box_visible=False,
-        points="outliers",
+        points=False,
         width=0.75,
         line_width=0,
         jitter=False,
@@ -120,11 +128,17 @@ for config in df["Config"].unique():
         line_color=violincolor,
     ))
 
+# Update figure for paper
+fig.update_yaxes(showgrid=True, gridcolor='rgba(0,0,0,0.2)', zeroline=True, zerolinecolor='black', zerolinewidth=2)
 fig.update_layout(
-    title="Region Count Distribution per Config",
+    title="",
     violingap=0,
-    xaxis_title="Config",
-    yaxis_title="% Unique Tags of all BTB Tags"
+    xaxis_title="BTB Size",
+    yaxis_title="% Unique Tags of all BTB Tags",
+    font=dict(size=12),
+    width=340,
+    height=500, # adjust as needed for clarity
+    margin=dict(l=0, r=0, t=0, b=0)
 )
 
 """
@@ -143,7 +157,5 @@ unique_configs = df["Config"].dropna().unique()
 sorted_configs = sorted(unique_configs, key=parse_config_value)
 fig.update_xaxes(type='category', categoryorder='array', categoryarray=sorted_configs)
 
-output_dir = os.path.join(sys.argv[1], "graphs")
-os.makedirs(output_dir, exist_ok=True)
 fig.write_image(os.path.join(output_dir, "region_violin.pdf"))
 fig.show()
