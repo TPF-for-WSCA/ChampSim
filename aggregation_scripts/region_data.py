@@ -8,6 +8,7 @@ import pandas as pd
 
 from collections import defaultdict
 import re
+from plotly.subplots import make_subplots
 
 output_dir = os.path.join(sys.argv[1], "graphs")
 os.makedirs(output_dir, exist_ok=True)
@@ -58,13 +59,18 @@ for benchmark in benchmarks:
 plot_data = grouped_plot_data
 
 df = pd.DataFrame(plot_data)
+# Calculate mean absolute region count per config
+mean_region_counts = df.groupby("Config")["Region Count"].mean().reset_index()
+
 df["Region Count"] = df.apply(lambda row: row["Region Count"] / parse_config_value(row["Config"]), axis=1)
+
 import plotly.graph_objects as go
 #garbage graph to get rid of the loading bullshit
 fig = px.scatter(x=[0, 1, 2, 3, 4], y=[0, 1, 4, 9, 16])
 fig.show()
 fig.write_image(os.path.join(output_dir,"random.pdf"))
-
+# Create a figure with secondary y-axis
+#fig = make_subplots(specs=[[{"secondary_y": True}]])
 fig = go.Figure()
 fig.update_layout(showlegend=False)
 fig.update_yaxes(tickformat="0%")
@@ -122,14 +128,13 @@ for config in df["Config"].unique():
         meanline_visible=False,
         line_color=violincolor,
     ))
-
 # Update figure for paper
 fig.update_yaxes(showgrid=True, gridcolor='rgba(0,0,0,0.2)', zeroline=True, zerolinecolor='black', zerolinewidth=2)
 fig.update_layout(
     title="",
     violingap=0,
     xaxis_title="Number of BTB entries",
-    yaxis_title="% Unique Tags of all BTB Tags",
+    yaxis_title="% Entries With Unique Tags",
     font=dict(size=9),
     width=340,
     height=200, # adjust as needed for clarity

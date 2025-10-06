@@ -60,8 +60,11 @@ plot_data = grouped_plot_data
 df = pd.DataFrame(plot_data)
 
 # Create two columns: normalized and not normalized
+mean_region_counts = df.groupby("Config")["Region Count"].mean().reset_index()
+max_region_counts = df.groupby("Config")["Region Count"].max().reset_index()
+min_region_counts = df.groupby("Config")["Region Count"].min().reset_index()
 df["Region Count Normalized"] = df.apply(lambda row: row["Region Count"] / parse_config_value(row["Config"]), axis=1)
-df["Region Count Absolute"] = df["Region Count"]
+
 
 import plotly.graph_objects as go
 #garbage graph to get rid of the loading bullshit
@@ -81,7 +84,7 @@ fig.update_layout(
         borderwidth=0.0
     )
 )
-fig.update_layout(showlegend=True)
+fig.update_layout(showlegend=False)
 
 violincolor_norm = "rgba(173,216,230,0.5)"
 violincolor_raw = "rgba(255,140,0,0.4)"
@@ -93,7 +96,7 @@ marker_norm = dict(symbol='line-ew', color=whiskerscolor_norm, size=2*line_size,
 marker_raw = dict(symbol='line-ew', color=whiskerscolor_raw, size=2*line_size, line=dict(color=whiskerscolor_raw, width=line_size))
 
 def draw_whiskers(config_data, marker,y):
-    median = config_data.median()
+    median = config_data.mean()
     min_val = config_data.min()
     max_val = config_data.max()
     fig.add_trace(go.Scatter(
@@ -135,7 +138,6 @@ def draw_whiskers(config_data, marker,y):
 
 for config in df["Config"].unique():
     config_data_norm = df[df["Config"] == config]["Region Count Normalized"]
-    config_data_raw = df[df["Config"] == config]["Region Count Absolute"]
     # Normalized violin
     fig.add_trace(go.Violin(
         y=config_data_norm,
@@ -154,63 +156,39 @@ for config in df["Config"].unique():
         offsetgroup="norm",
         yaxis="y2",
         showlegend=(config == df["Config"].unique()[0]),
-        side="positive",
     ))
-    # Raw violin
-    fig.add_trace(go.Violin(
-        y=config_data_raw,
-        x=[config] * len(config_data_raw),
-        name="Absolute",
-        box_visible=False,
-        points=False,
-        width=1.0,
-        line_width=0,
-        jitter=False,
-        meanline_visible=False,
-        line_color=violincolor_raw,
-        fillcolor=violincolor_raw,
-        opacity=1,
-        offsetgroup="raw",
-        legendgroup="raw",
-        yaxis="y1",
-        showlegend=(config == df["Config"].unique()[0]),
-        side="negative"
-    ))
-
     draw_whiskers(config_data_norm, marker_norm, "y2")
-    draw_whiskers(config_data_raw, marker_raw, "y1")
 
 # Update figure for paper
-
 fig.update_layout(
     violinmode='group'
 )
 fig.update_layout(
     yaxis=dict(
-        title="Number of Unique Tags",
+        title="# Unique Tags",
         showgrid=True,
         gridcolor='rgba(0,0,0,0.2)',
         zeroline=True,
         tickformat=None,
         range=[0, 1200],
-        dtick=150,
+        dtick=200,
         zerolinecolor='black',
         zerolinewidth=2,
     ),
     yaxis2=dict(
-        title="% of Entries Occupied by Unique Tags",
+        title="% Unique Tags of all BTB Tags",
         overlaying='y',
         side='right',
-        tickformat=".0%",
-        range=[0, 0.40],
-        dtick=0.05,
+        tickformat=".1%",
+        range=[0, 0.36],
+        dtick=0.06,
     ),
     title="",
     violingap=1.0,
-    xaxis_title="BTB Size",
-    font=dict(size=10),
+    xaxis_title="Number of BTB Entries",
+    font=dict(size=9),
     width=340,
-    height=450, # adjust as needed for clarity
+    height=200, # adjust as needed for clarity
     margin=dict(l=0, r=0, t=0, b=0),
     template="plotly_white"
 )
@@ -218,5 +196,42 @@ unique_configs = df["Config"].dropna().unique()
 sorted_configs = sorted(unique_configs, key=parse_config_value)
 fig.update_xaxes(type='category', categoryorder='array', categoryarray=sorted_configs)
 
+# Mean absolute region count (secondary y-axis)
+mean_region_counts_sorted = mean_region_counts.set_index("Config").loc[sorted_configs].reset_index()
+max_region_counts_sorted = max_region_counts.set_index("Config").loc[sorted_configs].reset_index()
+min_region_counts_sorted = min_region_counts.set_index("Config").loc[sorted_configs].reset_index()
+fig.add_trace(
+    go.Scatter(
+        x=mean_region_counts_sorted["Config"],
+        y=mean_region_counts_sorted["Region Count"],
+        mode="lines+markers",
+        name="Mean Absolute Region Count",
+        marker=dict(color=whiskerscolor_raw),
+        line=dict(color=whiskerscolor_raw, width=2, dash="dash"),
+        yaxis="y1",
+    )
+)
+fig.add_trace(
+    go.Scatter(
+        x=max_region_counts_sorted["Config"],
+        y=max_region_counts_sorted["Region Count"],
+        mode="lines+markers",
+        name="Max Absolute Region Count",
+        marker=dict(color="red"),
+        line=dict(color="red", width=2, dash="dash"),
+        yaxis="y1",
+    )
+)
+fig.add_trace(
+    go.Scatter(
+        x=min_region_counts_sorted["Config"],
+        y=min_region_counts_sorted["Region Count"],
+        mode="lines+markers",
+        name="Min Absolute Region Count",
+        marker=dict(color="green"),
+        line=dict(color="green", width=2, dash="dash"),
+        yaxis="y1",
+    )
+)
 fig.write_image(os.path.join(output_dir, "region_violin.pdf"))
 fig.show()
