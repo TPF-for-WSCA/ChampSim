@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef MSL_SRRIP_TABLE_H
-#define MSL_SRRIP_TABLE_H
+#ifndef MSL_FIFO_TABLE_H
+#define MSL_FIFO_TABLE_H
 
 #include <algorithm>
 #include <cassert>
@@ -27,13 +27,11 @@
 
 #include "msl/bits.h"
 
-#define MAX_RRPV 3
-
 namespace champsim::msl
 {
 
 template <typename T, typename SetProj = detail::table_indexer<T>, typename TagProj = detail::table_tagger<T>, typename PartTagProj = detail::partial_tagger<T>>
-class srrip_table
+class fifo_table
 {
 public:
   using value_type = T;
@@ -52,7 +50,6 @@ public:
 private:
   struct block_t {
     uint64_t last_used = 0;
-    int rrpv_value = MAX_RRPV;
     value_type data;
   };
   using block_vec_type = std::vector<block_t>;
@@ -108,8 +105,8 @@ private:
       auto y_valid = y.last_used > 0;
       auto x_match = proj(x.data) == tag;
       auto y_match = proj(y.data) == tag;
-      auto cmp_srrip = x.last_used < y.last_used;
-      return !x_valid || (y_valid && ((!x_match && y_match) || ((x_match == y_match) && cmp_srrip)));
+      auto cmp_fifo = x.last_used < y.last_used;
+      return !x_valid || (y_valid && ((!x_match && y_match) || ((x_match == y_match) && cmp_fifo)));
     };
   }
 
@@ -126,7 +123,6 @@ public:
     if (hit == set_end)
       return std::nullopt;
 
-    hit->last_used = ++access_count;
     return hit->data;
   }
   /*
@@ -163,8 +159,6 @@ public:
     if (hit == set_end)
       return std::nullopt;
 
-    hit->last_used = ++access_count;
-
     // Returns a tuple of <index, precise pointer, magic pointer>
     return std::tuple<uint16_t, uint16_t, uint64_t>{hit->data.index(), hit - std::begin(block), hit->data.tag()};
   }
@@ -179,9 +173,9 @@ public:
     auto [miss, _] = std::minmax_element(set_begin, set_end, [](const auto& x, const auto& y) {
       auto x_valid = x.last_used > 0;
       auto y_valid = y.last_used > 0;
-      auto cmp_srrip = x.last_used < y.last_used;
+      auto cmp_fifo = x.last_used < y.last_used;
       auto cmp_size = x.data.target_size < y.data.target_size;
-      return (!x_valid && !y_valid && cmp_size) || (!x_valid && y_valid) || cmp_srrip;
+      return (!x_valid && !y_valid && cmp_size) || (!x_valid && y_valid) || cmp_fifo;
     });
     return miss->data;
   }
@@ -199,15 +193,15 @@ public:
         auto y_valid = y.last_used > 0;
         auto x_match = proj(x.data) == tag;
         auto y_match = proj(y.data) == tag;
-        auto cmp_srrip = x.last_used < y.last_used;
+        auto cmp_fifo = x.last_used < y.last_used;
         auto cmp_size = x.data.target_size < y.data.target_size;
-        return (!x_valid && !y_valid && cmp_size) || (y_valid && ((!x_match && y_match) || ((x_match == y_match) && cmp_srrip)));
+        return (!x_valid && !y_valid && cmp_size) || (y_valid && ((!x_match && y_match) || ((x_match == y_match) && cmp_fifo)));
       });
       if (tag_projection(hit->data) == tag) {
         std::optional<value_type> updated = std::optional<value_type>{hit->data};
         auto target_size = hit->data.target_size;
         auto offset_mask = hit->data.offset_mask;
-        *hit = {++access_count, elem};
+        *hit = {hit->last_used, elem};
         hit->data.target_size = target_size;
         hit->data.offset_mask = offset_mask;
         return updated;
@@ -232,7 +226,7 @@ public:
       auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
 
       if (tag_projection(hit->data) == tag) {
-        *hit = {++access_count, elem};
+        *hit = {hit->last_used, elem}; // FIFO: We are only updating last_used on insert
         return std::optional<value_type>{hit->data};
       } else {
         std::optional<value_type> rv = std::optional<value_type>{miss->data};
@@ -266,14 +260,14 @@ public:
     return std::exchange(*hit, new_val).data;
   }
 
-  srrip_table(std::size_t sets, std::size_t ways, SetProj set_proj, TagProj tag_proj)
+  fifo_table(std::size_t sets, std::size_t ways, SetProj set_proj, TagProj tag_proj)
       : set_projection(set_proj), tag_projection(tag_proj), NUM_SET(sets), NUM_WAY(ways)
   {
     assert(sets == 0 || sets == (1ull << lg2(sets)));
   }
 
-  srrip_table(std::size_t sets, std::size_t ways, SetProj set_proj) : srrip_table(sets, ways, set_proj, {}) {}
-  srrip_table(std::size_t sets, std::size_t ways) : srrip_table(sets, ways, {}, {}) {}
+  fifo_table(std::size_t sets, std::size_t ways, SetProj set_proj) : fifo_table(sets, ways, set_proj, {}) {}
+  fifo_table(std::size_t sets, std::size_t ways) : fifo_table(sets, ways, {}, {}) {}
 };
 } // namespace champsim::msl
 

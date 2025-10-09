@@ -15,13 +15,24 @@
 #include <numeric>
 #include <set>
 
-#include "msl/lru_table.h"
-#include "ooo_cpu.h"
 
-#define SMALL_BIG_WAY_SPLIT 12  // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
+#include "ooo_cpu.h"
+// We are only using those in the preprocessor
+#define USE_FIFO true
+#define USE_SRRIP false
+
+#if USE_FIFO
+#include "msl/fifo_table.h"
+#elif USE_SRRIP
+#include "msl/srrip_table.h"
+#endif
+#include "msl/lru_table.h"
+
+#define SMALL_BIG_WAY_SPLIT 12 // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
 #define SAMPLING_DISTANCE 500000
+
 
 uint64_t invalid_replacements = 0;
 
@@ -259,11 +270,21 @@ struct region_btb_entry_t {
 // extern bool is_kernel(uint64_t ip);
 // extern bool is_shared_or_vdso(uint64_t ip);
 
+// TODO: Make fifo/srrip/lru configurable per component -- how to most effectively? I don't know...
+#if USE_FIFO 
+  std::map<O3_CPU*, champsim::msl::fifo_table<region_btb_entry_t>> REGION_BTB;
+  std::map<O3_CPU*, champsim::msl::fifo_table<FilterBTBEntry>> REGION_FILTER_BTB;
+#elif USE_SRRIP
+  std::map<O3_CPU*, champsim::msl::srrip_table<BTBEntry>> BTB;
+  std::map<O3_CPU*, champsim::msl::srrip_table<region_btb_entry_t>> REGION_BTB;
+  std::map<O3_CPU*, champsim::msl::srrip_table<FilterBTBEntry>> REGION_FILTER_BTB;
+#else
+  std::map<O3_CPU*, champsim::msl::lru_table<FilterBTBEntry>> REGION_FILTER_BTB;
+  std::map<O3_CPU*, champsim::msl::lru_table<region_btb_entry_t>> REGION_BTB;
+#endif
 std::map<O3_CPU*, champsim::msl::lru_table<BTBEntry>> BTB;
-std::map<O3_CPU*, champsim::msl::lru_table<region_btb_entry_t>> REGION_BTB;
 // TODO: make sure that the BTBEntry types here are always calculating full tags - might require another type
 std::map<O3_CPU*, std::map<uint64_t, uint64_t>> REGION_REF_COUNT;
-std::map<O3_CPU*, champsim::msl::lru_table<FilterBTBEntry>> REGION_FILTER_BTB;
 std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
 std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
 std::map<O3_CPU*, std::deque<uint64_t>> RAS;
@@ -275,22 +296,42 @@ void O3_CPU::initialize_btb()
 {
   std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == BTB_TAG_REGIONS) << "\nPERFECT MAPPING: " << btb_perfect_mapping
             << ", FILTER BTB: " << REGION_BTB_FILTER_ENABLED << std::endl;
-  ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
+#if USE_SRRIP
+    ::BTB.insert({this, champsim::msl::srrip_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
+#else
+    ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
+#endif
   USE_REGIONALIZED_BTB_OFFSET = this->BTB_FILTER_BTB_LIMIT;
   INSERT_FILTER_VICTIMS = USE_REGIONALIZED_BTB_OFFSET != 0;
   if (REGION_BTB_FILTER_ENABLED && this->BTB_TAG_REGIONS) {
-    ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
+#if USE_FIFO
+      ::REGION_FILTER_BTB.insert(
+          {this, champsim::msl::fifo_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
+#elif USE_SRRIP
+      ::REGION_FILTER_BTB.insert(
+          {this, champsim::msl::srrip_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
+#else
+      ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
+#endif
     _FILTER_INDEX_MASK = (BTB_SETS / 16) - 1;
     _FILTER_BTB_SET_BITS = champsim::lg2(BTB_SETS / 16);
     ::REGION_REF_COUNT.insert({this, {}});
   }
   _PERFECT_MAPPING = btb_perfect_mapping;
   // TODO: Make region BTB configurable for way/sets
+  size_t ways = 1;
+  size_t sets = 1;
   if (BTB_TAG_REGIONS) {
-    ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{BTB_TAG_REGIONS / BTB_TAG_REGION_WAYS, BTB_TAG_REGION_WAYS}});
-  } else {
-    ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{1, 1}}); // no regions used, dummy entry to allow region lookup where not predicated
+    sets = BTB_TAG_REGIONS / BTB_TAG_REGION_WAYS;
+    ways = BTB_TAG_REGION_WAYS;
   }
+#if USE_FIFO
+    ::REGION_BTB.insert({this, champsim::msl::fifo_table<region_btb_entry_t>{sets, ways}});
+#elif USE_SRRIP
+    ::REGION_BTB.insert({this, champsim::msl::srrip_table<region_btb_entry_t>{sets, ways}});
+#else
+    ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{sets, ways}});
+#endif
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   ::btb_addressing_hash = btb_index_tag_hash;
   std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
@@ -623,7 +664,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         std::nullopt; // fixing up for when we are using perfect matching, as in this case we will alias as we use the actual region bits instead of their index
   }
   if (!small_hit.has_value() && !big_hit.has_value() && !hit_64.has_value()) {
-    lru_elem = ::BTB.at(this).get_lru_elem(::BTBEntry{ip, 0}, num_bits);
+    lru_elem = ::BTB.at(this).get_replacement_element(::BTBEntry{ip, 0}, num_bits);
   }
 
   assert(!(small_hit.has_value() && big_hit.has_value()) || (small_hit.value().ip_tag == big_hit.value().ip_tag));
@@ -887,14 +928,16 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   prev_branch_ip = ip;
 }
 
-void O3_CPU::btb_end_phase (unsigned finished_cpu) {
+void O3_CPU::btb_end_phase(unsigned finished_cpu)
+{
   // TODO: go through all entries in the REGION BTB and read out max pointer values
   for (auto it = ::REGION_BTB.at(this).begin(); it != ::REGION_BTB.at(this).end(); it++) {
     sim_stats.region_pointer_max_stats[it->data.max_pointer]++;
   }
 }
 
-void O3_CPU::btb_invalidate_entry(uint64_t ip) {
+void O3_CPU::btb_invalidate_entry(uint64_t ip)
+{
   if (!btb_invalidate_entry_on_alias && !btb_invalidate_region)
     return;
   std::optional<::BTBEntry> btb_entry = std::nullopt;
@@ -964,14 +1007,15 @@ void O3_CPU::btb_invalidate_entry(uint64_t ip) {
 
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
-  if (!btb_entry.has_value() || !region_idx_.has_value()){
-    std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR "<< ip << std::endl;
+  if (!btb_entry.has_value() || !region_idx_.has_value()) {
+    std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR " << ip << std::endl;
     std::cerr << "ALREADY REPLACED?" << std::endl;
     return;
     // assert(0);
   }
   if (btb_entry.value().ip_tag == ip) {
-    return;  // we already updated the entry in simulation -- evicting it now would result in a double penalty - updating and then throwing away the just updated entry
+    return; // we already updated the entry in simulation -- evicting it now would result in a double penalty - updating and then throwing away the just updated
+            // entry
   }
   if (btb_invalidate_entry_on_alias)
     ::BTB.at(this).invalidate(btb_entry.value());
