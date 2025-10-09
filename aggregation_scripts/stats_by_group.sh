@@ -2,8 +2,8 @@
 
 #benchmarks=("tanvir")
 #inputs: 
-benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "LLBP" "google_merced" "google_charlie" "google_delta" "google_whiskey") # "LLBP" "dpc3" "google_merced" "google_charlie" "google_delta" "google_whiskey") #  "LLBP")
-normalise_to_row="sizes_4k_btb_tag_14b"  # TODO: Make this the default/add default to look at / baseline
+benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "cvp1" "dpc3") # "LLBP" "dpc3" "google_merced" "google_charlie" "google_delta" "google_whiskey") #  "LLBP")
+normalise_to_row="sizes_8k_btb_tag_full"  # TODO: Make this the default/add default to look at / baseline
 #end inputs~
 #benchmarks=("crc2_spec" "crc2_cloud" "dpc3")
 pg_dir=""
@@ -44,10 +44,10 @@ if [ $# -lt 1 ]; then
         # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi REGIONS_PER_WAY &
 
 
-        for config in ./${b}/*
-        do
-            python ${chroot}/ChampSim/aggregation_scripts/json_data.py ${config} &  # TODO: only run when available
-        done
+        # for config in ./${b}/*
+        # do
+        #     python ${chroot}/ChampSim/aggregation_scripts/json_data.py ${config} &  # TODO: only run when available
+        # done
 
         # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi PARTIAL &
         # python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi FRONTEND_STALLS &
@@ -120,7 +120,7 @@ do
     do
         if [ -d "$config" ]; then
             echo "Plotting regions for ${config}"
-            ${pg_dir}plotgen --debug -i ${config}/overall_max_region.tsv --palette bright --sort-function name --sort-columns --plot bar -o ./graphs/$(basename ${config})_overall_max_region.html &
+            # ${pg_dir}plotgen --debug -i ${config}/overall_max_region.tsv --palette bright --sort-function name --sort-columns --plot bar -o ./graphs/$(basename ${config})_overall_max_region.html &
             # for percentage in ${percentages[@]}
             # do
             #     # for way in ${ways[@]}
