@@ -16,9 +16,9 @@ module load Python/3.10.8-GCCcore-12.2.0
 module load GCC/12.2.0
 module load GCCcore/12.2.0
 
-suffix=""
-binary_dir=("core_depth_grid_search") # "btb_size_region_sensitivity" "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
-count=0
+suffix="cvp_dpc3"
+binary_dir=("btb_full_grid_search") # "btb_size_region_sensitivity" "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
+count=10
 timelimit="8:00:00"
 warmup=50000000
 simulation=50000000

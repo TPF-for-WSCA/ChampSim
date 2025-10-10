@@ -91,7 +91,7 @@ uint64_t _BTB_TAG_REGION_SET_IDX_BITS = 0;
 uint8_t _BTB_TAG_REGION_SIZE = 0; // This is the size of a single region in bits
 uint64_t _BTB_REGION_BITS = 0;    // This is the number of bits required to assign an ID to all regions in the region BTB (log2(BTB_TAG_REGIONS))
 uint64_t last_stats_cycle = 0;
-uint64_t isa_shiftamount = 2;
+uint64_t _isa_shiftamount = 2;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
 constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
@@ -146,7 +146,7 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
 auto get_region(uint64_t ip)
 {
   ip = shuffle_ip_tag(ip);
-  ip = ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+  ip = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
   ip = ip & _REGION_MASK;
   return ip;
 }
@@ -163,20 +163,20 @@ struct FilterBTBEntry {
   auto index() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    auto idx = (ip >> isa_shiftamount) & _FILTER_INDEX_MASK;
+    auto idx = (ip >> _isa_shiftamount) & _FILTER_INDEX_MASK;
     return idx;
   }
   auto tag() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    auto tag = ip >> isa_shiftamount >> _FILTER_BTB_SET_BITS;
+    auto tag = ip >> _isa_shiftamount >> _FILTER_BTB_SET_BITS;
     return tag;
   }
 
   auto partial_tag() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    uint64_t tag = ip >> isa_shiftamount >> _FILTER_BTB_SET_BITS;
+    uint64_t tag = ip >> _isa_shiftamount >> _FILTER_BTB_SET_BITS;
     return tag;
   }
 
@@ -196,13 +196,13 @@ struct BTBEntry {
   auto index() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    auto idx = (ip >> isa_shiftamount) & _INDEX_MASK;
+    auto idx = (ip >> _isa_shiftamount) & _INDEX_MASK;
     return idx;
   }
   auto tag() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    auto tag = ip >> isa_shiftamount >> _BTB_SET_BITS;
+    auto tag = ip >> _isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
     }
@@ -224,7 +224,7 @@ struct BTBEntry {
   auto partial_tag() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
-    uint64_t tag = ip >> isa_shiftamount >> _BTB_SET_BITS;
+    uint64_t tag = ip >> _isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
     }
@@ -252,14 +252,14 @@ struct region_btb_entry_t {
   {
     auto ip = shuffle_ip_tag(ip_tag);
     // NOTE: If shifted by (_BTB_REGION_BITS - _BTB_SET_BITS) this term results in "big idx" inserts, so the msbs of the region are used for indexing
-    uint64_t raw_idx = (ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
+    uint64_t raw_idx = (ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
     return raw_idx; // NOTE: keep track how many entries we observe per set
   }
   auto tag() const
   {
     // TODO: calculate region tag
     auto ip = shuffle_ip_tag(ip_tag);
-    auto tag = ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+    auto tag = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
     tag &= _REGION_MASK;
     return tag;
   }
@@ -294,6 +294,9 @@ std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 
 void O3_CPU::initialize_btb()
 {
+  if (intel) {
+    _isa_shiftamount = 0;
+  }
   std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == BTB_TAG_REGIONS) << "\nPERFECT MAPPING: " << btb_perfect_mapping
             << ", FILTER BTB: " << REGION_BTB_FILTER_ENABLED << std::endl;
 #if USE_SRRIP
@@ -356,9 +359,6 @@ void O3_CPU::initialize_btb()
   } else {
     _BTB_TAG_SIZE = 62 - _BTB_SET_BITS;
     _REGION_MASK = pow2(62 - _BTB_SET_BITS) - 1;
-  }
-  if (intel) {
-    isa_shiftamount = 0;
   }
   // TODO: Initialize index and tag based on bit information
   _INDEX_MASK = BTB_SETS - 1;
