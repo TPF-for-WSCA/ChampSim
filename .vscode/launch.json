@@ -14,7 +14,7 @@
             //"${workspaceRoot}/bin/champsim_16b_region_256",
             "args": [
                 "--warmup-instructions",
-                "000000",
+                "10000000",
                 "--simulation-instructions",
                 "10000000",
                 "--json",
@@ -76,9 +76,9 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "--warmup_instructions",
-                "10",
+                "10000000",
                 "--simulation_instructions",
-                "1000000",
+                "10000000",
                 "--json",
                 "/Users/robrunne/Downloads/stats.json",
                 // "--tsv",
