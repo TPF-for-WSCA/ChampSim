@@ -31,27 +31,6 @@
 
 namespace champsim::msl
 {
-namespace detail
-{
-template <typename T>
-struct table_indexer {
-  auto operator()(const T& t) const
-  {
-    auto ret_val = t.index();
-    return ret_val;
-  }
-};
-
-template <typename T>
-struct table_tagger {
-  auto operator()(const T& t) const { return t.tag(); }
-};
-
-template <typename T>
-struct partial_tagger {
-  auto operator()(const T& t) const { return t.partial_tag(); }
-};
-} // namespace detail
 
 template <typename T, typename SetProj = detail::table_indexer<T>, typename TagProj = detail::table_tagger<T>, typename PartTagProj = detail::partial_tagger<T>>
 class srrip_table
@@ -190,7 +169,7 @@ public:
     return std::tuple<uint16_t, uint16_t, uint64_t>{hit->data.index(), hit - std::begin(block), hit->data.tag()};
   }
 
-  value_type get_srrip_elem(const value_type& elem, uint8_t size)
+  value_type get_replacement_element(const value_type& elem, uint8_t size)
   {
     auto [set_begin, set_end] = get_set_span(elem);
     while (set_begin->data.target_size < size && set_begin != set_end) {
