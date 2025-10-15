@@ -34,6 +34,10 @@ class STATS(Enum):
     ALIASING_SQUASH_CYCLES = 25  # this one is relative only
     SQUASH_COUNTS = 26  # this one is absolute only
     BTB_HIT_PKI = 27
+    NUM_REGIONS_PER_REGION_SIZE = 28
+    REGION_BTB_REPLACEMENTS = 29
+    REGION_SWITCHING_FREQUENCY = 30
+    REGIONS_PER_WAY = 31
 
 
 
@@ -136,7 +140,7 @@ def extract_btb_tag_entropy(path):
     logs = []
     with open(path) as f:
         logs = f.readlines()
-    entropy_re = re.compile(r"BTB TAG Entropy: ([0-9]*(\.[0-9]+)?)")
+    entropy_re = re.compile(r"BTB TAG SWITCH Entropy: ([0-9]*(\.[0-9]+)?)")
     for line in logs:
         matches = entropy_re.search(line)
         if matches:
@@ -148,7 +152,7 @@ def extract_btb_region_split(path):
     with open(path) as f:
         logs = f.readlines()
     logs.reverse()
-    region_split_re = re.compile(r"CPU 0 REGION BTB BIG REGIONS: (\d+)")
+    region_split_re = re.compile(r"CPU 0 TOTAL REGIONS: (\d+)")
     for line in logs:
         matches = region_split_re.search(line)
         if matches:
@@ -219,6 +223,49 @@ def extract_absolute_btb_aliasing(path):
             break
     return total
 
+def regions_per_way(path):
+    import itertools
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    ilogs = iter(logs)
+    for line in ilogs:
+        if line.strip() == "Number of Regions Observed per Target Offset Way":
+            break
+    re_ = re.compile(r"(\d+):\t(\d+)")
+    result = {}
+    for line in ilogs:
+        matches = re_.search(line)
+        if not matches:
+            break
+        result[int(matches.groups()[0])] = int(matches.groups()[1])
+    return result
+
+# REGION_SWITCHING_FREQUENCY
+def region_switching_frequency(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    re_freq = re.compile(r"REGION SWITCHING FREQUENCY: (0.\d+)")
+    for line in logs:
+        matches = re_freq.search(line)
+        if matches:
+            return float(matches.groups()[0])
+
+def region_btb_replacements(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    # order of values: total, aliasing, same block, different block
+    re_total = re.compile(r"REGION BTB REPLACEMENTS: (\d+)")
+    total = 0
+    for line in logs:
+        matches = re_total.search(line)
+        if matches:
+            total = int(matches.groups()[0])
+            break
+    return total
+
 def extract_btb_hit_pki(path):
     logs = []
     with open(path) as f:
@@ -257,6 +304,27 @@ def extract_aliasing_relative_to_total_hits(path):
         if all(lookups):
             break
     return 0 if not lookups[1] else lookups[0] / lookups[1]
+
+
+def static_region_count_per_region_size(path):
+    import itertools
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    ilogs = iter(logs)
+    for line in ilogs:
+        if line.strip() == "CPU 0 REGIONS BY SIZE:":
+            break
+    
+    data = {}
+    for data_line in ilogs:
+        data_line = data_line.strip()
+        if not data_line or data_line.startswith("REGION"):
+            break
+        [region_size, region_count] = [int(val.strip()) for val in data_line.split(":")]
+        data[region_size] = region_count
+    return data
+
 
 
 def extract_btb_bits_per_cl(path):
@@ -563,6 +631,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_context_switch_count(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.NUM_REGIONS_PER_REGION_SIZE:
+                stat_by_workload[workload] = static_region_count_per_region_size(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.NUM_BTB_BITS_PER_CL:
                 stat_by_workload[workload] = extract_btb_bits_per_cl(
                     f"{path}/{workload}/{logfile}"
@@ -573,6 +645,18 @@ def single_run(path):
                 )
             elif type == STATS.ALIASING:
                 stat_by_workload[workload] = extract_aliasing_relative_to_total_hits(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.REGION_BTB_REPLACEMENTS:
+                stat_by_workload[workload] = region_btb_replacements(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.REGION_SWITCHING_FREQUENCY:
+                stat_by_workload[workload] = region_switching_frequency(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.REGIONS_PER_WAY:
+                stat_by_workload[workload] = regions_per_way(
                     f"{path}/{workload}/{logfile}"
                 )
             elif type == STATS.ABSOLUTE_ALIASING:
@@ -715,6 +799,12 @@ def write_tsv(data, out_path=None):
         filename = "absolute_btb_hits"
     elif type == STATS.ALIASING:
         filename = "aliasing"
+    elif type == STATS.REGION_BTB_REPLACEMENTS:
+        filename = "region_btb_replacements"
+    elif type == STATS.REGION_SWITCHING_FREQUENCY:
+        filename = "region_switching_frequency"
+    elif type == STATS.REGIONS_PER_WAY:
+        filename = "regions_per_way"
     elif type == STATS.ABSOLUTE_ALIASING:
         filename = "total_aliasing"
     elif type == STATS.ALIASING_SQUASH_CYCLES:
@@ -749,6 +839,8 @@ def write_tsv(data, out_path=None):
         filename = "stall_cycles"
     elif type == STATS.ROB_AT_MISS:
         filename = "rob_at_miss"
+    elif type == STATS.NUM_REGIONS_PER_REGION_SIZE:
+        filename = "num_regions_per_region_size"
     elif type == STATS.NUM_BTB_BITS_PER_CL:
         filename = "num_btb_bits_per_cacheline"
     elif type == STATS.BIT_INFORMATION:
@@ -839,12 +931,20 @@ elif sys.argv[3] == "INSTRUCTION_COUNT":
     type = STATS.INSTRUCTION_COUNT
 elif sys.argv[3] == "CONTEXT_SWITCH":
     type = STATS.CONTEXT_SWITCH
+elif sys.argv[3] == "BTB_REGION_COUNT_BY_REGION_SIZE":
+    type = STATS.NUM_REGIONS_PER_REGION_SIZE
 elif sys.argv[3] == "BTB_BITS_CL":
     type = STATS.NUM_BTB_BITS_PER_CL
 elif sys.argv[3] == "BTB_HITS":
     type = STATS.BTB_HIT_PKI
 elif sys.argv[3] == "BTB_ALIASING":
     type = STATS.ALIASING
+elif sys.argv[3] == "REGION_BTB_REPLACEMENTS":
+    type = STATS.REGION_BTB_REPLACEMENTS
+elif sys.argv[3] == "REGION_SWITCHING_FREQUENCY":
+    type = STATS.REGION_SWITCHING_FREQUENCY
+elif sys.argv[3] == "REGIONS_PER_WAY":
+    type = STATS.REGIONS_PER_WAY
 elif sys.argv[3] == "BTB_TOTAL_ALIASING":
     type = STATS.ABSOLUTE_ALIASING
 elif sys.argv[3] == "BTB_RELATIVE_ALIASING_SQUASH_CYCLES":
@@ -878,6 +978,19 @@ elif type == STATS.SQUASH_COUNTS:
     write_squash_counts(data, sys.argv[1])
 elif type == STATS.BRANCH_DISTANCES:
     write_series(data, sys.argv[1])
+elif type == STATS.REGIONS_PER_WAY:
+    file_path = os.path.join(sys.argv[1], "regions_per_way.tsv")
+    with open(file_path, "w+") as outfile:
+        outfile.write("\t")
+        for title in data[next(iter(data))].keys():
+            outfile.write(f"{title}\t")
+        outfile.write("\n")
+        for workload, data in data.items():
+            outfile.write(f"{workload}\t")
+            for value in data.values():
+                outfile.write(f"{value}\t")
+            outfile.write("\n")
+
 elif type == STATS.NUM_BTB_BITS_PER_CL:
     file_path = os.path.join(sys.argv[1], "num_btb_bits_per_cl.tsv")
     with open(file_path, "w+") as outfile:
@@ -887,6 +1000,18 @@ elif type == STATS.NUM_BTB_BITS_PER_CL:
                 outfile.write(f"\t{entry}")
             outfile.write("\n")
         outfile.flush()
+elif type == STATS.NUM_REGIONS_PER_REGION_SIZE:
+    file_path = os.path.join(sys.argv[1], "num_regions_per_region_size.tsv")
+    with open(file_path, "w+") as outfile:
+        for workload in data["const"].keys():
+            outfile.write(f"{workload}\t")
+        outfile.write("\n")
+        for i in range(1,64,1):
+            for values in data["const"].values():
+                if not values:
+                    break
+                outfile.write(f"{values[i]}\t")
+            outfile.write("\n")
 # elif type == STATS.ALIASING:
 #     file_path = os.path.join(sys.argv[1], "aliasing.tsv")
 #     with open(file_path, "w+") as outfile:

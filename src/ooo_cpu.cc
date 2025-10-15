@@ -33,7 +33,10 @@
 #define KERNEL_LOWER_BOUND 0xffff800000000000ul
 #define KERNEL_IGNORE_ENABLE false
 
+std::set<uint64_t> branch_seen = {}; 
+
 uint64_t prev_branch_lookup_ip = 0;
+ooo_model_instr prev_instr = {0, input_instr() };
 
 std::chrono::seconds elapsed_time();
 
@@ -98,10 +101,16 @@ void O3_CPU::begin_phase()
   stats.btb_tag_entropy = sim_stats.btb_tag_entropy;
   stats.btb_tag_switch_entropy = sim_stats.btb_tag_switch_entropy;
   stats.btb_updates = sim_stats.btb_updates;
+  stats.btb_region_switching_dynamic = sim_stats.btb_region_switching_dynamic;
   stats.btb_static_updates = sim_stats.btb_static_updates;
   stats.dynamic_bit_counts = sim_stats.dynamic_bit_counts;
+  stats.max_regions_per_region_size = sim_stats.max_regions_per_region_size;
+  stats.branch_tag_set = sim_stats.branch_tag_set;
   stats.static_bit_counts = sim_stats.static_bit_counts;
+  stats.region_pointer_count = sim_stats.region_pointer_count;
   stats.dynamic_branch_count = sim_stats.dynamic_branch_count;
+  stats.back_to_back_branches = sim_stats.back_to_back_branches;
+  stats.unique_aligned_branches = sim_stats.unique_aligned_branches;
   stats.dynamic_btb_lookup_count = sim_stats.dynamic_btb_lookup_count;
   stats.btb_tag_lookup_switch_entropy = sim_stats.btb_tag_lookup_switch_entropy;
   stats.static_branch_count = sim_stats.static_branch_count;
@@ -115,6 +124,8 @@ void O3_CPU::end_phase(unsigned finished_cpu)
   // Record where the phase ended (overwrite if this is later)
   sim_stats.end_instrs = num_retired;
   sim_stats.end_cycles = current_cycle;
+  impl_btb_end_phase(finished_cpu);
+
 
   if (finished_cpu == this->cpu) {
     finish_phase_instr = num_retired;
@@ -138,7 +149,17 @@ void O3_CPU::initialize_instruction()
 
     // Add to IFETCH_BUFFER
     IFETCH_BUFFER.push_back(input_queue.front());
+    if (prev_instr.ip && prev_instr.ip >> isa_shiftamount >> 1 == input_queue.front().ip >> isa_shiftamount >> 1) {
+      uint8_t branch_count = prev_instr.is_branch + input_queue.front().is_branch;
+      if (branch_count == 2) {
+        sim_stats.back_to_back_branches++;
+      } else if (branch_count == 1) {
+        sim_stats.unique_aligned_branches++;
+      }
+    }
+    prev_instr = input_queue.front();
     input_queue.pop_front();
+
 
     IFETCH_BUFFER.back().event_cycle = current_cycle;
   }
@@ -205,7 +226,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (predicted_branch_target) {
     sim_stats.btb_hits++;
   }
-  if (perfect_btb) {
+  bool first_branch_occurrence = branch_seen.insert(arch_instr.ip).second;
+  if (perfect_btb && ((realistic_perfect && !first_branch_occurrence) || !realistic_perfect) && !arch_instr.branch_type == BRANCH_INDIRECT) {
     predicted_branch_target = arch_instr.branch_target;
     branch_ip = arch_instr.ip;
     always_taken = (arch_instr.branch_type == BRANCH_CONDITIONAL || arch_instr.branch_type == BRANCH_OTHER)
@@ -213,6 +235,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
                        : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
   }
   if (!warmup and predicted_branch_target and branch_ip != arch_instr.ip) {
+    // std::cout << arch_instr.instr_id << std::endl;
     sim_stats.total_aliasing++;
     is_aliasing = true;
     auto differing_bits = std::bitset<64>{branch_ip ^ arch_instr.ip};
@@ -225,7 +248,9 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   }
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
   if (perfect_branch_predict && arch_instr.is_branch) {
-    arch_instr.branch_prediction = arch_instr.branch_taken;
+    if (realistic_perfect && first_branch_occurrence) {}
+    else
+      arch_instr.branch_prediction = arch_instr.branch_taken;
   }
   if (arch_instr.branch_prediction == 0) {
     predicted_branch_target = 0;
@@ -423,10 +448,12 @@ long O3_CPU::decode_instruction()
         std::get<0>(sim_stats.squash_counts) += 1;
         std::get<2>(sim_stats.squash_counts) += 1;
         sim_stats.total_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
-        if (is_aliasing_stall) {
+        if (is_aliasing_stall && (btb_small_way_regions_enabled || btb_big_way_regions_enabled)) {
           std::get<0>(sim_stats.aliasing_squash_counts) += 1;
           std::get<2>(sim_stats.aliasing_squash_counts) += 1;
           sim_stats.aliasing_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
+          // TODO: Only invalidate *iff* this is a region based implemented part of the btb
+          impl_btb_invalidate_entry(db_entry.ip);
         }
         fetch_stalled_cycle = 0;
         is_aliasing_stall = false;
