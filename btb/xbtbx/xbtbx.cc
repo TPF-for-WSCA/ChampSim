@@ -28,6 +28,8 @@
 #endif
 #include "msl/lru_table.h"
 
+#include "ittage.h"
+
 #define SMALL_BIG_WAY_SPLIT 12 // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
@@ -62,6 +64,8 @@ enum class branch_info {
 // size_t _37_deleted = 0;
 // size_t _37_updated = 0;
 // DEBUGGING END
+
+ittage_predictor* ittage;
 
 std::map<uint32_t, std::map<uint64_t, uint64_t>> region_tag_entry_count = {};
 std::map<uint64_t, uint64_t> total_region_tag_entry_count = {};
@@ -294,6 +298,7 @@ std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 
 void O3_CPU::initialize_btb()
 {
+  ittage = new ittage_predictor();
   if (intel) {
     _isa_shiftamount = 0;
   }
@@ -470,11 +475,10 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 
     return {target + 4, btb_entry->ip_tag, true}; // assume fixed size for now
   }
-  /*
-    if (btb_entry->type == ::branch_info::INDIRECT) {
-      auto hash = (ip >> isa_shiftamount) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
-      return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
-    }*/
+
+  if (btb_entry->type == ::branch_info::INDIRECT) {
+    return {ittage->predict_brindirect(ip), btb_entry->ip_tag, true};
+  }
 
   return {btb_entry->get_prediction(), btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL};
 }
@@ -520,6 +524,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     if (std::size(RAS[this]) > RAS_SIZE)
       RAS[this].pop_front();
   }
+
+  ittage->update_brindirect(ip, branch_type, taken, branch_target);
+  ittage->fetch_history_update(ip, branch_type, taken, branch_target);
 
   // COMMON STATS
   if (branch_target) {
