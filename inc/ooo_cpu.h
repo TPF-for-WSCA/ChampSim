@@ -152,6 +152,7 @@ private:
   size_t EXTENDED_BTB_MAX_LOOP_BRANCH;
   std::vector<uint8_t> BTB_TARGET_SIZES; // TODO: How to check length?
   uint32_t* offset_btb_sets;
+  uint64_t prev_wrong_ip = 0;
   bool prev_was_branch = false;
   bool perfect_btb;
   bool BTB_PARTIAL_TAG_RESOLUTION = false;
@@ -222,6 +223,7 @@ public:
 
   // reorder buffer, load/store queue, register file
   std::deque<ooo_model_instr> IFETCH_BUFFER;
+  std::deque<ooo_model_instr> IFETCH_BUFFER_WRONGPATH;
   std::deque<ooo_model_instr> DISPATCH_BUFFER;
   std::deque<ooo_model_instr> DECODE_BUFFER;
   std::deque<ooo_model_instr> ROB;
@@ -255,6 +257,7 @@ public:
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
 
+  void add_wrongpath_instruction();
   void initialize_instruction();
   long check_dib();
   long fetch_instruction();
@@ -304,6 +307,8 @@ public:
     virtual std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
     virtual void impl_btb_end_phase(unsigned finished_cpu) = 0;
     virtual void impl_btb_invalidate_entry(uint64_t ip) = 0;
+    virtual void impl_btb_begin_wrongpath() = 0;
+    virtual void impl_btb_end_wrongpath() = 0;
   };
 
   template <unsigned long long B_FLAG, unsigned long long T_FLAG>
@@ -320,6 +325,8 @@ public:
     std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
     void impl_btb_end_phase(unsigned finished_cpu);
     void impl_btb_invalidate_entry(uint64_t);
+    void impl_btb_begin_wrongpath();
+    void impl_btb_end_wrongpath();
   };
 
   std::unique_ptr<module_concept> module_pimpl;
@@ -345,6 +352,14 @@ public:
   void impl_btb_invalidate_entry(uint64_t ip) {
     module_pimpl->impl_btb_invalidate_entry(ip);
   }
+
+  void impl_btb_begin_wrongpath(){
+    module_pimpl->impl_btb_begin_wrongpath();
+  };
+
+  void impl_btb_end_wrongpath(){
+    module_pimpl->impl_btb_end_wrongpath();
+  };
 
   class builder_conversion_tag
   {

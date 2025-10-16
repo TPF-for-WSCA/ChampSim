@@ -58,6 +58,14 @@ void O3_CPU::initialize_btb()
   ::CONDITIONAL_HISTORY[this] = 0;
 }
 
+
+void O3_CPU::btb_begin_wrongpath()
+{
+}
+
+void O3_CPU::btb_end_wrongpath() { }
+
+
 std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   // use BTB for all other branches + direct calls

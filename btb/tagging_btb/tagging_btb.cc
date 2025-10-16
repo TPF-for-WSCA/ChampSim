@@ -140,6 +140,12 @@ void O3_CPU::initialize_btb()
   _TAG_MASK = pow2(_BTB_TAG_SIZE) - 1;
 }
 
+void O3_CPU::btb_begin_wrongpath()
+{
+}
+
+void O3_CPU::btb_end_wrongpath() { }
+
 std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   std::optional<::btb_entry_t> btb_entry;
