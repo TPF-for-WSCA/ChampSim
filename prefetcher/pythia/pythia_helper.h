@@ -8,6 +8,7 @@
 #ifndef __PYTHIA_HELPER_H__
 #define __PYTHIA_HELPER_H__
 
+#include <algorithm>
 #include <bitset>
 #include <cstdint>
 #include <deque>

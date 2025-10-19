@@ -6,7 +6,7 @@
 #include <strings.h>
 #include <vector>
 
-#include "util/util.h"
+#include "util.h"
 
 void LearningEngineFeaturewise::init_knobs()
 {

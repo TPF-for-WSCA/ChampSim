@@ -12,11 +12,8 @@
 #include <vector>
 
 #include "champsim.h"
-#include "modules.h"
 #include "sms_helper.h"
-
-struct sms : public champsim::modules::prefetcher {
-private:
+struct sms {
   // config
   constexpr static uint32_t AT_SIZE = 32;
   constexpr static uint32_t FT_SIZE = 64;
@@ -56,17 +53,7 @@ private:
   uint64_t create_signature(uint64_t pc, uint32_t offset);
   std::size_t generate_prefetch(uint64_t pc, uint64_t address, uint64_t page, uint32_t offset, std::vector<uint64_t>& pref_addr);
   void buffer_prefetch(std::vector<uint64_t> pref_addr);
-  void issue_prefetch();
-
-public:
-  using champsim::modules::prefetcher::prefetcher;
-
-  // champsim interface prototypes
-  void prefetcher_initialize();
-  uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
-                                    uint32_t metadata_in);
-  uint32_t prefetcher_cache_fill(champsim::address addr, long set, long way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in);
-  void prefetcher_cycle_operate();
+  void issue_prefetch(CACHE* c);
 };
 
 #endif /* __SMS_H__ */

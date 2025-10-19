@@ -5,21 +5,22 @@
 // Description      : Implements Spatial Memory Streaming prefetcher, ISCA'06
 //=======================================================================================//
 
+#include "cache.h"
 #include "sms.h"
 
-void sms::prefetcher_initialize()
+sms current;
+
+void CACHE::prefetcher_initialize()
 {
   /* init PHT */
   std::deque<PHTEntry*> d;
-  pht.resize(sms::PHT_SETS, d);
+  current.pht.resize(current.PHT_SETS, d);
 }
 
-uint32_t sms::prefetcher_cache_operate(champsim::address address, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
-                                       uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
 {
-  uint64_t addr = address.to<uint64_t>();
-  uint64_t page = addr >> sms::REGION_SIZE_LOG;
-  uint32_t offset = (uint32_t)((addr >> LOG2_BLOCK_SIZE) & ((1ull << (sms::REGION_SIZE_LOG - LOG2_BLOCK_SIZE)) - 1));
+  uint64_t page = addr >> current.REGION_SIZE_LOG;
+  uint32_t offset = (uint32_t)((addr >> LOG2_BLOCK_SIZE) & ((1ull << (current.REGION_SIZE_LOG - LOG2_BLOCK_SIZE)) - 1));
   std::vector<uint64_t> pref_addr;
 
   // cout << "pc " << hex << setw(16) << pc
@@ -28,35 +29,38 @@ uint32_t sms::prefetcher_cache_operate(champsim::address address, champsim::addr
   // 	<< " offset " << dec << setw(2) << offset
   // 	<< endl;
 
-  auto at_index = search_acc_table(page);
+  auto at_index = current.search_acc_table(page);
   //   stats.at.lookup++;
-  if (at_index != acc_table.end()) {
+  if (at_index != current.acc_table.end()) {
     /* accumulation table hit */
     // stats.at.hit++;
     (*at_index)->pattern[offset] = 1;
-    update_age_acc_table(at_index);
+    current.update_age_acc_table(at_index);
   } else {
     /* search filter table */
-    auto ft_index = search_filter_table(page);
+    auto ft_index = current.search_filter_table(page);
     // stats.ft.lookup++;
-    if (ft_index != filter_table.end()) {
+    if (ft_index != current.filter_table.end()) {
       /* filter table hit */
       //   stats.ft.hit++;
-      insert_acc_table((*ft_index), offset);
-      evict_filter_table(ft_index);
+      current.insert_acc_table((*ft_index), offset);
+      current.evict_filter_table(ft_index);
     } else {
       /* filter table miss. Beginning of new generation. Issue prefetch */
-      insert_filter_table(ip.to<uint64_t>(), page, offset);
-      generate_prefetch(ip.to<uint64_t>(), addr, page, offset, pref_addr);
-      buffer_prefetch(pref_addr);
+      current.insert_filter_table(ip, page, offset);
+      current.generate_prefetch(ip, addr, page, offset, pref_addr);
+      current.buffer_prefetch(pref_addr);
     }
   }
   return 0;
 }
 
-void sms::prefetcher_cycle_operate() { issue_prefetch(); }
 
-uint32_t sms::prefetcher_cache_fill(champsim::address addr, long set, long way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
-  return 0;
+  return metadata_in;
 }
+
+void CACHE::prefetcher_cycle_operate() {current.issue_prefetch(this);}
+
+void CACHE::prefetcher_final_stats() {}

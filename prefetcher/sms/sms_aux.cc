@@ -220,12 +220,11 @@ void sms::buffer_prefetch(std::vector<uint64_t> pref_addr)
   //   stats.pref_buffer.spilled += (pref_addr.size() - count);
 }
 
-void sms::issue_prefetch()
+void sms::issue_prefetch(CACHE* c)
 {
   uint32_t count = 0;
   while (!pref_buffer.empty() && count < sms::PREF_DEGREE) {
-    champsim::address pf_addr{pref_buffer.front()};
-    const bool success = prefetch_line(pf_addr, true, 0);
+    const bool success = c->prefetch_line(pref_buffer.front(), true, 0);
     if (!success)
       break;
     else {

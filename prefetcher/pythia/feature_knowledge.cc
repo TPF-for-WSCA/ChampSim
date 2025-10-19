@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "util/util.h"
+#include "util.h"
 
 const uint32_t tiling_offset[] = {0xaca081b9, 0x666a1c67, 0xc11d6a53, 0x8e5d97c1, 0x0d1cad54, 0x874f71cb, 0x20d2fa13, 0x73f7c4a7,
                                   0x0b701f6c, 0x8388d86d, 0xf72ac9f2, 0xbab16d82, 0x524ac258, 0xb5900302, 0xb48ccc72, 0x632f05bf,

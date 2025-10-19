@@ -7,12 +7,10 @@
 
 #include "ipcp.h"
 
-#include <chrono>
 #include <iostream>
-
 #include "cache.h"
 
-void ipcp::prefetcher_initialize()
+void CACHE::prefetcher_initialize()
 {
   std::cout << "IPCP_AT_L1_CONFIG" << std::endl
             << "NUM_IP_TABLE_L1_ENTRIES " << NUM_IP_TABLE_L1_ENTRIES << std::endl
@@ -25,12 +23,8 @@ void ipcp::prefetcher_initialize()
             << "NL_TYPE " << NL_TYPE << std::endl
             << std::endl;
 }
-
-uint32_t ipcp::prefetcher_cache_operate(champsim::address address, champsim::address ip_addr, uint8_t cache_hit, bool useful_prefetch, access_type type,
-                                        uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in)
 {
-  uint64_t addr = address.to<uint64_t>();
-  uint64_t ip = ip_addr.to<uint64_t>();
   uint64_t curr_page = addr >> LOG2_PAGE_SIZE;
   uint64_t cl_addr = addr >> LOG2_BLOCK_SIZE;
   uint64_t cl_offset = (addr >> LOG2_BLOCK_SIZE) & 0x3F;
@@ -49,7 +43,7 @@ uint32_t ipcp::prefetcher_cache_operate(champsim::address address, champsim::add
     num_misses += 1;
 
   // get current CPU cycle
-  auto ct = intern_->current_time.time_since_epoch() / intern_->clock_period;
+  auto ct = current_cycle;
 
   // update spec nl bit when num misses crosses certain threshold
   if (num_misses == 256) {
@@ -83,7 +77,7 @@ uint32_t ipcp::prefetcher_cache_operate(champsim::address address, champsim::add
     // issue a next line prefetch upon encountering new IP
     uint64_t pf_address = ((addr >> LOG2_BLOCK_SIZE) + 1) << LOG2_BLOCK_SIZE; // BASE NL=1, changing it to 3
     metadata = encode_metadata(1, NL_TYPE, spec_nl);
-    intern_->prefetch_line(champsim::address{pf_address}, true, metadata);
+    prefetch_line(pf_address, true, metadata);
     return 0;
   } else { // if same IP encountered, set valid bit
     trackers_l1[index].ip_valid = 1;
@@ -155,7 +149,7 @@ uint32_t ipcp::prefetcher_cache_operate(champsim::address address, champsim::add
         break;
       }
 
-      intern_->prefetch_line(champsim::address{pf_address}, true, metadata);
+      prefetch_line(pf_address, true, metadata);
       num_prefs++;
       SIG_DP(cout << "1, ");
     }
@@ -170,7 +164,7 @@ uint32_t ipcp::prefetcher_cache_operate(champsim::address address, champsim::add
       }
 
       metadata = encode_metadata((int)trackers_l1[index].last_stride, CS_TYPE, spec_nl);
-      intern_->prefetch_line(champsim::address{pf_address}, true, metadata);
+      prefetch_line(pf_address, true, metadata);
       num_prefs++;
       SIG_DP(cout << trackers_l1[index].last_stride << ", ");
     }
@@ -189,7 +183,7 @@ uint32_t ipcp::prefetcher_cache_operate(champsim::address address, champsim::add
       // we are not prefetching at L2 for CPLX type, so encode delta as 0
       metadata = encode_metadata(0, CPLX_TYPE, spec_nl);
       if (DPT_l1[signature].conf > 0) { // prefetch only when conf>0 for CPLX
-        intern_->prefetch_line(champsim::address{pf_address}, true, metadata);
+        prefetch_line(pf_address, true, metadata);
         num_prefs++;
         SIG_DP(cout << pref_offset << ", ");
       }
@@ -201,7 +195,7 @@ uint32_t ipcp::prefetcher_cache_operate(champsim::address address, champsim::add
   if (num_prefs == 0 && spec_nl == 1) { // NL IP
     uint64_t pf_address = ((addr >> LOG2_BLOCK_SIZE) + 1) << LOG2_BLOCK_SIZE;
     metadata = encode_metadata(1, NL_TYPE, spec_nl);
-    intern_->prefetch_line(champsim::address{pf_address}, true, metadata);
+    prefetch_line(pf_address, true, metadata);
     SIG_DP(cout << "1, ");
   }
 
@@ -226,15 +220,15 @@ uint32_t ipcp::prefetcher_cache_operate(champsim::address address, champsim::add
 
   return 0;
 }
-
-uint32_t ipcp::prefetcher_cache_fill(champsim::address addr, long set, long way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in)
+uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
 {
   return 0;
 }
-void ipcp::prefetcher_cycle_operate() {}
+
+void CACHE::prefetcher_cycle_operate() {}
 
 /***************Updating the signature*************************************/
-uint16_t ipcp::update_sig_l1(uint16_t old_sig, int delta)
+uint16_t update_sig_l1(uint16_t old_sig, int delta)
 {
   uint16_t new_sig = 0;
   int sig_delta = 0;
@@ -247,7 +241,7 @@ uint16_t ipcp::update_sig_l1(uint16_t old_sig, int delta)
 }
 
 /****************Encoding the metadata***********************************/
-uint32_t ipcp::encode_metadata(int stride, uint16_t type, int _spec_nl)
+uint32_t encode_metadata(int stride, uint16_t type, int _spec_nl)
 {
   uint32_t metadata = 0;
 
@@ -268,7 +262,7 @@ uint32_t ipcp::encode_metadata(int stride, uint16_t type, int _spec_nl)
 
 /*********************Checking for a global stream (GS class)***************/
 
-void ipcp::check_for_stream_l1(int index, uint64_t cl_addr)
+void check_for_stream_l1(int index, uint64_t cl_addr)
 {
   int pos_count = 0, neg_count = 0, count = 0;
   uint64_t check_addr = cl_addr;
@@ -313,7 +307,7 @@ void ipcp::check_for_stream_l1(int index, uint64_t cl_addr)
 }
 
 /**************************Updating confidence for the CS class****************/
-int ipcp::update_conf(int stride, int pred_stride, int conf)
+int update_conf(int stride, int pred_stride, int conf)
 {
   if (stride == pred_stride) { // use 2-bit saturating counter for confidence
     conf++;
@@ -327,3 +321,5 @@ int ipcp::update_conf(int stride, int pred_stride, int conf)
 
   return conf;
 }
+
+void CACHE::prefetcher_final_stats() {}
