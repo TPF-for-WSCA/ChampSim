@@ -387,7 +387,7 @@ void O3_CPU::initialize_btb()
 }
 
 // __attribute__((optimize(0)))
-std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   // TODO: add if condition with breaking condition
   // if (!warmup && ip == 18446462598868070740 && current_cycle >= 7113112) {
@@ -457,18 +457,18 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
   if (!btb_entry.has_value())
-    return {0, ip, false};
+    return {0, ip, false, NOT_BRANCH};
 
   auto lras =  (!wrongpath) ? &RAS :  & WRONGPATH_BACKUP_RAS;
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty((*lras)[this]))
-      return {0, btb_entry->ip_tag, true};
+      return {0, btb_entry->ip_tag, true, BRANCH_RETURN};
 
     // peek at the top of the RAS and adjust for the size of the call instr
     auto target = (*lras)[this].back();
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
 
-    return {target + 4, btb_entry->ip_tag, true}; // assume fixed size for now
+    return {target + 4, btb_entry->ip_tag, true, BRANCH_RETURN}; // assume fixed size for now
   }
   if (wrongpath && (btb_entry->precise_branch_type == BRANCH_DIRECT_CALL || btb_entry->precise_branch_type == BRANCH_INDIRECT_CALL)) {
     // modify the wrongpath ras
@@ -482,7 +482,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
       return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
     }*/
 
-  return {btb_entry->get_prediction(), btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL};
+  return {btb_entry->get_prediction(), btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL, btb_entry->precise_branch_type};
 }
 
 // TODO: ONLY UPDATE WHEN FITTING IN THE WAY

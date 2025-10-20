@@ -173,7 +173,7 @@
                     "ignoreFailures": false
                 }
             ],
-            "preLaunchTask": "make DebugBuild"
+            // "preLaunchTask": "make DebugBuild"
         },        {
             "name": "C++ SAGA Launch",
             "type": "cppdbg",
@@ -198,7 +198,7 @@
                 // "-cloudsuite",
                 // "--intel",
                 // "-stallonmiss",
-                // "-traces",
+                // "--traces",
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_019.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_004.champsimtrace.xz"
@@ -236,7 +236,7 @@
                     "ignoreFailures": false
                 }
             ],
-            "preLaunchTask": "make DebugBuild"
+            // "preLaunchTask": "make DebugBuild"
         },
     ]
 }
