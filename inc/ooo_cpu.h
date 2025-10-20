@@ -202,6 +202,7 @@ public:
   uint64_t last_heartbeat_cycle = 0;
   uint64_t last_heartbeat_instr = 0;
   uint64_t next_print_instruction = STAT_PRINTING_PERIOD;
+  uint64_t next_print_inst_cycle = STAT_PRINTING_PERIOD;
 
   // instruction
   uint64_t num_retired = 0;
@@ -257,7 +258,7 @@ public:
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
 
-  void add_wrongpath_instruction();
+  bool add_wrongpath_instruction();
   void initialize_instruction();
   long check_dib();
   long fetch_instruction();
