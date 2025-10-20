@@ -1,4 +1,15 @@
 {
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/bower_components": true,
+        "**/*.code-search": true,
+        ".csconfig": true,
+    },
+    "C_Cpp.files.exclude":{
+        "**/.vscode": true,
+        "**/.vs": true,
+        ".csconfig": true
+    },
     "files.associations": {
         "ostream": "cpp",
         "cmath": "cpp",
@@ -92,7 +103,10 @@
         "*.inc": "cpp",
         "*.def": "cpp",
         "*.btb": "cpp",
-        "__config": "cpp"
+        "__config": "cpp",
+        "format": "cpp",
+        "numbers": "cpp",
+        "semaphore": "cpp"
     },
     "cmake.sourceDirectory": "/Users/robrunne/Workspace/NTNU/ChampSim/vcpkg/ports/7zip",
     "cmake.ignoreCMakeListsMissing": true,

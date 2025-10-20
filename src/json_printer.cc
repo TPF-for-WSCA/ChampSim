@@ -64,15 +64,19 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
   std::map<std::string, std::size_t> mpki{};
   for (auto [name, idx] : types)
     mpki.emplace(name, stats.branch_type_misses[idx]);
-
+  
+    // TODO: Don't know why, but it does not store the maps as a single entry in the vector? Double check, potentially requires copy constructor
   j = nlohmann::json{
       {"instructions", stats.instrs()},
       {"cycles", stats.cycles()},
       {"Avg ROB occupancy at mispredict", std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions)},
+      {"region_samples_per_way", stats.regions_per_way_samples},
+      {"region_count_samples", stats.region_count_samples},
       {"mispredict", mpki},
       {"aliasing", aliasing},
       {"btb_regions", btb_regions},
       {"regions_covered", regions_by_way},
+      {"btb_tags", stats.branch_tag_set},
       {"dynamic_branch_count_by_region", stats.dynamic_branch_count_per_address_space_global_region},
   };
 }

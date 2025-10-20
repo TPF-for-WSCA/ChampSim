@@ -37,16 +37,44 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
       std::accumulate(std::begin(types), std::end(types), 0ll, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm[next.second]; }));
 
   fmt::print(stream, "\nREGION BTB REPLACEMENTS: {}\n", stats.region_btb_conflicts);
+  if (stats.region_btb_conflicts) {
+    fmt::print(stream, "\nAVG MAX POINTER REGIONS: {}\n", stats.max_region_pointer_sum/stats.region_btb_conflicts);
+  } else {
+    fmt::print(stream, "\nAVG MAX POINTER REGIONS: ---\n");
+  }
+
+  fmt::print(stream, "\nBACK TO BACK BRANCHES: {}\tUNIQUE BRANCHES: {}", stats.back_to_back_branches, stats.unique_aligned_branches);
+
   fmt::print(stream, "\n{} cumulative IPC: {:.4g} instructions: {} cycles: {}\n", stats.name, std::ceil(stats.instrs()) / std::ceil(stats.cycles()),
              stats.instrs(), stats.cycles());
   fmt::print(stream, "{} Branch Prediction Accuracy: {:.4g}% MPKI: {:.4g} Average ROB Occupancy at Mispredict: {:.4g}\n", stats.name,
              (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch, (1000.0 * total_mispredictions) / std::ceil(stats.instrs()),
              std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions);
 
+  fmt::print(stream, "\nXXX REGION BTB POINTER COUNT SAMPLED:\n");
+  for (auto it = stats.region_pointer_cycle_probe_stats.begin(); it != stats.region_pointer_cycle_probe_stats.end(); it++) {
+    fmt::print(stream, "{}:\t{}\n", it->first, it->second);
+  }
+  fmt::print(stream, "XXX END REGION BTB POINTER COUNT SAMPLED\n\n");
+
+  fmt::print(stream, "\nXXX REGION BTB POINTER COUNT MAX:\n");
+  for (auto it = stats.region_pointer_max_stats.begin(); it != stats.region_pointer_max_stats.end(); it++) {
+    fmt::print(stream, "{}:\t{}\n", it->first, it->second);
+  }
+  fmt::print(stream, "XXX END REGION BTB POINTER COUNT MAX\n\n");
+
+
   fmt::print(stream, "{} REGION BTB BIG REGIONS: {}\n", stats.name, stats.big_region_small_region_mapping.size());
   fmt::print(stream, "\tBIG_REGION_IDX:\tSUB_REGION_COUNT\n");
+  uint64_t total_regions = 0;
   for (auto const& [big_region, tags] : stats.big_region_small_region_mapping) {
     fmt::print(stream, "\t{}:\t{}\n", big_region, tags.size());
+    total_regions += tags.size();
+  }
+
+  fmt::print(stream, "{} REGIONS BY SIZE:\n", stats.name);
+  for (uint64_t i = 0; i < 64; i++) {
+    fmt::print(stream, "\t{}:\t{}\n", 64-i, stats.max_regions_per_region_size[i]);
   }
 
   fmt::print(stream, "\nREGION SET IDX\tINSERTS\n");
@@ -62,6 +90,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
 
   fmt::print(stream, "\nPositive Aliasing: {}\nNegative Aliasing: {}\nNone-Branch Aliasing: {}\nTotal Aliasing: {}", stats.positive_aliasing,
              stats.negative_aliasing, stats.non_branch_btb_hits, stats.total_aliasing);
+  fmt::print(stream, "\n{} TOTAL REGIONS: {}\n", stats.name, total_regions);
   fmt::print(stream, "\nMAX BTB Regions: {}\nMIN BTB Regions: {}\n", stats.max_regions, stats.min_regions);
 
   fmt::print(stream, "\nALIASING BIT COUNTS:\n");
@@ -73,6 +102,13 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   long double switch_tag_entropy = 0;
   auto total_btb_updates = ((long double)stats.btb_updates);
   auto total_btb_static_updates = ((long double)stats.btb_static_updates);
+  auto region_switching_frequency = 1.0f - (long double)stats.btb_region_switching_dynamic / total_btb_updates;
+  fmt::print(stream, "\nREGION SWITCHING FREQUENCY: {}\n", region_switching_frequency);
+
+  fmt::print(stream, "\n\nNumber of Regions Observed per Target Offset Way\n");
+  for (auto const [target_size, regions] : stats.regions_inserted_per_way) {
+    fmt::print(stream, "{}:\t{}\n", target_size, regions.size());
+  }
   long double prev_counter = 0, prev_switch = 0;
   std::vector<std::pair<long double, uint8_t>> tag_bit_order;
   std::vector<std::pair<long double, uint8_t>> switch_bit_order;
@@ -93,6 +129,10 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     auto local_switch_entropy =
         (switch_percentage) ? -1.0 * (switch_percentage * std::log2l(switch_percentage) + (1.0 - switch_percentage) * std::log2l(1.0 - switch_percentage)) : 0;
     auto local_entropy = (percentage) ? -1.0 * (percentage * std::log2l(percentage) + (1.0 - percentage) * std::log2l(1.0 - percentage)) : 0;
+    if (std::isnan(local_entropy)){
+      std::cerr << "local entropy was nan -- double check this" << std::endl;
+      continue;
+    }
     tag_bit_order.push_back({local_entropy, i});
     switch_bit_order.push_back({local_switch_entropy, i});
   }

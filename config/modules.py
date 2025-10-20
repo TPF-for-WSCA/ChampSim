@@ -94,7 +94,7 @@ def get_branch_data(module_name):
 
 def get_btb_data(module_name):
     return data_getter(
-        "btb", module_name, ("initialize_btb", "update_btb", "btb_prediction")
+        "btb", module_name, ("initialize_btb", "update_btb", "btb_prediction", "btb_end_phase", "btb_invalidate_entry", "btb_begin_wrongpath", "btb_end_wrongpath")
     )
 
 
@@ -358,9 +358,21 @@ def get_ooo_cpu_module_lines(branch_data, btb_data):
         (
             "btb_prediction",
             (("uint64_t", "ip"),),
-            "std::tuple<uint64_t, uint64_t, uint8_t>",
+            "std::tuple<uint64_t, uint64_t, uint8_t, uint8_t>",
             "champsim::detail::take_last",
         ),
+        (
+            "btb_end_phase",
+            (("unsigned", "finished_cpu"),),
+            "void"
+        ),
+        (
+            "btb_invalidate_entry",
+            (("uint64_t", "ip"),),
+            "void"
+        ),
+        ("btb_begin_wrongpath",),
+        ("btb_end_wrongpath",)
     ]
 
     classname = "O3_CPU::module_model<" + branch_varname + ", " + btb_varname + ">"

@@ -72,20 +72,32 @@ struct cpu_stats {
   uint64_t total_aliasing = 0, positive_aliasing = 0, negative_aliasing = 0;
   uint64_t max_regions = 0;
   uint64_t min_regions = 0;
+  std::array<uint64_t, 64> max_regions_per_region_size = {};
   std::vector<std::map<uint8_t, std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>>> region_history;
   std::map<uint64_t, std::set<uint64_t>> big_region_small_region_mapping;
+  std::map<uint64_t, std::set<uint64_t>> regions_inserted_per_way;
+  std::vector<std::map<uint64_t, uint64_t>> regions_per_way_samples;
+  std::vector<uint64_t> region_count_samples;
   uint64_t region_btb_conflicts = 0;
   std::map<uint16_t, uint64_t> region_btb_inserts_per_set = {};
   uint64_t btb_updates = 0;
+  uint64_t btb_region_switching_dynamic = 0;
   uint64_t btb_static_updates = 0;
   uint16_t btb_tag_size = 0;
   uint64_t btb_reads = 0;
   uint64_t btb_hits = 0;
+  uint64_t back_to_back_branches = 0;
+  uint64_t unique_aligned_branches = 0;
   uint64_t total_squashed_cycles = 0;
   uint64_t aliasing_squashed_cycles = 0;
+  std::map<uint64_t, uint64_t> region_pointer_count = {};
+  std::map<uint64_t, uint64_t> region_pointer_max_stats = {};
+  std::map<uint64_t, uint64_t> region_pointer_cycle_probe_stats = {};
+  uint64_t max_region_pointer_sum = 0;
   std::tuple<uint64_t, uint64_t, uint64_t> squash_counts = {0, 0, 0};          // <frontend squashes, full squashes, total squashes>
   std::tuple<uint64_t, uint64_t, uint64_t> aliasing_squash_counts = {0, 0, 0}; // <frontend squashes, full squashes, total squashes>
   std::set<uint64_t> branch_ip_set = {};
+  std::set<uint64_t> branch_tag_set = {};
   std::array<long double, 64> btb_tag_entropy = {}, btb_tag_switch_entropy = {}, btb_tag_lookup_switch_entropy = {};
 
   uint64_t dynamic_branch_count = 0;
@@ -140,18 +152,23 @@ private:
   size_t EXTENDED_BTB_MAX_LOOP_BRANCH;
   std::vector<uint8_t> BTB_TARGET_SIZES; // TODO: How to check length?
   uint32_t* offset_btb_sets;
+  uint64_t prev_wrong_ip = 0;
   bool prev_was_branch = false;
   bool perfect_btb;
   bool BTB_PARTIAL_TAG_RESOLUTION = false;
   bool btb_small_way_regions_enabled;
   bool btb_big_way_regions_enabled;
   bool btb_perfect_mapping;
+  bool btb_invalidate_entry_on_alias;
+  bool btb_invalidate_region;
   bool bp_ignore_non_branch;
   bool perfect_branch_predict;
+  bool realistic_perfect;
   bool full_tag, clipped_tag;
   uint8_t clipped_tag_size;
 
 public:
+  uint8_t isa_shiftamount = 2;
   std::vector<uint8_t> btb_index_tag_hash{};
   size_t BTB_WAYS;
   size_t BTB_NON_INDIRECT;
@@ -185,6 +202,7 @@ public:
   uint64_t last_heartbeat_cycle = 0;
   uint64_t last_heartbeat_instr = 0;
   uint64_t next_print_instruction = STAT_PRINTING_PERIOD;
+  uint64_t next_print_inst_cycle = STAT_PRINTING_PERIOD;
 
   // instruction
   uint64_t num_retired = 0;
@@ -206,6 +224,7 @@ public:
 
   // reorder buffer, load/store queue, register file
   std::deque<ooo_model_instr> IFETCH_BUFFER;
+  std::deque<ooo_model_instr> IFETCH_BUFFER_WRONGPATH;
   std::deque<ooo_model_instr> DISPATCH_BUFFER;
   std::deque<ooo_model_instr> DECODE_BUFFER;
   std::deque<ooo_model_instr> ROB;
@@ -239,6 +258,7 @@ public:
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
 
+  bool add_wrongpath_instruction();
   void initialize_instruction();
   long check_dib();
   long fetch_instruction();
@@ -285,7 +305,11 @@ public:
 
     virtual void impl_initialize_btb() = 0;
     virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) = 0;
-    virtual std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
+    virtual std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
+    virtual void impl_btb_end_phase(unsigned finished_cpu) = 0;
+    virtual void impl_btb_invalidate_entry(uint64_t ip) = 0;
+    virtual void impl_btb_begin_wrongpath() = 0;
+    virtual void impl_btb_end_wrongpath() = 0;
   };
 
   template <unsigned long long B_FLAG, unsigned long long T_FLAG>
@@ -299,7 +323,11 @@ public:
 
     void impl_initialize_btb();
     void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type);
-    std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
+    std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> impl_btb_prediction(uint64_t ip);
+    void impl_btb_end_phase(unsigned finished_cpu);
+    void impl_btb_invalidate_entry(uint64_t);
+    void impl_btb_begin_wrongpath();
+    void impl_btb_end_wrongpath();
   };
 
   std::unique_ptr<module_concept> module_pimpl;
@@ -316,7 +344,23 @@ public:
   {
     module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
   }
-  std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
+  std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
+
+  void impl_btb_end_phase(unsigned finished_cpu){
+    module_pimpl->impl_btb_end_phase(finished_cpu);
+  }
+
+  void impl_btb_invalidate_entry(uint64_t ip) {
+    module_pimpl->impl_btb_invalidate_entry(ip);
+  }
+
+  void impl_btb_begin_wrongpath(){
+    module_pimpl->impl_btb_begin_wrongpath();
+  };
+
+  void impl_btb_end_wrongpath(){
+    module_pimpl->impl_btb_end_wrongpath();
+  };
 
   class builder_conversion_tag
   {
@@ -362,9 +406,12 @@ public:
     unsigned char m_btb_tag_region_size{};
     bool m_perfect_btb{};
     bool m_perfect_branch_predict{};
+    bool m_realistic_perfect{};
     bool m_btb_small_way_regions_enabled{};
     bool m_btb_big_way_regions_enabled{};
     bool m_btb_perfect_mapping{};
+    bool m_btb_invalidate_entry{};
+    bool m_btb_invalidate_region{};
     bool m_bp_ignore_non_branch{};
 
     CACHE* m_l1i{};
@@ -548,6 +595,11 @@ public:
       m_perfect_branch_predict = perfect_branch_predict_;
       return *this;
     }
+    self_type& realistic_perfect(bool realistic_perfect_)
+    {
+      m_realistic_perfect = realistic_perfect_;
+      return *this;
+    }
     self_type& btb_small_way_regions_enabled(bool btb_small_way_regions_enabled_)
     {
       m_btb_small_way_regions_enabled = btb_small_way_regions_enabled_;
@@ -556,6 +608,16 @@ public:
     self_type& btb_perfect_mapping(bool btb_perfect_mapping_)
     {
       m_btb_perfect_mapping = btb_perfect_mapping_;
+      return *this;
+    }
+    self_type& btb_invalidate_entry_on_alias(bool btb_invalidate_entry_)
+    {
+      m_btb_invalidate_entry = btb_invalidate_entry_;
+      return *this;
+    }
+    self_type& btb_invalidate_region(bool btb_invalidate_region_)
+    {
+      m_btb_invalidate_region = btb_invalidate_region_;
       return *this;
     }
     self_type& bp_ignore_non_branch(bool bp_ignore_non_branch_)
@@ -642,9 +704,9 @@ public:
         SCHEDULER_SIZE(b.m_schedule_width), EXEC_WIDTH(b.m_execute_width), LQ_WIDTH(b.m_lq_width), SQ_WIDTH(b.m_sq_width), RETIRE_WIDTH(b.m_retire_width),
         BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty), DISPATCH_LATENCY(b.m_dispatch_latency), DECODE_LATENCY(b.m_decode_latency),
         SCHEDULING_LATENCY(b.m_schedule_latency), EXEC_LATENCY(b.m_execute_latency), L1I_BANDWIDTH(b.m_l1i_bw), L1D_BANDWIDTH(b.m_l1d_bw),
-        BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), perfect_btb(b.m_perfect_btb), perfect_branch_predict(b.m_perfect_branch_predict),
+        BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), perfect_btb(b.m_perfect_btb), realistic_perfect(b.m_realistic_perfect), perfect_branch_predict(b.m_perfect_branch_predict),
         btb_small_way_regions_enabled(b.m_btb_small_way_regions_enabled), btb_big_way_regions_enabled(b.m_btb_big_way_regions_enabled),
-        BTB_CLIPPED_TAG(b.m_btb_clipped_tag), btb_perfect_mapping(b.m_btb_perfect_mapping), bp_ignore_non_branch(b.m_bp_ignore_non_branch),
+        BTB_CLIPPED_TAG(b.m_btb_clipped_tag), btb_perfect_mapping(b.m_btb_perfect_mapping), btb_invalidate_entry_on_alias(b.m_btb_invalidate_entry), btb_invalidate_region(b.m_btb_invalidate_region), bp_ignore_non_branch(b.m_bp_ignore_non_branch),
         BTB_PARTIAL_TAG_RESOLUTION(b.m_btb_partial_tag_resolution), BTB_TARGET_SIZES(b.m_btb_target_sizes), BTB_TAG_SIZE(b.m_btb_tag_size),
         BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_FILTER_BTB_LIMIT(b.m_btb_filter_btb_limit), BTB_TAG_REGION_WAYS(b.m_btb_tag_region_ways),
         BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), L1I_bus(b.m_cpu, b.m_fetch_queues), L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i),
