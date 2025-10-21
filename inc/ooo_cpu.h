@@ -35,7 +35,7 @@
 #include <tuple>
 #include <vector>
 
-// #define DEBUG_PRINT
+#define DEBUG_PRINT
 
 #include "champsim.h"
 #include "champsim_constants.h"

@@ -37,7 +37,7 @@ std::set<uint64_t> branch_seen = {};
 bool fetch_stall = false;
 uint64_t prev_branch_lookup_ip = 0;
 ooo_model_instr prev_instr = {0, input_instr()};
-uint64_t wrongpath_id = 0;
+uint64_t wrongpath_id = 0x8000000000000000ul;
 
 uint64_t read = 0;
 uint64_t wp_read = 0;
@@ -164,7 +164,7 @@ void O3_CPU::initialize_instruction()
     if (fetch_stall) {
       // we are on the wrong path here so we want to fetch those instructions, but never promote them to the backend (decode should be fine)
       if (IFETCH_BUFFER_WRONGPATH.size() < IFETCH_BUFFER_SIZE / 8){ // We need to slow down wrongpath, as we are not modelling the rest of the pipeline which would press back
-        instrs_to_read_this_cycle = (add_wrongpath_instruction()) ? 0 : instrs_to_read_this_cycle;
+        instrs_to_read_this_cycle = (add_wrongpath_instruction()) ? instrs_to_read_this_cycle : 0;
         wp_read++;
       }
       else
@@ -438,12 +438,18 @@ long O3_CPU::fetch_instruction()
     return x.dib_checked == COMPLETED && !x.fetched;
   };
 
+  // TODO: FIX THIS SO WE DO NOT FIND ANYTHING IF ALL ARE FETCHED
+  auto not_fetched = [](const ooo_model_instr& x) {
+    return x.fetched == 0;
+  };
+
   // Find the chunk of instructions in the block
   auto no_match_ip = [](const auto& lhs, const auto& rhs) {
     return (lhs.ip >> LOG2_BLOCK_SIZE) != (rhs.ip >> LOG2_BLOCK_SIZE);
   };
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
 
+  // HERE SOMETHING IS FISHY: ALL INSTRUCTIONS ARE FETCHED (4) BUT WE ONLY FETCH 2?
   auto to_read = L1I_BANDWIDTH;
   for (; to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER); --to_read) {
     auto l1i_req_end = std::adjacent_find(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
@@ -460,6 +466,11 @@ long O3_CPU::fetch_instruction()
 
     l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), fetch_ready);
   }
+  auto l1i_not_fetched = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), not_fetched);
+  if (l1i_not_fetched != std::end(IFETCH_BUFFER)) {
+    return progress;
+  }
+  
   { // WRONGPATH BLOCK
     auto l1i_req_begin_wp = std::find_if(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH), fetch_ready);
 
@@ -490,8 +501,8 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
   fetch_packet.instr_depend_on_me = {begin, end};
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,
-               std::size(fetch_packet.instr_depend_on_me), begin->event_cycle);
+    fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {} wrongpath: {}\n", __func__, begin->instr_id, begin->ip,
+               std::size(fetch_packet.instr_depend_on_me), begin->event_cycle, begin->wrongpath);
   }
 
   return L1I_bus.issue_read(fetch_packet);
