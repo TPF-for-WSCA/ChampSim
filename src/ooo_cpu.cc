@@ -70,8 +70,8 @@ long O3_CPU::operate()
   initialize_instruction();
 
   // heartbeat
-  if (false && show_heartbeat && current_cycle >= next_print_inst_cycle) {
-    fmt::print("HEARTBEET : read: {} wp_read: {} fetched: {} dib: {} promoted: {} decoded: {} dispatched: {} executed: {} retired: {}\n", read, wp_read, fetched, dib, promoted, decoded, dispatched, executed, num_retired);
+  if (show_heartbeat && current_cycle >= next_print_inst_cycle) {
+    fmt::print("HEARTBEET : cycles: {} last_instr: {} oldest_instr: {} read: {} wp_read: {} fetched: {} dib: {} promoted: {} decoded: {} dispatched: {} executed: {} retired: {}\n", current_cycle, IFETCH_BUFFER.back().instr_id, IFETCH_BUFFER.front().instr_id, read, wp_read, fetched, dib, promoted, decoded, dispatched, executed, num_retired);
     next_print_inst_cycle += STAT_PRINTING_PERIOD;
   }
   if (show_heartbeat && (num_retired >= next_print_instruction)) {
@@ -163,7 +163,7 @@ void O3_CPU::initialize_instruction()
     }
     if (fetch_stall) {
       // we are on the wrong path here so we want to fetch those instructions, but never promote them to the backend (decode should be fine)
-      if (IFETCH_BUFFER_WRONGPATH.size() < IFETCH_BUFFER_SIZE / 4){ // We need to slow down wrongpath, as we are not modelling the rest of the pipeline which would press back
+      if (IFETCH_BUFFER_WRONGPATH.size() < IFETCH_BUFFER_SIZE / 8){ // We need to slow down wrongpath, as we are not modelling the rest of the pipeline which would press back
         instrs_to_read_this_cycle = (add_wrongpath_instruction()) ? 0 : instrs_to_read_this_cycle;
         wp_read++;
       }
@@ -198,6 +198,9 @@ void O3_CPU::initialize_instruction()
 
 bool O3_CPU::add_wrongpath_instruction()
 {
+  if (warmup) {
+    return true;
+  }
   struct ooo_model_instr wrong_path_instr;
   wrong_path_instr.ip = prev_wrong_ip;
   wrong_path_instr.wrongpath = true;
@@ -509,10 +512,10 @@ long O3_CPU::promote_to_decode()
 
   if (IFETCH_BUFFER.empty() && window_end - window_begin < available_fetch_bandwidth) {
     available_fetch_bandwidth -= (window_end - window_begin);
-    auto [window_begin, window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH), available_fetch_bandwidth,
+    auto [wp_window_begin, wp_window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH), available_fetch_bandwidth,
         [cycle = current_cycle](const auto& x) { return x.fetched == COMPLETED && x.event_cycle <= cycle; });
     // WE DO NOT PROMOTE WRONGPATH THROUGH THE PIPELINE / WE STOP HERE (FOR NOW)
-    IFETCH_BUFFER_WRONGPATH.erase(window_begin, window_end);
+    IFETCH_BUFFER_WRONGPATH.erase(wp_window_begin, wp_window_end);
   }
 
   return progress;
@@ -913,9 +916,9 @@ void O3_CPU::print_deadlock()
   auto instr_pack = [](const auto& entry) {
     return std::tuple{entry.instr_id,   +entry.fetched,           +entry.scheduled,
                       +entry.executed,  +entry.num_reg_dependent, entry.num_mem_ops() - entry.completed_mem_ops,
-                      entry.event_cycle};
+                      entry.event_cycle, entry.wrongpath};
   };
-  std::string_view instr_fmt{"instr_id: {} fetched: {} scheduled: {} executed: {} num_reg_dependent: {} num_mem_ops: {} event: {}"};
+  std::string_view instr_fmt{"instr_id: {} fetched: {} scheduled: {} executed: {} num_reg_dependent: {} num_mem_ops: {} event: {} wrongpath: {}"};
   champsim::range_print_deadlock(IFETCH_BUFFER, "cpu" + std::to_string(cpu) + "_IFETCH", instr_fmt, instr_pack);
   champsim::range_print_deadlock(DECODE_BUFFER, "cpu" + std::to_string(cpu) + "_DECODE", instr_fmt, instr_pack);
   champsim::range_print_deadlock(DISPATCH_BUFFER, "cpu" + std::to_string(cpu) + "_DISPATCH", instr_fmt, instr_pack);
