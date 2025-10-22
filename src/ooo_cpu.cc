@@ -408,7 +408,7 @@ long O3_CPU::check_dib()
 
   std::for_each(wrongpath_window_begin, wrongpath_window_end, [this](auto& ifetch_entry) { this->do_check_dib(ifetch_entry); });
 
-  return dec_cnt - std::distance(wrongpath_window_begin, wrongpath_window_end);
+  return std::distance(window_begin, window_end);  // do not report progress on wrongpath -- disables deadlock detection
 }
 
 void O3_CPU::do_check_dib(ooo_model_instr& instr)
@@ -483,7 +483,6 @@ long O3_CPU::fetch_instruction()
       auto success = do_fetch_instruction(l1i_req_begin_wp, l1i_req_end_wp);
       if (success) {
         std::for_each(l1i_req_begin_wp, l1i_req_end_wp, [](auto& x) { x.fetched = INFLIGHT; });
-        ++progress;
       }
 
       l1i_req_begin_wp = std::find_if(l1i_req_end_wp, std::end(IFETCH_BUFFER_WRONGPATH), fetch_ready);
