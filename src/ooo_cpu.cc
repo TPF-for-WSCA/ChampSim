@@ -33,6 +33,7 @@
 #define KERNEL_LOWER_BOUND 0xffff800000000000ul
 #define KERNEL_IGNORE_ENABLE false
 
+uint64_t deadlock_count = 0;
 std::set<uint64_t> branch_seen = {};
 bool fetch_stall = false;
 uint64_t prev_branch_lookup_ip = 0;
@@ -68,6 +69,15 @@ long O3_CPU::operate()
   progress += fetch_instruction(); // fetch
   progress += check_dib();
   initialize_instruction();
+  if (progress == 0) {
+    deadlock_count++;
+    if (deadlock_count > 1000) {
+      this->print_deadlock();
+      assert(0);
+    }
+  } else {
+    deadlock_count = 0;
+  }
 
   // heartbeat
   if (show_heartbeat && current_cycle >= next_print_inst_cycle) {
@@ -265,7 +275,6 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     sim_stats.dynamic_branch_count_per_address_space_global_region[(arch_instr.ip >> (intel ? 0 : 2) >> champsim::lg2(BTB_SETS))] += 1;
   }
   bool stop_fetch = false;
-  // TODO: Make kernel address constant at top file and find how to disitinguish between 48b and 56b configurations
   if (KERNEL_IGNORE_ENABLE && arch_instr.ip > KERNEL_LOWER_BOUND) { // Check if kernel space
     if (arch_instr.is_branch) {
       // TODO: Discuss with rakesh how to handle kernel branches
