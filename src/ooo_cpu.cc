@@ -71,7 +71,7 @@ long O3_CPU::operate()
   initialize_instruction();
   if (progress == 0) {
     deadlock_count++;
-    if (deadlock_count > 1000) {
+    if (deadlock_count > 5000) {
       this->print_deadlock();
       assert(0);
     }
@@ -881,7 +881,8 @@ long O3_CPU::handle_memory_return()
       if ((fetched.ip >> LOG2_BLOCK_SIZE) == (l1i_entry.v_address >> LOG2_BLOCK_SIZE) && fetched.fetched != 0) {
         fetched.fetched = COMPLETED;
         --l1i_bw;
-        ++progress;
+        if (!fetched.wrongpath && fetched.instr_id < 0x8000000000000000ul)
+          ++progress;
 
         if constexpr (champsim::debug_print) {
           fmt::print("[IFETCH] {} instr_id: {} fetch completed\n", __func__, fetched.instr_id);
@@ -894,7 +895,8 @@ long O3_CPU::handle_memory_return()
     // remove this entry if we have serviced all of its instructions
     if (l1i_entry.instr_depend_on_me.empty()) {
       L1I_bus.lower_level->returned.pop_front();
-      ++progress;
+      if (progress)
+        ++progress;
     }
   }
 
