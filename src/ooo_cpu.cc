@@ -71,7 +71,7 @@ long O3_CPU::operate()
   initialize_instruction();
   if (progress == 0) {
     deadlock_count++;
-    if (deadlock_count > 5000) {
+    if (deadlock_count > 10000) {
       this->print_deadlock();
       assert(0);
     }
@@ -80,7 +80,7 @@ long O3_CPU::operate()
   }
 
   // heartbeat
-  if (show_heartbeat && current_cycle >= next_print_inst_cycle) {
+  if (false && show_heartbeat && current_cycle >= next_print_inst_cycle) {
     fmt::print("HEARTBEET : cycles: {} last_instr: {} oldest_instr: {} read: {} wp_read: {} fetched: {} dib: {} promoted: {} decoded: {} dispatched: {} executed: {} retired: {}\n", current_cycle, IFETCH_BUFFER.back().instr_id, IFETCH_BUFFER.front().instr_id, read, wp_read, fetched, dib, promoted, decoded, dispatched, executed, num_retired);
     next_print_inst_cycle += STAT_PRINTING_PERIOD;
   }
@@ -447,7 +447,6 @@ long O3_CPU::fetch_instruction()
     return x.dib_checked == COMPLETED && !x.fetched;
   };
 
-  // TODO: FIX THIS SO WE DO NOT FIND ANYTHING IF ALL ARE FETCHED
   auto not_fetched = [](const ooo_model_instr& x) {
     return x.fetched == 0;
   };
@@ -458,7 +457,6 @@ long O3_CPU::fetch_instruction()
   };
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
 
-  // HERE SOMETHING IS FISHY: ALL INSTRUCTIONS ARE FETCHED (4) BUT WE ONLY FETCH 2?
   auto to_read = L1I_BANDWIDTH;
   for (; to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER); --to_read) {
     auto l1i_req_end = std::adjacent_find(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
@@ -608,15 +606,11 @@ long O3_CPU::dispatch_instruction()
       DISPATCH_BUFFER.pop_front();
       continue;
     }
-    if (!DISPATCH_BUFFER.front().wrongpath) {
-      dispatched++;
-      ROB.push_back(std::move(DISPATCH_BUFFER.front()));
-    }
+    dispatched++;
+    ROB.push_back(std::move(DISPATCH_BUFFER.front()));
     DISPATCH_BUFFER.pop_front();
-    if (!DISPATCH_BUFFER.front().wrongpath) {
-      do_memory_scheduling(ROB.back());
-      available_dispatch_bandwidth--;
-    }
+    do_memory_scheduling(ROB.back());
+    available_dispatch_bandwidth--;
   }
 
   return DISPATCH_WIDTH - available_dispatch_bandwidth;
