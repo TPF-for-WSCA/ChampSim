@@ -117,7 +117,7 @@
             "request": "launch",
             "targetArchitecture": "x64",
             "program": "${workspaceRoot}/bin/champsim",
-            "miDebuggerPath": "/cluster/apps/eb/software/GDB/13.2-GCCcore-12.3.0/bin/gdb",
+            "miDebuggerPath": "/cluster/apps/eb/software/GDB/12.1-GCCcore-11.3.0/bin/gdb",
             //"${workspaceRoot}/bin/champsim_16b_region_256",
             "args": [
                 "--warmup-instructions",

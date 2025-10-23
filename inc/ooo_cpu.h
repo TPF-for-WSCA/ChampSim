@@ -224,6 +224,14 @@ public:
   using dib_type = champsim::lru_table<uint64_t, dib_shift, dib_shift, dib_shift>;
   dib_type DIB;
 
+  // Constants
+  const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
+  const long int FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH;
+  const long int LQ_WIDTH, SQ_WIDTH;
+  const long int RETIRE_WIDTH;
+  const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, DECODE_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
+  const long int L1I_BANDWIDTH, L1D_BANDWIDTH;
+
   // reorder buffer, load/store queue, register file
   std::deque<ooo_model_instr> IFETCH_BUFFER;
   std::deque<ooo_model_instr> IFETCH_BUFFER_WRONGPATH;
@@ -236,13 +244,6 @@ public:
 
   std::array<std::vector<std::reference_wrapper<ooo_model_instr>>, std::numeric_limits<uint8_t>::max() + 1> reg_producers;
 
-  // Constants
-  const std::size_t IFETCH_BUFFER_SIZE, DISPATCH_BUFFER_SIZE, DECODE_BUFFER_SIZE, ROB_SIZE, SQ_SIZE;
-  const long int FETCH_WIDTH, DECODE_WIDTH, DISPATCH_WIDTH, SCHEDULER_SIZE, EXEC_WIDTH;
-  const long int LQ_WIDTH, SQ_WIDTH;
-  const long int RETIRE_WIDTH;
-  const unsigned BRANCH_MISPREDICT_PENALTY, DISPATCH_LATENCY, DECODE_LATENCY, SCHEDULING_LATENCY, EXEC_LATENCY;
-  const long int L1I_BANDWIDTH, L1D_BANDWIDTH;
 
   // branch
   uint64_t fetch_resume_cycle = 0;  // Cycle at which we resume fetch after a branch mispredict

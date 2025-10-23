@@ -42,7 +42,7 @@ uint64_t wrongpath_id = 0x8000000000000000ul;
 
 uint64_t read = 0;
 uint64_t wp_read = 0;
-uint64_t fetched = 0;
+uint64_t fetched_cnt = 0;
 uint64_t dib = 0;
 uint64_t promoted = 0;
 uint64_t decoded = 0;
@@ -81,7 +81,7 @@ long O3_CPU::operate()
 
   // heartbeat
   if (false && show_heartbeat && current_cycle >= next_print_inst_cycle) {
-    fmt::print("HEARTBEET : cycles: {} last_instr: {} oldest_instr: {} read: {} wp_read: {} fetched: {} dib: {} promoted: {} decoded: {} dispatched: {} executed: {} retired: {}\n", current_cycle, IFETCH_BUFFER.back().instr_id, IFETCH_BUFFER.front().instr_id, read, wp_read, fetched, dib, promoted, decoded, dispatched, executed, num_retired);
+    fmt::print("HEARTBEET : cycles: {} last_instr: {} oldest_instr: {} read: {} wp_read: {} fetched_cnt: {} dib: {} promoted: {} decoded: {} dispatched: {} executed: {} retired: {}\n", current_cycle, IFETCH_BUFFER.back().instr_id, IFETCH_BUFFER.front().instr_id, read, wp_read, fetched_cnt, dib, promoted, decoded, dispatched, executed, num_retired);
     next_print_inst_cycle += STAT_PRINTING_PERIOD;
   }
   if (show_heartbeat && (num_retired >= next_print_instruction)) {
@@ -173,17 +173,19 @@ void O3_CPU::initialize_instruction()
     }
     if (fetch_stall) {
       // we are on the wrong path here so we want to fetch those instructions, but never promote them to the backend (decode should be fine)
-      if (IFETCH_BUFFER_WRONGPATH.size() < IFETCH_BUFFER_SIZE / 8){ // We need to slow down wrongpath, as we are not modelling the rest of the pipeline which would press back
+      if (IFETCH_BUFFER_WRONGPATH.size() < IFETCH_BUFFER_SIZE / 8){ // We need to slow down wrongpath, as we are not modelling the rest of the pipeline which would push back
         instrs_to_read_this_cycle = (add_wrongpath_instruction()) ? instrs_to_read_this_cycle : 0;
         wp_read++;
       }
       else
         instrs_to_read_this_cycle = 0;
-      // instrs_to_read_this_cycle = 0;
     } else {
       // Add to IFETCH_BUFFER
       fetch_stall = stop_fetch;
       IFETCH_BUFFER.push_back(input_queue.front());
+      if constexpr (champsim::debug_print) {
+        fmt::print("[IFETCH] initialize_instruction instr_id: {} ip: {:#x} branch: {} stop_fetch: {}\n", input_queue.front().instr_id, input_queue.front().ip, input_queue.front().is_branch, stop_fetch);
+      }
       read++;
       if (prev_instr.ip && prev_instr.ip >> isa_shiftamount >> 1 == input_queue.front().ip >> isa_shiftamount >> 1) {
         uint8_t branch_count = prev_instr.is_branch + input_queue.front().is_branch;
@@ -201,7 +203,7 @@ void O3_CPU::initialize_instruction()
     if (current_cycle >= fetch_resume_cycle && fetch_stall) {
       fetch_stall = false;
       impl_btb_end_wrongpath();
-      IFETCH_BUFFER_WRONGPATH.clear();
+      IFETCH_BUFFER_WRONGPATH.erase(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH));
     }
   }
 }
@@ -211,12 +213,10 @@ bool O3_CPU::add_wrongpath_instruction()
   if (warmup) {
     return true;
   }
-  struct ooo_model_instr wrong_path_instr;
+  struct ooo_model_instr wrong_path_instr(cpu);
   wrong_path_instr.ip = prev_wrong_ip;
   wrong_path_instr.wrongpath = true;
   wrong_path_instr.instr_id = ++wrongpath_id;
-  wrong_path_instr.asid[0] = cpu;
-  wrong_path_instr.asid[1] = cpu;
   wrong_path_instr.is_branch = false;
   wrong_path_instr.branch_target = 0;
   wrong_path_instr.event_cycle = current_cycle;
@@ -230,6 +230,9 @@ bool O3_CPU::add_wrongpath_instruction()
     prev_wrong_ip = std::get<0>(pred);
   }
   IFETCH_BUFFER_WRONGPATH.push_back(wrong_path_instr);
+  if constexpr (champsim::debug_print) {
+      fmt::print("[IFETCH] add_wrongpath_instruction instr_id: {} ip: {:#x} branch: {}\n", wrong_path_instr.instr_id, wrong_path_instr.ip, wrong_path_instr.is_branch);
+  }
   return !wrong_path_instr.is_branch;
 }
 
@@ -464,7 +467,7 @@ long O3_CPU::fetch_instruction()
       l1i_req_end = std::next(l1i_req_end); // adjacent_find returns the first of the non-equal elements
 
     // Issue to L1I
-    fetched++;
+    fetched_cnt++;
     auto success = do_fetch_instruction(l1i_req_begin, l1i_req_end);
     if (success) {
       std::for_each(l1i_req_begin, l1i_req_end, [](auto& x) { x.fetched = INFLIGHT; });
@@ -504,7 +507,7 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
   fetch_packet.v_address = begin->ip;
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
-  fetch_packet.instr_depend_on_me = {begin, end};
+  std::transform(begin, end, std::back_inserter(fetch_packet.instr_depend_on_me), [](const auto& instr) { return instr.instr_id; });
 
   if constexpr (champsim::debug_print) {
     fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {} wrongpath: {}\n", __func__, begin->instr_id, begin->ip,
@@ -871,15 +874,15 @@ long O3_CPU::handle_memory_return()
     auto& l1i_entry = L1I_bus.lower_level->returned.front();
 
     while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {
-      ooo_model_instr& fetched = l1i_entry.instr_depend_on_me.front();
-      if ((fetched.ip >> LOG2_BLOCK_SIZE) == (l1i_entry.v_address >> LOG2_BLOCK_SIZE) && fetched.fetched != 0) {
-        fetched.fetched = COMPLETED;
+      auto fetched = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [l1i_entry](const ooo_model_instr& x) { return l1i_entry.instr_depend_on_me.front() == x.instr_id; });
+      if ((fetched->ip >> LOG2_BLOCK_SIZE) == (l1i_entry.v_address >> LOG2_BLOCK_SIZE) && fetched->fetched != 0) {
+        fetched->fetched = COMPLETED;
         --l1i_bw;
-        if (!fetched.wrongpath && fetched.instr_id < 0x8000000000000000ul)
+        if (!fetched->wrongpath && fetched->instr_id < 0x8000000000000000ul)
           ++progress;
 
         if constexpr (champsim::debug_print) {
-          fmt::print("[IFETCH] {} instr_id: {} fetch completed\n", __func__, fetched.instr_id);
+          fmt::print("[IFETCH] {} instr_id: {} fetch completed\n", __func__, fetched->instr_id);
         }
       }
 
@@ -929,11 +932,11 @@ void O3_CPU::print_deadlock()
   fmt::print("DEADLOCK! CPU {} cycle {}\n", cpu, current_cycle);
 
   auto instr_pack = [](const auto& entry) {
-    return std::tuple{entry.instr_id,   +entry.fetched,           +entry.scheduled,
+    return std::tuple{entry.instr_id, entry.ip,   +entry.fetched,           +entry.scheduled,
                       +entry.executed,  +entry.num_reg_dependent, entry.num_mem_ops() - entry.completed_mem_ops,
                       entry.event_cycle, entry.wrongpath};
   };
-  std::string_view instr_fmt{"instr_id: {} fetched: {} scheduled: {} executed: {} num_reg_dependent: {} num_mem_ops: {} event: {} wrongpath: {}"};
+  std::string_view instr_fmt{"instr_id: {} ip: {} fetched: {} scheduled: {} executed: {} num_reg_dependent: {} num_mem_ops: {} event: {} wrongpath: {}"};
   champsim::range_print_deadlock(IFETCH_BUFFER, "cpu" + std::to_string(cpu) + "_IFETCH", instr_fmt, instr_pack);
   champsim::range_print_deadlock(DECODE_BUFFER, "cpu" + std::to_string(cpu) + "_DECODE", instr_fmt, instr_pack);
   champsim::range_print_deadlock(DISPATCH_BUFFER, "cpu" + std::to_string(cpu) + "_DISPATCH", instr_fmt, instr_pack);

@@ -45,7 +45,7 @@ CACHE::mshr_type::mshr_type(tag_lookup_type req, uint64_t cycle)
 
 CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type successor)
 {
-  std::vector<std::reference_wrapper<ooo_model_instr>> merged_instr{};
+  std::vector<uint64_t> merged_instr{};
   std::vector<std::deque<response_type>*> merged_return{};
 
   std::set_union(std::begin(predecessor.instr_depend_on_me), std::end(predecessor.instr_depend_on_me), std::begin(successor.instr_depend_on_me),

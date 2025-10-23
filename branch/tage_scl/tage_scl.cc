@@ -135,7 +135,7 @@ TageSCL::TageSCL(TSCLConfig cfg)
     , useLoop(cfg.useLoop)
     , disableConfCounter(false)
 {
-    cfg.print();
+    // cfg.print();
     init_predictor();
     predictorsize();
 }

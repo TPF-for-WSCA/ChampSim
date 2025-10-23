@@ -54,7 +54,7 @@ TageBase::TageBase(TageConfig cfg)
   assert(Tbits > 0);
   assert(nhist <= MAXNHIST);
 
-  cfg.print();
+  // cfg.print();
 
   // initialize the predictor
   reinit();
