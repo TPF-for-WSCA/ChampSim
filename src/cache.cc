@@ -49,7 +49,7 @@ CACHE::mshr_type CACHE::mshr_type::merge(mshr_type predecessor, mshr_type succes
   std::vector<std::deque<response_type>*> merged_return{};
 
   std::set_union(std::begin(predecessor.instr_depend_on_me), std::end(predecessor.instr_depend_on_me), std::begin(successor.instr_depend_on_me),
-                 std::end(successor.instr_depend_on_me), std::back_inserter(merged_instr), ooo_model_instr::program_order);
+                 std::end(successor.instr_depend_on_me), std::back_inserter(merged_instr));
   std::set_union(std::begin(predecessor.to_return), std::end(predecessor.to_return), std::begin(successor.to_return), std::end(successor.to_return),
                  std::back_inserter(merged_return));
 

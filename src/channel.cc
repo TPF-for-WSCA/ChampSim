@@ -17,7 +17,8 @@
 #include "channel.h"
 
 #include <cassert>
-#define DEBUG_PRINT
+
+// #define DEBUG_PRINT
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
@@ -52,7 +53,7 @@ bool do_collision_for_merge(Iter begin, Iter end, champsim::channel::request_typ
     auto instr_copy = std::move(destination.instr_depend_on_me);
 
     std::set_union(std::begin(instr_copy), std::end(instr_copy), std::begin(source.instr_depend_on_me), std::end(source.instr_depend_on_me),
-                   std::back_inserter(destination.instr_depend_on_me), ooo_model_instr::program_order);
+                   std::back_inserter(destination.instr_depend_on_me));
   });
 }
 
