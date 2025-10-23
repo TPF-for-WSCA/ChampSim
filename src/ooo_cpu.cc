@@ -875,6 +875,10 @@ long O3_CPU::handle_memory_return()
 
     while (l1i_bw > 0 && !l1i_entry.instr_depend_on_me.empty()) {
       auto fetched = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [l1i_entry](const ooo_model_instr& x) { return l1i_entry.instr_depend_on_me.front() == x.instr_id; });
+      if (fetched == std::end(IFETCH_BUFFER)) {
+        l1i_entry.instr_depend_on_me.erase(std::begin(l1i_entry.instr_depend_on_me));
+        continue;
+      }
       if ((fetched->ip >> LOG2_BLOCK_SIZE) == (l1i_entry.v_address >> LOG2_BLOCK_SIZE) && fetched->fetched != 0) {
         fetched->fetched = COMPLETED;
         --l1i_bw;

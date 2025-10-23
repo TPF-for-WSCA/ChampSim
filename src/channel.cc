@@ -17,7 +17,7 @@
 #include "channel.h"
 
 #include <cassert>
-
+#define DEBUG_PRINT
 #include "cache.h"
 #include "champsim.h"
 #include "instruction.h"
