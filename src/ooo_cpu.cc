@@ -32,6 +32,7 @@
 
 #define KERNEL_LOWER_BOUND 0xffff800000000000ul
 #define KERNEL_IGNORE_ENABLE false
+#define WRONGPATH_ENABLED true
 
 uint64_t deadlock_count = 0;
 std::set<uint64_t> branch_seen = {};
@@ -39,6 +40,8 @@ bool fetch_stall = false;
 uint64_t prev_branch_lookup_ip = 0;
 ooo_model_instr prev_instr = {0, input_instr()};
 uint64_t wrongpath_id = 0x8000000000000000ul;
+
+size_t max_decode_bw = 0;
 
 uint64_t read = 0;
 uint64_t wp_read = 0;
@@ -171,17 +174,21 @@ void O3_CPU::initialize_instruction()
     if (!fetch_stall)
       stop_fetch = do_init_instruction(input_queue.front());
     // std::cout << "INSTR_ID: " << input_queue.front().instr_id << ", IP: " << input_queue.front().ip << ", CURRENT CYCLE: " << current_cycle << std::endl;
-    if (stop_fetch) {
+    if (stop_fetch && WRONGPATH_ENABLED) {
       impl_btb_begin_wrongpath();
+      max_decode_bw = ROB_SIZE - ROB.size();
     }
-    if (fetch_stall) {
+    if (fetch_stall && WRONGPATH_ENABLED) {
       // we are on the wrong path here so we want to fetch those instructions, but never promote them to the backend (decode should be fine)
-      if (IFETCH_BUFFER_WRONGPATH.size()
-          < IFETCH_BUFFER_SIZE / 8) { // We need to slow down wrongpath, as we are not modelling the rest of the pipeline which would push back
+      if (IFETCH_BUFFER_WRONGPATH.size() < (IFETCH_BUFFER_SIZE - IFETCH_BUFFER.size())) { // We can add a slow-down factor here to not be too fast on the
+                                                                                          // wrongpath, e.g. based on the IPC of the previous interval?
         instrs_to_read_this_cycle = (add_wrongpath_instruction()) ? instrs_to_read_this_cycle : 0;
         wp_read++;
-      } else
+      } else {
         instrs_to_read_this_cycle = 0;
+      }
+    } else if (fetch_stall) {
+      instrs_to_read_this_cycle = 0;
     } else {
       // Add to IFETCH_BUFFER
       fetch_stall = stop_fetch;
@@ -206,15 +213,17 @@ void O3_CPU::initialize_instruction()
     }
     if (current_cycle >= fetch_resume_cycle && fetch_stall) {
       fetch_stall = false;
-      impl_btb_end_wrongpath();
-      IFETCH_BUFFER_WRONGPATH.erase(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH));
+      if (WRONGPATH_ENABLED) {
+        impl_btb_end_wrongpath();
+        IFETCH_BUFFER_WRONGPATH.erase(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH));
+      }
     }
   }
 }
 
 bool O3_CPU::add_wrongpath_instruction()
 {
-  if (warmup) {
+  if (warmup || !WRONGPATH_ENABLED) {
     return true;
   }
   struct ooo_model_instr wrong_path_instr(cpu);
@@ -416,7 +425,7 @@ long O3_CPU::check_dib()
   auto [window_begin, window_end] = champsim::get_span(begin, std::end(IFETCH_BUFFER), FETCH_WIDTH);
   std::for_each(window_begin, window_end, [this](auto& ifetch_entry) { this->do_check_dib(ifetch_entry); });
   auto dec_cnt = FETCH_WIDTH - std::distance(window_begin, window_end);
-  if (dec_cnt == 0)
+  if (dec_cnt == 0 || !WRONGPATH_ENABLED)
     return std::distance(window_begin, window_end);
 
   begin = std::find_if(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH), [](const ooo_model_instr& x) { return !x.dib_checked; });
@@ -486,6 +495,7 @@ long O3_CPU::fetch_instruction()
     return progress;
   }
 
+  if (WRONGPATH_ENABLED)
   { // WRONGPATH BLOCK
     auto l1i_req_begin_wp = std::find_if(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH), fetch_ready);
 
@@ -535,12 +545,14 @@ long O3_CPU::promote_to_decode()
   promoted += (window_end - window_begin);
   IFETCH_BUFFER.erase(window_begin, window_end);
 
-  if (IFETCH_BUFFER.empty() && window_end - window_begin < available_fetch_bandwidth) {
+  if (WRONGPATH_ENABLED && IFETCH_BUFFER.empty() && window_end - window_begin < available_fetch_bandwidth) {
     available_fetch_bandwidth -= (window_end - window_begin);
+    available_fetch_bandwidth = (available_fetch_bandwidth < max_decode_bw) ? available_fetch_bandwidth : max_decode_bw;
     auto [wp_window_begin, wp_window_end] =
         champsim::get_span_p(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH), available_fetch_bandwidth,
                              [cycle = current_cycle](const auto& x) { return x.fetched == COMPLETED && x.event_cycle <= cycle; });
     // WE DO NOT PROMOTE WRONGPATH THROUGH THE PIPELINE / WE STOP HERE (FOR NOW)
+    max_decode_bw -= std::distance(wp_window_begin, wp_window_end);
     IFETCH_BUFFER_WRONGPATH.erase(wp_window_begin, wp_window_end);
   }
 
@@ -932,6 +944,7 @@ long O3_CPU::retire_rob()
   }
   auto retire_count = std::distance(retire_begin, retire_end);
   num_retired += retire_count;
+  max_decode_bw += retire_count;
   ROB.erase(retire_begin, retire_end);
 
   return retire_count;
