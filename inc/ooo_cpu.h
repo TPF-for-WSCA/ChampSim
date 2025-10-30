@@ -72,6 +72,7 @@ struct cpu_stats {
   uint64_t end_instrs = 0, end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
   uint64_t total_aliasing = 0, positive_aliasing = 0, negative_aliasing = 0;
+  uint64_t aliasing_on_non_branch=0, aliasing_on_branch=0;
   uint64_t max_regions = 0;
   uint64_t min_regions = 0;
   std::array<uint64_t, 64> max_regions_per_region_size = {};
@@ -92,6 +93,8 @@ struct cpu_stats {
   uint64_t unique_aligned_branches = 0;
   uint64_t total_squashed_cycles = 0;
   uint64_t aliasing_squashed_cycles = 0;
+  uint64_t btb_miss_squashed_cycles = 0;
+  uint64_t bp_mispredict_squashed_cycles = 0;
   std::map<uint64_t, uint64_t> region_pointer_count = {};
   std::map<uint64_t, uint64_t> region_pointer_max_stats = {};
   std::map<uint64_t, uint64_t> region_pointer_cycle_probe_stats = {};
@@ -249,6 +252,7 @@ public:
   uint64_t fetch_resume_cycle = 0;  // Cycle at which we resume fetch after a branch mispredict
   uint64_t fetch_stalled_cycle = 0; // Cycle at which we stalled fetch due to a branch mispredict
   bool is_aliasing_stall = false;
+  bool is_btb_miss_stall = false;
 
   const long IN_QUEUE_SIZE = 2 * FETCH_WIDTH;
   std::deque<ooo_model_instr> input_queue;

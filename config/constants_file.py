@@ -22,6 +22,7 @@ def get_constants_file(env, pmem):
         'constexpr unsigned PAGE_SIZE = {page_size};'.format(**env),
         'constexpr uint64_t STAT_PRINTING_PERIOD = {heartbeat_frequency};'.format(**env),
         'constexpr std::size_t NUM_CPUS = {num_cores};'.format(**env),
+        'constexpr auto LOG2_FETCH_BLOCK_SIZE = champsim::lg2(BLOCK_SIZE)/4;'
         'constexpr auto LOG2_BLOCK_SIZE = champsim::lg2(BLOCK_SIZE);',
         'constexpr auto LOG2_PAGE_SIZE = champsim::lg2(PAGE_SIZE);',
 

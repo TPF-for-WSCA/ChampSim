@@ -13,7 +13,7 @@ from plotly.subplots import make_subplots
 output_dir = os.path.join(sys.argv[1], "graphs")
 os.makedirs(output_dir, exist_ok=True)
 
-ignore_directories = ["graphs", "raw_data"]
+ignore_directories = ["graphs", "raw_data", "ignored"]
 def parse_config_value(config_name):
     match = re.search(r'(\d+)([kmg]?)', config_name, re.IGNORECASE)
     if not match:
@@ -45,8 +45,9 @@ for benchmark in benchmarks:
             try:
                 with open(os.path.join(subdir_path, app, "stats.json")) as f:
                     json_data = json.load(f)
+                print(f"\tprocessing {config}/{app}")
             except FileNotFoundError:
-                print(f"ignoring {app} -- stats file does not exist")
+                print(f"ignoring {app} -- stats file does not exist", file=sys.stderr)
                 continue
             region_count_list = json_data[0]["roi"]["cores"][0]["region_count_samples"]
             
@@ -74,8 +75,8 @@ fig.write_image(os.path.join(output_dir,"random.pdf"))
 fig = go.Figure()
 fig.update_layout(showlegend=False)
 fig.update_yaxes(tickformat="0%")
-fig.update_yaxes(minor=dict(ticks="", showgrid=False))
-fig.update_yaxes(range=[0, 0.35], dtick=0.05)
+# fig.update_yaxes(minor=dict(ticks="", showgrid=False))
+# fig.update_yaxes(range=[0, 0.35], dtick=0.05)
 violincolor="rgba(173,216,230,0.5)"
 whiskerscolor="#096BA6"
 line_size=2
@@ -159,4 +160,5 @@ sorted_configs = sorted(unique_configs, key=parse_config_value)
 fig.update_xaxes(type='category', categoryorder='array', categoryarray=sorted_configs)
 
 fig.write_image(os.path.join(output_dir, "region_violin.pdf"))
+fig.write_html(os.path.join(output_dir, "region_violin.html"))
 fig.show()

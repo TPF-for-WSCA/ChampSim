@@ -194,8 +194,8 @@ void O3_CPU::initialize_instruction()
       fetch_stall = stop_fetch;
       IFETCH_BUFFER.push_back(input_queue.front());
       if constexpr (champsim::debug_print) {
-        fmt::print("[IFETCH] initialize_instruction instr_id: {} ip: {:#x} branch: {} stop_fetch: {}\n", input_queue.front().instr_id, input_queue.front().ip,
-                   input_queue.front().is_branch, stop_fetch);
+        fmt::print("[IFETCH] initialize_instruction instr_id: {} ip: {:#x} branch: {} stop_fetch: {} current_cycle: {}\n", input_queue.front().instr_id, input_queue.front().ip,
+                   input_queue.front().is_branch, stop_fetch, current_cycle);
       }
       read++;
       if (prev_instr.ip && prev_instr.ip >> isa_shiftamount >> 1 == input_queue.front().ip >> isa_shiftamount >> 1) {
@@ -321,6 +321,10 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (!warmup and predicted_branch_target and branch_ip != arch_instr.ip) {
     // std::cout << arch_instr.instr_id << std::endl;
     sim_stats.total_aliasing++;
+    if (!arch_instr.is_branch)
+      sim_stats.aliasing_on_non_branch++;
+    else
+      sim_stats.aliasing_on_branch++;
     is_aliasing = true;
     auto differing_bits = std::bitset<64>{branch_ip ^ arch_instr.ip};
     for (size_t i = 0; i < 64; i++) {
@@ -371,6 +375,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   // NOTE: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately
   if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {
     sim_stats.branch_type_misses[arch_instr.branch_type]++;
+    is_btb_miss_stall = true;
   }
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
@@ -588,15 +593,20 @@ long O3_CPU::decode_instruction()
         std::get<0>(sim_stats.squash_counts) += 1;
         std::get<2>(sim_stats.squash_counts) += 1;
         sim_stats.total_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
-        if (is_aliasing_stall && (btb_small_way_regions_enabled || btb_big_way_regions_enabled)) {
+        if (is_aliasing_stall) {
           std::get<0>(sim_stats.aliasing_squash_counts) += 1;
           std::get<2>(sim_stats.aliasing_squash_counts) += 1;
           sim_stats.aliasing_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
           // TODO: Only invalidate *iff* this is a region based implemented part of the btb
           impl_btb_invalidate_entry(db_entry.ip);
+          is_aliasing_stall = false;
+        } else if (is_btb_miss_stall) {
+          sim_stats.btb_miss_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
+          is_btb_miss_stall = false;
+        } else {
+          sim_stats.bp_mispredict_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
         }
         fetch_stalled_cycle = 0;
-        is_aliasing_stall = false;
       }
     }
 
@@ -708,7 +718,7 @@ void O3_CPU::do_execution(ooo_model_instr& rob_entry)
       sq_entry.event_cycle = current_cycle + (warmup ? 0 : EXEC_LATENCY);
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[ROB] {} instr_id: {} event_cycle: {}\n", __func__, rob_entry.instr_id, rob_entry.event_cycle);
+    fmt::print("[ROB] {} instr_id: {} event_cycle: {} current_cycle: {}\n", __func__, rob_entry.instr_id, rob_entry.event_cycle, current_cycle);
   }
 }
 
@@ -730,14 +740,14 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
         ++instr.completed_mem_ops;
 
         if constexpr (champsim::debug_print)
-          fmt::print("[DISPATCH] {} instr_id: {} forwards_from: {}\n", __func__, instr.instr_id, sq_it->event_cycle);
+          fmt::print("[DISPATCH] {} instr_id: {} forwards_from: {} current_cycle: {}\n", __func__, instr.instr_id, sq_it->event_cycle, current_cycle);
       } else {
         assert(sq_it->instr_id < instr.instr_id);   // The found SQ entry is a prior store
         sq_it->lq_depend_on_me.push_back(*q_entry); // Forward the load when the store finishes
         (*q_entry)->producer_id = sq_it->instr_id;  // The load waits on the store to finish
 
         if constexpr (champsim::debug_print)
-          fmt::print("[DISPATCH] {} instr_id: {} waits on: {}\n", __func__, instr.instr_id, sq_it->event_cycle);
+          fmt::print("[DISPATCH] {} instr_id: {} waits on: {} current_cycle: {}\n", __func__, instr.instr_id, sq_it->event_cycle, current_cycle);
       }
     }
   }
@@ -747,8 +757,8 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
     SQ.emplace_back(instr.instr_id, dmem, instr.ip, instr.asid); // add it to the store queue
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[DISPATCH] {} instr_id: {} loads: {} stores: {}\n", __func__, instr.instr_id, std::size(instr.source_memory),
-               std::size(instr.destination_memory));
+    fmt::print("[DISPATCH] {} instr_id: {} loads: {} stores: {} current_cycle: {}\n", __func__, instr.instr_id, std::size(instr.source_memory),
+               std::size(instr.destination_memory), current_cycle);
   }
 }
 
@@ -813,7 +823,7 @@ bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
   data_packet.ip = sq_entry.ip;
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[SQ] {} instr_id: {} vaddr: {:x}\n", __func__, data_packet.instr_id, data_packet.v_address);
+    fmt::print("[SQ] {} instr_id: {} vaddr: {:x} current_cycle: {}\n", __func__, data_packet.instr_id, data_packet.v_address, current_cycle);
   }
 
   return L1D_bus.issue_write(data_packet);
@@ -827,7 +837,7 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
   data_packet.ip = lq_entry.ip;
 
   if constexpr (champsim::debug_print) {
-    fmt::print("[LQ] {} instr_id: {} vaddr: {:#x}\n", __func__, data_packet.instr_id, data_packet.v_address);
+    fmt::print("[LQ] {} instr_id: {} vaddr: {:#x} current_cycle: {}\n", __func__, data_packet.instr_id, data_packet.v_address, current_cycle);
   }
 
   return L1D_bus.issue_read(data_packet);
@@ -864,9 +874,14 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
       std::get<1>(sim_stats.aliasing_squash_counts) += 1;
       std::get<2>(sim_stats.aliasing_squash_counts) += 1;
       sim_stats.aliasing_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
+      is_aliasing_stall = false;
+    } else if (is_btb_miss_stall) {
+      sim_stats.btb_miss_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
+      is_btb_miss_stall = false;
+    } else {
+      sim_stats.bp_mispredict_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
     }
     fetch_stalled_cycle = 0;
-    is_aliasing_stall = false;
   }
 }
 
@@ -905,7 +920,7 @@ long O3_CPU::handle_memory_return()
           ++progress;
 
         if constexpr (champsim::debug_print) {
-          fmt::print("[IFETCH] {} instr_id: {} fetch completed\n", __func__, fetched->instr_id);
+          fmt::print("[IFETCH] {} instr_id: {} fetch completed current_cycle: {}\n", __func__, fetched->instr_id, current_cycle);
         }
       }
 
@@ -940,7 +955,7 @@ long O3_CPU::retire_rob()
 {
   auto [retire_begin, retire_end] = champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), RETIRE_WIDTH, [](const auto& x) { return x.executed == COMPLETED; });
   if constexpr (champsim::debug_print) {
-    std::for_each(retire_begin, retire_end, [](const auto& x) { fmt::print("[ROB] retire_rob instr_id: {} is retired\n", x.instr_id); });
+    std::for_each(retire_begin, retire_end, [this](const auto& x) { fmt::print("[ROB] retire_rob instr_id: {} is retired current_cycle: {}\n", x.instr_id, current_cycle); });
   }
   auto retire_count = std::distance(retire_begin, retire_end);
   num_retired += retire_count;

@@ -83,13 +83,14 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   }
 
   // TODO: Fix whitespaces and fix ipc_data.py to extract the result with the fixed whitespace (if not done whitespace stripped)
-  fmt::print(stream, "\nSQUASHED CYCLES:\tALIASING:{}\tTOTAL:{}\n", stats.aliasing_squashed_cycles, stats.total_squashed_cycles);
+  fmt::print(stream, "\nSQUASHED CYCLES:\tALIASING:{}\tBTB MISS: {}\tBP MISPREDICTIONS: {}\tTOTAL:{}\n", stats.aliasing_squashed_cycles, stats.btb_miss_squashed_cycles, stats.bp_mispredict_squashed_cycles, stats.total_squashed_cycles);
   fmt::print(stream, "FRONTEND SQUASHES:\tALIASING:{}\tTOTAL:{}\n", std::get<0>(stats.aliasing_squash_counts), std::get<0>(stats.squash_counts));
   fmt::print(stream, "FULL SQUASHES:\tALIASING:{}\tTOTAL:{}\n", std::get<1>(stats.aliasing_squash_counts), std::get<1>(stats.squash_counts));
   fmt::print(stream, "TOTAL SQUASHES:\tALIASING:{}\tTOTAL:{}\n", std::get<2>(stats.aliasing_squash_counts), std::get<2>(stats.squash_counts));
 
   fmt::print(stream, "\nPositive Aliasing: {}\nNegative Aliasing: {}\nNone-Branch Aliasing: {}\nTotal Aliasing: {}", stats.positive_aliasing,
              stats.negative_aliasing, stats.non_branch_btb_hits, stats.total_aliasing);
+  fmt::print(stream, "\nALIASING NON BRANCHES: {}\tBRANCHES: {}", stats.aliasing_on_non_branch, stats.aliasing_on_branch);
   fmt::print(stream, "\n{} TOTAL REGIONS: {}\n", stats.name, total_regions);
   fmt::print(stream, "\nMAX BTB Regions: {}\nMIN BTB Regions: {}\n", stats.max_regions, stats.min_regions);
 

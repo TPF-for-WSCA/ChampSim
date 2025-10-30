@@ -16,6 +16,7 @@
 
 #ifndef CHAMPSIM_H
 #define CHAMPSIM_H
+// #define DEBUG_PRINT 1
 
 #include <cstdint>
 #include <exception>
