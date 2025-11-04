@@ -18,10 +18,11 @@
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
 
-#define SMALL_BIG_WAY_SPLIT 12  // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
+#define SMALL_BIG_WAY_SPLIT 12 // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
 #define SAMPLING_DISTANCE 500000
+#define EAGERLY_EVICT_ON_REGION_REMOVAL false
 
 uint64_t invalid_replacements = 0;
 
@@ -273,8 +274,12 @@ std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 
 void O3_CPU::initialize_btb()
 {
-  std::cout << "BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == BTB_TAG_REGIONS) << "\nPERFECT MAPPING: " << btb_perfect_mapping
-            << ", FILTER BTB: " << REGION_BTB_FILTER_ENABLED << std::endl;
+  std::cout << "BTB INITIALIZED WITH"
+            << "\n\tFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == BTB_TAG_REGIONS)
+            << "\n\tPERFECT MAPPING: " << btb_perfect_mapping
+            << "\n\tFILTER BTB: " << REGION_BTB_FILTER_ENABLED 
+            << "\n\tEAGERLY EVICT ON REGION REPLACEMENT: " << EAGERLY_EVICT_ON_REGION_REMOVAL << std::endl;
+
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
   USE_REGIONALIZED_BTB_OFFSET = this->BTB_FILTER_BTB_LIMIT;
   INSERT_FILTER_VICTIMS = USE_REGIONALIZED_BTB_OFFSET != 0;
@@ -677,6 +682,14 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         sim_stats.region_btb_conflicts++;
         sim_stats.max_region_pointer_sum += replaced.value().max_pointer;
         sim_stats.region_pointer_max_stats[replaced.value().max_pointer]++;
+        if (EAGERLY_EVICT_ON_REGION_REMOVAL)
+          for (auto b = BTB.at(this).begin(); b != BTB.at(this).end(); b++) {
+            if (get_region(b->data.ip_tag) == get_region(replaced.value().ip_tag)) {
+              b->last_used = 0;
+              b->data.ip_tag = 0;
+              b->data.target = 0;
+            }
+          }
       }
     }
     // assert(region_btb_insers <= 256);
@@ -887,14 +900,16 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   prev_branch_ip = ip;
 }
 
-void O3_CPU::btb_end_phase (unsigned finished_cpu) {
+void O3_CPU::btb_end_phase(unsigned finished_cpu)
+{
   // TODO: go through all entries in the REGION BTB and read out max pointer values
   for (auto it = ::REGION_BTB.at(this).begin(); it != ::REGION_BTB.at(this).end(); it++) {
     sim_stats.region_pointer_max_stats[it->data.max_pointer]++;
   }
 }
 
-void O3_CPU::btb_invalidate_entry(uint64_t ip) {
+void O3_CPU::btb_invalidate_entry(uint64_t ip)
+{
   if (!btb_invalidate_entry_on_alias && !btb_invalidate_region)
     return;
   std::optional<::BTBEntry> btb_entry = std::nullopt;
@@ -964,14 +979,15 @@ void O3_CPU::btb_invalidate_entry(uint64_t ip) {
 
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
-  if (!btb_entry.has_value() || !region_idx_.has_value()){
-    std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR "<< ip << std::endl;
+  if (!btb_entry.has_value() || !region_idx_.has_value()) {
+    std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR " << ip << std::endl;
     std::cerr << "ALREADY REPLACED?" << std::endl;
     return;
     // assert(0);
   }
   if (btb_entry.value().ip_tag == ip) {
-    return;  // we already updated the entry in simulation -- evicting it now would result in a double penalty - updating and then throwing away the just updated entry
+    return; // we already updated the entry in simulation -- evicting it now would result in a double penalty - updating and then throwing away the just updated
+            // entry
   }
   if (btb_invalidate_entry_on_alias)
     ::BTB.at(this).invalidate(btb_entry.value());
