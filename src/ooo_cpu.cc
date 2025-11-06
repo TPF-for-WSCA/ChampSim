@@ -221,7 +221,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types[arch_instr.branch_type]++;
   // TODO: Check if this is good enough to identify branches
-  auto [predicted_branch_target, branch_ip, always_taken] = impl_btb_prediction(arch_instr.ip);
+  auto [predicted_branch_target, branch_ip, always_taken, bblock_size] = impl_btb_prediction(arch_instr.ip);
+  auto current_branch_ip = arch_instr.ip + bblock_size - 4;
   sim_stats.btb_reads++;
   if (predicted_branch_target) {
     sim_stats.btb_hits++;
@@ -234,11 +235,11 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
                        ? 0
                        : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
   }
-  if (!warmup and predicted_branch_target and branch_ip != arch_instr.ip) {
+  if (!warmup and predicted_branch_target and branch_ip != current_branch_ip) {
     // std::cout << arch_instr.instr_id << std::endl;
     sim_stats.total_aliasing++;
     is_aliasing = true;
-    auto differing_bits = std::bitset<64>{branch_ip ^ arch_instr.ip};
+    auto differing_bits = std::bitset<64>{branch_ip ^ current_branch_ip};
     for (size_t i = 0; i < 64; i++) {
       if (differing_bits[i]) {
         sim_stats.aliasing_bit_counts[i]++;
@@ -246,7 +247,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     }
     // std::cout << "ALIASING ON " << arch_instr.ip << " WITH BRANCH AT " << branch_ip << std::endl;
   }
-  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
+  arch_instr.branch_prediction = impl_predict_branch(current_branch_ip) || always_taken;
   if (perfect_branch_predict && arch_instr.is_branch) {
     if (realistic_perfect && first_branch_occurrence) {}
     else
@@ -268,7 +269,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     arch_instr.branch_taken = 0;
   }
 
-  if (!warmup && arch_instr.branch_prediction && arch_instr.ip != branch_ip && arch_instr.branch_type != NOT_BRANCH) {
+  if (!warmup && arch_instr.branch_prediction && current_branch_ip != branch_ip && arch_instr.branch_type != NOT_BRANCH) {
     if (predicted_branch_target == arch_instr.branch_target && arch_instr.branch_taken) {
       sim_stats.positive_aliasing += 1;
     } else {
@@ -289,11 +290,11 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   }
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
-      fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
+      fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, current_branch_ip, arch_instr.branch_taken);
     }
 
     // call code prefetcher every time the branch predictor is used
-    l1i->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target,
+    l1i->impl_prefetcher_branch_operate(current_branch_ip, arch_instr.branch_type, predicted_branch_target,
                                         4); // TODO: Fix to actual instruction size for x86 instructions
 
     if (predicted_branch_target != arch_instr.branch_target
@@ -307,13 +308,13 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
         arch_instr.branch_mispredicted = 1;
         sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
       }
-    } else if (predicted_branch_target && predicted_branch_target != arch_instr.ip + 4) {
+    } else if (predicted_branch_target && predicted_branch_target != current_branch_ip + 4) {
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
     }
 
     impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
-  }
+  } // TODO: add condition for non-consecutive control flow
 
   return stop_fetch;
 }

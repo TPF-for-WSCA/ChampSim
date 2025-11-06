@@ -25,6 +25,7 @@
 #define EAGERLY_EVICT_ON_REGION_REMOVAL false
 
 uint64_t invalid_replacements = 0;
+uint64_t last_target = 0;
 
 constexpr uint64_t pow2(uint8_t exp)
 {
@@ -181,6 +182,7 @@ struct BTBEntry {
   std::tuple<uint16_t, uint16_t, uint64_t> region_idx_tag = {0, 0, 0};
   uint8_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
+  uint64_t block_size = 4;
 
   // TODO: shift indexes and tags into place
   auto index() const
@@ -275,10 +277,8 @@ std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 void O3_CPU::initialize_btb()
 {
   std::cout << "BTB INITIALIZED WITH"
-            << "\n\tFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == BTB_TAG_REGIONS)
-            << "\n\tPERFECT MAPPING: " << btb_perfect_mapping
-            << "\n\tFILTER BTB: " << REGION_BTB_FILTER_ENABLED 
-            << "\n\tEAGERLY EVICT ON REGION REPLACEMENT: " << EAGERLY_EVICT_ON_REGION_REMOVAL << std::endl;
+            << "\n\tFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == BTB_TAG_REGIONS) << "\n\tPERFECT MAPPING: " << btb_perfect_mapping
+            << "\n\tFILTER BTB: " << REGION_BTB_FILTER_ENABLED << "\n\tEAGERLY EVICT ON REGION REPLACEMENT: " << EAGERLY_EVICT_ON_REGION_REMOVAL << std::endl;
 
   ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
   USE_REGIONALIZED_BTB_OFFSET = this->BTB_FILTER_BTB_LIMIT;
@@ -352,7 +352,7 @@ void O3_CPU::initialize_btb()
 }
 
 // __attribute__((optimize(0)))
-std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+std::tuple<uint64_t, uint64_t, uint8_t, uint64_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   // TODO: add if condition with breaking condition
   // if (!warmup && ip == 18446462598868070740 && current_cycle >= 7113112) {
@@ -426,13 +426,13 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this]))
-      return {0, btb_entry->ip_tag, true, 4};
+      return {0, btb_entry->ip_tag, true, 0};
 
     // peek at the top of the RAS and adjust for the size of the call instr
     auto target = ::RAS[this].back();
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
 
-    return {target + 4, btb_entry->ip_tag, true, 4}; // assume fixed size for now
+    return {target + 4, btb_entry->ip_tag, true, btb_entry->block_size}; // assume fixed size for now
   }
   /*
     if (btb_entry->type == ::branch_info::INDIRECT) {
@@ -440,13 +440,21 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
       return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
     }*/
 
-  return {btb_entry->get_prediction(), btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL, 4};
+  return {btb_entry->get_prediction(), btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL, btb_entry->block_size};
 }
 
 // TODO: ONLY UPDATE WHEN FITTING IN THE WAY
 // __attribute__((optimize(0)))
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
+  if (!last_target
+      || branch_type == NOT_BRANCH) { // we use the NOT_BRANCH condition to manage discontinuities in the instruction stream stemming from interrupts
+    last_target = branch_target;
+    return;
+  }
+  auto precise_branch_ip = ip;
+  ip = last_target;
+  auto block_size = precise_branch_ip - ip + 4; // We assume always a 4 byte long instruction -- and the block size includes the branch itself
   uint64_t new_region = get_region(ip);
 
   uint64_t offset_size = (ip >> isa_shiftamount) ^ (branch_target >> isa_shiftamount);
@@ -738,6 +746,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     fill_entry.target = branch_target;
     fill_entry.ip_tag = ip;
     fill_entry.type = type;
+    fill_entry.block_size = block_size;
     replaced_entry = ::BTB.at(this).fill(
         fill_entry,
         entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions

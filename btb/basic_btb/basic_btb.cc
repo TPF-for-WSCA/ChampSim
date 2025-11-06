@@ -58,24 +58,24 @@ void O3_CPU::initialize_btb()
   ::CONDITIONAL_HISTORY[this] = 0;
 }
 
-std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+std::tuple<uint64_t, uint64_t, uint8_t, uint64_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   // use BTB for all other branches + direct calls
   auto btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN});
 
   // no prediction for this IP
   if (!btb_entry.has_value())
-    return {0, ip, false};
+    return {0, ip, false, 0};
 
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this]))
-      return {0, btb_entry->ip_tag, true};
+      return {0, btb_entry->ip_tag, true, 4};
 
     // peek at the top of the RAS and adjust for the size of the call instr
     auto target = ::RAS[this].back();
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
 
-    return {target + size, btb_entry->ip_tag, true};
+    return {target + size, btb_entry->ip_tag, true, 4};
   }
 
   // if (btb_entry->type == ::branch_info::INDIRECT) {
@@ -83,7 +83,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   //   return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
   // }
 
-  return {btb_entry->target, btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL};
+  return {btb_entry->target, btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL, 4};
 }
 
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
