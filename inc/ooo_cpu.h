@@ -165,6 +165,13 @@ private:
   bool realistic_perfect;
   bool full_tag, clipped_tag;
   uint8_t clipped_tag_size;
+  uint64_t btb_last_target = 0;
+  uint64_t btb_active_branch_target = 0;
+  uint64_t btb_active_branch_ip = 0;
+  uint64_t btb_active_predicted_branch_ip = 0;
+  uint8_t btb_active_always_taken = 0;
+  uint64_t btb_active_bblock_size = 0;
+  bool btb_active_branch_prediction = false;
 
 public:
   uint8_t isa_shiftamount = 2;

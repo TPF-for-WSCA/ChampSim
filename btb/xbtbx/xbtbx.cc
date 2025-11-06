@@ -352,7 +352,7 @@ void O3_CPU::initialize_btb()
 }
 
 // __attribute__((optimize(0)))
-std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+std::tuple<uint64_t, uint64_t, uint8_t, uint64_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   // TODO: add if condition with breaking condition
   // if (!warmup && ip == 18446462598868070740 && current_cycle >= 7113112) {

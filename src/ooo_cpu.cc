@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+
 #include "ooo_cpu.h"
 
 #include <algorithm>
@@ -157,7 +158,11 @@ void O3_CPU::initialize_instruction()
         sim_stats.unique_aligned_branches++;
       }
     }
-    prev_instr = input_queue.front();
+    if (input_queue.front().ip % 4 != 0) {
+      instrs_to_read_this_cycle++;  // dummy instructions at offset 2
+    } else {
+      prev_instr = input_queue.front(); // original instructions
+    }
     input_queue.pop_front();
 
 
@@ -196,7 +201,24 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (arch_instr.ip % 4 == 2) {
     return false;
   }
-  sim_stats.dynamic_btb_lookup_count++;
+  if constexpr (champsim::debug_print) {
+    fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
+  }
+  if (prev_instr.ip + 4 != arch_instr.ip && !prev_instr.branch_taken) {
+    // WE ARE SEEING NON-EXPLAINABLE BRANCHING BEHAVIOUR (INTERRUPT or SIMILAR)
+    btb_active_branch_target = 0;
+    btb_active_branch_ip = 0;
+    btb_active_always_taken = 0;
+    btb_active_bblock_size = 0;
+    btb_last_target = 0;
+    btb_active_predicted_branch_ip = 0;
+    btb_active_branch_prediction = false;
+    fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
+    fetch_stalled_cycle = current_cycle;
+    arch_instr.branch_mispredicted = 1;
+    sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
+    return true;
+  }
   auto diff_tag = std::bitset<64>(arch_instr.ip ^ prev_branch_lookup_ip);
   prev_branch_lookup_ip = arch_instr.ip;
   for (size_t idx = 0; idx < 64; idx++) {
@@ -210,7 +232,6 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   // TODO: Make kernel address constant at top file and find how to disitinguish between 48b and 56b configurations
   if (KERNEL_IGNORE_ENABLE && arch_instr.ip > KERNEL_LOWER_BOUND) { // Check if kernel space
     if (arch_instr.is_branch) {
-      // TODO: Discuss with rakesh how to handle kernel branches
       arch_instr.branch_mispredicted = 0;
       arch_instr.branch_prediction = arch_instr.branch_target;
       return true;
@@ -221,100 +242,136 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types[arch_instr.branch_type]++;
   // TODO: Check if this is good enough to identify branches
-  auto [predicted_branch_target, branch_ip, always_taken, bblock_size] = impl_btb_prediction(arch_instr.ip);
-  auto current_branch_ip = arch_instr.ip + bblock_size - 4;
-  sim_stats.btb_reads++;
-  if (predicted_branch_target) {
-    sim_stats.btb_hits++;
+  if (btb_active_branch_target == 0) {
+    sim_stats.dynamic_btb_lookup_count++;
+    auto [predicted_branch_target, branch_ip, always_taken, bblock_size] = impl_btb_prediction(arch_instr.ip);
+    auto current_branch_ip = arch_instr.ip + bblock_size - 4;
+    auto branch_prediction = impl_predict_branch(current_branch_ip) || always_taken;
+    btb_active_branch_target = predicted_branch_target;
+    btb_active_predicted_branch_ip = current_branch_ip;
+    btb_active_branch_ip = branch_ip;
+    btb_active_always_taken = always_taken;
+    btb_active_bblock_size = bblock_size;
+    btb_active_branch_prediction = branch_prediction;
+    sim_stats.btb_reads++;
   }
-  bool first_branch_occurrence = branch_seen.insert(arch_instr.ip).second;
-  if (perfect_btb && ((realistic_perfect && !first_branch_occurrence) || !realistic_perfect) && !arch_instr.branch_type == BRANCH_INDIRECT) {
-    predicted_branch_target = arch_instr.branch_target;
-    branch_ip = arch_instr.ip;
-    always_taken = (arch_instr.branch_type == BRANCH_CONDITIONAL || arch_instr.branch_type == BRANCH_OTHER)
-                       ? 0
-                       : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
-  }
-  if (!warmup and predicted_branch_target and branch_ip != current_branch_ip) {
-    // std::cout << arch_instr.instr_id << std::endl;
-    sim_stats.total_aliasing++;
-    is_aliasing = true;
-    auto differing_bits = std::bitset<64>{branch_ip ^ current_branch_ip};
-    for (size_t i = 0; i < 64; i++) {
-      if (differing_bits[i]) {
-        sim_stats.aliasing_bit_counts[i]++;
-      }
-    }
-    // std::cout << "ALIASING ON " << arch_instr.ip << " WITH BRANCH AT " << branch_ip << std::endl;
-  }
-  arch_instr.branch_prediction = impl_predict_branch(current_branch_ip) || always_taken;
-  if (perfect_branch_predict && arch_instr.is_branch) {
-    if (realistic_perfect && first_branch_occurrence) {}
-    else
-      arch_instr.branch_prediction = arch_instr.branch_taken;
-  }
-  if (arch_instr.branch_prediction == 0) {
-    predicted_branch_target = 0;
-  } else if (!warmup && branch_ip && predicted_branch_target && arch_instr.branch_type == NOT_BRANCH && arch_instr.branch_prediction) {
-    // NOTE: HERE WE GO WRONGPATH ON NON-BRANCHING INSTRUCTIONS
-    sim_stats.non_branch_btb_hits++;
-    sim_stats.negative_aliasing++;
+
+  if (!warmup && arch_instr.ip != btb_active_predicted_branch_ip && arch_instr.branch_taken) {
+    btb_active_branch_target = 0;
+    btb_active_branch_ip = 0;
+    btb_active_always_taken = 0;
+    btb_active_bblock_size = 0;
+    btb_active_predicted_branch_ip = 0;
+    btb_active_branch_prediction = false;
+    sim_stats.branch_type_misses[arch_instr.branch_type]++;
     fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
     fetch_stalled_cycle = current_cycle;
-    is_aliasing_stall = true;
     stop_fetch = true;
     arch_instr.branch_mispredicted = 1;
     sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
-    arch_instr.branch_prediction = 0;
-    arch_instr.branch_taken = 0;
+    return stop_fetch;
   }
-
-  if (!warmup && arch_instr.branch_prediction && current_branch_ip != branch_ip && arch_instr.branch_type != NOT_BRANCH) {
-    if (predicted_branch_target == arch_instr.branch_target && arch_instr.branch_taken) {
-      sim_stats.positive_aliasing += 1;
-    } else {
-      sim_stats.negative_aliasing += 1;
+  if (arch_instr.ip == btb_active_predicted_branch_ip) {
+    if (btb_active_branch_target) {
+      sim_stats.btb_hits++;
     }
-  }
-  // if (!warmup) {
-  //   std::cout << "INSTR_ID: " << arch_instr.instr_id << ", IP:" << arch_instr.ip << ", MISPREDICTED: " << (predicted_branch_target !=
-  //   arch_instr.branch_target); if (predicted_branch_target != arch_instr.branch_target)
-  //     std::cout << ", CURRENT CYCLE: " << current_cycle;
-  //
-  //   std::cout << std::endl;
-  // }
-
-  // NOTE: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately
-  if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {
-    sim_stats.branch_type_misses[arch_instr.branch_type]++;
-  }
-  if (arch_instr.is_branch) {
-    if constexpr (champsim::debug_print) {
-      fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, current_branch_ip, arch_instr.branch_taken);
+    bool first_branch_occurrence = branch_seen.insert(arch_instr.ip).second;
+    if (perfect_btb && ((realistic_perfect && !first_branch_occurrence) || !realistic_perfect) && !arch_instr.branch_type == BRANCH_INDIRECT) {
+      btb_active_branch_target = arch_instr.branch_target;
+      btb_active_branch_ip = arch_instr.ip;
+      btb_active_always_taken = (arch_instr.branch_type == BRANCH_CONDITIONAL || arch_instr.branch_type == BRANCH_OTHER)
+                        ? 0
+                        : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
     }
-
-    // call code prefetcher every time the branch predictor is used
-    l1i->impl_prefetcher_branch_operate(current_branch_ip, arch_instr.branch_type, predicted_branch_target,
-                                        4); // TODO: Fix to actual instruction size for x86 instructions
-
-    if (predicted_branch_target != arch_instr.branch_target
-        || (((arch_instr.branch_type == BRANCH_CONDITIONAL) || (arch_instr.branch_type == BRANCH_OTHER))
-            && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
-      if (!warmup) {
-        fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
-        fetch_stalled_cycle = current_cycle;
-        is_aliasing_stall = is_aliasing;
-        stop_fetch = true;
-        arch_instr.branch_mispredicted = 1;
-        sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
+    if (!warmup and btb_active_branch_target and btb_active_branch_ip != arch_instr.ip) {
+      // std::cout << arch_instr.instr_id << std::endl;
+      sim_stats.total_aliasing++;
+      is_aliasing = true;
+      auto differing_bits = std::bitset<64>{btb_active_branch_ip ^ arch_instr.ip};
+      for (size_t i = 0; i < 64; i++) {
+        if (differing_bits[i]) {
+          sim_stats.aliasing_bit_counts[i]++;
+        }
       }
-    } else if (predicted_branch_target && predicted_branch_target != current_branch_ip + 4) {
-      stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
+      // std::cout << "ALIASING ON " << arch_instr.ip << " WITH BRANCH AT " << branch_ip << std::endl;
+    }
+    arch_instr.branch_prediction = btb_active_branch_prediction;
+    if (perfect_branch_predict && arch_instr.is_branch) {
+      if (realistic_perfect && first_branch_occurrence) {}
+      else
+        arch_instr.branch_prediction = arch_instr.branch_taken;
+    }
+    if (arch_instr.branch_prediction == 0) {
+      btb_active_branch_target = 0;
+    } else if (!warmup && btb_active_branch_ip && btb_active_branch_target && arch_instr.branch_type == NOT_BRANCH && arch_instr.branch_prediction) {
+      // NOTE: HERE WE GO WRONGPATH ON NON-BRANCHING INSTRUCTIONS
+      sim_stats.non_branch_btb_hits++;
+      sim_stats.negative_aliasing++;
+      fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
+      fetch_stalled_cycle = current_cycle;
+      is_aliasing_stall = true;
+      stop_fetch = true;
+      arch_instr.branch_mispredicted = 1;
+      sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
+      arch_instr.branch_prediction = 0;
+      arch_instr.branch_taken = 0;
     }
 
+    if (!warmup && arch_instr.branch_prediction && arch_instr.ip != btb_active_branch_ip && arch_instr.branch_type != NOT_BRANCH) {
+      if (btb_active_branch_target == arch_instr.branch_target && arch_instr.branch_taken) {
+        sim_stats.positive_aliasing += 1;
+      } else {
+        sim_stats.negative_aliasing += 1;
+      }
+    }
+    // if (!warmup) {
+    //   std::cout << "INSTR_ID: " << arch_instr.instr_id << ", IP:" << arch_instr.ip << ", MISPREDICTED: " << (predicted_branch_target !=
+    //   arch_instr.branch_target); if (predicted_branch_target != arch_instr.branch_target)
+    //     std::cout << ", CURRENT CYCLE: " << current_cycle;
+    //
+    //   std::cout << std::endl;
+    // }
+
+    // NOTE: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately
+    if (!warmup && arch_instr.branch_taken && btb_active_branch_target == 0) {
+      sim_stats.branch_type_misses[arch_instr.branch_type]++;
+    }
+    if (arch_instr.is_branch) {
+      if constexpr (champsim::debug_print) {
+        fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, btb_active_predicted_branch_ip, arch_instr.branch_taken);
+      }
+
+      // call code prefetcher every time the branch predictor is used
+      l1i->impl_prefetcher_branch_operate(btb_active_predicted_branch_ip, arch_instr.branch_type, btb_active_branch_target,
+                                          4); // TODO: Fix to actual instruction size for x86 instructions
+
+      if (btb_active_branch_target != arch_instr.branch_target
+          || (((arch_instr.branch_type == BRANCH_CONDITIONAL) || (arch_instr.branch_type == BRANCH_OTHER))
+              && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
+        if (!warmup) {
+          fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
+          fetch_stalled_cycle = current_cycle;
+          is_aliasing_stall = is_aliasing;
+          stop_fetch = true;
+          arch_instr.branch_mispredicted = 1;
+          sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
+        }
+      } else if (btb_active_branch_target && btb_active_branch_target != btb_active_predicted_branch_ip + 4) {
+        stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
+      }
+    } // TODO: add condition for non-consecutive control flow
+    btb_active_branch_target = 0;
+    btb_active_branch_ip = 0;
+    btb_active_always_taken = 0;
+    btb_active_bblock_size = 0;
+    btb_active_predicted_branch_ip = 0;
+    btb_active_branch_prediction = false;
+  }
+
+  if (arch_instr.is_branch) {
     impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
-  } // TODO: add condition for non-consecutive control flow
+  }
 
   return stop_fetch;
 }

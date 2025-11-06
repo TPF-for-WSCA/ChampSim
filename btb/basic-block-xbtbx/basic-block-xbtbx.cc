@@ -25,7 +25,6 @@
 #define EAGERLY_EVICT_ON_REGION_REMOVAL false
 
 uint64_t invalid_replacements = 0;
-uint64_t last_target = 0;
 
 constexpr uint64_t pow2(uint8_t exp)
 {
@@ -447,14 +446,15 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint64_t> O3_CPU::btb_prediction(uint64_
 // __attribute__((optimize(0)))
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
-  if (!last_target
-      || branch_type == NOT_BRANCH) { // we use the NOT_BRANCH condition to manage discontinuities in the instruction stream stemming from interrupts
-    last_target = branch_target;
+  if (!btb_last_target) {
+    btb_last_target = branch_target;
     return;
   }
   auto precise_branch_ip = ip;
-  ip = last_target;
-  auto block_size = precise_branch_ip - ip + 4; // We assume always a 4 byte long instruction -- and the block size includes the branch itself
+  ip = btb_last_target;
+  // TODO: add stats for block_size. --> Only consider after warmup
+  auto block_size = precise_branch_ip - ip + 4ul; // We assume always a 4 byte long instruction -- and the block size includes the branch itself
+
   uint64_t new_region = get_region(ip);
 
   uint64_t offset_size = (ip >> isa_shiftamount) ^ (branch_target >> isa_shiftamount);
@@ -586,6 +586,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         // if (valid_replacement) {
         //   std::cout << "Getting rid for good" << std::endl;
         // }
+        btb_last_target = branch_target;
         return;
       }
     }
@@ -907,6 +908,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   /********* STATS END *********/
   /********* UPDATE STATE *********/
   prev_branch_ip = ip;
+  btb_last_target = branch_target;
 }
 
 void O3_CPU::btb_end_phase(unsigned finished_cpu)
