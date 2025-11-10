@@ -454,6 +454,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   ip = btb_last_target;
   // TODO: add stats for block_size. --> Only consider after warmup
   auto block_size = precise_branch_ip - ip + 4ul; // We assume always a 4 byte long instruction -- and the block size includes the branch itself
+  if (btb_last_target) {
+    sim_stats.basic_block_size_count[block_size]++;
+  }
 
   uint64_t new_region = get_region(ip);
 
@@ -991,8 +994,8 @@ void O3_CPU::btb_invalidate_entry(uint64_t ip)
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
   if (!btb_entry.has_value() || !region_idx_.has_value()) {
-    std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR " << ip << std::endl;
-    std::cerr << "ALREADY REPLACED?" << std::endl;
+    // std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR " << ip << std::endl;
+    // std::cerr << "ALREADY REPLACED?" << std::endl;
     return;
     // assert(0);
   }
