@@ -32,6 +32,7 @@
 
 bool last_instr_was_taken_branch = false;
 uint64_t basic_block_start = 0;
+uint64_t prev_predicted_ip = 0;
 
 #define KERNEL_LOWER_BOUND 0xffff800000000000ul
 #define KERNEL_IGNORE_ENABLE false
@@ -194,9 +195,23 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 {
   bool is_aliasing = false;
   if (!arch_instr.is_branch && bp_ignore_non_branch) {
+    if (8 < arch_instr.ip - prev_predicted_ip && !last_instr_was_taken_branch) {
+      basic_block_start = 0;
+    }
+    prev_predicted_ip = arch_instr.ip;
+    if (arch_instr.branch_taken) {
+      last_instr_was_taken_branch = true;
+    }
     return false;
   }
   if (arch_instr.ip % 4 == 2) {
+    if (8 < arch_instr.ip - prev_predicted_ip && !last_instr_was_taken_branch) {
+      basic_block_start = 0;
+    }
+    prev_predicted_ip = arch_instr.ip;
+    if (arch_instr.branch_taken) {
+      last_instr_was_taken_branch = true;
+    }
     return false;
   }
   sim_stats.dynamic_btb_lookup_count++;
@@ -216,7 +231,22 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       // TODO: Discuss with rakesh how to handle kernel branches
       arch_instr.branch_mispredicted = 0;
       arch_instr.branch_prediction = arch_instr.branch_target;
+      if (8 < arch_instr.ip - prev_predicted_ip && !last_instr_was_taken_branch) {
+        basic_block_start = 0;
+      }
+      prev_predicted_ip = arch_instr.ip;
+      if (arch_instr.branch_taken) {
+        last_instr_was_taken_branch = true;
+      }
       return true;
+    }
+
+    if (8 < arch_instr.ip - prev_predicted_ip && !last_instr_was_taken_branch) {
+      basic_block_start = 0;
+    }
+    prev_predicted_ip = arch_instr.ip;
+    if (arch_instr.branch_taken) {
+      last_instr_was_taken_branch = true;
     }
     return false;
   }
@@ -290,17 +320,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {
     sim_stats.branch_type_misses[arch_instr.branch_type]++;
   }
-  if (last_instr_was_taken_branch) {
-    last_instr_was_taken_branch = false;
-    basic_block_start = arch_instr.ip;
-  }
-  if (prev_instr.ip + 4 != arch_instr.ip && !prev_instr.branch_taken) {
-    basic_block_start = 0;
-  }
   if (arch_instr.is_branch) {
-    if (arch_instr.branch_taken) {
-      last_instr_was_taken_branch = true;
-    }
     if constexpr (champsim::debug_print) {
       fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
     }
@@ -327,6 +347,17 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     if (basic_block_start)
       impl_update_btb(basic_block_start, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type, (arch_instr.ip - basic_block_start + 4));
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+  }
+  if (8 < arch_instr.ip - prev_predicted_ip && !last_instr_was_taken_branch) {
+    basic_block_start = 0;
+  }
+  if (last_instr_was_taken_branch) {
+    last_instr_was_taken_branch = false;
+    basic_block_start = arch_instr.ip;
+  }
+  prev_predicted_ip = arch_instr.ip;
+  if (arch_instr.branch_taken) {
+    last_instr_was_taken_branch = true;
   }
 
   return stop_fetch;
