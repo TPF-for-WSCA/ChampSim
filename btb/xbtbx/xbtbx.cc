@@ -160,6 +160,10 @@ auto inline get_tag(uint64_t ip) {
   return ip;
 }
 
+auto inline get_idx (uint64_t ip) {
+  return (ip >> isa_shiftamount) & _FILTER_INDEX_MASK;
+}
+
 struct FilterBTBEntry {
   uint64_t ip_tag = 0;
   uint64_t target;
@@ -379,7 +383,8 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool
   //   std::cout << "this is one of the faulting branches" << std::endl;
   // }
   if (get_region(current.predicted_branch_ip) == get_region(ip) &&
-      get_tag(current.predicted_branch_ip) == get_tag(ip)) {
+      get_tag(current.predicted_branch_ip) == get_tag(ip) &&
+      get_idx(current.predicted_branch_ip) == get_idx(ip)) {
     return {current.predicted_target, current.predicted_branch_ip, current.always_taken};
   }
   std::optional<::BTBEntry> btb_entry = std::nullopt;
@@ -450,7 +455,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool
 
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this])) {
-      current = {0, btb_entry->basic_block_size + ip, ip, true};
+      current = {0, btb_entry->basic_block_size + ip - 4, ip, true};
       verify_last_prediction = true;
       return {0, ip, false};
     }
@@ -459,7 +464,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool
     auto target = ::RAS[this].back();
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
 
-    current = {target + 4, btb_entry->basic_block_size + ip, ip, true};
+    current = {target + 4, btb_entry->basic_block_size + ip - 4, ip, true};
     verify_last_prediction = true;
     return {0, ip, false};
   }
@@ -469,7 +474,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool
       return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
     }*/
 
-  current = {btb_entry->get_prediction(), btb_entry->basic_block_size + ip, ip, btb_entry->type != ::branch_info::CONDITIONAL};
+  current = {btb_entry->get_prediction(), btb_entry->basic_block_size + ip - 4, ip, btb_entry->type != ::branch_info::CONDITIONAL};
   verify_last_prediction = true;
   return {0, ip, false};
 }
