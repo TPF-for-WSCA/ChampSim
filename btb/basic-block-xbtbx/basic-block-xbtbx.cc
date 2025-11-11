@@ -447,7 +447,7 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint64_t> O3_CPU::btb_prediction(uint64_
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   if (!btb_last_target) {
-    btb_last_target = branch_target;
+    btb_last_target = taken ? branch_target : 0;
     return;
   }
   auto precise_branch_ip = ip;

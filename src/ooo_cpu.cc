@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "ooo_cpu.h"
 
 #include <algorithm>
@@ -34,10 +33,10 @@
 #define KERNEL_LOWER_BOUND 0xffff800000000000ul
 #define KERNEL_IGNORE_ENABLE false
 
-std::set<uint64_t> branch_seen = {}; 
+std::set<uint64_t> branch_seen = {};
 
 uint64_t prev_branch_lookup_ip = 0;
-ooo_model_instr prev_instr = {0, input_instr() };
+ooo_model_instr prev_instr = {0, input_instr()};
 
 std::chrono::seconds elapsed_time();
 
@@ -127,7 +126,6 @@ void O3_CPU::end_phase(unsigned finished_cpu)
   sim_stats.end_cycles = current_cycle;
   impl_btb_end_phase(finished_cpu);
 
-
   if (finished_cpu == this->cpu) {
     finish_phase_instr = num_retired;
     finish_phase_cycle = current_cycle;
@@ -159,12 +157,11 @@ void O3_CPU::initialize_instruction()
       }
     }
     if (input_queue.front().ip % 4 != 0) {
-      instrs_to_read_this_cycle++;  // dummy instructions at offset 2
+      instrs_to_read_this_cycle++; // dummy instructions at offset 2
     } else {
       prev_instr = input_queue.front(); // original instructions
     }
     input_queue.pop_front();
-
 
     IFETCH_BUFFER.back().event_cycle = current_cycle;
   }
@@ -269,6 +266,10 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     stop_fetch = true;
     arch_instr.branch_mispredicted = 1;
     sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
+    if (arch_instr.is_branch) {
+      impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+      impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+    }
     return stop_fetch;
   }
   if (arch_instr.ip == btb_active_predicted_branch_ip) {
@@ -280,8 +281,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       btb_active_branch_target = arch_instr.branch_target;
       btb_active_branch_ip = arch_instr.ip;
       btb_active_always_taken = (arch_instr.branch_type == BRANCH_CONDITIONAL || arch_instr.branch_type == BRANCH_OTHER)
-                        ? 0
-                        : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
+                                    ? 0
+                                    : arch_instr.branch_taken; // TODO: Discuss with rakesh if we can do better than that
     }
     if (!warmup and btb_active_branch_target and btb_active_branch_ip != arch_instr.ip) {
       // std::cout << arch_instr.instr_id << std::endl;
@@ -297,8 +298,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     }
     arch_instr.branch_prediction = btb_active_branch_prediction;
     if (perfect_branch_predict && arch_instr.is_branch) {
-      if (realistic_perfect && first_branch_occurrence) {}
-      else
+      if (realistic_perfect && first_branch_occurrence) {
+      } else
         arch_instr.branch_prediction = arch_instr.branch_taken;
     }
     if (arch_instr.branch_prediction == 0) {
@@ -323,54 +324,54 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       } else {
         sim_stats.negative_aliasing += 1;
       }
-    }
-    // if (!warmup) {
-    //   std::cout << "INSTR_ID: " << arch_instr.instr_id << ", IP:" << arch_instr.ip << ", MISPREDICTED: " << (predicted_branch_target !=
-    //   arch_instr.branch_target); if (predicted_branch_target != arch_instr.branch_target)
-    //     std::cout << ", CURRENT CYCLE: " << current_cycle;
-    //
-    //   std::cout << std::endl;
-    // }
+      // if (!warmup) {
+      //   std::cout << "INSTR_ID: " << arch_instr.instr_id << ", IP:" << arch_instr.ip << ", MISPREDICTED: " << (predicted_branch_target !=
+      //   arch_instr.branch_target); if (predicted_branch_target != arch_instr.branch_target)
+      //     std::cout << ", CURRENT CYCLE: " << current_cycle;
+      //
+      //   std::cout << std::endl;
+      // }
 
-    // NOTE: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately
-    if (!warmup && arch_instr.branch_taken && btb_active_branch_target == 0) {
-      sim_stats.branch_type_misses[arch_instr.branch_type]++;
-    }
-    if (arch_instr.is_branch) {
-      if constexpr (champsim::debug_print) {
-        fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, btb_active_predicted_branch_ip, arch_instr.branch_taken);
+      // NOTE: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately
+      if (!warmup && arch_instr.branch_taken && btb_active_branch_target == 0) {
+        sim_stats.branch_type_misses[arch_instr.branch_type]++;
       }
-
-      // call code prefetcher every time the branch predictor is used
-      l1i->impl_prefetcher_branch_operate(btb_active_predicted_branch_ip, arch_instr.branch_type, btb_active_branch_target,
-                                          4); // TODO: Fix to actual instruction size for x86 instructions
-
-      if (btb_active_branch_target != arch_instr.branch_target
-          || (((arch_instr.branch_type == BRANCH_CONDITIONAL) || (arch_instr.branch_type == BRANCH_OTHER))
-              && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
-        if (!warmup) {
-          fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
-          fetch_stalled_cycle = current_cycle;
-          is_aliasing_stall = is_aliasing;
-          stop_fetch = true;
-          arch_instr.branch_mispredicted = 1;
-          sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
+      if (arch_instr.is_branch) {
+        if constexpr (champsim::debug_print) {
+          fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, btb_active_predicted_branch_ip, arch_instr.branch_taken);
         }
-      } else if (btb_active_branch_target && btb_active_branch_target != btb_active_predicted_branch_ip + 4) {
-        stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
-      }
-    } // TODO: add condition for non-consecutive control flow
-    btb_active_branch_target = 0;
-    btb_active_branch_ip = 0;
-    btb_active_always_taken = 0;
-    btb_active_bblock_size = 0;
-    btb_active_predicted_branch_ip = 0;
-    btb_active_branch_prediction = false;
-  }
 
-  if (arch_instr.is_branch) {
-    impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
-    impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+        // call code prefetcher every time the branch predictor is used
+        l1i->impl_prefetcher_branch_operate(btb_active_predicted_branch_ip, arch_instr.branch_type, btb_active_branch_target,
+                                            4); // TODO: Fix to actual instruction size for x86 instructions
+
+        if (btb_active_branch_target != arch_instr.branch_target
+            || (((arch_instr.branch_type == BRANCH_CONDITIONAL) || (arch_instr.branch_type == BRANCH_OTHER))
+                && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
+          if (!warmup) {
+            fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
+            fetch_stalled_cycle = current_cycle;
+            is_aliasing_stall = is_aliasing;
+            stop_fetch = true;
+            arch_instr.branch_mispredicted = 1;
+            sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
+          }
+        } else if (btb_active_branch_target && btb_active_branch_target != btb_active_predicted_branch_ip + 4) {
+          stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
+        }
+      } // TODO: add condition for non-consecutive control flow
+      btb_active_branch_target = 0;
+      btb_active_branch_ip = 0;
+      btb_active_always_taken = 0;
+      btb_active_bblock_size = 0;
+      btb_active_predicted_branch_ip = 0;
+      btb_active_branch_prediction = false;
+    }
+
+    if (arch_instr.is_branch) {
+      impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+      impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+    }
   }
 
   return stop_fetch;
