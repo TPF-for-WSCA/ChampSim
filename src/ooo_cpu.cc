@@ -30,6 +30,9 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
+bool last_instr_was_taken_branch = false;
+uint64_t basic_block_start = 0;
+
 #define KERNEL_LOWER_BOUND 0xffff800000000000ul
 #define KERNEL_IGNORE_ENABLE false
 
@@ -221,7 +224,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types[arch_instr.branch_type]++;
   // TODO: Check if this is good enough to identify branches
-  auto [predicted_branch_target, branch_ip, always_taken] = impl_btb_prediction(arch_instr.ip);
+  auto [predicted_branch_target, branch_ip, always_taken] = impl_btb_prediction(arch_instr.ip, (arch_instr.is_branch && arch_instr.branch_taken));
   sim_stats.btb_reads++;
   if (predicted_branch_target) {
     sim_stats.btb_hits++;
@@ -287,7 +290,17 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {
     sim_stats.branch_type_misses[arch_instr.branch_type]++;
   }
+  if (last_instr_was_taken_branch) {
+    last_instr_was_taken_branch = false;
+    basic_block_start = arch_instr.ip;
+  }
+  if (prev_instr.ip + 4 != arch_instr.ip && !prev_instr.branch_taken) {
+    basic_block_start = 0;
+  }
   if (arch_instr.is_branch) {
+    if (arch_instr.branch_taken) {
+      last_instr_was_taken_branch = true;
+    }
     if constexpr (champsim::debug_print) {
       fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
     }
@@ -311,7 +324,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
     }
 
-    impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+    if (basic_block_start)
+      impl_update_btb(basic_block_start, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type, (arch_instr.ip - basic_block_start + 4));
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
   }
 

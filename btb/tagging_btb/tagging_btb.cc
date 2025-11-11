@@ -140,7 +140,7 @@ void O3_CPU::initialize_btb()
   _TAG_MASK = pow2(_BTB_TAG_SIZE) - 1;
 }
 
-std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool taken_branch)
 {
   std::optional<::btb_entry_t> btb_entry;
   if (_BTB_TAG_REGIONS) {
@@ -179,7 +179,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   return {btb_entry->target, btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL};
 }
 
-void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type, uint64_t current_cycle)
+void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type, uint64_t current_cycle, uint64_t bbsize)
 {
   // add something to the RAS
   if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL) {

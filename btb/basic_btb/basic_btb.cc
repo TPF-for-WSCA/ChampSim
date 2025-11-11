@@ -58,7 +58,7 @@ void O3_CPU::initialize_btb()
   ::CONDITIONAL_HISTORY[this] = 0;
 }
 
-std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool taken_branch)
 {
   // use BTB for all other branches + direct calls
   auto btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN});
@@ -86,7 +86,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   return {btb_entry->target, btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL};
 }
 
-void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type, uint64_t bbsize)
 {
   // add something to the RAS
   if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL) {

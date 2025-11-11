@@ -24,6 +24,18 @@
 #define SAMPLING_DISTANCE 500000
 #define EAGERLY_EVICT_ON_REGION_REMOVAL false
 
+bool verify_last_prediction = false;
+bool branch_mispredict_detected = false;
+struct BTBPred {
+  uint64_t predicted_target;
+  uint64_t predicted_branch_ip;
+  uint64_t prediction_instr_ip;
+  bool always_taken;
+};
+
+struct BTBPred current;
+struct BTBPred prev;
+
 uint64_t invalid_replacements = 0;
 
 constexpr uint64_t pow2(uint8_t exp)
@@ -133,11 +145,18 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
   }
 }
 
-auto get_region(uint64_t ip)
+auto inline get_region(uint64_t ip)
 {
   ip = shuffle_ip_tag(ip);
   ip = ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
   ip = ip & _REGION_MASK;
+  return ip;
+}
+
+auto inline get_tag(uint64_t ip) {
+  ip = shuffle_ip_tag(ip);
+  ip = ip >> isa_shiftamount >> _BTB_SET_BITS;
+  ip = ip & _TAG_MASK;
   return ip;
 }
 
@@ -181,6 +200,7 @@ struct BTBEntry {
   std::tuple<uint16_t, uint16_t, uint64_t> region_idx_tag = {0, 0, 0};
   uint8_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
+  uint64_t basic_block_size = 0;
 
   // TODO: shift indexes and tags into place
   auto index() const
@@ -352,12 +372,28 @@ void O3_CPU::initialize_btb()
 }
 
 // __attribute__((optimize(0)))
-std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool taken_branch)
 {
   // TODO: add if condition with breaking condition
   // if (!warmup && ip == 18446462598868070740 && current_cycle >= 7113112) {
   //   std::cout << "this is one of the faulting branches" << std::endl;
   // }
+  if (verify_last_prediction && current.predicted_target != ip) {
+    verify_last_prediction = false;
+    branch_mispredict_detected = true;
+    return {0, ip, false};// too optimistic, but don't know what else to do - we don't know if we are a branch or not
+  }
+  if (verify_last_prediction) {
+    verify_last_prediction = false;
+  }
+  if (branch_mispredict_detected) {
+    branch_mispredict_detected = false;
+    return {prev.predicted_target, prev.predicted_branch_ip, prev.always_taken}; // we purposfully mispredict here
+  }
+  if (get_region(current.predicted_branch_ip) == get_region(ip) &&
+      get_tag(current.predicted_branch_ip) == get_tag(ip)) {
+    return {current.predicted_target, current.predicted_branch_ip, current.always_taken};
+  }
   std::optional<::BTBEntry> btb_entry = std::nullopt;
   std::optional<::FilterBTBEntry> filter_hit = std::nullopt;
   if (REGION_BTB_FILTER_ENABLED && _BTB_TAG_REGIONS)
@@ -425,14 +461,21 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
     return {0, ip, false};
 
   if (btb_entry->type == ::branch_info::RETURN) {
-    if (std::empty(::RAS[this]))
-      return {0, btb_entry->ip_tag, true};
+    if (std::empty(::RAS[this])) {
+      prev = current;
+      current = {0, btb_entry->basic_block_size + ip, ip, true};
+      verify_last_prediction = true;
+      return {0, ip, false};
+    }
 
     // peek at the top of the RAS and adjust for the size of the call instr
     auto target = ::RAS[this].back();
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
 
-    return {target + 4, btb_entry->ip_tag, true}; // assume fixed size for now
+    prev = current;
+    current = {target + 4, btb_entry->basic_block_size + ip, ip, true};
+    verify_last_prediction = true;
+    return {0, ip, false};
   }
   /*
     if (btb_entry->type == ::branch_info::INDIRECT) {
@@ -440,13 +483,19 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
       return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
     }*/
 
-  return {btb_entry->get_prediction(), btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL};
+  prev = current;
+  current = {btb_entry->get_prediction(), btb_entry->basic_block_size + ip, ip, btb_entry->type != ::branch_info::CONDITIONAL};
+  verify_last_prediction = true;
+  return {0, ip, false};
 }
 
 // TODO: ONLY UPDATE WHEN FITTING IN THE WAY
 // __attribute__((optimize(0)))
-void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
+void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type, uint64_t bbsize)
 {
+  if (!taken) {
+    return;
+  }
   uint64_t new_region = get_region(ip);
 
   uint64_t offset_size = (ip >> isa_shiftamount) ^ (branch_target >> isa_shiftamount);
@@ -738,6 +787,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     fill_entry.target = branch_target;
     fill_entry.ip_tag = ip;
     fill_entry.type = type;
+    fill_entry.basic_block_size = bbsize;
     replaced_entry = ::BTB.at(this).fill(
         fill_entry,
         entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
@@ -980,8 +1030,8 @@ void O3_CPU::btb_invalidate_entry(uint64_t ip)
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
   if (!btb_entry.has_value() || !region_idx_.has_value()) {
-    std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR " << ip << std::endl;
-    std::cerr << "ALREADY REPLACED?" << std::endl;
+    // std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR " << ip << std::endl;
+    // std::cerr << "ALREADY REPLACED?" << std::endl;
     return;
     // assert(0);
   }

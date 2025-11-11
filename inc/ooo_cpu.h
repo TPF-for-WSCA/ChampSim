@@ -300,8 +300,8 @@ public:
     virtual uint8_t impl_predict_branch(uint64_t ip) = 0;
 
     virtual void impl_initialize_btb() = 0;
-    virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) = 0;
-    virtual std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
+    virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type, uint64_t bbsize) = 0;
+    virtual std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip, bool taken_branch) = 0;
     virtual void impl_btb_end_phase(unsigned finished_cpu) = 0;
     virtual void impl_btb_invalidate_entry(uint64_t ip) = 0;
   };
@@ -316,8 +316,8 @@ public:
     uint8_t impl_predict_branch(uint64_t ip);
 
     void impl_initialize_btb();
-    void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type);
-    std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
+    void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type, uint64_t bbsize);
+    std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip, bool taken_branch);
     void impl_btb_end_phase(unsigned finished_cpu);
     void impl_btb_invalidate_entry(uint64_t);
   };
@@ -332,11 +332,11 @@ public:
   uint8_t impl_predict_branch(uint64_t ip) { return module_pimpl->impl_predict_branch(ip); }
 
   void impl_initialize_btb() { module_pimpl->impl_initialize_btb(); }
-  void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type)
+  void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type, uint64_t bbsize)
   {
-    module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
+    module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type, bbsize);
   }
-  std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
+  std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip, bool taken_branch) { return module_pimpl->impl_btb_prediction(ip, taken_branch); }
 
   void impl_btb_end_phase(unsigned finished_cpu){
     module_pimpl->impl_btb_end_phase(finished_cpu);
