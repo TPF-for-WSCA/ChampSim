@@ -93,6 +93,7 @@ struct cpu_stats {
   std::map<uint64_t, uint64_t> region_pointer_count = {};
   std::map<uint64_t, uint64_t> region_pointer_max_stats = {};
   std::map<uint64_t, uint64_t> region_pointer_cycle_probe_stats = {};
+  std::map<uint64_t, uint64_t> basic_block_size = {};
   uint64_t max_region_pointer_sum = 0;
   std::tuple<uint64_t, uint64_t, uint64_t> squash_counts = {0, 0, 0};          // <frontend squashes, full squashes, total squashes>
   std::tuple<uint64_t, uint64_t, uint64_t> aliasing_squash_counts = {0, 0, 0}; // <frontend squashes, full squashes, total squashes>

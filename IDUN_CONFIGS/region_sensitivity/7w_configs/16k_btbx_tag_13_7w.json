@@ -1,5 +1,5 @@
 {
-  "executable_name": "region_sensitivity/16k_abtb_tag_14b_7w",
+  "executable_name": "region_sensitivity_7w/16k_abtb_tag_14b_7w",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,

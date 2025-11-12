@@ -24,8 +24,6 @@
 #define SAMPLING_DISTANCE 500000
 #define EAGERLY_EVICT_ON_REGION_REMOVAL false
 
-bool verify_last_prediction = false;
-bool branch_mispredict_detected = false;
 struct BTBPred {
   uint64_t predicted_target;
   uint64_t predicted_branch_ip;
@@ -34,7 +32,8 @@ struct BTBPred {
 };
 
 struct BTBPred current;
-struct BTBPred prev;
+uint64_t pred_issued = 0;
+uint64_t pred_requested = 0;
 
 uint64_t invalid_replacements = 0;
 
@@ -161,7 +160,7 @@ auto inline get_tag(uint64_t ip) {
 }
 
 auto inline get_idx (uint64_t ip) {
-  return (ip >> isa_shiftamount) & _FILTER_INDEX_MASK;
+  return (ip >> isa_shiftamount) & _INDEX_MASK;
 }
 
 struct FilterBTBEntry {
@@ -378,10 +377,9 @@ void O3_CPU::initialize_btb()
 // __attribute__((optimize(0)))
 std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool taken_branch)
 {
-  // TODO: add if condition with breaking condition
-  // if (!warmup && ip == 18446462598868070740 && current_cycle >= 7113112) {
-  //   std::cout << "this is one of the faulting branches" << std::endl;
-  // }
+  if (current.prediction_instr_ip < ip && ip < current.predicted_branch_ip) {
+    return {0, ip, false}; // We are in the current block, so we predict this to not be a (taken) branch
+  }
   if (get_region(current.predicted_branch_ip) == get_region(ip) &&
       get_tag(current.predicted_branch_ip) == get_tag(ip) &&
       get_idx(current.predicted_branch_ip) == get_idx(ip)) {
@@ -456,7 +454,8 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this])) {
       current = {0, btb_entry->basic_block_size + ip - 4, ip, true};
-      verify_last_prediction = true;
+      if (btb_entry->basic_block_size == 4) // in case this is a jumptable case
+        return {current.predicted_target, current.predicted_branch_ip, current.always_taken};
       return {0, ip, false};
     }
 
@@ -465,7 +464,8 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
 
     current = {target + 4, btb_entry->basic_block_size + ip - 4, ip, true};
-    verify_last_prediction = true;
+    if (btb_entry->basic_block_size == 4) // in case this is a jumptable case
+      return {current.predicted_target, current.predicted_branch_ip, current.always_taken};
     return {0, ip, false};
   }
   /*
@@ -475,7 +475,8 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool
     }*/
 
   current = {btb_entry->get_prediction(), btb_entry->basic_block_size + ip - 4, ip, btb_entry->type != ::branch_info::CONDITIONAL};
-  verify_last_prediction = true;
+  if (btb_entry->basic_block_size == 4) // in case this is a jumptable case
+    return {current.predicted_target, current.predicted_branch_ip, current.always_taken};
   return {0, ip, false};
 }
 

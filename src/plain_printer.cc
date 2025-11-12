@@ -194,6 +194,11 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     fmt::print("{}:\t{}\n", j, (double) stats.btb_tag_lookup_switch_entropy[j] / (double)stats.dynamic_btb_lookup_count);
   }
 
+  fmt::print("\nBASIC BLOCK SIZE\tCOUNT\n");
+  for (auto const&[bbsize, count] : stats.basic_block_size) {
+    fmt::print("{}\t{}\n", bbsize, count);
+  }
+
   fmt::print("XXX END BTB STATS\n");
 
   fmt::print("\n\nBTB\tREADS: {}\tHITS: {}\n", stats.btb_reads, stats.btb_hits);
