@@ -193,6 +193,7 @@ void do_stack_pointer_folding(ooo_model_instr& arch_instr)
 bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 {
   bool is_aliasing = false;
+  auto compare_target = (arch_instr.branch_taken) ? arch_instr.branch_target : 0;
   if (!arch_instr.is_branch && bp_ignore_non_branch) {
     if (4 < arch_instr.ip - prev_predicted_ip) {
       basic_block_start = arch_instr.ip;
@@ -220,9 +221,6 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       // TODO: Discuss with rakesh how to handle kernel branches
       arch_instr.branch_mispredicted = 0;
       arch_instr.branch_prediction = arch_instr.branch_target;
-      if (4 < arch_instr.ip - prev_predicted_ip) {
-        basic_block_start = arch_instr.ip;
-      }
       prev_predicted_ip = arch_instr.ip;
       basic_block_start = arch_instr.branch_target;
       return true;
@@ -275,6 +273,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     // NOTE: HERE WE GO WRONGPATH ON NON-BRANCHING INSTRUCTIONS
     sim_stats.non_branch_btb_hits++;
     sim_stats.negative_aliasing++;
+    // std::cout << "BRANCH MISPREDICTED: " << arch_instr.instr_id << std::endl;
     fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
     fetch_stalled_cycle = current_cycle;
     is_aliasing_stall = true;
@@ -286,7 +285,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   }
 
   if (!warmup && arch_instr.branch_prediction && arch_instr.ip != branch_ip && arch_instr.branch_type != NOT_BRANCH) {
-    if (predicted_branch_target == arch_instr.branch_target && arch_instr.branch_taken) {
+    if (predicted_branch_target == compare_target && arch_instr.branch_taken) {
       sim_stats.positive_aliasing += 1;
     } else {
       sim_stats.negative_aliasing += 1;
@@ -304,7 +303,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {
     sim_stats.branch_type_misses[arch_instr.branch_type]++;
   }
-  if (4 < arch_instr.ip - prev_predicted_ip) {
+  // we jumped here somehow (could have been a branch or an interrupt)
+  if (4ul < arch_instr.ip - prev_predicted_ip) {
     basic_block_start = arch_instr.ip;
   }
   if (arch_instr.is_branch) {
@@ -316,10 +316,11 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     l1i->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target,
                                         4); // TODO: Fix to actual instruction size for x86 instructions
 
-    if (predicted_branch_target != arch_instr.branch_target
+    if (predicted_branch_target != compare_target
         || (((arch_instr.branch_type == BRANCH_CONDITIONAL) || (arch_instr.branch_type == BRANCH_OTHER))
             && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
       if (!warmup) {
+        // std::cout << "BRANCH MISPREDICTED: " << arch_instr.instr_id << std::endl;
         fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
         fetch_stalled_cycle = current_cycle;
         is_aliasing_stall = is_aliasing;
