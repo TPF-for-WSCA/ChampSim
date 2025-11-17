@@ -378,6 +378,9 @@ void O3_CPU::initialize_btb()
 std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool taken_branch)
 {
   if (current.prediction_instr_ip < ip && ip < current.predicted_branch_ip) {
+    if (taken_branch) {
+      current = {0, 0, 0, 0}; // This is needed so we don't miss a mispredict and stay in the wrong path prediction
+    }
     return {0, ip, false}; // We are in the current block, so we predict this to not be a (taken) branch
   }
   if (get_region(current.predicted_branch_ip) == get_region(ip) &&
@@ -463,7 +466,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool
     auto target = ::RAS[this].back();
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
 
-    current = {target + 4, btb_entry->basic_block_size + ip - 4, ip, true};
+    current = {target + size, btb_entry->basic_block_size + ip - 4, ip, true};
     if (btb_entry->basic_block_size == 4) // in case this is a jumptable case
       return {current.predicted_target, current.predicted_branch_ip, current.always_taken};
     return {0, ip, false};
