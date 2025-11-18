@@ -1,5 +1,5 @@
 {
-  "executable_name": "region_sensitivity/8k_btb_rs_14b_rc_832_rw_13_entry_replace",
+  "executable_name": "region_sensitivity/8k_btb_rs_13b_rc_832_rw_13_entry_replace",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,

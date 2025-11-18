@@ -1,5 +1,5 @@
 {
-  "executable_name": "region_sensitivity/2k_btb_rs_13b_rc_512_rw_16_entry_replace",
+  "executable_name": "region_sensitivity/2k_btb_rs_12b_rc_512_rw_16_entry_replace",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -60,7 +60,7 @@
       ],
       "btb_tag_size": 0,
       "btb_tag_regions": 512,
-      "btb_tag_region_size": 13,
+      "btb_tag_region_size": 12,
       "btb_tag_region_ways": 16,
       "btb_perfect_mapping": 1,
       "btb_invalidate_entry": 1,
