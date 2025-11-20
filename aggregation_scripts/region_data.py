@@ -33,10 +33,12 @@ for benchmark in benchmarks:
     full_path = os.path.join(sys.argv[1], benchmark)
     if not os.path.isdir(full_path) or benchmark in ignore_directories:
         continue
+    print(f"Handling {benchmark}")
     for config in os.listdir(full_path):
         subdir_path = os.path.join(full_path, config)
-        if not os.path.isdir(subdir_path):
+        if not os.path.isdir(subdir_path) or config in ignore_directories:
             continue
+        print(f"\tConfig {config}")
         config_name = config.split("_")[1]
         for app in os.listdir(subdir_path):
             if not os.path.isdir(os.path.join(subdir_path, app)):
@@ -154,4 +156,5 @@ sorted_configs = sorted(unique_configs, key=parse_config_value)
 fig.update_xaxes(type='category', categoryorder='array', categoryarray=sorted_configs)
 
 fig.write_image(os.path.join(output_dir, "region_violin.pdf"))
+fig.write_html(os.path.join(output_dir, "region_violin.html"))
 fig.show()

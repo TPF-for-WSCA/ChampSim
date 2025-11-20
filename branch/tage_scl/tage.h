@@ -75,8 +75,8 @@ class TageBase : public BasePredictor {
 
    protected:
     static const int histbufferlen =
-        8192;  // we use a 4K entries history buffer to store the branch history
-               // (this allows us to explore using history length up to 4K)
+        8192;  // we use a 8K entries history buffer to store the branch history
+               // (this allows us to explore using history length up to 8K)
 
     static const int MAXNHIST = 40;  // Constant limit for the number of tables
 
