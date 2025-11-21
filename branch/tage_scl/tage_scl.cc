@@ -55,7 +55,6 @@ namespace LLBP {
 // The statistical corrector components
 
 #define PERCWIDTH 6  // Statistical corrector  counter width 5 -> 6 : 0.6 %
-#define TAGE8k 1
 
 #ifdef TAGE8k
 #define BWH

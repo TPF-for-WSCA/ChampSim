@@ -54,7 +54,7 @@ TageBase::TageBase(TageConfig cfg)
   assert(Tbits > 0);
   assert(nhist <= MAXNHIST);
 
-  // cfg.print();
+  cfg.print();
 
   // initialize the predictor
   reinit();
@@ -159,9 +159,9 @@ int TageBase::predictorsize()
 
   printf("LogG:%i, TBITS:%i, UWIDTH:%i, CWIDTH:%i, ALTWIDTH:%i, LogB:%i, Hyst:%i\n", LogG, Tbits, uwidth, cwidth, alt_width, LogB, hystshift);
 
-  printf(" (TAGE %d) ", STORAGESIZE);
+  printf(" (TAGE %d)\n", STORAGESIZE);
 
-  printf(" (TOTAL %d bits %d Kbits) ", STORAGESIZE, STORAGESIZE / 1024);
+  printf(" (TOTAL %d bits %d Kbits)\n", STORAGESIZE, STORAGESIZE / 1024);
 
   // for printing predictor characteristics
   int NBENTRY = 0;
