@@ -44,6 +44,8 @@
 #include "util/lru_table.h"
 #include <type_traits>
 
+#define BTB_REGION_SIZE 64
+
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
 class CACHE;
