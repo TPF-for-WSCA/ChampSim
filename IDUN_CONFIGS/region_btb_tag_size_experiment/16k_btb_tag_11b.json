@@ -1,5 +1,5 @@
 {
-  "executable_name": "default_btb_full_grid_search/16k_btb_tag_11b",
+  "executable_name": "region_btb_full_grid_search/16k_btb_tag_11b",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
