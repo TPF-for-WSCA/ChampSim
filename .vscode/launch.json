@@ -76,9 +76,9 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "--warmup_instructions",
-                "10",
+                "0",
                 "--simulation_instructions",
-                "1000000",
+                "100000000",
                 "--json",
                 "/Users/robrunne/Downloads/stats.json",
                 // "--tsv",
@@ -121,7 +121,7 @@
             //"${workspaceRoot}/bin/champsim_16b_region_256",
             "args": [
                 "--warmup-instructions",
-                "50000000",
+                "0000000",
                 "--simulation-instructions",
                 "50000000",
                 "--json",
@@ -144,6 +144,7 @@
                 //"/home/robrunne/OneDrive/Research/datasets/test_trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_036.champsimtrace.xz"
                 "/cluster/work/romankb/dataset/IPC1_new_translated/server/server_023.champsimtrace.xz"
+                // "/cluster/work/romankb/dataset/IPC1_new_translated/spec/spec_perlbench_001.champsimtrace.xz"
                 // "/cluster/work/romankb/dataset/dpc3/607.cactuBSSN_s-4248B.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"

@@ -23,6 +23,8 @@
 #define REGION_BTB_FILTER_ENABLED false
 #define SAMPLING_DISTANCE 500000
 #define EAGERLY_EVICT_ON_REGION_REMOVAL false
+#define ITLB_CACHE false
+#define PAGE_LOG_SIZE 12
 
 uint64_t invalid_replacements = 0;
 
@@ -136,6 +138,9 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
 auto get_region(uint64_t ip)
 {
   ip = shuffle_ip_tag(ip);
+  if (ITLB_CACHE) {
+    return (ip >> PAGE_LOG_SIZE);
+  }
   ip = ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
   ip = ip & _REGION_MASK;
   return ip;
@@ -247,8 +252,11 @@ struct region_btb_entry_t {
   }
   auto tag() const
   {
-    // TODO: calculate region tag
+    // TODO: calculate region tag    
     auto ip = shuffle_ip_tag(ip_tag);
+    if (ITLB_CACHE) {
+      return (ip >> PAGE_LOG_SIZE);
+    }
     auto tag = ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
     tag &= _REGION_MASK;
     return tag;
