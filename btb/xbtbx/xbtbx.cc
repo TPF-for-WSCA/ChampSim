@@ -717,7 +717,19 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
           }
       }
     }
-
+    // assert(region_btb_insers <= 256);
+  }
+  // else {
+  //   if (small_hit.has_value()) {
+  //     entry_size = std::max(entry_size, small_hit.value().target_size);
+  //   }
+  //   if (big_hit.has_value()) {
+  //     entry_size = std::max(entry_size, big_hit.value().target_size);
+  //   }
+  //   if (!small_hit.has_value() && !big_hit.has_value()) {
+  //     entry_size = lru_elem.target_size;
+  //   }
+  // }
   if (small_hit.has_value()) {
     entry_size = std::max(entry_size, small_hit.value().target_size);
     opt_entry = small_hit.value();
