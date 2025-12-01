@@ -673,6 +673,10 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         auto elem = ::region_btb_entry_t{ip};
         sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
         replaced = ::REGION_BTB.at(this).fill(elem);
+        if (btb_invalidate_region && replaced.has_value()) {
+          auto rtag = replaced.value().tag();
+          ::BTB.at(this).invalidate_region({0,0,branch_info::ALWAYS_TAKEN, {rtag, rtag, rtag}});
+        }
         sim_stats.branch_tag_set.insert(elem.tag());
         insert = true;
         // region_btb_insers++;
@@ -685,6 +689,10 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       auto elem = ::region_btb_entry_t{ip};
       sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
       replaced = ::REGION_BTB.at(this).fill(elem);
+      if (btb_invalidate_region && replaced.has_value()) {
+        auto rtag = replaced.value().tag();
+        ::BTB.at(this).invalidate_region({0,0,branch_info::ALWAYS_TAKEN, {rtag, rtag, rtag}});
+      }
       sim_stats.branch_tag_set.insert(elem.tag());
       insert = true;
       // region_btb_insers++;
@@ -709,19 +717,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
           }
       }
     }
-    // assert(region_btb_insers <= 256);
-  }
-  // else {
-  //   if (small_hit.has_value()) {
-  //     entry_size = std::max(entry_size, small_hit.value().target_size);
-  //   }
-  //   if (big_hit.has_value()) {
-  //     entry_size = std::max(entry_size, big_hit.value().target_size);
-  //   }
-  //   if (!small_hit.has_value() && !big_hit.has_value()) {
-  //     entry_size = lru_elem.target_size;
-  //   }
-  // }
+
   if (small_hit.has_value()) {
     entry_size = std::max(entry_size, small_hit.value().target_size);
     opt_entry = small_hit.value();
@@ -1008,6 +1004,7 @@ void O3_CPU::btb_invalidate_entry(uint64_t ip)
   }
   if (btb_invalidate_entry_on_alias)
     ::BTB.at(this).invalidate(btb_entry.value());
-  else if (btb_invalidate_region)
-    ::REGION_BTB.at(this).invalidate(region_entry.value());
+  else if (btb_invalidate_region) {
+    // ::REGION_BTB.at(this).invalidate(region_entry.value());
+  }
 }
