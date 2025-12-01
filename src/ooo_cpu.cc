@@ -150,10 +150,10 @@ void O3_CPU::initialize_instruction()
     // Add to IFETCH_BUFFER
     IFETCH_BUFFER.push_back(input_queue.front());
     if (prev_instr.ip && prev_instr.ip >> isa_shiftamount >> 1 == input_queue.front().ip >> isa_shiftamount >> 1) {
-      uint8_t branch_count = prev_instr.is_branch + input_queue.front().is_branch;
-      if (branch_count == 2) {
+      uint8_t _branch_count = prev_instr.is_branch + input_queue.front().is_branch;
+      if (_branch_count == 2) {
         sim_stats.back_to_back_branches++;
-      } else if (branch_count == 1) {
+      } else if (_branch_count == 1) {
         sim_stats.unique_aligned_branches++;
       }
     }
@@ -227,7 +227,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     sim_stats.btb_hits++;
   }
   bool first_branch_occurrence = branch_seen.insert(arch_instr.ip).second;
-  if (perfect_btb && ((realistic_perfect && !first_branch_occurrence) || !realistic_perfect) && !arch_instr.branch_type == BRANCH_INDIRECT) {
+  if (perfect_btb && ((realistic_perfect && !first_branch_occurrence) || !realistic_perfect) && (arch_instr.branch_type != BRANCH_INDIRECT)) {
     predicted_branch_target = arch_instr.branch_target;
     branch_ip = arch_instr.ip;
     always_taken = (arch_instr.branch_type == BRANCH_CONDITIONAL || arch_instr.branch_type == BRANCH_OTHER)
@@ -285,6 +285,9 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 
   // NOTE: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately
   if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {
+    if (branch_ip == arch_instr.ip) {
+      sim_stats.utb_replacement_misses++;
+    }
     sim_stats.branch_type_misses[arch_instr.branch_type]++;
   }
   if (arch_instr.is_branch) {

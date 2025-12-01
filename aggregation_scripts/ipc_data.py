@@ -38,6 +38,7 @@ class STATS(Enum):
     REGION_BTB_REPLACEMENTS = 29
     REGION_SWITCHING_FREQUENCY = 30
     REGIONS_PER_WAY = 31
+    UTB_MPKI = 32
 
 
 
@@ -443,6 +444,16 @@ def extrace_useless_percentage(path):
             return int(matches.groups()[1]) / int(matches.groups()[0])
     return -1
 
+def extract_utb_mpki(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"UTB INDUCED MPKI: (\d*\.?\d+)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[0]
 
 def extract_branch_mpki(path):
     logs = []
@@ -698,6 +709,10 @@ def single_run(path):
                 stat_by_workload[workload] = extract_branch_mpki(
                     f"{path}/{workload}/{logfile}"
                 )
+            elif type == STATS.UTB_MPKI:
+                stat_by_workload[workload] = extract_utb_mpki(
+                    f"{path}/{workload}/{logfile}"
+                )
             elif type == STATS.STALL_CYCLES:
                 stat_by_workload[workload] = extract_stall_cycles(
                     f"{path}/{workload}/{logfile}"
@@ -815,6 +830,8 @@ def write_tsv(data, out_path=None):
         filename = "fetch_count"
     elif type == STATS.BRANCH_MPKI:
         filename = "branch_mpki"
+    elif type == STATS.UTB_MPKI:
+        filename = "utb_mpki"
     elif type == STATS.PARTIAL:
         filename = "partial"
     elif type == STATS.BUFFER_DURATION:
@@ -907,6 +924,8 @@ elif sys.argv[3] == "FETCH_COUNT":
     type = STATS.FETCH_COUNT
 elif sys.argv[3] == "BRANCH_MPKI":
     type = STATS.BRANCH_MPKI
+elif sys.argv[3] == "UTB_MPKI":
+    type = STATS.UTB_MPKI
 elif sys.argv[3] == "STALL_CYCLES":
     type = STATS.STALL_CYCLES
 elif sys.argv[3] == "ROB_AT_MISS":

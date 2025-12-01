@@ -429,12 +429,20 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
-  if (!btb_entry.has_value())
-    return {0, ip, false};
+  if (!btb_entry.has_value()) {
+    if (!warmup){
+      auto hit = std::find_if(::BTB.at(this).begin(), ::BTB.at(this).end(), [ip](const auto& x) { return x.data.ip_tag == ip && x.last_used; });
+      if (hit != ::BTB.at(this).end()) {
+        // return {hit->data.get_prediction(), hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL}; // TODO: Revert back to miss for non=magical experiments
+        return {0, hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL}; // TODO: Revert back to miss for non=magical experiments
+      }
+    }
+    return {0, 0, false};
+  }
 
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this]))
-      return {0, btb_entry->ip_tag, true};
+      return {0, 0, true};
 
     // peek at the top of the RAS and adjust for the size of the call instr
     auto target = ::RAS[this].back();
@@ -448,7 +456,8 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
       return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
     }*/
 
-  return {btb_entry->get_prediction(), btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL};
+  auto prediction = btb_entry->get_prediction();
+  return {prediction, (prediction) ? btb_entry->ip_tag : 0, btb_entry->type != ::branch_info::CONDITIONAL};
 }
 
 // TODO: ONLY UPDATE WHEN FITTING IN THE WAY
