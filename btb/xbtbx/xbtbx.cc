@@ -14,6 +14,7 @@
 #include <map>
 #include <numeric>
 #include <set>
+#include <csignal>
 
 #include "msl/lru_table.h"
 #include "ooo_cpu.h"
@@ -434,6 +435,7 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
       auto hit = std::find_if(::BTB.at(this).begin(), ::BTB.at(this).end(), [ip](const auto& x) { return x.data.ip_tag == ip && x.last_used; });
       if (hit != ::BTB.at(this).end()) {
         // return {hit->data.get_prediction(), hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL}; // TODO: Revert back to miss for non=magical experiments
+        raise(SIGTRAP);
         return {0, hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL}; // TODO: Revert back to miss for non=magical experiments
       }
     }

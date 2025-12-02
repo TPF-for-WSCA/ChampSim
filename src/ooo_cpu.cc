@@ -246,6 +246,14 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     }
     // std::cout << "ALIASING ON " << arch_instr.ip << " WITH BRANCH AT " << branch_ip << std::endl;
   }
+
+  if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {
+    if (branch_ip == arch_instr.ip) {
+      sim_stats.utb_replacement_misses++;
+    }
+    sim_stats.branch_type_misses[arch_instr.branch_type]++;
+  }
+
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
   if (perfect_branch_predict && arch_instr.is_branch) {
     if (realistic_perfect && first_branch_occurrence) {}
@@ -284,12 +292,6 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   // }
 
   // NOTE: We are only tracking misses, not mispredictions here. Might want to add mispredictions separately
-  if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {
-    if (branch_ip == arch_instr.ip) {
-      sim_stats.utb_replacement_misses++;
-    }
-    sim_stats.branch_type_misses[arch_instr.branch_type]++;
-  }
   if (arch_instr.is_branch) {
     if constexpr (champsim::debug_print) {
       fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);

@@ -64,7 +64,7 @@
       "btb_tag_region_ways": 12,
       "btb_perfect_mapping": 1,
       "btb_invalidate_entry": 1,
-      "btb_invalidate_region": 1,
+      "btb_invalidate_region": 0,
     "align_bits": 5
     }
   ],
