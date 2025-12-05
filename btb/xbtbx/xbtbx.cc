@@ -681,7 +681,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         auto elem = ::region_btb_entry_t{ip};
         sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
         replaced = ::REGION_BTB.at(this).fill(elem);
-        if (replaced.has_value()) {
+        if (btb_invalidate_region && replaced.has_value()) {
           auto rtag = replaced.value().tag();
           sim_stats.btb_eager_invalidations += ::BTB.at(this).invalidate_region({0,0,branch_info::ALWAYS_TAKEN, {rtag, rtag, rtag}});
         }
@@ -697,7 +697,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       auto elem = ::region_btb_entry_t{ip};
       sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
       replaced = ::REGION_BTB.at(this).fill(elem);
-      if (replaced.has_value()) {
+      if (btb_invalidate_region && replaced.has_value()) {
         auto rtag = replaced.value().tag();
         sim_stats.btb_eager_invalidations += ::BTB.at(this).invalidate_region({0,0,branch_info::ALWAYS_TAKEN, {rtag, rtag, rtag}});
 

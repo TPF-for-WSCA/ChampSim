@@ -458,6 +458,7 @@ def extract_eagerinvalidation_mpki(path):
         matches = regex.match(line)
         if matches:
             return matches.groups()[0]
+
 def extract_eagerinvalidation_rate(path):
     logs = []
     with open(path) as f:

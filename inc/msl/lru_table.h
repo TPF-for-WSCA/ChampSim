@@ -284,13 +284,13 @@ public:
     std::exchange(*hit, new_val).data;
   }
 
-  void invalidate_region(const value_type& elem)
+  uint64_t invalidate_region(const value_type& elem)
   {
     uint64_t invalidation_counter = 0;
     for (auto entry = std::begin(block); entry != std::end(block); entry++) {
       if (std::get<1>(entry->data.region_idx_tag) == std::get<1>(elem.region_idx_tag)) {
-        // std::exchange(*entry, {});
-        entry->data.useless = true;
+        std::exchange(*entry, {});
+        // entry->data.useless = true;
         invalidation_counter++;
       }
     }

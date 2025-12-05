@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-build_dir=("region_sensitivity") # "region_sensitivity") # "btb_size_region_impact_sensitivity") # "btb_8k_all_region_no_tag_se" "btb_4k_all_region_no_tag_se") # "4k_12b_region_tag_sensitivity" "4k_10b_region_tag_sensitivity") #  "btb_512_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp" "btb_256_region_tag_exp")
+build_dir=("eager_lazy_direct") # "region_sensitivity") # "btb_size_region_impact_sensitivity") # "btb_8k_all_region_no_tag_se" "btb_4k_all_region_no_tag_se") # "4k_12b_region_tag_sensitivity" "4k_10b_region_tag_sensitivity") #  "btb_512_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp" "btb_256_region_tag_exp")
 # build_dir=("btb_512_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp")
 
 old_dir=$(pwd)
