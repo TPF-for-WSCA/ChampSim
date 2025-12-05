@@ -154,7 +154,7 @@ struct FilterBTBEntry {
   std::tuple<uint16_t, uint16_t, uint64_t> region_idx_tag = {0, 0, 0};
   uint8_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
-
+  bool useless = false;
   // TODO: shift indexes and tags into place
   auto index() const
   {
@@ -187,6 +187,7 @@ struct BTBEntry {
   std::tuple<uint16_t, uint16_t, uint64_t> region_idx_tag = {0, 0, 0};
   uint8_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
+  bool useless = false;
 
   // TODO: shift indexes and tags into place
   auto index() const
@@ -244,6 +245,7 @@ struct BTBEntry {
 struct region_btb_entry_t {
   uint64_t ip_tag = 0;
   uint64_t max_pointer = 0;
+  bool useless = false;
   auto index() const
   {
     auto ip = shuffle_ip_tag(ip_tag);
@@ -435,11 +437,15 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
       auto hit = std::find_if(::BTB.at(this).begin(), ::BTB.at(this).end(), [ip](const auto& x) { return x.data.ip_tag == ip && x.last_used; });
       if (hit != ::BTB.at(this).end()) {
         // return {hit->data.get_prediction(), hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL}; // TODO: Revert back to miss for non=magical experiments
-        raise(SIGTRAP);
         return {0, hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL}; // TODO: Revert back to miss for non=magical experiments
       }
     }
     return {0, 0, false};
+  }
+
+  if(btb_entry->useless) {
+    sim_stats.btb_eager_invalidation_miss++;
+    ::BTB.at(this).validate_entry(btb_entry.value());
   }
 
   if (btb_entry->type == ::branch_info::RETURN) {
@@ -675,9 +681,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         auto elem = ::region_btb_entry_t{ip};
         sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
         replaced = ::REGION_BTB.at(this).fill(elem);
-        if (btb_invalidate_region && replaced.has_value()) {
+        if (replaced.has_value()) {
           auto rtag = replaced.value().tag();
-          ::BTB.at(this).invalidate_region({0,0,branch_info::ALWAYS_TAKEN, {rtag, rtag, rtag}});
+          sim_stats.btb_eager_invalidations += ::BTB.at(this).invalidate_region({0,0,branch_info::ALWAYS_TAKEN, {rtag, rtag, rtag}});
         }
         sim_stats.branch_tag_set.insert(elem.tag());
         insert = true;
@@ -691,9 +697,11 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       auto elem = ::region_btb_entry_t{ip};
       sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
       replaced = ::REGION_BTB.at(this).fill(elem);
-      if (btb_invalidate_region && replaced.has_value()) {
+      if (replaced.has_value()) {
         auto rtag = replaced.value().tag();
-        ::BTB.at(this).invalidate_region({0,0,branch_info::ALWAYS_TAKEN, {rtag, rtag, rtag}});
+        sim_stats.btb_eager_invalidations += ::BTB.at(this).invalidate_region({0,0,branch_info::ALWAYS_TAKEN, {rtag, rtag, rtag}});
+
+        // TODO: instead of invalidate mark it as useless, check hits on useless unmark and count
       }
       sim_stats.branch_tag_set.insert(elem.tag());
       insert = true;
@@ -768,6 +776,11 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     replaced_entry = ::BTB.at(this).fill(
         fill_entry,
         entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
+    if (replaced_entry.has_value()) {
+      sim_stats.btb_total_evictions++;
+      if (::BTB.at(this).find_useless(fill_entry))
+        sim_stats.btb_unforced_useful_evictions++;
+    }
     uint64_t old_region = 0;
     sim_stats.regions_inserted_per_way[replaced_entry.value().target_size].insert(new_region);
     if (replaced_entry.value().ip_tag != 0 && sim_stats.region_pointer_count[get_region(replaced_entry.value().ip_tag)])

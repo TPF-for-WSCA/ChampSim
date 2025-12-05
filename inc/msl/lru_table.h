@@ -145,8 +145,10 @@ public:
       return std::nullopt;
 
     hit->last_used = ++access_count;
-    return hit->data;
+    auto rv = hit->data;
+    return rv;
   }
+
   /*
     std::optional<value_type> check_hit(const value_type& elem)
     {
@@ -261,13 +263,38 @@ public:
     assert(false);
   }
 
+  bool find_useless(const value_type& elem) {
+    auto [set_begin, set_end] = get_set_span(elem);
+    for (; set_begin < set_end; set_begin++) {
+      if (set_begin->data.useless)
+        return true;
+    }
+    return false;
+  }
+
+  void validate_entry(const value_type& elem) {
+    auto [set_begin, set_end] = get_set_span(elem);
+    auto hit = std::find_if(set_begin, set_end, match_func(elem));
+
+    if (hit == set_end)
+      return;
+
+    auto new_val = *hit;
+    new_val.data.useless = false;
+    std::exchange(*hit, new_val).data;
+  }
+
   void invalidate_region(const value_type& elem)
   {
+    uint64_t invalidation_counter = 0;
     for (auto entry = std::begin(block); entry != std::end(block); entry++) {
-      if (std::get<1>(entry->data.region_idx_tag) ==std::get<1>(elem.region_idx_tag)) {
-        std::exchange(*entry, {});
+      if (std::get<1>(entry->data.region_idx_tag) == std::get<1>(elem.region_idx_tag)) {
+        // std::exchange(*entry, {});
+        entry->data.useless = true;
+        invalidation_counter++;
       }
     }
+    return invalidation_counter;
   }
 
   std::optional<value_type> invalidate(const value_type& elem)

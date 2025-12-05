@@ -723,6 +723,8 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
       std::get<1>(sim_stats.aliasing_squash_counts) += 1;
       std::get<2>(sim_stats.aliasing_squash_counts) += 1;
       sim_stats.aliasing_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);
+      // TODO: Remove for LiteBTB impl
+      // impl_btb_invalidate_entry(instr.ip);
     }
     fetch_stalled_cycle = 0;
     is_aliasing_stall = false;

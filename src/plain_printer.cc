@@ -209,6 +209,14 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
 
   std::transform(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), std::back_inserter(mpkis),
                  [instrs = stats.instrs()](auto x) { return 1000.0 * std::ceil(x) / std::ceil(instrs); });
+  
+  fmt::print(stream, "EAGER INVALIDATION MPKI: {:.3}\n", 1000.0 * std::ceil(stats.btb_eager_invalidation_miss)/std::ceil(stats.instrs()));
+
+  fmt::print(stream, "LAZY REPLACEMENT MPKI: {:.3}\n", 1000.0*std::ceil(stats.btb_unforced_useful_evictions)/std::ceil(stats.instrs()));
+
+  fmt::print(stream, "EAGER INVALIDATION RECOVERY: {:.3}\n", std::ceil(stats.btb_eager_invalidation_miss)/std::ceil(stats.btb_eager_invalidations));
+
+  fmt::print(stream, "LAZY REPLACEMENT RATE: {:.3}\n", std::ceil(stats.btb_unforced_useful_evictions)/std::ceil(stats.btb_total_evictions));
 
   fmt::print(stream, "UTB INDUCED MPKI: {:.3}\n\n", 1000.0*std::ceil(stats.utb_replacement_misses)/std::ceil(stats.instrs()));
 

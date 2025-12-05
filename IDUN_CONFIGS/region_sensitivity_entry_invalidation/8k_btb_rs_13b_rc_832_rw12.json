@@ -1,5 +1,5 @@
 {
-  "executable_name": "champsim",
+  "executable_name": "entry_invalidation_no_branch/8k_btb_rs_14b_rc_832_rw_16_entry_replace",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,

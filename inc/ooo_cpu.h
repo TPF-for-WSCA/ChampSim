@@ -86,6 +86,10 @@ struct cpu_stats {
   uint16_t btb_tag_size = 0;
   uint64_t btb_reads = 0;
   uint64_t btb_hits = 0;
+  uint64_t btb_eager_invalidations = 0;
+  uint64_t btb_eager_invalidation_miss = 0;
+  uint64_t btb_total_evictions = 0;
+  uint64_t btb_unforced_useful_evictions = 0;
   uint64_t back_to_back_branches = 0;
   uint64_t unique_aligned_branches = 0;
   uint64_t total_squashed_cycles = 0;
