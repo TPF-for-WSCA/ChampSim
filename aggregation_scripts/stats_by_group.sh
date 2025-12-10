@@ -126,7 +126,7 @@ do
     do
         if [ -d "$config" ]; then
             echo "Plotting regions for ${config}"
-            ${pg_dir}plotgen --debug -i ${config}/overall_max_region.tsv --palette bright --sort-function name --sort-columns --plot bar -o ./graphs/$(basename ${config})_overall_max_region.html &
+            # ${pg_dir}plotgen --debug -i ${config}/overall_max_region.tsv --palette bright --sort-function name --sort-columns --plot bar -o ./graphs/$(basename ${config})_overall_max_region.html &
             # for percentage in ${percentages[@]}
             # do
             #     # for way in ${ways[@]}

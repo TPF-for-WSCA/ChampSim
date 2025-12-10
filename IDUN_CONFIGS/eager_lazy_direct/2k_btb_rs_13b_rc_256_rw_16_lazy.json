@@ -1,5 +1,5 @@
 {
-  "executable_name": "eager_lazy_direct/2k_btb_rs_13b_rc_256_rw_16_lazy",
+  "executable_name": "eager_lazy_direct/2k_btb_rs_13b_rc_256_rw_16_lazy_pessimistic",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,

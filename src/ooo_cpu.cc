@@ -33,10 +33,10 @@
 #define KERNEL_LOWER_BOUND 0xffff800000000000ul
 #define KERNEL_IGNORE_ENABLE false
 
-std::set<uint64_t> branch_seen = {}; 
+std::set<uint64_t> branch_seen = {};
 
 uint64_t prev_branch_lookup_ip = 0;
-ooo_model_instr prev_instr = {0, input_instr() };
+ooo_model_instr prev_instr = {0, input_instr()};
 
 std::chrono::seconds elapsed_time();
 
@@ -126,7 +126,6 @@ void O3_CPU::end_phase(unsigned finished_cpu)
   sim_stats.end_cycles = current_cycle;
   impl_btb_end_phase(finished_cpu);
 
-
   if (finished_cpu == this->cpu) {
     finish_phase_instr = num_retired;
     finish_phase_cycle = current_cycle;
@@ -159,7 +158,6 @@ void O3_CPU::initialize_instruction()
     }
     prev_instr = input_queue.front();
     input_queue.pop_front();
-
 
     IFETCH_BUFFER.back().event_cycle = current_cycle;
   }
@@ -256,8 +254,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;
   if (perfect_branch_predict && arch_instr.is_branch) {
-    if (realistic_perfect && first_branch_occurrence) {}
-    else
+    if (realistic_perfect && first_branch_occurrence) {
+    } else
       arch_instr.branch_prediction = arch_instr.branch_taken;
   }
   if (arch_instr.branch_prediction == 0) {
@@ -265,7 +263,6 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   } else if (!warmup && branch_ip && predicted_branch_target && arch_instr.branch_type == NOT_BRANCH && arch_instr.branch_prediction) {
     // NOTE: HERE WE GO WRONGPATH ON NON-BRANCHING INSTRUCTIONS
     sim_stats.non_branch_btb_hits++;
-    sim_stats.negative_aliasing++;
     fetch_resume_cycle = std::numeric_limits<uint64_t>::max();
     fetch_stalled_cycle = current_cycle;
     is_aliasing_stall = true;
@@ -475,7 +472,11 @@ long O3_CPU::decode_instruction()
   return progress;
 }
 
-void O3_CPU::do_dib_update(const ooo_model_instr& instr) { DIB.fill(instr.ip); }
+void O3_CPU::do_dib_update(const ooo_model_instr& instr)
+{
+  cpu_stats* null;
+  DIB.fill(instr.ip, null);
+}
 
 long O3_CPU::dispatch_instruction()
 {

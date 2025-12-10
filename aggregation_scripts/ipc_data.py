@@ -61,7 +61,7 @@ def extract_aliasing_relative_squash_cycles(path):
         match = reg.search(line)
         if match:
             return int(match.groups()[1])
-            return int(match.groups()[0]) / int(match.groups()[1])
+            # return int(match.groups()[0]) / int(match.groups()[1])
     return float('NaN')
 
 
@@ -458,6 +458,7 @@ def extract_eagerinvalidation_mpki(path):
         matches = regex.match(line)
         if matches:
             return matches.groups()[0]
+    return 0
 
 def extract_eagerinvalidation_rate(path):
     logs = []
@@ -469,6 +470,7 @@ def extract_eagerinvalidation_rate(path):
         matches = regex.match(line)
         if matches:
             return matches.groups()[0]
+    return 0
 
 def extract_lazyinvalidation_rate(path):
     logs = []
@@ -480,6 +482,7 @@ def extract_lazyinvalidation_rate(path):
         matches = regex.match(line)
         if matches:
             return matches.groups()[0]
+    return 0
 
 def extract_utb_mpki(path):
     logs = []
@@ -491,6 +494,7 @@ def extract_utb_mpki(path):
         matches = regex.match(line)
         if matches:
             return matches.groups()[0]
+    return 0
 
 def extract_branch_mpki(path):
     logs = []
@@ -502,6 +506,7 @@ def extract_branch_mpki(path):
         matches = regex.match(line)
         if matches:
             return matches.groups()[0]
+    return 0
 
 
 def extract_rob_at_stall(path):

@@ -33,6 +33,7 @@ class PageTableWalker : public champsim::operable
     uint64_t ptw_addr;
     std::size_t level;
     bool useless = false;
+    bool replacement_protected = false;
   };
 
   struct pscl_indexer {
