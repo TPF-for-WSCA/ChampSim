@@ -446,6 +446,10 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
     return {0, 0, false};
   }
 
+  if (!btb_entry->useless) {
+    ::BTB.at(this).update_lru(btb_entry.value());
+  }
+
   if(btb_entry->useless && ip == btb_entry->ip_tag) {
     sim_stats.btb_eager_invalidation_miss++;
     ::BTB.at(this).validate_entry(btb_entry.value());

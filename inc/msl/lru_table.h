@@ -146,8 +146,7 @@ public:
     if (hit == set_end)
       return std::nullopt;
 
-    if (update_lru)
-      hit->last_used = ++access_count;
+    // hit->last_used = ++access_count;
     auto rv = hit->data;
     return rv;
   }
@@ -198,7 +197,7 @@ public:
     if (hit == set_end)
       return std::nullopt;
 
-    hit->last_used = ++access_count;
+    // hit->last_used = ++access_count;
 
     // Returns a tuple of <index, precise pointer, magic pointer>
     return std::tuple<uint16_t, uint16_t, uint64_t>{hit->data.index(), hit - std::begin(block), hit->data.tag()};
@@ -252,7 +251,7 @@ public:
         std::optional<value_type> updated = std::optional<value_type>{hit->data};
         auto target_size = hit->data.target_size;
         auto offset_mask = hit->data.offset_mask;
-        *hit = {++access_count, elem};
+        // *hit = {++access_count, elem};
         hit->data.target_size = target_size;
         hit->data.offset_mask = offset_mask;
         return updated;
@@ -278,7 +277,7 @@ public:
       auto [miss, hit] = std::minmax_element(set_begin, set_end, match_and_check(tag));
 
       if (tag_projection(hit->data) == tag) {
-        *hit = {++access_count, elem};
+        // *hit = {++access_count, elem};
         return std::optional<value_type>{hit->data};
       } else {
         std::optional<value_type> rv = std::optional<value_type>{miss->data};
