@@ -56,7 +56,6 @@ namespace LLBP {
 
 #define PERCWIDTH 6  // Statistical corrector  counter width 5 -> 6 : 0.6 %
 
-
 #ifdef TAGE8k
 #define BWH
 
@@ -135,7 +134,7 @@ TageSCL::TageSCL(TSCLConfig cfg)
     , useLoop(cfg.useLoop)
     , disableConfCounter(false)
 {
-    cfg.print();
+    // cfg.print();
     init_predictor();
     predictorsize();
 }

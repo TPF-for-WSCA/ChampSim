@@ -42,8 +42,8 @@
 #include "tage.h"
 
 //----------------------
-// #define TAGEInf
-// #define TAGE8k
+// #define TAGEInf 1
+#define TAGE8k 1
 //----------------------
 
 namespace LLBP {

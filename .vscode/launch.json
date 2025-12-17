@@ -76,9 +76,9 @@
             "internalConsoleOptions": "openOnSessionStart",
             "args": [
                 "--warmup_instructions",
-                "10000000",
+                "0",
                 "--simulation_instructions",
-                "10000000",
+                "100000000",
                 "--json",
                 "/Users/robrunne/Downloads/stats.json",
                 // "--tsv",
@@ -121,9 +121,9 @@
             //"${workspaceRoot}/bin/champsim_16b_region_256",
             "args": [
                 "--warmup-instructions",
-                "000000",
+                "50000000",
                 "--simulation-instructions",
-                "10000000",
+                "50000000",
                 "--json",
                 "~/temp/stats.json",
                 // "--btb-tag-hash",
@@ -133,7 +133,7 @@
                 // "~/Downloads/results/test/",
                 // "-ptrace",
                 // "-cloudsuite",
-                "--intel",
+                // "--intel",
                 // "-stallonmiss",
                 // "-traces",
                 // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
@@ -143,8 +143,8 @@
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_009.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/test_trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_036.champsimtrace.xz"
-                // "/cluster/work/romankb/dataset/IPC1_new_translated/server/server_020.champsimtrace.xz"
-                "/cluster/work/romankb/dataset/dpc3/607.cactuBSSN_s-4248B.champsimtrace.xz"
+                "/cluster/work/romankb/dataset/IPC1_new_translated/server/server_023.champsimtrace.xz"
+                // "/cluster/work/romankb/dataset/dpc3/607.cactuBSSN_s-4248B.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"
                 //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"
                 // "/home/robrunne/OneDrive/Research/datasets/dpc3/403.gcc-16B.champsimtrace.xz"

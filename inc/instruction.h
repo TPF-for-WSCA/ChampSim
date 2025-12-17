@@ -134,11 +134,15 @@ public:
   ooo_model_instr(uint8_t cpu, input_instr instr) : ooo_model_instr(instr, {cpu, cpu}) {}
   ooo_model_instr(uint8_t, cloudsuite_instr instr) : ooo_model_instr(instr, {instr.asid[0], instr.asid[1]}) {}
 
-  ooo_model_instr(){}
+  ooo_model_instr(uint8_t cpu) {
+    asid = {cpu, cpu};
+  }
 
   std::size_t num_mem_ops() const { return std::size(destination_memory) + std::size(source_memory); }
 
+  // TODO: Does any of the functions really need this to be in program order or was this just an accessor function?
   static bool program_order(const ooo_model_instr& lhs, const ooo_model_instr& rhs) { return lhs.instr_id < rhs.instr_id; }
+
   bool wrongpath = false;
 };
 

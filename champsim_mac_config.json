@@ -3,7 +3,7 @@
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
-  "heartbeat_frequency": 100000,
+  "heartbeat_frequency": 100,
   "num_cores": 1,
   "CFLAGS": [
     "-Wall -Wno-reorder -ferror-limit=5 -DNLOG -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost"
@@ -41,23 +41,21 @@
       "execute_latency": 1,
       "branch_predictor": "hashed_perceptron",
       "btb": "xbtbx",
-      "btb_ways": 9,
-      "btb_non_indirect": 9,
-      "btb_sets": 1024,
+      "btb_ways": 7,
+      "btb_non_indirect": 7,
+      "btb_sets": 512,
       "btb_clipped_tag": 1,
       "btb_target_sizes": [
         0,
         4,
         5,
-        7,
-        9,
-        11,
-        19,
+        8,
+        13,
         25,
         64
       ],
-      "btb_tag_size": 10,
-      "btb_regions": 0,
+      "btb_tag_size": 17,
+      "btb_tag_regions": 0,
       "align_bits": 5
     }
   ],
