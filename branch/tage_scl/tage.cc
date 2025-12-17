@@ -257,6 +257,7 @@ int TageBase::gindex(unsigned int PC, int bank)
   return (index & ((1 << (logg[bank])) - 1));
 }
 
+
 //  tag computation
 uint16_t TageBase::gtag(unsigned int PC, int bank)
 {
