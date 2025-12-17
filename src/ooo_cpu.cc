@@ -32,7 +32,7 @@
 
 #define KERNEL_LOWER_BOUND 0xffff800000000000ul
 #define KERNEL_IGNORE_ENABLE false
-#define WRONGPATH_ENABLED true
+#define WRONGPATH_ENABLED false
 
 uint64_t deadlock_count = 0;
 std::set<uint64_t> branch_seen = {};
