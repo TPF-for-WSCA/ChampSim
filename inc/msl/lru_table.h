@@ -17,6 +17,8 @@
 #ifndef MSL_LRU_TABLE_H
 #define MSL_LRU_TABLE_H
 
+#define ADAPTED_LRU true
+
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
@@ -132,7 +134,7 @@ private:
   }
 
 public:
-  std::optional<value_type> check_hit(const value_type& elem, bool partial = false) // TODO: Check only small or only big hits
+  std::optional<value_type> check_hit(const value_type& elem, bool partial = false, bool update_lru = true) // TODO: Check only small or only big hits
   {
     auto [set_begin, set_end] = get_set_span(elem);
     typename std::vector<block_t>::iterator hit;
@@ -144,9 +146,24 @@ public:
     if (hit == set_end)
       return std::nullopt;
 
-    hit->last_used = ++access_count;
-    return hit->data;
+    if (update_lru)
+      hit->last_used = ++access_count;
+    auto rv = hit->data;
+    return rv;
   }
+
+  void update_lru(const value_type& elem) {
+    auto [set_begin, set_end] = get_set_span(elem);
+    typename std::vector<block_t>::iterator hit;
+    hit = std::find_if(set_begin, set_end, match_func(elem));
+
+    if (hit == set_end || hit->data.useless)
+      return;
+
+    hit->last_used = ++access_count;
+    auto rv = hit->data;
+  }
+
   /*
     std::optional<value_type> check_hit(const value_type& elem)
     {
@@ -212,14 +229,24 @@ public:
       set_begin++;
     }
     if (set_begin != set_end) {
-      auto [miss, hit] = std::minmax_element(set_begin, set_end, [tag, proj = this->tag_projection](const auto& x, const auto& y) {
+      auto [miss, hit] = std::minmax_element(set_begin, set_end, [tag, proj = this->tag_projection](const auto& x, auto& y) {
+        bool x_useless = false;
+        bool y_useless = false;
+        if (ADAPTED_LRU) {
+          x_useless = x.data.useless;
+          y_useless = y.data.useless;
+        }
         auto x_valid = x.last_used > 0;
         auto y_valid = y.last_used > 0;
         auto x_match = proj(x.data) == tag;
         auto y_match = proj(y.data) == tag;
         auto cmp_lru = x.last_used < y.last_used;
+        auto cmp_useless = x_useless && !y_useless;
         auto cmp_size = x.data.target_size < y.data.target_size;
-        return (!x_valid && !y_valid && cmp_size) || (y_valid && ((!x_match && y_match) || ((x_match == y_match) && cmp_lru)));
+        if (x_useless && !y_useless && !cmp_lru) {
+          y.data.replacement_protected = true;
+        }
+        return (!x_valid && !y_valid && cmp_size) || (y_valid && ((!x_match && y_match) || (!cmp_useless && (x_match == y_match) && cmp_lru) || (!x_match && cmp_useless)));
       });
       if (tag_projection(hit->data) == tag) {
         std::optional<value_type> updated = std::optional<value_type>{hit->data};
@@ -242,7 +269,8 @@ public:
     assert(false);
   }
 
-  std::optional<value_type> fill(const value_type& elem)
+  template <typename S>
+  std::optional<value_type> fill(const value_type& elem, S* stats)
   {
     auto tag = tag_projection(elem);
     auto [set_begin, set_end] = get_set_span(elem);
@@ -254,6 +282,8 @@ public:
         return std::optional<value_type>{hit->data};
       } else {
         std::optional<value_type> rv = std::optional<value_type>{miss->data};
+        if ((uint64_t)stats != 0)
+          stats->region_way_insertion_counts[miss-set_begin]++;
         *miss = {++access_count, elem};
         return rv;
       }
@@ -261,13 +291,43 @@ public:
     assert(false);
   }
 
-  void invalidate_region(const value_type& elem)
+  bool find_useless(const value_type& elem) {
+    auto [set_begin, set_end] = get_set_span(elem);
+    for (; set_begin < set_end; set_begin++) {
+      if (set_begin->last_used && set_begin->data.useless && set_begin->data.ip_tag)
+        return true;
+    }
+    return false;
+  }
+
+  void validate_entry(const value_type& elem) {
+    auto [set_begin, set_end] = get_set_span(elem);
+    auto hit = std::find_if(set_begin, set_end, match_func(elem));
+
+    if (hit == set_end){
+      std::cout << "we should find that entry, we just found it" << std::endl;
+      return;
+    }
+
+    auto new_val = *hit;
+    new_val.data.useless = false;
+    new_val.data.replacement_protected = false;
+    std::exchange(*hit, new_val).data;
+  }
+
+  uint64_t invalidate_region(const value_type& elem, bool perform_invalidation)
   {
+    uint64_t invalidation_counter = 0;
     for (auto entry = std::begin(block); entry != std::end(block); entry++) {
-      if (entry->data.region_idx_tag.first == elem.region_idx_tag.first) {
-        std::exchange(*entry, {});
+      if (std::get<2>(entry->data.region_idx_tag) == std::get<2>(elem.region_idx_tag)) {
+        if (perform_invalidation)
+          std::exchange(*entry, {});
+        else
+          entry->data.useless = true;
+        invalidation_counter++;
       }
     }
+    return invalidation_counter;
   }
 
   std::optional<value_type> invalidate(const value_type& elem)

@@ -89,12 +89,17 @@ struct cpu_stats {
   uint16_t btb_tag_size = 0;
   uint64_t btb_reads = 0;
   uint64_t btb_hits = 0;
+  uint64_t btb_eager_invalidations = 0;
+  uint64_t btb_eager_invalidation_miss = 0;
+  uint64_t btb_total_evictions = 0;
+  int64_t btb_unforced_useful_evictions = 0;
   uint64_t back_to_back_branches = 0;
   uint64_t unique_aligned_branches = 0;
   uint64_t total_squashed_cycles = 0;
   uint64_t aliasing_squashed_cycles = 0;
   uint64_t btb_miss_squashed_cycles = 0;
   uint64_t bp_mispredict_squashed_cycles = 0;
+  std::map<uint64_t, uint64_t> region_way_insertion_counts = {};
   std::map<uint64_t, uint64_t> region_pointer_count = {};
   std::map<uint64_t, uint64_t> region_pointer_max_stats = {};
   std::map<uint64_t, uint64_t> region_pointer_cycle_probe_stats = {};
@@ -114,6 +119,7 @@ struct cpu_stats {
 
   std::array<long long, 8> total_branch_types = {};
   std::array<long long, 8> branch_type_misses = {};
+  uint64_t utb_replacement_misses = 0;
   std::map<uint64_t, uint64_t> dynamic_branch_count_per_address_space_global_region = {};
   long long non_branch_btb_hits = 0;
 

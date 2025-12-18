@@ -129,6 +129,7 @@ def main(args):
         executable = args.exec
 
     pool = Pool(processes=cpu_count())
+    print(f"RUNNING POOL ON {cpu_count()}")
     pending_experiments = []
 
     for trace in trace_files:

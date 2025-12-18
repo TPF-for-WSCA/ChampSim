@@ -246,7 +246,7 @@ public:
   void invalidate_region(const value_type& elem)
   {
     for (auto entry = std::begin(block); entry != std::end(block); entry++) {
-      if (entry->data.region_idx_tag.first == elem.region_idx_tag.first) {
+      if (std::get<1>(entry->data.region_idx_tag) ==std::get<1>(elem.region_idx_tag)) {
         std::exchange(*entry, {});
       }
     }

@@ -38,7 +38,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
 
   fmt::print(stream, "\nREGION BTB REPLACEMENTS: {}\n", stats.region_btb_conflicts);
   if (stats.region_btb_conflicts) {
-    fmt::print(stream, "\nAVG MAX POINTER REGIONS: {}\n", stats.max_region_pointer_sum/stats.region_btb_conflicts);
+    fmt::print(stream, "\nAVG MAX POINTER REGIONS: {}\n", stats.max_region_pointer_sum / stats.region_btb_conflicts);
   } else {
     fmt::print(stream, "\nAVG MAX POINTER REGIONS: ---\n");
   }
@@ -63,7 +63,6 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   }
   fmt::print(stream, "XXX END REGION BTB POINTER COUNT MAX\n\n");
 
-
   fmt::print(stream, "{} REGION BTB BIG REGIONS: {}\n", stats.name, stats.big_region_small_region_mapping.size());
   fmt::print(stream, "\tBIG_REGION_IDX:\tSUB_REGION_COUNT\n");
   uint64_t total_regions = 0;
@@ -74,7 +73,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
 
   fmt::print(stream, "{} REGIONS BY SIZE:\n", stats.name);
   for (uint64_t i = 0; i < 64; i++) {
-    fmt::print(stream, "\t{}:\t{}\n", 64-i, stats.max_regions_per_region_size[i]);
+    fmt::print(stream, "\t{}:\t{}\n", 64 - i, stats.max_regions_per_region_size[i]);
   }
 
   fmt::print(stream, "\nREGION SET IDX\tINSERTS\n");
@@ -130,7 +129,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
     auto local_switch_entropy =
         (switch_percentage) ? -1.0 * (switch_percentage * std::log2l(switch_percentage) + (1.0 - switch_percentage) * std::log2l(1.0 - switch_percentage)) : 0;
     auto local_entropy = (percentage) ? -1.0 * (percentage * std::log2l(percentage) + (1.0 - percentage) * std::log2l(1.0 - percentage)) : 0;
-    if (std::isnan(local_entropy)){
+    if (std::isnan(local_entropy)) {
       std::cerr << "local entropy was nan -- double check this" << std::endl;
       continue;
     }
@@ -186,13 +185,13 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   fmt::print("XXX Total dynamic branch IPs: {}\n", stats.dynamic_branch_count);
   fmt::print("XXX Total dynamic switched 1 bits in branch IPs:\n");
   for (int j = 0; j < 64; j++) {
-    fmt::print("{}:\t{}\n", j, (double) stats.btb_tag_switch_entropy[j] / (double)stats.dynamic_branch_count);
+    fmt::print("{}:\t{}\n", j, (double)stats.btb_tag_switch_entropy[j] / (double)stats.dynamic_branch_count);
   }
 
   fmt::print("XXX Total dynamic BTB lookup IPs: {}\n", stats.dynamic_btb_lookup_count);
   fmt::print("XXX Total dynamic switched 1 bits in lookup IPs:\n");
   for (int j = 0; j < 64; j++) {
-    fmt::print("{}:\t{}\n", j, (double) stats.btb_tag_lookup_switch_entropy[j] / (double)stats.dynamic_btb_lookup_count);
+    fmt::print("{}:\t{}\n", j, (double)stats.btb_tag_lookup_switch_entropy[j] / (double)stats.dynamic_btb_lookup_count);
   }
 
   fmt::print("XXX END BTB STATS\n");
@@ -211,7 +210,33 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   std::transform(std::begin(stats.branch_type_misses), std::end(stats.branch_type_misses), std::back_inserter(mpkis),
                  [instrs = stats.instrs()](auto x) { return 1000.0 * std::ceil(x) / std::ceil(instrs); });
 
-  fmt::print(stream, "BRANCH_MPKI: {:.3}\n\n", total_mpki);
+  fmt::print(stream, "EAGER INVALIDATION MPKI: {:.10f}\n", 1000.0 * std::ceil(stats.btb_eager_invalidation_miss) / std::ceil(stats.instrs()));
+
+  fmt::print(stream, "LAZY REPLACEMENT MPKI: {:.10f}\n", 1000.0 * std::ceil(stats.btb_unforced_useful_evictions) / std::ceil(stats.instrs()));
+
+  fmt::print(stream, "EAGER INVALIDATION RECOVERY: {:.10f}\n", std::ceil(stats.btb_eager_invalidation_miss) / std::ceil(stats.btb_eager_invalidations));
+
+  fmt::print(stream, "LAZY REPLACEMENT RATE: {:.10f}\n", std::ceil(stats.btb_unforced_useful_evictions) / std::ceil(stats.btb_total_evictions));
+
+  fmt::print(stream, "TOTAL EAGER INVALIDATIONS: {}\n", stats.btb_eager_invalidations);
+  fmt::print(stream, "TOTAL UNFORCED USEFUL EVICTIONS: {}\n", stats.btb_unforced_useful_evictions);
+
+  fmt::print(stream, "UTB INDUCED MPKI: {:.3g}\n\n", 1000.0 * std::ceil(stats.utb_replacement_misses) / std::ceil(stats.instrs()));
+
+  fmt::print(stream, "Way\t% of Insertions\n");
+  const uint64_t total_insertions = std::accumulate(
+    std::begin(stats.region_way_insertion_counts),
+    std::end(stats.region_way_insertion_counts),
+    0,
+    [](uint64_t value, const std::map<int, int>::value_type& p) {
+      return value + p.second;
+    }
+  );
+  for (auto [way, count] : stats.region_way_insertion_counts) {
+    fmt::print(stream, "{}\t{:.4f}\n", way, 100.0*std::ceil(count)/std::ceil(total_insertions));
+  }
+
+  fmt::print(stream, "BRANCH_MPKI: {:.3g}\n\n", total_mpki);
 
   fmt::print(stream, "Branch type MPKI\n");
   for (auto [str, idx] : types)
