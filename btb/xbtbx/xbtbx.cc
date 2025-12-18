@@ -152,7 +152,7 @@ auto get_region(uint64_t ip)
   if (ITLB_CACHE) {
     return (ip >> PAGE_LOG_SIZE);
   }
-  ip = ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+  ip = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
   ip = ip & _REGION_MASK;
   return ip;
 }
@@ -258,7 +258,8 @@ struct BTBEntry {
 struct region_btb_entry_t {
   uint64_t ip_tag = 0;
   uint64_t max_pointer = 0;
-  bool useless = false;
+  uint8_t target_size = 64;
+  uint64_t offset_mask = -1;
   bool replacement_protected = false;
   auto index() const
   {
@@ -274,7 +275,7 @@ struct region_btb_entry_t {
     if (ITLB_CACHE) {
       return (ip >> PAGE_LOG_SIZE);
     }
-    auto tag = ip >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+    auto tag = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
     tag &= _REGION_MASK;
     return tag;
   }
@@ -1082,8 +1083,8 @@ void O3_CPU::btb_invalidate_entry(uint64_t ip)
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
   if (!btb_entry.has_value() || !region_idx_.has_value()) {
-    std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR " << ip << std::endl;
-    std::cerr << "ALREADY REPLACED?" << std::endl;
+    // std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR " << ip << std::endl;
+    // std::cerr << "ALREADY REPLACED?" << std::endl;
     return;
     // assert(0);
   }

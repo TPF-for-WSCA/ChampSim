@@ -218,7 +218,8 @@ public:
     assert(false);
   }
 
-  std::optional<value_type> fill(const value_type& elem)
+  template <typename S>
+  std::optional<value_type> fill(const value_type& elem, S* stats)
   {
     auto tag = tag_projection(elem);
     auto [set_begin, set_end] = get_set_span(elem);
@@ -230,6 +231,8 @@ public:
         return std::optional<value_type>{hit->data};
       } else {
         std::optional<value_type> rv = std::optional<value_type>{miss->data};
+        if ((uint64_t)stats != 0)
+          stats->region_way_insertion_counts[miss-set_begin]++;
         *miss = {++access_count, elem};
         return rv;
       }

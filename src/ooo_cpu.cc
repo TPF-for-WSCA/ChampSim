@@ -51,10 +51,6 @@ uint64_t promoted = 0;
 uint64_t decoded = 0;
 uint64_t dispatched = 0;
 uint64_t executed = 0;
-std::set<uint64_t> branch_seen = {};
-
-uint64_t prev_branch_lookup_ip = 0;
-ooo_model_instr prev_instr = {0, input_instr()};
 
 std::chrono::seconds elapsed_time();
 
@@ -629,7 +625,7 @@ long O3_CPU::decode_instruction()
 
 void O3_CPU::do_dib_update(const ooo_model_instr& instr)
 {
-  cpu_stats* null;
+  cpu_stats* null = NULL;
   DIB.fill(instr.ip, null);
 }
 
