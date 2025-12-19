@@ -29,7 +29,7 @@
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 
-constexpr int DEADLOCK_CYCLE{5000};
+constexpr int DEADLOCK_CYCLE{1000};
 
 auto start_time = std::chrono::steady_clock::now();
 

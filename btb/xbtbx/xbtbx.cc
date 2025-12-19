@@ -410,7 +410,7 @@ void O3_CPU::initialize_btb()
 }
 
 // __attribute__((optimize(0)))
-std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
+std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   // TODO: add if condition with breaking condition
   // if (!warmup && ip == 18446462598868070740 && current_cycle >= 7113112) {
@@ -484,10 +484,10 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
       auto hit = std::find_if(::BTB.at(this).begin(), ::BTB.at(this).end(), [ip](const auto& x) { return x.data.ip_tag == ip && x.last_used; });
       if (hit != ::BTB.at(this).end()) {
         // return {hit->data.get_prediction(), hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL}; // TODO: Revert back to miss for non=magical experiments
-        return {0, hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL};
+        return {0, hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL, hit->data.precise_branch_type};
       }
     }
-    return {0, 0, false};
+    return {0, 0, false, NOT_BRANCH};
   }
 
   if(btb_entry->useless && ip == btb_entry->ip_tag) {
@@ -498,13 +498,13 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   auto lras =  (!wrongpath) ? &RAS :  & WRONGPATH_BACKUP_RAS;
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this]))
-      return {0, 0, true};
+      return {0, 0, true, NOT_BRANCH};
 
     // peek at the top of the RAS and adjust for the size of the call instr
     auto target = (*lras)[this].back();
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
 
-    return {target + 4, btb_entry->ip_tag, true}; // assume fixed size for now
+    return {target + 4, btb_entry->ip_tag, true, BRANCH_RETURN}; // assume fixed size for now
   }
   if (wrongpath && (btb_entry->precise_branch_type == BRANCH_DIRECT_CALL || btb_entry->precise_branch_type == BRANCH_INDIRECT_CALL)) {
     // modify the wrongpath ras
@@ -514,11 +514,11 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
   }
 
   if (btb_entry->type == ::branch_info::INDIRECT) {
-    return {ittage->predict_brindirect(ip), btb_entry->ip_tag, true};
+    return {ittage->predict_brindirect(ip), btb_entry->ip_tag, true, btb_entry->precise_branch_type};
   }
 
   auto prediction = btb_entry->get_prediction();
-  return {prediction, (prediction) ? btb_entry->ip_tag : 0, btb_entry->type != ::branch_info::CONDITIONAL};
+  return {prediction, (prediction) ? btb_entry->ip_tag : 0, btb_entry->type != ::branch_info::CONDITIONAL, btb_entry->precise_branch_type};
 }
 
 // __attribute__((optimize(0)))

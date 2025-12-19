@@ -208,6 +208,7 @@ public:
   uint64_t last_heartbeat_cycle = 0;
   uint64_t last_heartbeat_instr = 0;
   uint64_t next_print_instruction = STAT_PRINTING_PERIOD;
+  uint64_t next_print_inst_cycle = STAT_PRINTING_PERIOD;
 
   // instruction
   uint64_t num_retired = 0;
@@ -263,7 +264,7 @@ public:
   void begin_phase() override final;
   void end_phase(unsigned cpu) override final;
 
-  void add_wrongpath_instruction();
+  bool add_wrongpath_instruction();
   void initialize_instruction();
   long check_dib();
   long fetch_instruction();
@@ -310,7 +311,7 @@ public:
 
     virtual void impl_initialize_btb() = 0;
     virtual void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type) = 0;
-    virtual std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
+    virtual std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> impl_btb_prediction(uint64_t ip) = 0;
     virtual void impl_btb_end_phase(unsigned finished_cpu) = 0;
     virtual void impl_btb_invalidate_entry(uint64_t ip) = 0;
     virtual void impl_btb_begin_wrongpath() = 0;
@@ -328,7 +329,7 @@ public:
 
     void impl_initialize_btb();
     void impl_update_btb(uint64_t ip, uint64_t predicted_target, uint8_t taken, uint8_t branch_type);
-    std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip);
+    std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> impl_btb_prediction(uint64_t ip);
     void impl_btb_end_phase(unsigned finished_cpu);
     void impl_btb_invalidate_entry(uint64_t);
     void impl_btb_begin_wrongpath();
@@ -349,7 +350,7 @@ public:
   {
     module_pimpl->impl_update_btb(ip, predicted_target, taken, branch_type);
   }
-  std::tuple<uint64_t, uint64_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
+  std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> impl_btb_prediction(uint64_t ip) { return module_pimpl->impl_btb_prediction(ip); }
 
   void impl_btb_end_phase(unsigned finished_cpu){
     module_pimpl->impl_btb_end_phase(finished_cpu);

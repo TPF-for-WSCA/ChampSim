@@ -39,6 +39,15 @@ uint64_t prev_branch_lookup_ip = 0;
 ooo_model_instr prev_instr = {0, input_instr()};
 uint64_t wrongpath_id = 0;
 
+uint64_t read = 0;
+uint64_t wp_read = 0;
+uint64_t fetched = 0;
+uint64_t dib = 0;
+uint64_t promoted = 0;
+uint64_t decoded = 0;
+uint64_t dispatched = 0;
+uint64_t executed = 0;
+
 std::chrono::seconds elapsed_time();
 
 long O3_CPU::operate()
@@ -61,6 +70,10 @@ long O3_CPU::operate()
   initialize_instruction();
 
   // heartbeat
+  if (false && show_heartbeat && current_cycle >= next_print_inst_cycle) {
+    fmt::print("HEARTBEET : read: {} wp_read: {} fetched: {} dib: {} promoted: {} decoded: {} dispatched: {} executed: {} retired: {}\n", read, wp_read, fetched, dib, promoted, decoded, dispatched, executed, num_retired);
+    next_print_inst_cycle += STAT_PRINTING_PERIOD;
+  }
   if (show_heartbeat && (num_retired >= next_print_instruction)) {
     auto heartbeat_instr{std::ceil(num_retired - last_heartbeat_instr)};
     auto heartbeat_cycle{std::ceil(current_cycle - last_heartbeat_cycle)};
@@ -141,20 +154,27 @@ void O3_CPU::initialize_instruction()
 
   while (instrs_to_read_this_cycle > 0 && !std::empty(input_queue)) {
     instrs_to_read_this_cycle--;
-
     bool stop_fetch = false;
     if (!fetch_stall)
       stop_fetch = do_init_instruction(input_queue.front());
     // std::cout << "INSTR_ID: " << input_queue.front().instr_id << ", IP: " << input_queue.front().ip << ", CURRENT CYCLE: " << current_cycle << std::endl;
+    if (stop_fetch) {
+      impl_btb_begin_wrongpath();
+    }
     if (fetch_stall) {
       // we are on the wrong path here so we want to fetch those instructions, but never promote them to the backend (decode should be fine)
-      impl_btb_begin_wrongpath();
-      add_wrongpath_instruction();
+      if (IFETCH_BUFFER_WRONGPATH.size() < IFETCH_BUFFER_SIZE / 4){ // We need to slow down wrongpath, as we are not modelling the rest of the pipeline which would press back
+        instrs_to_read_this_cycle = (add_wrongpath_instruction()) ? 0 : instrs_to_read_this_cycle;
+        wp_read++;
+      }
+      else
+        instrs_to_read_this_cycle = 0;
       // instrs_to_read_this_cycle = 0;
     } else {
       // Add to IFETCH_BUFFER
       fetch_stall = stop_fetch;
       IFETCH_BUFFER.push_back(input_queue.front());
+      read++;
       if (prev_instr.ip && prev_instr.ip >> isa_shiftamount >> 1 == input_queue.front().ip >> isa_shiftamount >> 1) {
         uint8_t _branch_count = prev_instr.is_branch + input_queue.front().is_branch;
         if (_branch_count == 2) {
@@ -168,7 +188,7 @@ void O3_CPU::initialize_instruction()
 
       IFETCH_BUFFER.back().event_cycle = current_cycle;
     }
-    if (current_cycle >= fetch_resume_cycle) {
+    if (current_cycle >= fetch_resume_cycle && fetch_stall) {
       fetch_stall = false;
       impl_btb_end_wrongpath();
       IFETCH_BUFFER_WRONGPATH.clear();
@@ -176,7 +196,7 @@ void O3_CPU::initialize_instruction()
   }
 }
 
-void O3_CPU::add_wrongpath_instruction()
+bool O3_CPU::add_wrongpath_instruction()
 {
   struct ooo_model_instr wrong_path_instr;
   wrong_path_instr.ip = prev_wrong_ip;
@@ -188,13 +208,16 @@ void O3_CPU::add_wrongpath_instruction()
   wrong_path_instr.branch_target = 0;
   wrong_path_instr.event_cycle = current_cycle;
   auto pred = impl_btb_prediction(prev_wrong_ip);
-  prev_wrong_ip = std::get<0>(pred);
-  if (!prev_wrong_ip) {
+
+  if (!std::get<0>(pred)) {
     prev_wrong_ip += 4;
   } else {
     wrong_path_instr.is_branch = true;
+    l1i->impl_prefetcher_branch_operate(prev_wrong_ip, std::get<3>(pred), std::get<0>(pred), 4); // TODO: Fix to actual
+    prev_wrong_ip = std::get<0>(pred);
   }
   IFETCH_BUFFER_WRONGPATH.push_back(wrong_path_instr);
+  return !wrong_path_instr.is_branch;
 }
 
 namespace
@@ -253,7 +276,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types[arch_instr.branch_type]++;
   // TODO: Check if this is good enough to identify branches
-  auto [predicted_branch_target, branch_ip, always_taken] = impl_btb_prediction(arch_instr.ip);
+  auto [predicted_branch_target, branch_ip, always_taken, branch_type] = impl_btb_prediction(arch_instr.ip);
   sim_stats.btb_reads++;
   if (predicted_branch_target) {
     sim_stats.btb_hits++;
@@ -373,17 +396,20 @@ bool O3_CPU::do_init_instruction(ooo_model_instr& arch_instr)
 long O3_CPU::check_dib()
 {
   // scan through IFETCH_BUFFER to find instructions that hit in the decoded instruction buffer
-  if (fetch_stall) {
-    auto begin = std::find_if(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH), [](const ooo_model_instr& x) { return !x.dib_checked; });
-    auto [window_begin, window_end] = champsim::get_span(begin, std::end(IFETCH_BUFFER_WRONGPATH), FETCH_WIDTH);
-    std::for_each(window_begin, window_end, [this](auto& ifetch_entry) { this->do_check_dib(ifetch_entry); });
+  auto begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.dib_checked; });
+  auto [window_begin, window_end] = champsim::get_span(begin, std::end(IFETCH_BUFFER), FETCH_WIDTH);
+  std::for_each(window_begin, window_end, [this](auto& ifetch_entry) { this->do_check_dib(ifetch_entry); });
+  auto dec_cnt = FETCH_WIDTH - std::distance(window_begin, window_end);
+  if (dec_cnt == 0)
     return std::distance(window_begin, window_end);
-  } else {
-    auto begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), [](const ooo_model_instr& x) { return !x.dib_checked; });
-    auto [window_begin, window_end] = champsim::get_span(begin, std::end(IFETCH_BUFFER), FETCH_WIDTH);
-    std::for_each(window_begin, window_end, [this](auto& ifetch_entry) { this->do_check_dib(ifetch_entry); });
-    return std::distance(window_begin, window_end);
-  }
+
+  begin = std::find_if(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH), [](const ooo_model_instr& x) { return !x.dib_checked; });
+
+  auto [wrongpath_window_begin, wrongpath_window_end] = champsim::get_span(begin, std::end(IFETCH_BUFFER_WRONGPATH), dec_cnt);
+
+  std::for_each(wrongpath_window_begin, wrongpath_window_end, [this](auto& ifetch_entry) { this->do_check_dib(ifetch_entry); });
+
+  return dec_cnt - std::distance(wrongpath_window_begin, wrongpath_window_end);
 }
 
 void O3_CPU::do_check_dib(ooo_model_instr& instr)
@@ -392,6 +418,7 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
   if (auto dib_result = DIB.check_hit(instr.ip); dib_result) {
     // The cache line is in the L0, so we can mark this as complete
     instr.fetched = COMPLETED;
+    dib++;
 
     // Also mark it as decoded
     instr.decoded = COMPLETED;
@@ -416,39 +443,40 @@ long O3_CPU::fetch_instruction()
   auto no_match_ip = [](const auto& lhs, const auto& rhs) {
     return (lhs.ip >> LOG2_BLOCK_SIZE) != (rhs.ip >> LOG2_BLOCK_SIZE);
   };
-  if (fetch_stall) {
-    auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH), fetch_ready);
+  auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
 
-    for (auto to_read = L1I_BANDWIDTH; to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER_WRONGPATH); --to_read) {
-      auto l1i_req_end = std::adjacent_find(l1i_req_begin, std::end(IFETCH_BUFFER_WRONGPATH), no_match_ip);
-      if (l1i_req_end != std::end(IFETCH_BUFFER_WRONGPATH))
-        l1i_req_end = std::next(l1i_req_end); // adjacent_find returns the first of the non-equal elements
+  auto to_read = L1I_BANDWIDTH;
+  for (; to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER); --to_read) {
+    auto l1i_req_end = std::adjacent_find(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
+    if (l1i_req_end != std::end(IFETCH_BUFFER))
+      l1i_req_end = std::next(l1i_req_end); // adjacent_find returns the first of the non-equal elements
 
-      // Issue to L1I
-      auto success = do_fetch_instruction(l1i_req_begin, l1i_req_end);
-      if (success) {
-        std::for_each(l1i_req_begin, l1i_req_end, [](auto& x) { x.fetched = INFLIGHT; });
-        ++progress;
-      }
-
-      l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER_WRONGPATH), fetch_ready);
+    // Issue to L1I
+    fetched++;
+    auto success = do_fetch_instruction(l1i_req_begin, l1i_req_end);
+    if (success) {
+      std::for_each(l1i_req_begin, l1i_req_end, [](auto& x) { x.fetched = INFLIGHT; });
+      ++progress;
     }
-  } else {
-    auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
 
-    for (auto to_read = L1I_BANDWIDTH; to_read > 0 && l1i_req_begin != std::end(IFETCH_BUFFER); --to_read) {
-      auto l1i_req_end = std::adjacent_find(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
-      if (l1i_req_end != std::end(IFETCH_BUFFER))
-        l1i_req_end = std::next(l1i_req_end); // adjacent_find returns the first of the non-equal elements
+    l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), fetch_ready);
+  }
+  { // WRONGPATH BLOCK
+    auto l1i_req_begin_wp = std::find_if(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH), fetch_ready);
+
+    for (; to_read > 0 && l1i_req_begin_wp != std::end(IFETCH_BUFFER_WRONGPATH); --to_read) {
+      auto l1i_req_end_wp = std::adjacent_find(l1i_req_begin_wp, std::end(IFETCH_BUFFER_WRONGPATH), no_match_ip);
+      if (l1i_req_end_wp != std::end(IFETCH_BUFFER_WRONGPATH))
+        l1i_req_end_wp = std::next(l1i_req_end_wp); // adjacent_find returns the first of the non-equal elements
 
       // Issue to L1I
-      auto success = do_fetch_instruction(l1i_req_begin, l1i_req_end);
+      auto success = do_fetch_instruction(l1i_req_begin_wp, l1i_req_end_wp);
       if (success) {
-        std::for_each(l1i_req_begin, l1i_req_end, [](auto& x) { x.fetched = INFLIGHT; });
+        std::for_each(l1i_req_begin_wp, l1i_req_end_wp, [](auto& x) { x.fetched = INFLIGHT; });
         ++progress;
       }
 
-      l1i_req_begin = std::find_if(l1i_req_end, std::end(IFETCH_BUFFER), fetch_ready);
+      l1i_req_begin_wp = std::find_if(l1i_req_end_wp, std::end(IFETCH_BUFFER_WRONGPATH), fetch_ready);
     }
   }
   return progress;
@@ -480,15 +508,14 @@ long O3_CPU::promote_to_decode()
   std::for_each(window_begin, window_end,
                 [cycle = current_cycle, lat = DECODE_LATENCY, warmup = warmup](auto& x) { return x.event_cycle = cycle + ((warmup || x.decoded) ? 0 : lat); });
   std::move(window_begin, window_end, std::back_inserter(DECODE_BUFFER));
+  promoted += (window_end - window_begin);
   IFETCH_BUFFER.erase(window_begin, window_end);
+
   if (IFETCH_BUFFER.empty() && window_end - window_begin < available_fetch_bandwidth) {
     available_fetch_bandwidth -= (window_end - window_begin);
     auto [window_begin, window_end] = champsim::get_span_p(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH), available_fetch_bandwidth,
-                                                         [cycle = current_cycle](const auto& x) { return x.fetched == COMPLETED && x.event_cycle <= cycle; });
-    progress += std::distance(window_begin, window_end);
-    std::for_each(window_begin, window_end,
-                  [cycle = current_cycle, lat = DECODE_LATENCY, warmup = warmup](auto& x) { return x.event_cycle = cycle + ((warmup || x.decoded) ? 0 : lat); });
-    std::move(window_begin, window_end, std::back_inserter(DECODE_BUFFER));
+        [cycle = current_cycle](const auto& x) { return x.fetched == COMPLETED && x.event_cycle <= cycle; });
+    // WE DO NOT PROMOTE WRONGPATH THROUGH THE PIPELINE / WE STOP HERE (FOR NOW)
     IFETCH_BUFFER_WRONGPATH.erase(window_begin, window_end);
   }
 
@@ -501,6 +528,7 @@ long O3_CPU::decode_instruction()
   auto [window_begin, window_end] = champsim::get_span_p(std::begin(DECODE_BUFFER), std::end(DECODE_BUFFER), available_decode_bandwidth,
                                                          [cycle = current_cycle](const auto& x) { return x.event_cycle <= cycle; });
   long progress{std::distance(window_begin, window_end)};
+  decoded += std::distance(window_begin, window_end);
 
   // Send decoded instructions to dispatch
   std::for_each(window_begin, window_end, [&, this](auto& db_entry) {
@@ -516,7 +544,7 @@ long O3_CPU::decode_instruction()
         // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
         db_entry.branch_mispredicted = 0;
         // pay misprediction penalty
-        this->fetch_resume_cycle = this->current_cycle + BRANCH_MISPREDICT_PENALTY;
+        fetch_resume_cycle = current_cycle + BRANCH_MISPREDICT_PENALTY;
 
         assert(fetch_stalled_cycle != 0 || current_cycle < 1000);
         assert(fetch_stalled_cycle < fetch_resume_cycle);
@@ -561,11 +589,20 @@ long O3_CPU::dispatch_instruction()
                  std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
              >= std::size(DISPATCH_BUFFER.front().source_memory))
          && ((std::size(DISPATCH_BUFFER.front().destination_memory) + std::size(SQ)) <= SQ_SIZE)) {
-    ROB.push_back(std::move(DISPATCH_BUFFER.front()));
+    if (DISPATCH_BUFFER.front().wrongpath) {
+      std::cout << "WARNING: WRONGPATH REACHED DISPATCH" << std::endl;
+      DISPATCH_BUFFER.pop_front();
+      continue;
+    }
+    if (!DISPATCH_BUFFER.front().wrongpath) {
+      dispatched++;
+      ROB.push_back(std::move(DISPATCH_BUFFER.front()));
+    }
     DISPATCH_BUFFER.pop_front();
-    do_memory_scheduling(ROB.back());
-
-    available_dispatch_bandwidth--;
+    if (!DISPATCH_BUFFER.front().wrongpath) {
+      do_memory_scheduling(ROB.back());
+      available_dispatch_bandwidth--;
+    }
   }
 
   return DISPATCH_WIDTH - available_dispatch_bandwidth;
@@ -629,6 +666,7 @@ void O3_CPU::do_execution(ooo_model_instr& rob_entry)
 {
   rob_entry.executed = INFLIGHT;
   rob_entry.event_cycle = current_cycle + (warmup ? 0 : EXEC_LATENCY);
+  executed++;
 
   // Mark LQ entries as ready to translate
   for (auto& lq_entry : LQ)
