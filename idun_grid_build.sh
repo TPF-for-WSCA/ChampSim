@@ -9,7 +9,7 @@ cd ~/ChampSim/
 for spec_dir in ${build_dir[@]}
 do
     echo "Building experiment $spec_dir"
-    for build_script in ./IDUN_CONFIGS/$spec_dir/*;
+    for build_script in ./configs/$spec_dir/*;
     do
         if ! [[ -f "$build_script" ]]; then
             continue

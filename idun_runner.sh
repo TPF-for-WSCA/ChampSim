@@ -43,6 +43,12 @@ do
             ghz=$(echo $bin | tr -dc '0-9')
             simulation=$(($ipc * $ghz * 10000000))
             echo "Simulating @${ghz}GHz * ${ipc} IPC = ${simulation} instructions"
+            warmup=$(($simulation/5))
+            if (( warmup > 20000000 )); then
+                warmup=20000000
+            fi
+            skip=$warmup
+            # simulation=$(($simulation-$warmup))
             # 2. Add different output dirs for skipped/warmed up
             # 3. Add 
             # IPC-1 Benchmarks / warmed up
