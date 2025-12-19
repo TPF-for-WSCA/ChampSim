@@ -89,7 +89,6 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
 
   CLI11_PARSE(app, argc, argv);
 
-  const bool skip_given = (skip_instr_option->count() > 0);
   const bool warmup_given = (warmup_instr_option->count() > 0) || (deprec_warmup_instr_option->count() > 0);
   const bool simulation_given = (sim_instr_option->count() > 0) || (deprec_sim_instr_option->count() > 0);
 
@@ -117,7 +116,7 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
        champsim::phase_info{"Simulation", false, simulation_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names}}};
   
   for (auto& trace : traces) {
-    for (uint64_t skipped = 0; skipped < skip_instructions; skipped++)
+    for (long long int skipped = 0; skipped < skip_instructions; skipped++)
       trace();
   }
 

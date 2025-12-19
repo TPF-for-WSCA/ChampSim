@@ -1,5 +1,5 @@
 {
-  "executable_name": "champsim",
+  "executable_name": "speed_vs_ipc/champsim_1g",
   "block_size": 64,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
@@ -7,7 +7,7 @@
 
   "ooo_cpu": [
     {
-      "frequency": 4000,
+      "frequency": 1000,
       "ifetch_buffer_size": 128,
       "decode_buffer_size": 32,
       "dispatch_buffer_size": 32,

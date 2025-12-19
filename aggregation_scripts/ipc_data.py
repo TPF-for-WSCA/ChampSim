@@ -1,0 +1,1126 @@
+#!/usr/bin/python
+import os
+import re
+import sys
+from collections import defaultdict
+from enum import Enum
+
+
+class STATS(Enum):
+    IPC = 1
+    MPKI = 2
+    PARTIAL = 3
+    BUFFER_DURATION = 4
+    USELESS = 5
+    FRONTEND_STALLS = 6
+    PARTIAL_MISSES = 7
+    BRANCH_DISTANCES = 8
+    BRANCH_COUNT = 9
+    INSTRUCTION_COUNT = 10
+    BRANCH_MPKI = 11
+    FETCH_COUNT = 12
+    STALL_CYCLES = 13
+    ROB_AT_MISS = 14
+    BIG_TARGET_COUNT = 15
+    CONTEXT_SWITCH = 16
+    NUM_BTB_BITS_PER_CL = 17
+    ALIASING = 18
+    BIT_INFORMATION = 19
+    BTB_TAG_ENTROPY = 20
+    BTB_BIT_ORDERING = 21
+    BTB_BIT_ORDERING_SWITCHED = 22
+    ABSOLUTE_ALIASING = 23
+    REGION_SPLIT = 24
+    ALIASING_SQUASH_CYCLES = 25  # this one is relative only
+    SQUASH_COUNTS = 26  # this one is absolute only
+    BTB_HIT_PKI = 27
+    NUM_REGIONS_PER_REGION_SIZE = 28
+    REGION_BTB_REPLACEMENTS = 29
+    REGION_SWITCHING_FREQUENCY = 30
+    REGIONS_PER_WAY = 31
+    UTB_MPKI = 32
+    EAGER_INVALIDATION_MPKI = 33
+    EAGER_INVALIDATION_RATE = 34
+    LAZY_INVALIDATION_RATE = 35
+
+
+
+
+type = STATS.IPC
+
+buffer = False
+
+
+def extract_aliasing_relative_squash_cycles(path):
+    logs=[]
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    reg = re.compile(r"SQUASHED CYCLES:\tALIASING:(\d+)\tTOTAL:(\d+)")
+    for line in logs:
+        match = reg.search(line)
+        if match:
+            return int(match.groups()[1])
+            # return int(match.groups()[0]) / int(match.groups()[1])
+    return float('NaN')
+
+
+def extract_squash_counts(path) -> list[tuple[int,int]]:
+    """Extract squash counts.
+
+    :return: Squash counts in the following order: Frontend, Full, Total, where each of those is a pair of (ALIASED, TOTAL)
+    :rtype: list(tuple(int))
+    """
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+
+    re_list = [
+        re.compile(r"FRONTEND SQUASHES:\tALIASING:(\d+)\tTOTAL:(\d+)"),
+        re.compile(r"FULL SQUASHES:\tALIASING:(\d+)\tTOTAL:(\d+)"),
+        re.compile(r"TOTAL SQUASHES:\tALIASING:(\d+)\tTOTAL:(\d+)"),
+    ]
+    lookups_completed = [False, False, False]
+    lookups = [(0,0), (0,0), (0,0)]  # [FRONTEND SQUASHES, FULL SQUASHES, TOTAL SQUASHES], each a pair of (ALIASED, TOTAL)
+    for line in logs:
+        for idx, reg in enumerate(re_list):
+            matches = reg.search(line)
+            if (matches):
+                lookups[idx] = (int(matches.groups()[0]), int(matches.groups()[1]))
+                lookups_completed[idx] = True
+        if all(lookups_completed):
+            break
+    return [(-1,-1),(-1,-1),(-1,-1)] if not all(lookups_completed) else lookups
+
+def extract_ipc(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"CPU 0 cumulative IPC: (\d*\.?\d+)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[0]
+
+
+def extract_branch_count(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"Branch count: (\d+)")
+    logs.reverse()
+    for line in logs:
+        matches = regex.match(line)
+        if matches:
+            return int(matches.groups()[0])
+
+
+def extract_big_offset_counts(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"XXX Big offset targets total: (\d+)")
+    logs.reverse()
+    for line in logs:
+        matches = regex.match(line)
+        if matches:
+            return int(matches.groups()[0])
+
+
+def extract_instruction_count(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"CPU \d+ cumulative IPC: \d+.\d+ instructions: (\d+)")
+    logs.reverse()
+    for line in logs:
+        matches = regex.match(line)
+        if matches:
+            return int(matches.groups()[0])
+
+
+def extract_btb_tag_entropy(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    entropy_re = re.compile(r"BTB TAG SWITCH Entropy: ([0-9]*(\.[0-9]+)?)")
+    for line in logs:
+        matches = entropy_re.search(line)
+        if matches:
+            return float(matches.groups()[0])
+
+
+def extract_btb_region_split(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    region_split_re = re.compile(r"CPU 0 TOTAL REGIONS: (\d+)")
+    for line in logs:
+        matches = region_split_re.search(line)
+        if matches:
+            return int(matches.groups()[0])
+
+
+def extract_btb_bit_ordering(path):
+    import itertools
+
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    entropy_re = re.compile(r"BTB TAG Switched Bit IDX\tENTROPY")
+    ilogs = iter(logs)
+    for line in ilogs:
+        matches = entropy_re.search(line)
+        if matches:
+            break
+    bit_ordering = []
+    for line in ilogs:
+        if (
+            line.startswith("BTB")
+            or line.startswith("Branch")
+            or line.startswith("BRANCH")
+        ):
+            break
+        bit_ordering.append(int(line.split("\t")[0].strip()))
+    return bit_ordering
+
+
+def extract_bit_information(path):
+    import itertools
+
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    title_re = re.compile(r"XXX Total dynamic switched 1 bits in lookup IPs:")
+    ilogs = iter(logs)
+    for line in ilogs:
+        if title_re.match(line):
+            break
+    bit_data = []
+    for line in ilogs:
+        if line.startswith("cpu0") or line.startswith("XXX"):
+            break
+        bit_data.append(float(line.split(":")[1].strip()))
+    # assert(len(bit_data) == 64)
+    # if not successful we have empty list - make none list
+    if len(bit_data) == 0:
+        bit_data = [None for _ in range(64)]
+    if len(bit_data) < 64:
+        assert 0
+    return bit_data
+
+
+def extract_absolute_btb_aliasing(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    # order of values: total, aliasing, same block, different block
+    re_total = re.compile(r"Total Aliasing: (\d+)")
+    total = 0
+    for line in logs:
+        matches = re_total.search(line)
+        if matches:
+            total = int(matches.groups()[0])
+            break
+    return total
+
+def regions_per_way(path):
+    import itertools
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    ilogs = iter(logs)
+    for line in ilogs:
+        if line.strip() == "Number of Regions Observed per Target Offset Way":
+            break
+    re_ = re.compile(r"(\d+):\t(\d+)")
+    result = {}
+    for line in ilogs:
+        matches = re_.search(line)
+        if not matches:
+            break
+        result[int(matches.groups()[0])] = int(matches.groups()[1])
+    return result
+
+# REGION_SWITCHING_FREQUENCY
+def region_switching_frequency(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    re_freq = re.compile(r"REGION SWITCHING FREQUENCY: (0.\d+)")
+    for line in logs:
+        matches = re_freq.search(line)
+        if matches:
+            return float(matches.groups()[0])
+
+def region_btb_replacements(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    # order of values: total, aliasing, same block, different block
+    re_total = re.compile(r"REGION BTB REPLACEMENTS: (\d+)")
+    total = 0
+    for line in logs:
+        matches = re_total.search(line)
+        if matches:
+            total = int(matches.groups()[0])
+            break
+    return total
+
+def extract_btb_hit_pki(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    # order of values: total, aliasing, same block, different block
+    re_total = re.compile(r"BTB\tREADS: \d+\tHITS: (\d+)")
+    total = 0
+    for line in logs:
+        matches = re_total.search(line)
+        if matches:
+            total = int(matches.groups()[0])
+            break
+    return total
+
+def extract_aliasing_relative_to_total_hits(path):
+    """Extract relative aliasing - change the regexes to match the nominator (0) and denominator (1)
+    """
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    # order of values: total, aliasing, same block, different block
+    re_list = [
+        re.compile(r"Total Aliasing: (\d+)"),
+        re.compile(r"cpu0 cumulative IPC: \d+ instructions: (\d+) cycles: \d+"),
+        # re.compile(r"BTB\tREADS: \d+\tHITS: (\d+)"),
+    ]
+    lookups = [0, 0]
+    for line in logs:
+        for idx, reg in enumerate(re_list):
+            matches = reg.search(line)
+            if matches:
+                lookups[idx] = int(matches.groups()[0])
+                break
+        if all(lookups):
+            break
+    return 0 if not lookups[1] else lookups[0] / lookups[1]
+
+
+def static_region_count_per_region_size(path):
+    import itertools
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    ilogs = iter(logs)
+    for line in ilogs:
+        if line.strip() == "CPU 0 REGIONS BY SIZE:":
+            break
+    
+    data = {}
+    for data_line in ilogs:
+        data_line = data_line.strip()
+        if not data_line or data_line.startswith("REGION"):
+            break
+        [region_size, region_count] = [int(val.strip()) for val in data_line.split(":")]
+        data[region_size] = region_count
+    return data
+
+
+
+def extract_btb_bits_per_cl(path):
+    import itertools
+
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    ilogs = iter(logs)
+    for line in ilogs:
+        if line.strip() == "XXX num_cachelines_required_n_bits":
+            break
+    data = {}
+    max_bits = 0
+    for data_line in ilogs:
+        if data_line.startswith("XXX"):
+            break
+        [num_bits, num_cl] = [int(val.strip()) for val in data_line.split(":")]
+        data[num_bits] = num_cl
+        max_bits = num_bits
+
+    no_holes = [data.get(num_bits, 0) for num_bits in range(max_bits + 1)]
+    total = sum(no_holes)
+    if total == 0:
+        return []
+    no_holes = list(itertools.accumulate(no_holes))
+    no_holes = [elem / total for elem in no_holes]
+
+    return no_holes
+
+
+def extract_context_switch_count(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    ilogs = iter(logs)
+    for line in ilogs:
+        if line == "XXX num_cachelines_required_n_bits":
+            break
+    data = {}
+    max_bits = 0
+    for data_line in ilogs:
+        if data_line.startswith("XXX"):
+            break
+        [num_bits, num_cl] = [int(val.strip()) for val in data_line.split(":")]
+        data[num_bits] = num_cl
+        max_bits = num_bits
+
+    no_holes = [data.get(num_bits, 0) for num_bits in range(max_bits)]
+
+    kernel_enters = re.compile()
+
+
+def extract_l1i_partial(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"cpu0\_L1I TOTAL.*PARTIAL MISS:\s+(\d*) \( (\d*\.?\d+)\%\)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[1]
+    return 0
+
+
+def extract_fetches(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"cpu0\_L1I LOAD.*ACCESS:\s+(\d*)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return int(matches.groups()[0])
+    return 0
+
+
+def extract_l1i_detail_partial_misses(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    merges_regex = re.compile(
+        "cpu0_L1I_buffer PARTIAL MISSES\tUNDERRUNS:\s+(\d+)\tOVERRUNS:\s+(\d+)\tMERGES:\s+(\d+)\tNEW BLOCKS:\s+(\d+)"
+    )
+
+    logs.reverse()
+    merges = (0,)
+    for line in logs:
+        merges = merges_regex.match(line)
+        if merges:
+            merges = (
+                int(merges.groups()[0]),
+                int(merges.groups()[1]),
+                int(merges.groups()[2]),
+                int(merges.groups()[3]),
+            )
+            break
+    return merges
+
+
+def extrace_useless_percentage(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"cpu0\_L1I EVICTIONS:\s+(\d*)\s+USELESS:\s+(\d*)")
+    if buffer:
+        regex = re.compile(r"cpu0\_L1I_buffer EVICTIONS:\s+(\d*)\s+USELESS:\s+(\d*)")
+
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return int(matches.groups()[1]) / int(matches.groups()[0])
+    return -1
+
+def extract_eagerinvalidation_mpki(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"EAGER INVALIDATION MPKI: (\d*\.?\d+)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[0]
+    return 0
+
+def extract_eagerinvalidation_rate(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"EAGER INVALIDATION RECOVERY: (\d*\.?\d+)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[0]
+    return 0
+
+def extract_lazyinvalidation_rate(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"LAZY REPLACEMENT RATE: (\d*\.?\d+)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[0]
+    return 0
+
+def extract_utb_mpki(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"UTB INDUCED MPKI: (\d*\.?\d+)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[0]
+    return 0
+
+def extract_branch_mpki(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"BRANCH\_MPKI: (\d*\.?\d+)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[0]
+    return 0
+
+
+def extract_rob_at_stall(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"AVG ROB SIZE AT STALL: (\d*\.?\d+)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.match(line)
+        if matches:
+            return matches.groups()[0]
+
+
+def extract_stall_cycles(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+        stallcycles_regex = re.compile(r"CPU 0 FRONTEND STALLED CYCLES:\s+(\d+)")
+    regex = re.compile(r"CPU 0 cumulative IPC: (\d*\.?\d+)")
+    totalmiss_regex = re.compile(r"cpu0\_L1I TOTAL.*MISS:\s+(\d*)\s+PARTIAL MISS")
+    logs.reverse()
+    total_misses = -1
+    stall_cycles = -1
+    for line in logs:
+        stallcycles_matches = stallcycles_regex.match(line)
+        totalcycles_matches = totalmiss_regex.match(line)
+        if stallcycles_matches:
+            stall_cycles = int(stallcycles_matches.groups()[0])
+        if totalcycles_matches:
+            total_misses = int(totalcycles_matches.groups()[0])
+    if total_misses < 0 or stall_cycles < 0:
+        print("ERROR: DID NOT EXTRACT STALL PERCENTAGE")
+        return float("NaN")
+    return float(stall_cycles) / float(total_misses)
+
+
+def extract_l1i_mpki(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    regex = re.compile(r"cpu0\_L1I\s+LOAD\s+ACCESS:\s+(\d+) HIT:\s+\d+ MISS:\s+(\d+)")
+    logs.reverse()
+    for line in logs:  # reverse to find last run first
+        matches = regex.search(line)
+        if matches:
+            return int(matches.groups()[1])/int(matches.groups()[0])
+
+
+def extract_frontend_stalls_percentage(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    stallcycles_regex = re.compile(r"CPU 0 FRONTEND STALLED CYCLES:\s+(\d+)")
+    regex = re.compile(r"CPU 0 cumulative IPC: (\d*\.?\d+)")
+    totalinstructions_regex = re.compile(
+        r"CPU 0 cumulative IPC: \d*\.?\d+ instructions: (\d+)"
+    )
+    logs.reverse()
+    total_instructions = -1
+    stall_cycles = -1
+    for line in logs:
+        stallcycles_matches = stallcycles_regex.match(line)
+        totalcycles_matches = totalinstructions_regex.match(line)
+        if stallcycles_matches:
+            stall_cycles = int(stallcycles_matches.groups()[0])
+        if totalcycles_matches:
+            total_instructions = int(totalcycles_matches.groups()[0])
+    if total_instructions < 0 or stall_cycles < 0:
+        print("ERROR: DID NOT EXTRACT STALL PERCENTAGE")
+        return float("NaN")
+    return (float(stall_cycles) / float(total_instructions)) * 1000
+
+
+def extract_buffer_duration(path):
+    assert 0
+    return 0
+
+
+def extract_branch_distance(path):
+    logs = []
+    with open(path) as f:
+        logs = f.readlines()
+    candidate_lines = []
+    logs = logs[::-1]
+    regex = re.compile(r"^\s+(\d+):\s+(\d+)")
+    for logline in logs:
+        matches = regex.match(logline)
+        if matches:
+            candidate_lines.append((int(matches.groups()[0]), int(matches.groups()[1])))
+        if "BRANCH DISTANCE STATS" in logline:
+            break
+    buckets = [32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, ">"]
+    count_by_bucket = {
+        32: 0,
+        64: 0,
+        128: 0,
+        256: 0,
+        512: 0,
+        1024: 0,
+        2048: 0,
+        4096: 0,
+        8192: 0,
+        16384: 0,
+        ">": 0,
+    }
+    for single_entry in candidate_lines:
+        old_bucket = 0
+        bucket_key = 0
+        for bucket in buckets:
+            if old_bucket < single_entry[0] and (
+                bucket == ">" or single_entry[0] < bucket
+            ):
+                bucket_key = bucket
+                break
+        count_by_bucket[bucket_key] += single_entry[1]
+    return count_by_bucket
+
+
+def single_run(path):
+    stat_by_workload = {}
+    for workload in os.listdir(path):
+        if not os.path.isdir(os.path.join(path, workload)):
+            continue  # if we do this for a single single run
+        if workload in ["graphs", "raw_data"]:
+            continue
+        for logfile in os.listdir(f"{path}/{workload}"):
+            if not ".txt" in logfile or logfile.startswith("."):
+                continue
+            if type == STATS.MPKI:
+                stat_by_workload[workload] = extract_l1i_mpki(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.FETCH_COUNT:
+                stat_by_workload[workload] = extract_fetches(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.PARTIAL:
+                stat_by_workload[workload] = extract_l1i_partial(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.USELESS:
+                stat_by_workload[workload] = extrace_useless_percentage(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.FRONTEND_STALLS:
+                stat_by_workload[workload] = extract_frontend_stalls_percentage(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.PARTIAL_MISSES:
+                stat_by_workload[workload] = extract_l1i_detail_partial_misses(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.BUFFER_DURATION:
+                stat_by_workload[workload] = extract_buffer_duration(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.BRANCH_DISTANCES:
+                stat_by_workload[workload] = extract_branch_distance(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.BRANCH_COUNT:
+                stat_by_workload[workload] = extract_branch_count(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.BIG_TARGET_COUNT:
+                stat_by_workload[workload] = extract_big_offset_counts(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.INSTRUCTION_COUNT:
+                stat_by_workload[workload] = extract_instruction_count(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.CONTEXT_SWITCH:
+                stat_by_workload[workload] = extract_context_switch_count(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.NUM_REGIONS_PER_REGION_SIZE:
+                stat_by_workload[workload] = static_region_count_per_region_size(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.NUM_BTB_BITS_PER_CL:
+                stat_by_workload[workload] = extract_btb_bits_per_cl(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.BTB_HIT_PKI:
+                stat_by_workload[workload] = extract_btb_hit_pki(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.ALIASING:
+                stat_by_workload[workload] = extract_aliasing_relative_to_total_hits(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.REGION_BTB_REPLACEMENTS:
+                stat_by_workload[workload] = region_btb_replacements(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.REGION_SWITCHING_FREQUENCY:
+                stat_by_workload[workload] = region_switching_frequency(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.REGIONS_PER_WAY:
+                stat_by_workload[workload] = regions_per_way(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.ABSOLUTE_ALIASING:
+                stat_by_workload[workload] = extract_absolute_btb_aliasing(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.ALIASING_SQUASH_CYCLES:
+                stat_by_workload[workload] = extract_aliasing_relative_squash_cycles(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.SQUASH_COUNTS:
+                stat_by_workload[workload] = extract_squash_counts(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.BIT_INFORMATION:
+                stat_by_workload[workload] = extract_bit_information(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.BTB_TAG_ENTROPY:
+                stat_by_workload[workload] = extract_btb_tag_entropy(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.REGION_SPLIT:
+                stat_by_workload[workload] = extract_btb_region_split(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.BTB_BIT_ORDERING:
+                bit_ordering = extract_btb_bit_ordering(f"{path}/{workload}/{logfile}")
+                raw_data_path = f"{path}/{workload}_bit_ordering.txt"
+                print(f"BIT ORDERING written to {raw_data_path}")
+                with open(raw_data_path, "x") as f:
+                    for bit in bit_ordering:
+                        f.write(f"{bit}\n")
+            elif type == STATS.ROB_AT_MISS:
+                stat_by_workload[workload] = extract_rob_at_stall(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.BRANCH_MPKI:
+                stat_by_workload[workload] = extract_branch_mpki(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.EAGER_INVALIDATION_MPKI:
+                stat_by_workload[workload] = extract_eagerinvalidation_mpki(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.LAZY_INVALIDATION_RATE:
+                stat_by_workload[workload] = extract_lazyinvalidation_rate(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.EAGER_INVALIDATION_RATE:
+                stat_by_workload[workload] = extract_eagerinvalidation_rate(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.UTB_MPKI:
+                stat_by_workload[workload] = extract_utb_mpki(
+                    f"{path}/{workload}/{logfile}"
+                )
+            elif type == STATS.STALL_CYCLES:
+                stat_by_workload[workload] = extract_stall_cycles(
+                    f"{path}/{workload}/{logfile}"
+                )
+            else:
+                stat_by_workload[workload] = extract_ipc(f"{path}/{workload}/{logfile}")
+    return stat_by_workload
+
+
+def mutliple_sizes_run(out_dir=None):
+    ipc_by_cachesize_and_workload = {}
+    if not out_dir:
+        out_dir = sys.argv[1]
+    for subdir in os.listdir(out_dir):
+        if not os.path.isdir(os.path.join(out_dir, subdir)):
+            continue
+        lip_matches = re.search(r"(\d*)lip", subdir)
+        matches = re.search(r"(\d+)([km])+$", subdir)
+        if not matches:
+            result = single_run(f"{out_dir}/{subdir}")
+            if len(result) == 0:
+                continue
+            ipc_by_cachesize_and_workload[subdir] = result
+            continue
+        matches = matches.groups()
+        name = ""
+        if lip_matches:
+            name = f"lip@{lip_matches.groups()[0]} "
+        if matches[1] and not "fdip" in subdir:
+            factor = 1024 if matches[1] == "k" else 1024 * 1024
+            size_bytes = int(matches[0]) * factor
+            name += f"{size_bytes}"
+        else:
+            name = subdir
+        result = single_run(f"{out_dir}/{subdir}")
+        if len(result) == 0:
+            continue
+        ipc_by_cachesize_and_workload[name] = result
+    return ipc_by_cachesize_and_workload
+
+def write_squash_counts(data, out_path="./"):
+    squash_causes = ["FRONTEND_ALIASING", "FRONTEND_TOTAL", "FULL_ALIASING", "FULL_TOTAL", "TOTAL_ALIASING", "TOTAL_TOTAL"]
+    for config, values in data.items():
+        file_path = os.path.join(out_path, config, "squash_counts.tsv")
+        with open(file_path, "w+") as outfile:
+            outfile.write(f"\t")
+            for title in squash_causes:
+                outfile.write(f"{title}\t")
+            outfile.write("\n")
+            for workload, tuples in values.items():
+                outfile.write(f"{workload}\t")
+                for tuple in tuples:
+                    outfile.write(f"{tuple[0]}\t{tuple[1]}\t")
+                outfile.write("\n")
+
+
+def write_partial_misses(data, out_path="./"):
+    base_filename = "partial_misses_"
+    partial_miss_causes = ["UNDERRUNS", "OVERRUNS", "MERGES", "NEW BLOCKS"]
+    for csize, values in data.items():
+        filename = base_filename + str(csize)
+        filename += ".tsv"
+        file_path = os.path.join(out_path, filename)
+        if not ("ubs" in csize or "vcl" in csize):
+            continue
+        with open(file_path, "w+") as outfile:
+            for workload, _ in data[csize].items():
+                outfile.write(f"\t{workload}")
+            outfile.write("\n")
+            for idx, partial_miss_cause in enumerate(partial_miss_causes):
+                outfile.write(f"{partial_miss_cause}")
+                for workload, val in data[csize].items():
+                    outfile.write(f"\t{val[idx]}")
+                outfile.write("\n")
+            outfile.flush()
+    return
+
+
+def write_series(data, out_path="./"):
+    base_filename = "branch_distances"
+    for csize, values in data.items():
+        filename = base_filename + str(csize)
+        filename += ".tsv"
+        file_path = os.path.join(out_path, filename)
+        with open(file_path, "w+") as outfile:
+            for workload, series in data[csize].items():
+                outfile.write(f"{workload}")
+                for _, entry in series.items():
+                    outfile.write(f"\t{entry}")
+                outfile.write("\n")
+            outfile.flush()
+
+
+def write_tsv(data, out_path=None):
+    filename = "ipc"
+    if type == STATS.MPKI:
+        filename = "mpki"
+    elif type == STATS.BTB_HIT_PKI:
+        filename = "absolute_btb_hits"
+    elif type == STATS.ALIASING:
+        filename = "aliasing"
+    elif type == STATS.REGION_BTB_REPLACEMENTS:
+        filename = "region_btb_replacements"
+    elif type == STATS.REGION_SWITCHING_FREQUENCY:
+        filename = "region_switching_frequency"
+    elif type == STATS.REGIONS_PER_WAY:
+        filename = "regions_per_way"
+    elif type == STATS.ABSOLUTE_ALIASING:
+        filename = "total_aliasing"
+    elif type == STATS.ALIASING_SQUASH_CYCLES:
+        filename = "relative_aliasing_squash_cycles"
+    elif type == STATS.SQUASH_COUNTS:
+        filename = "squash_counts"
+    elif type == STATS.FETCH_COUNT:
+        filename = "fetch_count"
+    elif type == STATS.BRANCH_MPKI:
+        filename = "branch_mpki"
+    elif type == STATS.EAGER_INVALIDATION_MPKI:
+        filename = "eager_invalidation_mpki"
+    elif type == STATS.EAGER_INVALIDATION_RATE:
+        filename = "eager_invalidation_rate"
+    elif type == STATS.LAZY_INVALIDATION_RATE:
+        filename = "lazy_invalidation_rate"
+    elif type == STATS.UTB_MPKI:
+        filename = "utb_mpki"
+    elif type == STATS.PARTIAL:
+        filename = "partial"
+    elif type == STATS.BUFFER_DURATION:
+        filename = "avg_buffer"
+    elif type == STATS.USELESS:
+        filename = "useless"
+    elif type == STATS.FRONTEND_STALLS:
+        filename = "frontend_stalls"
+    elif type == STATS.PARTIAL_MISSES:
+        filename = "partial_misses"
+    elif type == STATS.BRANCH_DISTANCES:
+        filename = "branch_distances"
+    elif type == STATS.BRANCH_COUNT:
+        filename = "branch_count"
+    elif type == STATS.BIG_TARGET_COUNT:
+        filename = "big_target"
+    elif type == STATS.INSTRUCTION_COUNT:
+        filename = "instruction_count"
+    elif type == STATS.CONTEXT_SWITCH:
+        filename = "context_switches"
+    elif type == STATS.STALL_CYCLES:
+        filename = "stall_cycles"
+    elif type == STATS.ROB_AT_MISS:
+        filename = "rob_at_miss"
+    elif type == STATS.NUM_REGIONS_PER_REGION_SIZE:
+        filename = "num_regions_per_region_size"
+    elif type == STATS.NUM_BTB_BITS_PER_CL:
+        filename = "num_btb_bits_per_cacheline"
+    elif type == STATS.BIT_INFORMATION:
+        filename = "address_bit_information"
+    elif type == STATS.BTB_TAG_ENTROPY:
+        filename = "btb_tag_entropy"
+    elif type == STATS.REGION_SPLIT:
+        filename = "btb_region_tag_split"
+    if buffer:
+        filename += "_buffer"
+    filename += ".tsv"
+    if out_path:
+        out_path = os.path.join(out_path, filename)
+    else:
+        out_path = os.path.join("./", filename)
+    with open(out_path, "w+") as outfile:
+        max_csize = 0
+        abs_max = 0
+        for csize, values in data.items():
+            if len(values) > abs_max:
+                abs_max = len(values)
+                max_csize = csize
+        headers = []
+        count = 0
+        for workload, _ in data[max_csize].items():
+            outfile.write(f"\t{workload}")
+            count += 1
+            headers.append(workload)
+        outfile.write("\n")
+        if type == STATS.PARTIAL_MISSES:
+            for i in range(int(count / 4)):
+                outfile.write("\tUNDERRUNS\tOVERRUNS\tMERGES\tNEW BLOCKS")
+        outfile.write("\n")
+        for csize, values in data.items():
+            outfile.write(f"{csize}")
+            for header in headers:
+                val = data[csize].get(header)
+                if type == STATS.PARTIAL_MISSES:
+                    if val == None:
+                        val = [0, 0, 0, 0]
+                    for i in range(0, 4):
+                        outfile.write(f"\t{val[i]}")
+                else:
+                    outfile.write(f"\t{val}")
+            outfile.write("\n")
+
+
+def multiple_benchmarks_run():
+    curr_dir = sys.argv[1]
+    for benchmark in os.listdir(curr_dir):
+        benchpath = os.path.join(curr_dir, benchmark)
+        if not os.path.isdir(benchpath):
+            continue
+        data = mutliple_sizes_run(out_dir=benchpath)
+        if len(data) == 0:
+            continue
+        write_tsv(data, out_path=benchpath)
+
+
+data = {}
+if sys.argv[3] == "MPKI":
+    type = STATS.MPKI
+elif sys.argv[3] == "FETCH_COUNT":
+    type = STATS.FETCH_COUNT
+elif sys.argv[3] == "BRANCH_MPKI":
+    type = STATS.BRANCH_MPKI
+elif sys.argv[3] == "EAGER_INVALIDATION_MPKI":
+    type = STATS.EAGER_INVALIDATION_MPKI
+elif sys.argv[3] == "EAGER_INVALIDATION_RATE":
+    type = STATS.EAGER_INVALIDATION_RATE
+elif sys.argv[3] == "LAZY_INVALIDATION_RATE":
+    type = STATS.LAZY_INVALIDATION_RATE
+elif sys.argv[3] == "UTB_MPKI":
+    type = STATS.UTB_MPKI
+elif sys.argv[3] == "STALL_CYCLES":
+    type = STATS.STALL_CYCLES
+elif sys.argv[3] == "ROB_AT_MISS":
+    type = STATS.ROB_AT_MISS
+elif sys.argv[3] == "PARTIAL":
+    type = STATS.PARTIAL
+elif sys.argv[3] == "BUFFER_DURATION":
+    type = STATS.BUFFER_DURATION
+elif sys.argv[3] == "USELESS_LINES":
+    type = STATS.USELESS
+elif sys.argv[3] == "FRONTEND_STALLS":
+    type = STATS.FRONTEND_STALLS
+elif sys.argv[3] == "PARTIAL_MISSES":
+    type = STATS.PARTIAL_MISSES
+elif sys.argv[3] == "BRANCH_DISTANCES":
+    type = STATS.BRANCH_DISTANCES
+elif sys.argv[3] == "BRANCH_COUNT":
+    type = STATS.BRANCH_COUNT
+elif sys.argv[3] == "BIG_TARGET_COUNT":
+    type = STATS.BIG_TARGET_COUNT
+elif sys.argv[3] == "INSTRUCTION_COUNT":
+    type = STATS.INSTRUCTION_COUNT
+elif sys.argv[3] == "CONTEXT_SWITCH":
+    type = STATS.CONTEXT_SWITCH
+elif sys.argv[3] == "BTB_REGION_COUNT_BY_REGION_SIZE":
+    type = STATS.NUM_REGIONS_PER_REGION_SIZE
+elif sys.argv[3] == "BTB_BITS_CL":
+    type = STATS.NUM_BTB_BITS_PER_CL
+elif sys.argv[3] == "BTB_HITS":
+    type = STATS.BTB_HIT_PKI
+elif sys.argv[3] == "BTB_ALIASING":
+    type = STATS.ALIASING
+elif sys.argv[3] == "REGION_BTB_REPLACEMENTS":
+    type = STATS.REGION_BTB_REPLACEMENTS
+elif sys.argv[3] == "REGION_SWITCHING_FREQUENCY":
+    type = STATS.REGION_SWITCHING_FREQUENCY
+elif sys.argv[3] == "REGIONS_PER_WAY":
+    type = STATS.REGIONS_PER_WAY
+elif sys.argv[3] == "BTB_TOTAL_ALIASING":
+    type = STATS.ABSOLUTE_ALIASING
+elif sys.argv[3] == "BTB_RELATIVE_ALIASING_SQUASH_CYCLES":
+    type = STATS.ALIASING_SQUASH_CYCLES
+elif sys.argv[3] == "SQUASH_COUNTS":
+    type = STATS.SQUASH_COUNTS
+elif sys.argv[3] == "BTB_BIT_INFORMATION":
+    type = STATS.BIT_INFORMATION
+elif sys.argv[3] == "BTB_TAG_ENTROPY":
+    type = STATS.BTB_TAG_ENTROPY
+elif sys.argv[3] == "REGION_SPLIT":
+    type = STATS.REGION_SPLIT
+elif sys.argv[3] == "BTB_BIT_ORDERING":
+    type = STATS.BTB_BIT_ORDERING
+if len(sys.argv) == 5 and sys.argv[4]:
+    buffer = True
+if sys.argv[2] == "single":
+    data["const"] = single_run(sys.argv[1])
+elif sys.argv[2] == "multibench":
+    multiple_benchmarks_run()
+    exit(0)
+else:
+    data = mutliple_sizes_run()
+
+if len(data) == 0:
+    exit(0)
+
+if type == STATS.PARTIAL_MISSES:
+    write_partial_misses(data, sys.argv[1])
+elif type == STATS.SQUASH_COUNTS:
+    write_squash_counts(data, sys.argv[1])
+elif type == STATS.BRANCH_DISTANCES:
+    write_series(data, sys.argv[1])
+elif type == STATS.REGIONS_PER_WAY:
+    file_path = os.path.join(sys.argv[1], "regions_per_way.tsv")
+    with open(file_path, "w+") as outfile:
+        outfile.write("\t")
+        for title in data[next(iter(data))].keys():
+            outfile.write(f"{title}\t")
+        outfile.write("\n")
+        for workload, data in data.items():
+            outfile.write(f"{workload}\t")
+            for value in data.values():
+                outfile.write(f"{value}\t")
+            outfile.write("\n")
+
+elif type == STATS.NUM_BTB_BITS_PER_CL:
+    file_path = os.path.join(sys.argv[1], "num_btb_bits_per_cl.tsv")
+    with open(file_path, "w+") as outfile:
+        for workload, values in data["const"].items():
+            outfile.write(f"{workload}")
+            for entry in values:
+                outfile.write(f"\t{entry}")
+            outfile.write("\n")
+        outfile.flush()
+elif type == STATS.NUM_REGIONS_PER_REGION_SIZE:
+    file_path = os.path.join(sys.argv[1], "num_regions_per_region_size.tsv")
+    with open(file_path, "w+") as outfile:
+        for workload in data["const"].keys():
+            outfile.write(f"{workload}\t")
+        outfile.write("\n")
+        for i in range(1,64,1):
+            for values in data["const"].values():
+                if not values:
+                    break
+                outfile.write(f"{values[i]}\t")
+            outfile.write("\n")
+# elif type == STATS.ALIASING:
+#     file_path = os.path.join(sys.argv[1], "aliasing.tsv")
+#     with open(file_path, "w+") as outfile:
+#         outfile.write(
+#             "Workload\tTotal Lookups\tAliasing Lookups\tSame Block Aliases\tDifferent Block Aliases\n"
+#         )
+#         for workload, values in data["const"].items():
+#             outfile.write(f"{workload}")
+#             for entry in values:
+#                 outfile.write(f"\t{entry}")
+#             outfile.write("\n")
+#         outfile.flush()
+elif type == STATS.BIT_INFORMATION:
+    file_path = os.path.join(sys.argv[1], "btb_dynamic_bit_information.tsv")
+    with open(file_path, "w+") as outfile:
+        outfile.write("Workload")
+        for i in range(1, 65):
+            outfile.write(f"\t{i}")
+        outfile.write("\n")
+        for workload, values in data["const"].items():
+            outfile.write(f"{workload}")
+            for entry in values:
+                outfile.write(f"\t{entry}")
+            outfile.write("\n")
+        outfile.flush()
+else:
+    write_tsv(data, sys.argv[1])
