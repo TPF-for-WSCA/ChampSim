@@ -16,7 +16,6 @@
 #include <set>
 #include <csignal>
 
-
 #include "ooo_cpu.h"
 // We are only using those in the preprocessor
 #define USE_FIFO true
@@ -38,7 +37,6 @@
 #define EAGERLY_EVICT_ON_REGION_REMOVAL false
 #define ITLB_CACHE false
 #define PAGE_LOG_SIZE 12
-
 
 uint64_t invalid_replacements = 0;
 
@@ -80,6 +78,7 @@ std::vector<uint8_t> btb_addressing_hash;
 std::array<std::set<uint64_t>, 64> observed_entries_per_region_size = {};
 
 bool INSERT_FILTER_VICTIMS = false;
+bool wrongpath = false;
 std::size_t USE_REGIONALIZED_BTB_OFFSET = 0;
 std::size_t _INDEX_MASK = 0;
 std::size_t _FILTER_INDEX_MASK = 0;
@@ -140,7 +139,7 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
   } else {
     std::bitset<64> ip_tag_b{ip_tag};
     std::bitset<64> ip_b{0};
-    int i = 0;
+    size_t i = 0;
     for (; i < btb_addressing_hash.size(); i++) {
       ip_b[i] = ip_tag_b[btb_addressing_hash.at(i)];
     }
@@ -205,6 +204,7 @@ struct BTBEntry {
   uint64_t offset_mask = -1;
   bool useless = false;
   bool replacement_protected = false;
+  uint8_t precise_branch_type;
 
   // TODO: shift indexes and tags into place
   auto index() const
@@ -290,16 +290,16 @@ struct region_btb_entry_t {
 // extern bool is_shared_or_vdso(uint64_t ip);
 
 // TODO: Make fifo/srrip/lru configurable per component -- how to most effectively? I don't know...
-#if USE_FIFO 
-  std::map<O3_CPU*, champsim::msl::fifo_table<region_btb_entry_t>> REGION_BTB;
-  std::map<O3_CPU*, champsim::msl::fifo_table<FilterBTBEntry>> REGION_FILTER_BTB;
+#if USE_FIFO
+std::map<O3_CPU*, champsim::msl::fifo_table<region_btb_entry_t>> REGION_BTB;
+std::map<O3_CPU*, champsim::msl::fifo_table<FilterBTBEntry>> REGION_FILTER_BTB;
 #elif USE_SRRIP
-  std::map<O3_CPU*, champsim::msl::srrip_table<BTBEntry>> BTB;
-  std::map<O3_CPU*, champsim::msl::srrip_table<region_btb_entry_t>> REGION_BTB;
-  std::map<O3_CPU*, champsim::msl::srrip_table<FilterBTBEntry>> REGION_FILTER_BTB;
+std::map<O3_CPU*, champsim::msl::srrip_table<BTBEntry>> BTB;
+std::map<O3_CPU*, champsim::msl::srrip_table<region_btb_entry_t>> REGION_BTB;
+std::map<O3_CPU*, champsim::msl::srrip_table<FilterBTBEntry>> REGION_FILTER_BTB;
 #else
-  std::map<O3_CPU*, champsim::msl::lru_table<FilterBTBEntry>> REGION_FILTER_BTB;
-  std::map<O3_CPU*, champsim::msl::lru_table<region_btb_entry_t>> REGION_BTB;
+std::map<O3_CPU*, champsim::msl::lru_table<FilterBTBEntry>> REGION_FILTER_BTB;
+std::map<O3_CPU*, champsim::msl::lru_table<region_btb_entry_t>> REGION_BTB;
 #endif
 std::map<O3_CPU*, champsim::msl::lru_table<BTBEntry>> BTB;
 // TODO: make sure that the BTBEntry types here are always calculating full tags - might require another type
@@ -307,6 +307,7 @@ std::map<O3_CPU*, std::map<uint64_t, uint64_t>> REGION_REF_COUNT;
 std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
 std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
 std::map<O3_CPU*, std::deque<uint64_t>> RAS;
+std::map<O3_CPU*, std::deque<uint64_t>> WRONGPATH_BACKUP_RAS;
 std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 
 } // namespace
@@ -323,21 +324,19 @@ void O3_CPU::initialize_btb()
             << "\n\tFILTER BTB: " << REGION_BTB_FILTER_ENABLED 
             << "\n\tEAGERLY EVICT ON REGION REPLACEMENT: " << EAGERLY_EVICT_ON_REGION_REMOVAL << std::endl;
 #if USE_SRRIP
-    ::BTB.insert({this, champsim::msl::srrip_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
+  ::BTB.insert({this, champsim::msl::srrip_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
 #else
-    ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
+  ::BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
 #endif
   USE_REGIONALIZED_BTB_OFFSET = this->BTB_FILTER_BTB_LIMIT;
   INSERT_FILTER_VICTIMS = USE_REGIONALIZED_BTB_OFFSET != 0;
   if (REGION_BTB_FILTER_ENABLED && this->BTB_TAG_REGIONS) {
 #if USE_FIFO
-      ::REGION_FILTER_BTB.insert(
-          {this, champsim::msl::fifo_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
+    ::REGION_FILTER_BTB.insert({this, champsim::msl::fifo_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
 #elif USE_SRRIP
-      ::REGION_FILTER_BTB.insert(
-          {this, champsim::msl::srrip_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
+    ::REGION_FILTER_BTB.insert({this, champsim::msl::srrip_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
 #else
-      ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
+    ::REGION_FILTER_BTB.insert({this, champsim::msl::lru_table<FilterBTBEntry>{BTB_SETS / 16, BTB_WAYS / 2}}); // TODO: How many entries should we really use?
 #endif
     _FILTER_INDEX_MASK = (BTB_SETS / 16) - 1;
     _FILTER_BTB_SET_BITS = champsim::lg2(BTB_SETS / 16);
@@ -352,11 +351,11 @@ void O3_CPU::initialize_btb()
     ways = BTB_TAG_REGION_WAYS;
   }
 #if USE_FIFO
-    ::REGION_BTB.insert({this, champsim::msl::fifo_table<region_btb_entry_t>{sets, ways}});
+  ::REGION_BTB.insert({this, champsim::msl::fifo_table<region_btb_entry_t>{sets, ways}});
 #elif USE_SRRIP
-    ::REGION_BTB.insert({this, champsim::msl::srrip_table<region_btb_entry_t>{sets, ways}});
+  ::REGION_BTB.insert({this, champsim::msl::srrip_table<region_btb_entry_t>{sets, ways}});
 #else
-    ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{sets, ways}});
+  ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{sets, ways}});
 #endif
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   ::btb_addressing_hash = btb_index_tag_hash;
@@ -496,15 +495,22 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
     ::BTB.at(this).validate_entry(btb_entry.value());
   }
 
+  auto lras =  (!wrongpath) ? &RAS :  & WRONGPATH_BACKUP_RAS;
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this]))
       return {0, 0, true};
 
     // peek at the top of the RAS and adjust for the size of the call instr
-    auto target = ::RAS[this].back();
+    auto target = (*lras)[this].back();
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
 
     return {target + 4, btb_entry->ip_tag, true}; // assume fixed size for now
+  }
+  if (wrongpath && (btb_entry->precise_branch_type == BRANCH_DIRECT_CALL || btb_entry->precise_branch_type == BRANCH_INDIRECT_CALL)) {
+    // modify the wrongpath ras
+    (*lras)[this].push_back(ip);
+    if (std::size((*lras)[this]) > RAS_SIZE)
+      (*lras)[this].pop_front();
   }
 
   if (btb_entry->type == ::branch_info::INDIRECT) {
@@ -549,6 +555,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     }
   }
 
+  // no need to check for wrongpath: we do only update on commit, so no wrongpath will enter here
   // add something to the RAS
   if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL) {
     RAS[this].push_back(ip);
@@ -824,6 +831,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     fill_entry.type = type;
     fill_entry.useless = false;
     fill_entry.replacement_protected = false;
+    fill_entry.precise_branch_type = branch_type;
     replaced_entry = ::BTB.at(this).fill(
         fill_entry,
         entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
@@ -1000,6 +1008,14 @@ void O3_CPU::btb_end_phase(unsigned finished_cpu)
     sim_stats.region_pointer_max_stats[it->data.max_pointer]++;
   }
 }
+
+void O3_CPU::btb_begin_wrongpath()
+{
+  WRONGPATH_BACKUP_RAS = std::map<O3_CPU*, std::deque<uint64_t>>(RAS);
+  wrongpath = true;
+}
+
+void O3_CPU::btb_end_wrongpath() { wrongpath = false; }
 
 void O3_CPU::btb_invalidate_entry(uint64_t ip)
 {

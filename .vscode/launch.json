@@ -174,6 +174,69 @@
                 }
             ],
             "preLaunchTask": "make DebugBuild"
+        },        {
+            "name": "C++ SAGA Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "targetArchitecture": "x64",
+            "program": "${workspaceRoot}/bin/champsim",
+            "miDebuggerPath": "/cluster/software/GDB/13.2-GCCcore-13.2.0/bin/gdb",
+            //"${workspaceRoot}/bin/champsim_16b_region_256",
+            "args": [
+                "--warmup-instructions",
+                "000000",
+                "--simulation-instructions",
+                "10000000",
+                "--json",
+                "~/temp/stats.json",
+                // "--btb-tag-hash",
+                // "${workspaceRoot}/data/server18_btb_tag_hash.txt",
+                //"/home/robrunne/OneDrive/Research/results/saga_baseline_and_ways/raw_data/server_001.champsimtrace_bit_ordering.txt",
+                // "-result_dir",
+                // "~/Downloads/results/test/",
+                // "-ptrace",
+                // "-cloudsuite",
+                // "--intel",
+                // "-stallonmiss",
+                // "-traces",
+                // "/home/robrunne/OneDrive/Research/datasets/traces/clang/clang.gz",
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1/server_019.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_004.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_018.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_009.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/test_trace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/ipc1_new/server_036.champsimtrace.xz"
+                // "/cluster/work/romankb/dataset/IPC1_new_translated/server/server_020.champsimtrace.xz"
+                "/cluster/projects/nn4650k/dataset/ipc1_new/server/server_015.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/ipc1_new/client_004.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/crc2/nutch_phase0_core2.trace.xz"
+                // "/home/robrunne/OneDrive/Research/datasets/dpc3/403.gcc-16B.champsimtrace.xz"
+                //"/home/robrunne/OneDrive/Research/datasets/google/whiskey/champsim-1748052322638680856.426703.memtrace.gz"
+                //"/home/robrunne/OneDrive/Research/datasets/google/delta/champsim-10058381926338669845.507561.memtrace.gz"
+                //"/home/robrunne/Downloads/tmp/champsim_traces/whiskey/champsim-1748052322638680856.267686.memtrace.gz"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "/home/robrunne/Workspace/Simulators/xed/kits/xed-install-base-2022-11-08-lin-x86-64/lib"
+                }
+            ],
+            "MIMode": "gdb",
+            "setupCommands": [
+                // {
+                //     "description": "Pretty Printer Registration",
+                //     "text": "python import sys;sys.path.insert(0, '/usr/share/gcc/python');from libstdcxx.v6.printers import register_libstdcxx_printers;register_libstdcxx_printers(None)",
+                //     "ignoreFailures": false
+                // },
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": false
+                }
+            ],
+            "preLaunchTask": "make DebugBuild"
         },
     ]
 }
