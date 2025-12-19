@@ -105,7 +105,7 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   fmt::print(stream, "\nREGION SWITCHING FREQUENCY: {}\n", region_switching_frequency);
 
   fmt::print(stream, "\n\nNumber of Regions Observed per Target Offset Way\n");
-  for (auto const [target_size, regions] : stats.regions_inserted_per_way) {
+  for (auto const& [target_size, regions] : stats.regions_inserted_per_way) {
     fmt::print(stream, "{}:\t{}\n", target_size, regions.size());
   }
   long double prev_counter = 0, prev_switch = 0;
@@ -223,16 +223,10 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   fmt::print(stream, "UTB INDUCED MPKI: {:.3g}\n\n", 1000.0 * std::ceil(stats.utb_replacement_misses) / std::ceil(stats.instrs()));
 
   fmt::print(stream, "Way\t% of Insertions\n");
-  const uint64_t total_insertions = std::accumulate(
-    std::begin(stats.region_way_insertion_counts),
-    std::end(stats.region_way_insertion_counts),
-    0,
-    [](uint64_t value, const std::map<int, int>::value_type& p) {
-      return value + p.second;
-    }
-  );
+  const uint64_t total_insertions = std::accumulate(std::begin(stats.region_way_insertion_counts), std::end(stats.region_way_insertion_counts), 0,
+                                                    [](uint64_t value, const std::map<int, int>::value_type& p) { return value + p.second; });
   for (auto [way, count] : stats.region_way_insertion_counts) {
-    fmt::print(stream, "{}\t{:.4f}\n", way, 100.0*std::ceil(count)/std::ceil(total_insertions));
+    fmt::print(stream, "{}\t{:.4f}\n", way, 100.0 * std::ceil(count) / std::ceil(total_insertions));
   }
 
   fmt::print(stream, "BRANCH_MPKI: {:.3g}\n\n", total_mpki);

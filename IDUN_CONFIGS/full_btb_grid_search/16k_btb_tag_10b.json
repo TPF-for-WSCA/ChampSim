@@ -39,7 +39,7 @@
       "dispatch_latency": 1,
       "schedule_latency": 1,
       "execute_latency": 1,
-      "branch_predictor": "hashed_perceptron",
+      "branch_predictor": "tage_scl",
       "btb": "xbtbx",
       "btb_ways": 9,
       "btb_non_indirect": 9,
@@ -94,7 +94,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "next_line"
+    "prefetcher": "ipcp"
   },
   "L2C": {
     "sets": 2048,
@@ -109,7 +109,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "next_line"
+    "prefetcher": "pythia"
   },
   "ITLB": {
     "sets": 32,
@@ -175,7 +175,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "next_line",
+    "prefetcher": "sms",
     "replacement": "lru"
   },
   "physical_memory": {

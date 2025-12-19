@@ -3,7 +3,7 @@
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
-  "heartbeat_frequency": 10000,
+  "heartbeat_frequency": 10000000,
   "num_cores": 1,
   "CFLAGS": [
     "-Wall -Wno-reorder -g -O3 -flto=auto -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
@@ -101,7 +101,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "ipcp"
+    "prefetcher": "next_line"
   },
   "L2C": {
     "sets": 2048,
@@ -116,7 +116,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "pythia"
+    "prefetcher": "next_line"
   },
   "ITLB": {
     "sets": 32,
@@ -182,7 +182,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "sms",
+    "prefetcher": "next_line",
     "replacement": "lru"
   },
   "physical_memory": {

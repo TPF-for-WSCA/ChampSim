@@ -78,7 +78,7 @@ auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<m
                fill_mshr.translation_level, fill_mshr.event_cycle, current_cycle);
   }
 
-  channel_type::stats_type* null;
+  channel_type::stats_type* null = NULL;
   const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
   pscl.at(pscl_idx).fill({fill_mshr.v_address, fill_mshr.data, fill_mshr.translation_level - 1}, null);
 
