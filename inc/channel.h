@@ -22,6 +22,7 @@
 #include <deque>
 #include <functional>
 #include <limits>
+#include <map>
 #include <vector>
 
 #include <string_view>
@@ -58,6 +59,7 @@ struct cache_queue_stats {
   uint64_t WQ_FULL = 0;
   uint64_t WQ_TO_CACHE = 0;
   uint64_t WQ_FORWARD = 0;
+  std::map<uint64_t, uint64_t> region_way_insertion_counts = {};
 };
 
 class channel
