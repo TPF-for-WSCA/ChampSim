@@ -409,7 +409,7 @@ long O3_CPU::check_dib()
 
   std::for_each(wrongpath_window_begin, wrongpath_window_end, [this](auto& ifetch_entry) { this->do_check_dib(ifetch_entry); });
 
-  return std::distance(wrongpath_window_begin, wrongpath_window_end) + ( FETCH_WIDTH-dec_cnt );
+  return (FETCH_WIDTH - dec_cnt);
 }
 
 void O3_CPU::do_check_dib(ooo_model_instr& instr)
@@ -430,6 +430,7 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
   instr.dib_checked = COMPLETED;
 }
 
+// TODO: we are only fetching wrong path every other cycle (I think that is on purpose, as otherwise we make too fast progress on wrongpath in case we do not encounter branches anymore)
 long O3_CPU::fetch_instruction()
 {
   long progress{0};
@@ -473,7 +474,6 @@ long O3_CPU::fetch_instruction()
       auto success = do_fetch_instruction(l1i_req_begin_wp, l1i_req_end_wp);
       if (success) {
         std::for_each(l1i_req_begin_wp, l1i_req_end_wp, [](auto& x) { x.fetched = INFLIGHT; });
-        ++progress;
       }
 
       l1i_req_begin_wp = std::find_if(l1i_req_end_wp, std::end(IFETCH_BUFFER_WRONGPATH), fetch_ready);
@@ -869,7 +869,8 @@ long O3_CPU::handle_memory_return()
       if ((fetched.ip >> LOG2_BLOCK_SIZE) == (l1i_entry.v_address >> LOG2_BLOCK_SIZE) && fetched.fetched != 0) {
         fetched.fetched = COMPLETED;
         --l1i_bw;
-        ++progress;
+        if (!fetched.wrongpath)
+          ++progress;
 
         if constexpr (champsim::debug_print) {
           fmt::print("[IFETCH] {} instr_id: {} fetch completed\n", __func__, fetched.instr_id);
@@ -882,7 +883,6 @@ long O3_CPU::handle_memory_return()
     // remove this entry if we have serviced all of its instructions
     if (l1i_entry.instr_depend_on_me.empty()) {
       L1I_bus.lower_level->returned.pop_front();
-      ++progress;
     }
   }
 

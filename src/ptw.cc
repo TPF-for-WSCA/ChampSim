@@ -25,6 +25,7 @@
 #include "util/span.h"
 #include "vmem.h"
 #include <fmt/core.h>
+extern bool wrongpath;
 
 PageTableWalker::PageTableWalker(Builder b)
     : champsim::operable(b.m_freq_scale), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name), MSHR_SIZE(b.m_mshr_size), MAX_READ(b.m_max_tag_check),
@@ -156,6 +157,8 @@ long PageTableWalker::operate()
   }
 
   MSHR.insert(std::cend(MSHR), std::begin(next_steps), std::end(next_steps));
+  if (wrongpath)
+    return 0;
   return progress;
 }
 

@@ -29,7 +29,9 @@
 #include <fmt/chrono.h>
 #include <fmt/core.h>
 
-constexpr int DEADLOCK_CYCLE{1000};
+bool wrongpath = false;
+
+constexpr int DEADLOCK_CYCLE{1000000};
 
 auto start_time = std::chrono::steady_clock::now();
 
@@ -60,7 +62,7 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
       progress += op._operate();
     }
 
-    if (progress == 0) {
+    if (progress == 0 || wrongpath) {
       ++stalled_cycle;
     } else {
       stalled_cycle = 0;

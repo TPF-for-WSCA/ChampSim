@@ -30,6 +30,7 @@
 #include "util/span.h"
 #include <fmt/core.h>
 #include <fmt/ranges.h>
+extern bool wrongpath;
 
 CACHE::tag_lookup_type::tag_lookup_type(request_type req, bool local_pref, bool skip)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
@@ -428,6 +429,8 @@ long CACHE::operate()
                channels_bandwidth_consumed, pq_bandwidth_consumed, tag_bw);
   }
 
+  if (wrongpath)
+    return 0;
   return progress;
 }
 

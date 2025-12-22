@@ -50,6 +50,8 @@ constexpr uint64_t pow2(uint8_t exp)
   }
   return result;
 }
+
+extern bool wrongpath;
 namespace
 {
 
@@ -78,7 +80,6 @@ std::vector<uint8_t> btb_addressing_hash;
 std::array<std::set<uint64_t>, 64> observed_entries_per_region_size = {};
 
 bool INSERT_FILTER_VICTIMS = false;
-bool wrongpath = false;
 std::size_t USE_REGIONALIZED_BTB_OFFSET = 0;
 std::size_t _INDEX_MASK = 0;
 std::size_t _FILTER_INDEX_MASK = 0;
