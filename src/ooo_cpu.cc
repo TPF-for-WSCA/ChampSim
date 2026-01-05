@@ -85,7 +85,7 @@ long O3_CPU::operate()
   }
 
   // heartbeat
-  if (show_heartbeat && current_cycle >= next_print_inst_cycle) {
+  if (false && show_heartbeat && current_cycle >= next_print_inst_cycle) {
     fmt::print("HEARTBEET : cycles: {} last_instr: {} oldest_instr: {} read: {} wp_read: {} fetched_cnt: {} dib: {} promoted: {} decoded: {} dispatched: {} "
                "executed: {} retired: {}\n",
                current_cycle, IFETCH_BUFFER.back().instr_id, IFETCH_BUFFER.front().instr_id, _read, _wp_read, _fetched_cnt, _dib, _promoted, _decoded, _dispatched,
