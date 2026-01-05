@@ -38,6 +38,8 @@
 
 uint64_t invalid_replacements = 0;
 
+extern bool wrongpath;
+
 constexpr uint64_t pow2(uint8_t exp)
 {
   assert(exp <= 64);
@@ -74,7 +76,6 @@ std::vector<uint8_t> btb_addressing_hash;
 std::array<std::set<uint64_t>, 64> observed_entries_per_region_size = {};
 
 bool INSERT_FILTER_VICTIMS = false;
-bool wrongpath = false;
 std::size_t USE_REGIONALIZED_BTB_OFFSET = 0;
 std::size_t _INDEX_MASK = 0;
 std::size_t _FILTER_INDEX_MASK = 0;
@@ -976,7 +977,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
     std::map<uint64_t, uint64_t> region_count_sample;
     std::set<uint64_t> combined_set;
-    for (auto const [way, set] : regions_per_way) {
+    for (auto const& [way, set] : regions_per_way) {
       region_count_sample[way] = set.size();
       combined_set.insert(set.begin(), set.end());
     }

@@ -31,6 +31,8 @@
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 
+extern bool wrongpath;
+
 CACHE::tag_lookup_type::tag_lookup_type(request_type req, bool local_pref, bool skip)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
       type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me)
@@ -427,6 +429,8 @@ long CACHE::operate()
                NAME, __func__, current_cycle, tag_bw_consumed, std::size(inflight_tag_check), stash_bandwidth_consumed, std::size(translation_stash),
                channels_bandwidth_consumed, pq_bandwidth_consumed, tag_bw);
   }
+  if (wrongpath)
+    return 0;
 
   return progress;
 }

@@ -3,19 +3,19 @@
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
-  "heartbeat_frequency": 10000000,
+  "heartbeat_frequency": 100000,
   "num_cores": 1,
   "CFLAGS": [
-    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
   ],
   "CXXFLAGS": [
-    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
   ],
   "LDLIBS": [
-    "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -fsanitize=undefined  -lboost_filesystem"
+    "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem"
   ],
   "LDFLAGS": [
-    "-L/cluster/home/romankb/workspace/xed/kits/xed-install-base-2023-01-27-lin-x86-64/lib -fsanitize=bounds -fsanitize=address -fsanitize=undefined"
+    "-L/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
   ],
   "ooo_cpu": [
     {
@@ -33,11 +33,11 @@
       "lq_width": 2,
       "sq_width": 2,
       "retire_width": 8,
-      "mispredict_penalty": 1,
+      "mispredict_penalty": 4,
       "scheduler_size": 205,
-      "decode_latency": 4,
-      "dispatch_latency": 3,
-      "schedule_latency": 2,
+      "decode_latency": 2,
+      "dispatch_latency": 1,
+      "schedule_latency": 1,
       "execute_latency": 1,
       "branch_predictor": "tage_scl",
       "btb": "xbtbx",
@@ -56,13 +56,13 @@
         25,
         64
       ],
-      "btb_tag_size": 0,
-      "btb_tag_regions": 768,
-      "btb_tag_region_size": 14,
-      "btb_tag_region_ways": 12,
+      "btb_tag_size": 16,
+      "btb_tag_regions": 0,
+      "btb_tag_region_size": 0,
+      "btb_tag_region_ways": 0,
       "btb_perfect_mapping": 1,
-      "btb_invalidate_entry": 0,
-      "btb_invalidate_region": 1,
+      "btb_invalidate_entry": 1,
+      "btb_invalidate_region": 0,
       "align_bits": 5
     }
   ],
@@ -78,8 +78,7 @@
     "wq_size": 64,
     "pq_size": 32,
     "mshr_size": 8,
-    "hit_latency": 4,
-    "fill_latency": 3,
+    "latency": 4,
     "max_tag_check": 2,
     "max_fill": 2,
     "prefetch_as_load": false,
@@ -94,8 +93,7 @@
     "wq_size": 64,
     "pq_size": 8,
     "mshr_size": 16,
-    "hit_latency": 5,
-    "fill_latency": 4,
+    "latency": 5,
     "max_tag_check": 2,
     "max_fill": 3,
     "prefetch_as_load": false,
@@ -110,8 +108,7 @@
     "wq_size": 32,
     "pq_size": 16,
     "mshr_size": 32,
-    "hit_latency": 12,
-    "fill_latency": 8,
+    "latency": 12,
     "max_tag_check": 1,
     "max_fill": 1,
     "prefetch_as_load": false,
@@ -177,8 +174,7 @@
     "wq_size": 32,
     "pq_size": 32,
     "mshr_size": 64,
-    "hit_latency": 20,
-    "fill_latency": 15,
+    "latency": 20,
     "max_tag_check": 1,
     "max_fill": 1,
     "prefetch_as_load": false,

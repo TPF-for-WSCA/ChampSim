@@ -26,6 +26,8 @@
 #include "util/span.h"
 #include <fmt/core.h>
 
+extern bool wrongpath;
+
 uint64_t cycles(double time, int io_freq)
 {
   std::fesetround(FE_UPWARD);
@@ -179,6 +181,9 @@ long MEMORY_CONTROLLER::operate()
       }
     }
   }
+
+  if (wrongpath)
+    return 0;
 
   return progress;
 }
