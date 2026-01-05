@@ -26,10 +26,10 @@ count=20
 #binaries=("champsim32k_base_btb" "champsim32k_base_btbx" "champsim32k_hash_btbx" "champsim32k_perfect_l1i" "champsim32k_perfect_btb")
 # binary_dir=("btb_region_tag" "btb_4k_region_tag_split_exp" "btb_512_region_tag_exp" "btb_256_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp")
 
-suffix="with_data_prefetcher"
-binary_dir=("equiperformance") # "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
-count=1
-timelimit="4:00:00"
+suffix="large_scale"
+binary_dir=("entry_invalidation_no_branch") # "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
+count=0
+timelimit="8:00:00"
 warmup=50000000
 simulation=50000000
 #binary_dir=("size_sensitivity")
@@ -49,7 +49,7 @@ do
         # SPECCPU / DPC-3 Benchmarks # Deactivated for now - most have little impact, biggest impact however also here
         srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=${mem_per_cpu} -n1 -c${max_core_count} -t$timelimit -o /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --intel --traces_directory /cluster/work/romankb/dataset/dpc3                       --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}/dpc3/sizes_$(basename ${bin})/           &>> /cluster/work/romankb/pyrunner_latency_fixed_dpc3_$(basename ${bin}).log &
         # CVP-1
-        srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=${mem_per_cpu} -n1 -c${max_core_count} -t$timelimit -o /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --traces_directory /cluster/work/romankb/dataset/CVP1public                       --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}/cvp1/sizes_$(basename ${bin})/           &>> /cluster/work/romankb/pyrunner_latency_fixed_cvp1_$(basename ${bin}).log &
+        srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=${mem_per_cpu} -n1 -c${max_core_count} -t$timelimit -o /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --traces_directory /cluster/work/romankb/dataset/cvp1_secret/srv_part1 --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}/cvp1_secret/sizes_$(basename ${bin})/           &>> /cluster/work/romankb/pyrunner_latency_fixed_cvp1_$(basename ${bin}).log &
         # LLBP Benchmarks --intel
         srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=20G -n1 -c8 -t$timelimit -o /cluster/work/romankb/latency-server-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-server-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --intel --traces_directory /cluster/work/romankb/dataset/LLBP                       --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}_${suffix}/LLBP/sizes_$(basename ${bin})/           &>> /cluster/work/romankb/pyrunner_latency_fixed_llbp_$(basename ${bin}).log &
         # Google Traces / No performance benchmark as no dependency information --intel

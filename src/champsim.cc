@@ -56,17 +56,21 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
 
     // Operate
     long progress{0};
-    for (champsim::operable& op : operables) {
-      progress += op._operate();
+    try
+    {
+      for (champsim::operable& op : operables) {
+        progress += op._operate();
+      }
+      if (progress == 0) {
+        ++stalled_cycle;
+      } else {
+        stalled_cycle = 0;
+      }
+      if (stalled_cycle >= DEADLOCK_CYCLE)
+        throw deadlock{0};
     }
-
-    if (progress == 0) {
-      ++stalled_cycle;
-    } else {
-      stalled_cycle = 0;
-    }
-
-    if (stalled_cycle >= DEADLOCK_CYCLE) {
+    catch(const champsim::deadlock& e)
+    {
       std::for_each(std::begin(operables), std::end(operables), [](champsim::operable& c) { c.print_deadlock(); });
       abort();
     }

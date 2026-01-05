@@ -38,6 +38,7 @@ bool fetch_stall = false;
 uint64_t prev_branch_lookup_ip = 0;
 ooo_model_instr prev_instr = {0, input_instr()};
 uint64_t wrongpath_id = 0;
+int no_fetch = 0;
 
 uint64_t read = 0;
 uint64_t wp_read = 0;
@@ -152,7 +153,11 @@ void O3_CPU::initialize_instruction()
 {
   auto instrs_to_read_this_cycle = std::min(FETCH_WIDTH, static_cast<long>(IFETCH_BUFFER_SIZE - std::size(IFETCH_BUFFER)));
 
+  if (instrs_to_read_this_cycle == 0 && no_fetch++ == 1000000) {
+    throw champsim::deadlock{this->cpu};
+  }
   while (instrs_to_read_this_cycle > 0 && !std::empty(input_queue)) {
+    no_fetch = 0;
     instrs_to_read_this_cycle--;
     bool stop_fetch = false;
     if (!fetch_stall)
