@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <fstream>
 #include <numeric>
+#include <signal.h>
 #include <string>
 #include <vector>
 
@@ -35,11 +36,25 @@ namespace champsim
 std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces);
 }
 
+void handler(int nSignum, siginfo_t* si, void* vcontext) {
+  std::cout << "Segmentation fault" << std::endl;
+  
+  ucontext_t* context = (ucontext_t*)vcontext;
+  context->uc_mcontext.gregs[REG_RIP]++;
+  exit(-1);
+}
+
 int main(int argc, char** argv)
 {
   champsim::configured::generated_environment gen_environment{};
 
   CLI::App app{"A microarchitecture simulator for research and education"};
+
+  struct sigaction action;
+  memset(&action, 0, sizeof(struct sigaction));
+  action.sa_flags = SA_SIGINFO;
+  action.sa_sigaction = handler;
+  sigaction(SIGSEGV, &action, NULL);
 
   bool knob_cloudsuite{false};
   uint64_t warmup_instructions = 0;

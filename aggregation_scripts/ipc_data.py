@@ -50,6 +50,19 @@ type = STATS.IPC
 
 buffer = False
 
+def extract_deadlock(path):
+    logs=[]
+    with open(path) as f:
+        logs = f.readlines()
+    logs.reverse()
+    reg = re.compile(r"DEADLOCK! CPU.*")
+    for line in logs:
+        match = reg.search(line)
+        if match:
+            print(f"Deadlock detected for {path}. Ignoring")
+            return True
+            # return int(match.groups()[0]) / int(match.groups()[1])
+    return False
 
 def extract_aliasing_relative_squash_cycles(path):
     logs=[]
@@ -635,6 +648,8 @@ def single_run(path):
             continue
         for logfile in os.listdir(f"{path}/{workload}"):
             if not ".txt" in logfile or logfile.startswith("."):
+                continue
+            if extract_deadlock(f"{path}/{workload}/{logfile}"):
                 continue
             if type == STATS.MPKI:
                 stat_by_workload[workload] = extract_l1i_mpki(
