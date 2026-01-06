@@ -2,10 +2,7 @@
 #include "ooo_cpu.h"
 #include "tage_scl.h"
 
-LLBP::TSCLConfig config {
-  .tageConfig = LLBP::Tage8kConfig,
-  .LogL = 3
-};
+LLBP::TSCLConfig config = LLBP::TSCL64kCfgDefault;
 LLBP::TageSCL predictor(config);
 
 void O3_CPU::initialize_branch_predictor() {}

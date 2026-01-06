@@ -39,7 +39,7 @@
       "dispatch_latency": 1,
       "schedule_latency": 1,
       "execute_latency": 1,
-      "branch_predictor": "hashed_perceptron",
+      "branch_predictor": "tage_scl",
       "btb": "xbtbx",
       "btb_ways": 18,
       "btb_non_indirect": 18,
