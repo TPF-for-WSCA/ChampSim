@@ -312,7 +312,7 @@ public:
     auto new_val = *hit;
     new_val.data.useless = false;
     new_val.data.replacement_protected = false;
-    std::exchange(*hit, new_val).data;
+    std::exchange(*hit, new_val);
   }
 
   uint64_t invalidate_region(const value_type& elem, bool perform_invalidation)
