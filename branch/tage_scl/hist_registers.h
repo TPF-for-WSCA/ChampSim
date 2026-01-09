@@ -364,7 +364,7 @@ class Gentry  // TAGE global table entry
 {
     public:
     int8_t ctr;
-    uint tag;
+    std::bitset<272> tag;
     int8_t u;
     int correct;
     int incorrect;

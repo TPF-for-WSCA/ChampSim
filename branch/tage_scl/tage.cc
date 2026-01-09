@@ -54,6 +54,12 @@ TageBase::TageBase(TageConfig cfg)
   assert(Tbits > 0);
   assert(nhist <= MAXNHIST);
 
+  MASK = std::bitset<272>(0xFFFFFFFFFFFFFFFF);
+  for (int i = 0; i < 3; i++) {
+    MASK <<= 64;
+    MASK |= 0xFFFFFFFFFFFFFFFF;
+  }
+
   cfg.print();
 
   // initialize the predictor
@@ -259,14 +265,20 @@ int TageBase::gindex(unsigned int PC, int bank)
 
 
 //  tag computation
-uint16_t TageBase::gtag(unsigned int PC, int bank)
+std::pair<std::bitset<272>, uint16_t> TageBase::gtag(unsigned int PC, int bank)
 {
 
   int tag = 0;
   tag = PC;
   tag ^= tag1FHist[bank]->value ^ (tag2FHist[bank]->value << 1);
+  uint16_t lower_bits =  ((tag & ((1 << (TB[bank])) - 1)) & 0xFF);
+  uint16_t upper_bits =  ((tag & ((1 << (TB[bank])) - 1)) & 0xF00); 
+  upper_bits = (upper_bits >> 8) + ((upper_bits) ? 256 : 0);
+  std::bitset<272> result;
+  result.flip(lower_bits);
+  result.flip(upper_bits);
 
-  return 1 << ((uint8_t)(tag & ((1 << (TB[bank])) - 1)));
+  return std::make_pair(result, upper_bits | lower_bits);
   // return (tag & ((1 << (TB[bank])) - 1));
 }
 
@@ -310,9 +322,13 @@ void TageBase::calcIndicesAndTags(uint64_t PC)
   // 1. Compute indices and tags
   for (int i = 1; i <= nhist; i += 2) {
     GI[i] = gindex(PC, i);
-    GTAG[i] = gtag(PC, i);
-    GTAG[i + 1] = GTAG[i];
-    GI[i + 1] = GI[i] ^ (GTAG[i] & ((1 << LogG) - 1));
+    auto rv  = gtag(PC, i);
+    GTAG[i] |= std::get<0>(rv); 
+    auto tag = std::get<1>(rv); 
+    GTAG[i + 1] |= GTAG[i];
+    ENTRY_GTAG[i] = std::get<0>(rv);
+    ENTRY_GTAG[i+1] = ENTRY_GTAG[i];
+    GI[i + 1] = GI[i] ^ (tag & ((1 << LogG) - 1));
   }
 
   int T = (PC ^ (phist & ((1 << m[born]) - 1))) % nbankhigh;
@@ -352,7 +368,7 @@ void TageBase::tagePredict(uint64_t PC)
   // Look for the bank with longest matching history
   for (int i = nhist; i > 0; i--) {
     if (NOSKIP[i]) {
-      if (gtable[i][GI[i]].tag == GTAG[i]) {
+      if (tagComp(gtable[i][GI[i]].tag, GTAG[i], i)) {
 
         HitBank = i;
         HitEntry = &gtable[i][GI[i]];
@@ -364,7 +380,7 @@ void TageBase::tagePredict(uint64_t PC)
   // Look for the alternate bank
   for (int i = HitBank - 1; i > 0; i--) {
     if (NOSKIP[i]) {
-      if (gtable[i][GI[i]].tag == GTAG[i]) {
+      if (tagComp(gtable[i][GI[i]].tag, GTAG[i], i)) {
 
         AltBank = i;
         AltEntry = &gtable[i][GI[i]];
@@ -635,7 +651,7 @@ int TageBase::allocate(int idx, uint64_t pc, bool taken)
 
   DPRINTIF(COND, "Alloc:%i,GI:%i,GT:%i\n", idx, GI[idx], GTAG[idx]);
 
-  entry.tag = GTAG[idx];
+  entry.tag = ENTRY_GTAG[idx];
   entry.pc = pc;
   entry.hlen = idx;
   entry.idx = GI[idx];

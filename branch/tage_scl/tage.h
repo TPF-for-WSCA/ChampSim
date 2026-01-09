@@ -148,7 +148,9 @@ protected:
 
   int GI[MAXNHIST]; // indexes to the different tables are computed only once
 
-  uint GTAG[MAXNHIST]; // tags for the different tables are computed only once
+  std::bitset<272> GTAG[MAXNHIST]; // tags for the different tables are computed only once
+  std::bitset<272> ENTRY_GTAG[MAXNHIST];
+  std::bitset<272> MASK;
   bool pred_taken;     // prediction
   bool alttaken;       // alternate  TAGEprediction
   bool tage_pred;      // TAGE prediction
@@ -180,6 +182,18 @@ protected:
   // Can be overridden by derived classes
   virtual bool basePredict(const uint64_t pc);
   virtual void baseUpdate(uint64_t pc, bool resolveDir, bool predDir);
+  virtual bool tagComp(std::bitset<272>& _tag, std::bitset<272>& _GTAG, size_t idx)
+  {
+    auto compTag = _tag & _GTAG;
+
+    if (TB[idx] == Tbits) {
+      compTag &= MASK;
+      return compTag.any();
+    }
+    compTag &= MASK.flip();
+    MASK.flip(); // flip happens in-place, so we need to flip it back
+    return compTag.any();
+  };
 
   int BI; // index of the bimodal table
   int8_t BIM;
@@ -194,7 +208,7 @@ protected:
   int gindex(unsigned int PC, int bank);
 
   //  tag computation
-  uint16_t gtag(unsigned int PC, int bank);
+  std::pair<std::bitset<272>, uint16_t> gtag(unsigned int PC, int bank);
 
   // Calculate indices and tags for the TAGE predictor
   void calcIndicesAndTags(uint64_t pc);
@@ -236,7 +250,9 @@ protected:
 
   virtual bool isAllias(uint64_t pc, int bank);
 
-  virtual void evict(Gentry& entry, int idx) {};
+  virtual void evict(Gentry& entry, int idx) {
+    GTAG[idx] &= ~entry.tag;
+  };
 
   // Disable bank interleaving.
   const bool disableInterleaving;
