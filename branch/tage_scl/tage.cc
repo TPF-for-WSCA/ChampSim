@@ -265,9 +265,7 @@ uint16_t TageBase::gtag(unsigned int PC, int bank)
   int tag = 0;
   tag = PC;
   tag ^= tag1FHist[bank]->value ^ (tag2FHist[bank]->value << 1);
-
-  return 1 << ((uint8_t)(tag & ((1 << (TB[bank])) - 1)));
-  // return (tag & ((1 << (TB[bank])) - 1));
+  return (tag & ((1 << (TB[bank])) - 1));
 }
 
 // just a simple pseudo random number generator: use available information
