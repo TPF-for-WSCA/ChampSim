@@ -6,7 +6,7 @@
 # build_dir=("btb_1k_region_tag_exp" "btb_4k_region_tag_exp")
 # build_dir=("btb_4k_region_tag_set_associative_set_idx")
 # build_dir=("small_set_configurations")
-build_dir=("equiperformance_configs")
+build_dir=("mpki_study")
 
 old_dir=$(pwd)
 cd /cluster/projects/nn4650k/workspace/ChampSim/
