@@ -3,13 +3,13 @@
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
-  "heartbeat_frequency": 100000,
+  "heartbeat_frequency": 10000000,
   "num_cores": 1,
   "CFLAGS": [
-    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
+    "-Wall -Wno-reorder -ggdb -O3 -flto=8 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
   ],
   "CXXFLAGS": [
-    "-Wall -Wno-reorder -g -O3 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
+    "-Wall -Wno-reorder -ggdb -O3 -flto=8 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
   ],
   "LDLIBS": [
     "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem"
@@ -33,11 +33,11 @@
       "lq_width": 2,
       "sq_width": 2,
       "retire_width": 8,
-      "mispredict_penalty": 4,
+      "mispredict_penalty": 1,
       "scheduler_size": 205,
-      "decode_latency": 2,
-      "dispatch_latency": 1,
-      "schedule_latency": 1,
+      "decode_latency": 4,
+      "dispatch_latency": 3,
+      "schedule_latency": 2,
       "execute_latency": 1,
       "branch_predictor": "tage_scl",
       "btb": "xbtbx",
@@ -45,8 +45,8 @@
       "btb_non_indirect": 9,
       "btb_sets": 1024,
       "btb_clipped_tag": 1,
-      "btb_big_way_regions_enabled": 0,
-      "btb_small_way_regions_enabled": 0,
+      "btb_big_way_regions_enabled": 1,
+      "btb_small_way_regions_enabled": 1,
       "btb_target_sizes": [
         0,
         4,
@@ -58,11 +58,11 @@
         25,
         64
       ],
-      "btb_tag_size": 15,
-      "btb_tag_regions": 0,
-      "btb_tag_region_size": 0,
-      "btb_tag_region_ways": 0,
-      "btb_perfect_mapping": 0,
+      "btb_tag_size": 0,
+      "btb_tag_regions": 8192,
+      "btb_tag_region_size": 64,
+      "btb_tag_region_ways": 8192,
+      "btb_perfect_mapping": 1,
       "btb_invalidate_entry": 0,
       "btb_invalidate_region": 0,
       "align_bits": 5

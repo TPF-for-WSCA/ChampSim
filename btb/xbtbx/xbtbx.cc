@@ -9,12 +9,12 @@
 #include <algorithm>
 #include <bitset>
 #include <cmath>
+#include <csignal>
 #include <deque>
 #include <iostream>
 #include <map>
 #include <numeric>
 #include <set>
-#include <csignal>
 
 #include "ooo_cpu.h"
 // We are only using those in the preprocessor
@@ -271,7 +271,7 @@ struct region_btb_entry_t {
   }
   auto tag() const
   {
-    // TODO: calculate region tag    
+    // TODO: calculate region tag
     auto ip = shuffle_ip_tag(ip_tag);
     if (ITLB_CACHE) {
       return (ip >> PAGE_LOG_SIZE);
@@ -316,10 +316,8 @@ void O3_CPU::initialize_btb()
     _isa_shiftamount = 0;
   }
   std::cout << "BTB INITIALIZED WITH"
-            << "\n\tFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == BTB_TAG_REGIONS)
-            << "\n\tPERFECT MAPPING: " << btb_perfect_mapping
-            << "\n\tFILTER BTB: " << REGION_BTB_FILTER_ENABLED 
-            << "\n\tEAGERLY EVICT ON REGION REPLACEMENT: " << EAGERLY_EVICT_ON_REGION_REMOVAL << std::endl;
+            << "\n\tFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == BTB_TAG_REGIONS) << "\n\tPERFECT MAPPING: " << btb_perfect_mapping
+            << "\n\tFILTER BTB: " << REGION_BTB_FILTER_ENABLED << "\n\tEAGERLY EVICT ON REGION REPLACEMENT: " << EAGERLY_EVICT_ON_REGION_REMOVAL << std::endl;
 #if USE_SRRIP
   ::BTB.insert({this, champsim::msl::srrip_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
 #else
@@ -406,7 +404,6 @@ void O3_CPU::initialize_btb()
   }
 }
 
-// __attribute__((optimize(0)))
 std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   // TODO: add if condition with breaking condition
@@ -477,22 +474,23 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
   if (!btb_entry.has_value()) {
-    if (!warmup){
+    if (!warmup) {
       auto hit = std::find_if(::BTB.at(this).begin(), ::BTB.at(this).end(), [ip](const auto& x) { return x.data.ip_tag == ip && x.last_used; });
       if (hit != ::BTB.at(this).end()) {
-        // return {hit->data.get_prediction(), hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL}; // TODO: Revert back to miss for non=magical experiments
+        // return {hit->data.get_prediction(), hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL}; // TODO: Revert back to miss for non=magical
+        // experiments
         return {0, hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL, hit->data.precise_branch_type};
       }
     }
     return {0, 0, false, 0};
   }
 
-  if(btb_entry->useless && ip == btb_entry->ip_tag) {
+  if (btb_entry->useless && ip == btb_entry->ip_tag) {
     sim_stats.btb_eager_invalidation_miss++;
     ::BTB.at(this).validate_entry(btb_entry.value());
   }
 
-  auto lras =  (!wrongpath) ? &RAS :  & WRONGPATH_BACKUP_RAS;
+  auto lras = (!wrongpath) ? &RAS : &WRONGPATH_BACKUP_RAS;
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this]))
       return {0, 0, true, BRANCH_RETURN};
@@ -519,7 +517,6 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
   return {prediction, (prediction) ? btb_entry->ip_tag : 0, btb_entry->type != ::branch_info::CONDITIONAL, btb_entry->precise_branch_type};
 }
 
-// __attribute__((optimize(0)))
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
   uint64_t new_region = get_region(ip);
@@ -629,9 +626,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       } else if (!branch_target) {
         branch_target = filter_hit.value().target; // This ensures we are not removing the target from a not taken branch
       }
-      auto replaced = ::REGION_FILTER_BTB.at(this).fill(
-          {ip, branch_target, type, {0, 0, new_region}}, &sim_stats); // TODO: add element, only if we cross threshold insert into region and add future branches there and
-                                                          // only when replaced from filter btb add to big btb
+      auto replaced = ::REGION_FILTER_BTB.at(this).fill({ip, branch_target, type, {0, 0, new_region}},
+                                                        &sim_stats); // TODO: add element, only if we cross threshold insert into region and add future branches
+                                                                     // there and only when replaced from filter btb add to big btb
       bool valid_replacement = replaced.has_value() && replaced.value().ip_tag && replaced.value().ip_tag != ip;
       if (valid_replacement) { // if iptag is 0 its an invalid(ated) entry
         uint64_t old_region = get_region(replaced.value().ip_tag);
@@ -734,7 +731,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         replaced = ::REGION_BTB.at(this).fill(elem, &sim_stats);
         if (replaced.has_value() && replaced.value().ip_tag) {
           auto rtag = replaced.value().tag();
-          sim_stats.btb_eager_invalidations += ::BTB.at(this).invalidate_region({0,0,branch_info::ALWAYS_TAKEN, {rtag, rtag, rtag}}, btb_invalidate_region);
+          sim_stats.btb_eager_invalidations += ::BTB.at(this).invalidate_region({0, 0, branch_info::ALWAYS_TAKEN, {rtag, rtag, rtag}}, btb_invalidate_region);
         }
         sim_stats.branch_tag_set.insert(elem.tag());
         insert = true;
@@ -750,7 +747,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       replaced = ::REGION_BTB.at(this).fill(elem, &sim_stats);
       if (replaced.has_value() && replaced.value().ip_tag) {
         auto rtag = replaced.value().tag();
-        sim_stats.btb_eager_invalidations += ::BTB.at(this).invalidate_region({0,0,branch_info::ALWAYS_TAKEN, {rtag, rtag, rtag}}, btb_invalidate_region);
+        sim_stats.btb_eager_invalidations += ::BTB.at(this).invalidate_region({0, 0, branch_info::ALWAYS_TAKEN, {rtag, rtag, rtag}}, btb_invalidate_region);
 
         // TODO: instead of invalidate mark it as useless, check hits on useless unmark and count
       }
@@ -909,6 +906,18 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   if (!warmup && SAMPLING_DISTANCE < current_cycle - last_stats_cycle) {
     std::map<uint8_t, std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t>> stats_entry{};
     std::map<uint64_t, std::set<uint64_t>> regions_per_way;
+    uint64_t total_blocks_by_size[64] = {0};
+
+    for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
+      if (it->data.ip_tag && utilise_regions(it->data.target_size)) { // REGION_BTB.at(this).check_hit({it->data.ip_tag}) not used as we might have stale
+                                             // entries that were covered by regions = we want to know how many we would have needed
+        total_blocks_by_size[it->data.target_size]++;
+        regions_per_way[it->data.target_size].insert(get_region(it->data.ip_tag));
+
+        // auto region = (it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
+        // region_count_control[it->data.target_size][region]++;
+      }
+    }
     for (auto const& [size, region_count] : region_tag_entry_count) {
       if (sim_stats.max_regions < region_count.size()) {
         sim_stats.max_regions = std::count_if(region_count.begin(), region_count.end(), [](auto pair) { return pair.second; }); // TODO: Filter 0 entries
@@ -920,18 +929,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       // TODO: Track 90, 95, 99, 99.5% and add to queue whenever we sample
 
       // std::map<uint8_t, std::map<uint64_t, uint64_t>> region_count_control = {};
-      uint64_t total_blocks = 0;
-      for (auto it = BTB.at(this).begin(); it != BTB.at(this).end(); it++) {
-        if (it->data.ip_tag && utilise_regions(it->data.target_size)
-            && size == it->data.target_size) { // REGION_BTB.at(this).check_hit({it->data.ip_tag}) not used as we might have stale
-                                               // entries that were covered by regions = we want to know how many we would have needed
-          total_blocks++;
-          regions_per_way[size].insert(get_region(it->data.ip_tag));
-
-          // auto region = (it->data.ip_tag >> isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & _REGION_MASK;
-          // region_count_control[it->data.target_size][region]++;
-        }
-      }
       // TODO: Debug only, remove afterwards / comment out
       // for (auto const& [way_size, cnt_per_size] : region_count_control) {
       //   for (auto const& [region_size, cnt] : cnt_per_size) {
@@ -947,24 +944,21 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       //   }
       // }
 
-      // for (auto [tag, count] : sort_vec) {
-      //   total_blocks += count;
-      // }
 
       for (auto [tag, count] : sort_vec) {
         // assert(count <= total_blocks);
         min2ref += (count != 0);
         sum_count += count;
-        if (std::get<3>(stats_entry[size]) == 0 && sum_count > 0.995 * total_blocks) {
+        if (std::get<3>(stats_entry[size]) == 0 && sum_count > 0.995 * total_blocks_by_size[size]) {
           std::get<3>(stats_entry[size]) = min2ref;
         }
-        if (std::get<2>(stats_entry[size]) == 0 && sum_count > 0.99 * total_blocks) {
+        if (std::get<2>(stats_entry[size]) == 0 && sum_count > 0.99 * total_blocks_by_size[size]) {
           std::get<2>(stats_entry[size]) = min2ref;
         }
-        if (std::get<1>(stats_entry[size]) == 0 && sum_count > 0.95 * total_blocks) {
+        if (std::get<1>(stats_entry[size]) == 0 && sum_count > 0.95 * total_blocks_by_size[size]) {
           std::get<1>(stats_entry[size]) = min2ref;
         }
-        if (std::get<0>(stats_entry[size]) == 0 && sum_count > 0.9 * total_blocks) {
+        if (std::get<0>(stats_entry[size]) == 0 && sum_count > 0.9 * total_blocks_by_size[size]) {
           std::get<0>(stats_entry[size]) = min2ref;
         }
       }
