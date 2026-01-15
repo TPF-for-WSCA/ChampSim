@@ -6,10 +6,10 @@
   "heartbeat_frequency": 10000000,
   "num_cores": 1,
   "CFLAGS": [
-    "-Wall -Wno-reorder -ggdb -O3 -flto=8 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O0 -flto=8 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
   ],
   "CXXFLAGS": [
-    "-Wall -Wno-reorder -ggdb -O3 -flto=8 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
+    "-Wall -Wno-reorder -g -O0 -flto=8 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
   ],
   "LDLIBS": [
     "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem"
@@ -80,7 +80,7 @@
     "wq_size": 64,
     "pq_size": 32,
     "mshr_size": 8,
-    "latency": 4,
+    "hit_latency": 4,
     "max_tag_check": 2,
     "max_fill": 2,
     "prefetch_as_load": false,
@@ -95,13 +95,13 @@
     "wq_size": 64,
     "pq_size": 8,
     "mshr_size": 16,
-    "latency": 5,
+    "hit_latency": 5,
     "max_tag_check": 2,
     "max_fill": 3,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "ipcp"
+    "prefetcher": "next_line"
   },
   "L2C": {
     "sets": 2048,
@@ -110,13 +110,13 @@
     "wq_size": 32,
     "pq_size": 16,
     "mshr_size": 32,
-    "latency": 12,
+    "hit_latency": 12,
     "max_tag_check": 1,
     "max_fill": 1,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "pythia"
+    "prefetcher": "next_line"
   },
   "ITLB": {
     "sets": 32,
@@ -125,7 +125,7 @@
     "wq_size": 16,
     "pq_size": 0,
     "mshr_size": 8,
-    "latency": 1,
+    "hit_latency": 1,
     "max_tag_check": 2,
     "max_fill": 2,
     "prefetch_as_load": false
@@ -137,7 +137,7 @@
     "wq_size": 16,
     "pq_size": 0,
     "mshr_size": 8,
-    "latency": 1,
+    "hit_latency": 1,
     "max_tag_check": 2,
     "max_fill": 2,
     "prefetch_as_load": false
@@ -149,7 +149,7 @@
     "wq_size": 32,
     "pq_size": 0,
     "mshr_size": 16,
-    "latency": 8,
+    "hit_latency": 8,
     "max_tag_check": 1,
     "max_fill": 1,
     "prefetch_as_load": false
@@ -176,13 +176,13 @@
     "wq_size": 32,
     "pq_size": 32,
     "mshr_size": 64,
-    "latency": 20,
+    "hit_latency": 20,
     "max_tag_check": 1,
     "max_fill": 1,
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "sms",
+    "prefetcher": "next_line",
     "replacement": "lru"
   },
   "physical_memory": {

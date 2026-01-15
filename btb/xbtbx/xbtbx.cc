@@ -206,13 +206,18 @@ struct BTBEntry {
   // TODO: shift indexes and tags into place
   auto index() const
   {
-    auto ip = shuffle_ip_tag(ip_tag);
+    
+    auto ip = ip_tag;
+    if (!btb_addressing_hash.empty())
+      ip = shuffle_ip_tag(ip_tag);
     auto idx = (ip >> _isa_shiftamount) & _INDEX_MASK;
     return idx;
   }
   auto tag() const
   {
-    auto ip = shuffle_ip_tag(ip_tag);
+    auto ip = ip_tag;
+    if (!btb_addressing_hash.empty())
+      ip = shuffle_ip_tag(ip_tag);
     auto tag = ip >> _isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
@@ -234,7 +239,9 @@ struct BTBEntry {
 
   auto partial_tag() const
   {
-    auto ip = shuffle_ip_tag(ip_tag);
+    auto ip = ip_tag;
+    if (!btb_addressing_hash.empty())
+       ip = shuffle_ip_tag(ip_tag);
     uint64_t tag = ip >> _isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;

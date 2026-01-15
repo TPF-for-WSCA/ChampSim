@@ -8,6 +8,7 @@ from pathlib import Path
 import argparse
 import os
 import subprocess
+import psutil
 import sys
 
 executable = "/cluster/work/romankb/dynamorio/build/clients/bin64/drcachesim"
@@ -34,12 +35,7 @@ def run_experiment(
     output_dir,
     vcl_perfect_predictor=None,
 ):
-    import socket
-    srun_string = f"bash -c 'srun --account share-ie-idi -J num-collection-{executable.split('/',-1)[-1]}-{trace_file_path.split('/', -1)[-1]} --mail-user=romankb@ntnu.no --mail-type=FAIL -n1 -c1 --mem-per-cpu=20G -t01:00:00"
-    if not socket.gethostname().startswith('idun'):  # SAGA run
-        srun_string = f"bash -c 'srun --account nn4650k -J num-collection-{executable.split('/',-1)[-1]}-{trace_file_path.split('/', -1)[-1]} --mail-user=romankb@ntnu.no --mail-type=FAIL -n1 -c1 --mem-per-cpu=20G -t01:00:00"
     cmd = [
-        srun_string,
         executable,
         "--warmup_instructions",
         str(warmup_instructions),
@@ -62,27 +58,10 @@ def run_experiment(
     if args.trace_format == "p":
         cmd.append("--ptrace")
     cmd.extend([str(trace_file_path)])
-    cmd.extend("'")
     print(f"EXECUTE {' '.join(cmd)}", flush=True)
     os.makedirs(output_dir, exist_ok=True)
     success = True
-
-    config_file_name = path.split(trace_file_path)[1].split(".")[0]
-    err = open(path.join(output_dir, f"{config_file_name}_log.err"), mode="ab+")
-    with open(path.join(output_dir, f"{config_file_name}_log.txt"), mode="ab+") as f:
-        now = datetime.now()
-        datetimestring = now.strftime("%d.%m.%Y %H:%M")
-        f.write(
-            f"####################################################################################################\n#                                                                                                  #\n#                                                                                                  #\n#                                    NEW RUN - {datetimestring}                                    #\n#                                                                                                  #\n#                                                                                                  #\n####################################################################################################\n".encode()
-        )
-        err.write(            f"####################################################################################################\n#                                                                                                  #\n#                                                                                                  #\n#                                    NEW RUN - {datetimestring}                                    #\n#                                                                                                  #\n#                                                                                                  #\n####################################################################################################\n".encode())
-        f.write(b"==================== CMD ====================\n")
-        f.write(" ".join(cmd).encode())
-        f.write(b"\n==================== STDOUT ====================\n")
-        f.flush()
-        err.flush()
-        subprocess.Popen(" ".join(cmd), stdout=f, stderr=err, shell=True, start_new_session=True)
-    """
+    completed_experiment = subprocess.run(cmd, -1, capture_output=True, check=False)
     if completed_experiment.returncode != 0:
         print(
             f"WARNING: EXPERIMENT {' '.join(cmd)} returned non-zero code",
@@ -94,7 +73,16 @@ def run_experiment(
         print(f"Experiment {' '.join(cmd)} completed successfully\n", flush=True)
 
     config_file_name = path.split(trace_file_path)[1].split(".")[0]
-
+    with open(path.join(output_dir, f"{config_file_name}_log.txt"), mode="ab+") as f:
+        now = datetime.now()
+        datetimestring = now.strftime("%d.%m.%Y %H:%M")
+        f.write(
+            f"####################################################################################################\n#                                                                                                  #\n#                                                                                                  #\n#                                    NEW RUN - {datetimestring}                                    #\n#                                                                                                  #\n#                                                                                                  #\n####################################################################################################\n".encode()
+        )
+        f.write(b"==================== CMD ====================\n")
+        f.write(" ".join(cmd).encode())
+        f.write(b"\n==================== STDOUT ====================\n")
+        f.write(completed_experiment.stdout)
 
     # TODO: Filter Stderr if there are too many of the same message, only print the first n and then a line saying how many more there were of the same
     with open(path.join(output_dir, f"stderr_{config_file_name}.err"), mode="ab+") as f:
@@ -110,7 +98,6 @@ def run_experiment(
         f.flush()
     sys.stdout.flush()
     sys.stderr.flush()
-    """
     return success
 
 
@@ -142,9 +129,13 @@ def main(args):
         global executable
         executable = args.exec
 
-    # pool = Pool(processes=cpu_count())
-    # print(f"RUNNING POOL ON {cpu_count()}")
-    # pending_experiments = []
+
+    pid = os.getpid()
+    proc = psutil.Process(pid)
+
+    pool = Pool(processes=len(proc.cpu_affinity()))
+    print(f"RUNNING POOL ON {len(proc.cpu_affinity())}")
+    pending_experiments = []
 
     for trace in trace_files:
         trace_name = trace.split("/")[-1].rsplit(".", 1)[0]
@@ -153,9 +144,12 @@ def main(args):
         output_subdir = path.join(output_dir, trace_name)
         # TEST ONLY
         # run_experiment(trace, output_subdir)
+        if path.exists(output_subdir):
+            files = os.listdir(output_subdir)
+            if any(f.endswith('.txt') for f in files):
+                print(f"{output_subdir} already computed")
+                continue
         print(f"Run {trace_name} experiment", flush=True)
-        run_experiment(trace, output_subdir)
-        """
         pending_experiments.append(
             pool.apply_async(
                 run_experiment,
@@ -165,18 +159,18 @@ def main(args):
                 ],
             )
         )
-        """
 
     # To prevent subprocesses to be killed
-    # experiments = [experiment.get() for experiment in pending_experiments]
+    experiments = [experiment.get() for experiment in pending_experiments]
 
-    """
     for i in range(len(trace_files)):
         if experiments[i]:
             cprint(f"{trace_files[i]} finished successfully", Color.GREEN)
         else:
             cprint(f"{trace_files[i]} finished with errors", Color.RED)
-    """
+
+    pool.close()
+    pool.join()
 
 
 if __name__ == "__main__":
