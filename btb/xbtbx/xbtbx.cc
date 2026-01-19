@@ -149,7 +149,7 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
 
 auto get_region(uint64_t ip)
 {
-  ip = shuffle_ip_tag(ip);
+  // ip = shuffle_ip_tag(ip);
   if (ITLB_CACHE) {
     return (ip >> PAGE_LOG_SIZE);
   }
@@ -170,20 +170,23 @@ struct FilterBTBEntry {
   // TODO: shift indexes and tags into place
   auto index() const
   {
-    auto ip = shuffle_ip_tag(ip_tag);
+    // auto ip = shuffle_ip_tag(ip_tag);
+    auto ip = ip_tag;
     auto idx = (ip >> _isa_shiftamount) & _FILTER_INDEX_MASK;
     return idx;
   }
   auto tag() const
   {
-    auto ip = shuffle_ip_tag(ip_tag);
+    // auto ip = shuffle_ip_tag(ip_tag);
+    auto ip = ip_tag;
     auto tag = ip >> _isa_shiftamount >> _FILTER_BTB_SET_BITS;
     return tag;
   }
 
   auto partial_tag() const
   {
-    auto ip = shuffle_ip_tag(ip_tag);
+    // auto ip = shuffle_ip_tag(ip_tag);
+    auto ip = ip_tag;
     uint64_t tag = ip >> _isa_shiftamount >> _FILTER_BTB_SET_BITS;
     return tag;
   }
@@ -208,16 +211,16 @@ struct BTBEntry {
   {
     
     auto ip = ip_tag;
-    if (!btb_addressing_hash.empty())
-      ip = shuffle_ip_tag(ip_tag);
+    // if (!btb_addressing_hash.empty())
+    //   ip = shuffle_ip_tag(ip_tag);
     auto idx = (ip >> _isa_shiftamount) & _INDEX_MASK;
     return idx;
   }
   auto tag() const
   {
     auto ip = ip_tag;
-    if (!btb_addressing_hash.empty())
-      ip = shuffle_ip_tag(ip_tag);
+    // if (!btb_addressing_hash.empty())
+    //   ip = shuffle_ip_tag(ip_tag);
     auto tag = ip >> _isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
@@ -240,8 +243,8 @@ struct BTBEntry {
   auto partial_tag() const
   {
     auto ip = ip_tag;
-    if (!btb_addressing_hash.empty())
-       ip = shuffle_ip_tag(ip_tag);
+    // if (!btb_addressing_hash.empty())
+    //    ip = shuffle_ip_tag(ip_tag);
     uint64_t tag = ip >> _isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
@@ -271,15 +274,17 @@ struct region_btb_entry_t {
   bool replacement_protected = false;
   auto index() const
   {
-    auto ip = shuffle_ip_tag(ip_tag);
+    // auto ip = shuffle_ip_tag(ip_tag);
     // NOTE: If shifted by (_BTB_REGION_BITS - _BTB_SET_BITS) this term results in "big idx" inserts, so the msbs of the region are used for indexing
+    auto ip = ip_tag;
     uint64_t raw_idx = (ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
     return raw_idx; // NOTE: keep track how many entries we observe per set
   }
   auto tag() const
   {
     // TODO: calculate region tag
-    auto ip = shuffle_ip_tag(ip_tag);
+    // auto ip = shuffle_ip_tag(ip_tag);
+    auto ip = ip_tag;
     if (ITLB_CACHE) {
       return (ip >> PAGE_LOG_SIZE);
     }

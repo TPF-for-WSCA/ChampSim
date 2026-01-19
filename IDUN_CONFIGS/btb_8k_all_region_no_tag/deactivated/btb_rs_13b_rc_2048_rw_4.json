@@ -99,7 +99,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "next_line"
+    "prefetcher": "ipcp"
   },
   "L2C": {
     "sets": 2048,
@@ -114,7 +114,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "next_line"
+    "prefetcher": "pythia"
   },
   "ITLB": {
     "sets": 32,
@@ -180,7 +180,7 @@
     "prefetch_as_load": false,
     "virtual_prefetch": false,
     "prefetch_activate": "LOAD,PREFETCH",
-    "prefetcher": "next_line",
+    "prefetcher": "sms",
     "replacement": "lru"
   },
   "physical_memory": {

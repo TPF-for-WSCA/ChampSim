@@ -37,7 +37,7 @@ for benchmark in benchmarks:
         subdir_path = os.path.join(full_path, config)
         if not os.path.isdir(subdir_path):
             continue
-        config_name = config.split("_")[1]
+        config_name = config.split("_")[2]
         for app in os.listdir(subdir_path):
             if not os.path.isdir(os.path.join(subdir_path, app)):
                 continue
