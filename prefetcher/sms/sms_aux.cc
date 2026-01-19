@@ -5,13 +5,14 @@
 // Description      : Implements Spatial Memory Streaming prefetcher, ISCA'06
 //=======================================================================================//
 
+#include <algorithm>
 #include "cache.h"
 #include "sms.h"
 
 /* Functions for Filter table */
 std::deque<FTEntry*>::iterator sms::search_filter_table(uint64_t page)
 {
-  return find_if(filter_table.begin(), filter_table.end(), [page](FTEntry* ftentry) { return (ftentry->page == page); });
+  return std::find_if(filter_table.begin(), filter_table.end(), [page](FTEntry* ftentry) { return (ftentry->page == page); });
 }
 
 void sms::insert_filter_table(uint64_t pc, uint64_t page, uint32_t offset)
@@ -43,7 +44,7 @@ void sms::evict_filter_table(std::deque<FTEntry*>::iterator victim)
 /* Functions for Accumulation Table */
 std::deque<ATEntry*>::iterator sms::search_acc_table(uint64_t page)
 {
-  return find_if(acc_table.begin(), acc_table.end(), [page](ATEntry* atentry) { return (atentry->page == page); });
+  return std::find_if(acc_table.begin(), acc_table.end(), [page](ATEntry* atentry) { return (atentry->page == page); });
 }
 
 void sms::insert_acc_table(FTEntry* ftentry, uint32_t offset)
@@ -142,7 +143,7 @@ void sms::insert_pht_table(ATEntry* atentry)
 std::deque<PHTEntry*>::iterator sms::search_pht(uint64_t signature, uint32_t& set)
 {
   set = (uint32_t)(signature % sms::PHT_SETS);
-  return find_if(pht[set].begin(), pht[set].end(), [signature](PHTEntry* phtentry) { return (phtentry->signature == signature); });
+  return std::find_if(pht[set].begin(), pht[set].end(), [signature](PHTEntry* phtentry) { return (phtentry->signature == signature); });
 }
 
 std::deque<PHTEntry*>::iterator sms::search_victim_pht(int32_t set)
