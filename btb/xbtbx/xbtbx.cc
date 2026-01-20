@@ -486,7 +486,7 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
   if (!btb_entry.has_value()) {
-    if (!warmup) {
+    if (false && !warmup) { // disabled to see if this is the culprit
       auto hit = std::find_if(::BTB.at(this).begin(), ::BTB.at(this).end(), [ip](const auto& x) { return x.data.ip_tag == ip && x.last_used; });
       if (hit != ::BTB.at(this).end()) {
         // return {hit->data.get_prediction(), hit->data.ip_tag, hit->data.type != ::branch_info::CONDITIONAL}; // TODO: Revert back to miss for non=magical
@@ -497,10 +497,10 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     return {0, 0, false, 0};
   }
 
-  if (btb_entry->useless && ip == btb_entry->ip_tag) {
+  /*if (btb_entry->useless && ip == btb_entry->ip_tag) {
     sim_stats.btb_eager_invalidation_miss++;
     ::BTB.at(this).validate_entry(btb_entry.value());
-  }
+  }*/
 
   auto lras = (!wrongpath) ? &RAS : &WRONGPATH_BACKUP_RAS;
   if (btb_entry->type == ::branch_info::RETURN) {
