@@ -167,9 +167,9 @@ protected:
   int predictorsize();
 
 public:
-  void getPredInfo(unsigned& provider, unsigned& conf)
+  void getPredInfo(unsigned& _provider, unsigned& conf)
   {
-    provider = tage_provider;
+    _provider = tage_provider;
     conf = (tage_provider == LONGEST) ? tageConf : (tage_provider == ALT) ? altConf : baseConf;
   }
 

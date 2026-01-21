@@ -14,9 +14,6 @@
   "LDLIBS": [
     "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem"
   ],
-  "LDFLAGS": [
-    "-L/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
-  ],
   "ooo_cpu": [
     {
       "frequency": 4000,

@@ -706,11 +706,12 @@ void TageSCL::SCUpdate(uint64_t PC, bool resolveDir, bool predDir)
 
 
 
-// #define GINDEX                                                                \
+/*  #define GINDEX                                                                \
 //     (((long long)PC) ^ bhist ^ (bhist >> (8 - i)) ^ (bhist >> (16 - 2 * i)) ^ \
 //      (bhist >> (24 - 3 * i)) ^ (bhist >> (32 - 3 * i)) ^                      \
 //      (bhist >> (40 - 4 * i))) &                                               \
-//         ((1 << (logs - (i >= (NBR - 2)))) - 1)
+//      ((1 << (logs - (i >= (NBR - 2)))) - 1)
+*/ 
 
 int64_t TageSCL::gIndex(uint64_t PC, int64_t bhist, int logs, int nbr, int i)
 {
