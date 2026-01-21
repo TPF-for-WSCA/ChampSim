@@ -185,7 +185,8 @@ void O3_CPU::initialize_instruction()
     }
     if (fetch_stall && WRONGPATH_ENABLED) {
       // we are on the wrong path here so we want to fetch those instructions, but never promote them to the backend (decode should be fine)
-      if (IFETCH_BUFFER_WRONGPATH.size() < (IFETCH_BUFFER_SIZE - IFETCH_BUFFER.size())) { // We can add a slow-down factor here to not be too fast on the
+      if (IFETCH_BUFFER_WRONGPATH.size() < (IFETCH_BUFFER_SIZE - IFETCH_BUFFER.size()) / 8) { // We can add a slow-down factor here to not be too fast on the
+        // TODO: never fetch more than slots available in the pipeline
                                                                                           // wrongpath, e.g. based on the IPC of the previous interval?
         instrs_to_read_this_cycle = (add_wrongpath_instruction()) ? instrs_to_read_this_cycle : 0;
         _wp_read++;

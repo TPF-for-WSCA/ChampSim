@@ -63,7 +63,7 @@ df = pd.DataFrame(plot_data)
 # Calculate mean absolute region count per config
 mean_region_counts = df.groupby("Config")["Region Count"].mean().reset_index()
 
-df["Region Count"] = df.apply(lambda row: row["Region Count"] / parse_config_value(row["Config"]), axis=1)
+# df["Region Count"] = df.apply(lambda row: row["Region Count"] / parse_config_value(row["Config"]), axis=1)
 
 import plotly.graph_objects as go
 #garbage graph to get rid of the loading bullshit
@@ -137,8 +137,8 @@ fig.update_layout(
     xaxis_title="Number of BTB entries",
     yaxis_title="% Entries With Unique Tags",
     font=dict(size=9),
-    width=340,
-    height=200, # adjust as needed for clarity
+    # width=340,
+    # height=200, # adjust as needed for clarity
     template="plotly_white",
     margin=dict(l=0, r=0, t=0, b=0)
 )
