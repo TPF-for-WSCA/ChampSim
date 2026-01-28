@@ -74,7 +74,7 @@ fig.write_image(os.path.join(output_dir,"random.pdf"))
 #fig = make_subplots(specs=[[{"secondary_y": True}]])
 fig = go.Figure()
 fig.update_layout(showlegend=False)
-fig.update_yaxes(tickformat="0%")
+# fig.update_yaxes(tickformat="0%")
 # fig.update_yaxes(minor=dict(ticks="", showgrid=False))
 # fig.update_yaxes(range=[0, 0.35], dtick=0.05)
 violincolor="rgba(173,216,230,0.5)"

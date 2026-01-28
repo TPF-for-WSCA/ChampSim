@@ -148,26 +148,30 @@ def main(args):
             files = os.listdir(output_subdir)
             if any(f.endswith('.txt') for f in files):
                 print(f"{output_subdir} already computed")
+                
                 continue
         print(f"Run {trace_name} experiment", flush=True)
         pending_experiments.append(
-            pool.apply_async(
-                run_experiment,
-                [
-                    trace,
-                    output_subdir,
-                ],
+            (
+                pool.apply_async(
+                    run_experiment,
+                    [
+                        trace,
+                        output_subdir,
+                    ],
+                ),
+                trace_name
             )
         )
 
     # To prevent subprocesses to be killed
-    experiments = [experiment.get() for experiment in pending_experiments]
+    experiments = [(experiment[0].get(), experiment[1]) for experiment in pending_experiments]
 
-    for i in range(len(trace_files)):
-        if experiments[i]:
-            cprint(f"{trace_files[i]} finished successfully", Color.GREEN)
+    for exp in experiments:
+        if exp[0]:
+            cprint(f"{exp[1]} finished successfully", Color.GREEN)
         else:
-            cprint(f"{trace_files[i]} finished with errors", Color.RED)
+            cprint(f"{exp[1]} finished with errors", Color.RED)
 
     pool.close()
     pool.join()
