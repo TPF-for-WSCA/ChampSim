@@ -40,7 +40,7 @@ void handler(int nSignum, siginfo_t* si, void* vcontext) {
   std::cout << "Segmentation fault" << std::endl;
   
   ucontext_t* context = (ucontext_t*)vcontext;
-  context->uc_mcontext.gregs[REG_RIP]++;
+  // context->uc_mcontext.gregs[REG_RIP]++;
   exit(-1);
 }
 

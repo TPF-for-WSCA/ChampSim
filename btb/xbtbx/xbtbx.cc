@@ -20,6 +20,7 @@
 // We are only using those in the preprocessor
 #define USE_FIFO true
 #define USE_SRRIP false
+#define USE_HASH false
 
 #if USE_FIFO
 #include "msl/fifo_table.h"
@@ -226,8 +227,8 @@ struct BTBEntry {
       return tag;
     }
 
-    tag &= _FULL_TAG_MASK;
     if (ip && _BTB_TAG_REGIONS && utilise_regions(target_size)) {
+      tag &= _FULL_TAG_MASK;
       // TODO: double check if the shift amount of the BTB TAG size is correct and we are not overriding the actual tag bits
       auto masked_bits = tag & (_REGION_MASK << _BTB_TAG_SIZE);
       tag ^= masked_bits;
@@ -236,6 +237,22 @@ struct BTBEntry {
         tag |= (std::get<1>(region_idx_tag) << _BTB_TAG_SIZE);
       else
         tag |= (std::get<0>(region_idx_tag) << _BTB_TAG_SIZE); // Precise pointers
+    } else if (USE_HASH) {
+      int bits_treated = 0;
+      auto result_tag = 0;
+      for (int i = 0; i < 12; i++) { // hardcoded to 8b TAG
+        int num_bits = (int)std::round(1*std::pow(1.125,i)); // double check
+        uint8_t bit_i = 0;
+        for (int k = 0; k < num_bits; k++) {
+          // collect and XOR the bits
+          bit_i ^= (tag & (1 << (bits_treated + k))) >> (bits_treated + k);
+        }
+        result_tag |= (bit_i << i);
+        bits_treated += num_bits;
+      }
+      tag = result_tag;
+    } else {
+      tag &= _FULL_TAG_MASK;
     }
     return tag;
   }
