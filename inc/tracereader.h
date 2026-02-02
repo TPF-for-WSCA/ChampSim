@@ -82,7 +82,7 @@ class bulk_tracereader
   bool eof_ = false;
   F trace_file;
 
-  constexpr static std::size_t buffer_size = 128;
+  constexpr static std::size_t buffer_size = 5000000;
   constexpr static std::size_t refresh_thresh = 1;
   std::deque<ooo_model_instr> instr_buffer;
 
@@ -109,16 +109,17 @@ ooo_model_instr bulk_tracereader<T, F>::operator()()
 {
   if (std::size(instr_buffer) <= refresh_thresh) {
     std::array<T, buffer_size - refresh_thresh> trace_read_buf;
-    std::array<char, std::size(trace_read_buf) * sizeof(T)> raw_buf;
+    auto raw_buf = new char[std::size(trace_read_buf) * sizeof(T)];
     std::size_t bytes_read;
 
     // Read from trace file
-    trace_file.read(std::data(raw_buf), std::size(raw_buf));
+    trace_file.read(raw_buf, std::size(trace_read_buf) * sizeof(T));
     bytes_read = static_cast<std::size_t>(trace_file.gcount());
     eof_ = trace_file.eof();
 
     // Transform bytes into trace format instructions
-    std::memcpy(std::data(trace_read_buf), std::data(raw_buf), bytes_read);
+    std::memcpy(std::data(trace_read_buf), raw_buf, bytes_read);
+    delete raw_buf;
 
     // Inflate trace format into core model instructions
     auto begin = std::begin(trace_read_buf);

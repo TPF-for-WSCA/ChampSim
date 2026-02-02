@@ -1,10 +1,18 @@
 #!/bin/bash
 
-total=$(($(ls -l $2 | wc -l) - 1))
-for dir in $1/*; do
-	if [[ -f $dir ]]; then
-		continue
-	fi
-	echo "Progress for $(basename $dir)"
-	echo -e "\t$(find $dir -name '*.txt' | wc -l) / $total"
-done
+print_progress() {
+	total=$(($(ls -l $2 | wc -l) - 1))
+	for dir in $1/*; do
+		if [[ -f $dir ]]; then
+			continue
+		fi
+		complete=$(find $dir -name '*.txt' | wc -l)
+		if [ $complete -eq $total ]; then
+			continue
+		fi
+		echo "Progress for $(basename $dir)"
+		echo -e "\t$complete / $total"
+	done
+}
+export -f print_progress
+watch -n 60 -x bash -c "print_progress $1 $2"
