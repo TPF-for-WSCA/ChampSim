@@ -15,4 +15,4 @@ print_progress() {
 	done
 }
 export -f print_progress
-watch -n 60 -x bash -c "print_progress $1 $2"
+watch -n 1200 -x bash -c "print_progress $1 $2"

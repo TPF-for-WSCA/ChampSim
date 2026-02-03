@@ -147,7 +147,7 @@ def main(args):
         if path.exists(output_subdir):
             files = os.listdir(output_subdir)
             if any(f.endswith('.txt') for f in files):
-                print(f"{output_subdir} already computed")
+                cprint(f"{output_subdir} already computed", Color.YELLOW)
                 
                 continue
         print(f"Run {trace_name} experiment", flush=True)
