@@ -103,6 +103,7 @@ uint64_t prev_branch_tag = 0;
 std::map<uint32_t, uint64_t> offset_reuse_freq;
 std::set<uint64_t> branch_ip;
 std::set<uint32_t> regions_inserted;
+
 // size_t region_btb_insers = 0;
 
 // TODO: Only makes sense with BTB-X
