@@ -241,12 +241,17 @@ bool O3_CPU::add_wrongpath_instruction()
     wrong_path_instr.is_branch = true;
     l1i->impl_prefetcher_branch_operate(prev_wrong_ip, std::get<3>(pred), std::get<0>(pred), 4); // TODO: Fix to actual
     prev_wrong_ip = std::get<0>(pred);
+    if (!is_l1_btb_prediction) {
+      fetch_resume_cycle = current_cycle + 2;
+      fetch_stalled_cycle = current_cycle;
+    }
   }
   IFETCH_BUFFER_WRONGPATH.push_back(wrong_path_instr);
   if constexpr (champsim::debug_print) {
     fmt::print("[IFETCH] add_wrongpath_instruction instr_id: {} ip: {:#x} branch: {}\n", wrong_path_instr.instr_id, wrong_path_instr.ip,
                wrong_path_instr.is_branch);
   }
+  is_l1_btb_prediction = false; // reset
   return !wrong_path_instr.is_branch;
 }
 
@@ -381,7 +386,6 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     if constexpr (champsim::debug_print) {
       fmt::print("[BRANCH] instr_id: {} ip: {:#x} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
     }
-
     // call code prefetcher every time the branch predictor is used
     l1i->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch_type, predicted_branch_target,
                                         4); // TODO: Fix to actual instruction size for x86 instructions
@@ -400,12 +404,17 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       }
     } else if (predicted_branch_target && predicted_branch_target != arch_instr.ip + 4) {
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
+      if (!is_l1_btb_prediction) {
+        fetch_resume_cycle = current_cycle + 2;
+        fetch_stalled_cycle = current_cycle;
+      }
       prev_wrong_ip = (predicted_branch_target) ? predicted_branch_target : arch_instr.ip + 4;
     } else if (!predicted_branch_target && !prev_wrong_ip) {
       prev_wrong_ip = arch_instr.ip + 4;
     }
     impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
+    is_l1_btb_prediction = false; // reset
   }
 
   return stop_fetch;

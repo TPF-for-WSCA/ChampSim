@@ -66,6 +66,14 @@ void O3_CPU::btb_begin_wrongpath()
 void O3_CPU::btb_end_wrongpath() { }
 
 
+void O3_CPU::btb_end_phase(unsigned finished_cpu)
+{
+}
+
+void O3_CPU::btb_invalidate_entry(uint64_t ip)
+{}
+
+
 std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
   // use BTB for all other branches + direct calls

@@ -170,6 +170,7 @@ private:
   bool perfect_branch_predict;
   bool realistic_perfect;
   bool full_tag, clipped_tag;
+  bool is_l1_btb_prediction = false;
   uint8_t clipped_tag_size;
 
 public:
