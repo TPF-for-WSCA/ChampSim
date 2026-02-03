@@ -1,7 +1,7 @@
 #!/bin/bash
 
 print_progress() {
-	total=$(($(ls -l $2 | wc -l) - 1))
+	total=$(($(find $2 -name '*.xz' -o -name '*.gz' | wc -l) - 1))
 	for dir in $1/*; do
 		if [[ -f $dir ]]; then
 			continue
