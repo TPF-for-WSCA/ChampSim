@@ -40,7 +40,7 @@
       "schedule_latency": 2,
       "execute_latency": 1,
       "branch_predictor": "tage_scl",
-      "btb": "xbtbx",
+      "btb": "two_level_xbtbx",
       "btb_ways": 10,
       "btb_non_indirect": 10,
       "btb_sets": 2048,
