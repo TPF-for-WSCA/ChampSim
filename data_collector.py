@@ -7,6 +7,7 @@ from pathlib import Path
 
 import argparse
 import os
+import psutil
 import subprocess
 import sys
 
@@ -128,7 +129,10 @@ def main(args):
         global executable
         executable = args.exec
 
-    pool = Pool(processes=cpu_count())
+    pid = os.getpid()
+    proc = psutil.Process(pid)
+
+    pool = Pool(processes=len(proc.cpu_affinity()))
     pending_experiments = []
 
     for trace in trace_files:

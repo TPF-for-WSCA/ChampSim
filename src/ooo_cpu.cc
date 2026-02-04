@@ -33,6 +33,7 @@
 #define KERNEL_LOWER_BOUND 0xffff800000000000ul
 #define KERNEL_IGNORE_ENABLE false
 #define WRONGPATH_ENABLED false
+#define L2BTB_ADDED_LATENCY 0
 
 uint64_t deadlock_count = 0;
 std::set<uint64_t> branch_seen = {};
@@ -242,7 +243,7 @@ bool O3_CPU::add_wrongpath_instruction()
     l1i->impl_prefetcher_branch_operate(prev_wrong_ip, std::get<3>(pred), std::get<0>(pred), 4); // TODO: Fix to actual
     prev_wrong_ip = std::get<0>(pred);
     if (!is_l1_btb_prediction) {
-      fetch_resume_cycle = current_cycle + 2;
+      fetch_resume_cycle = current_cycle + L2BTB_ADDED_LATENCY;
       fetch_stalled_cycle = current_cycle;
     }
   }
@@ -405,7 +406,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     } else if (predicted_branch_target && predicted_branch_target != arch_instr.ip + 4) {
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
       if (!is_l1_btb_prediction) {
-        fetch_resume_cycle = current_cycle + 2;
+        fetch_resume_cycle = current_cycle + L2BTB_ADDED_LATENCY;
         fetch_stalled_cycle = current_cycle;
       }
       prev_wrong_ip = (predicted_branch_target) ? predicted_branch_target : arch_instr.ip + 4;
@@ -414,8 +415,8 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     }
     impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch_type);
-    is_l1_btb_prediction = false; // reset
   }
+  is_l1_btb_prediction = false; // reset
 
   return stop_fetch;
 }

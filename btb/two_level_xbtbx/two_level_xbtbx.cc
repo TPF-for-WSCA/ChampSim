@@ -93,7 +93,6 @@ uint64_t last_stats_cycle = 0;
 uint64_t _isa_shiftamount = 2;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
 constexpr std::size_t RAS_SIZE = 64;
-constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
 bool small_way_regions_enabled = 0;
 bool big_way_regions_enabled = 0;
 bool _PERFECT_MAPPING = false;
@@ -215,10 +214,7 @@ struct L1BTBEntry {
     return tag;
   }
 
-  auto get_prediction() const
-  {
-    return target;
-  }
+  auto get_prediction() const { return target; }
 };
 
 struct BTBEntry {
@@ -329,7 +325,6 @@ std::map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
 std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HISTORY;
 std::map<O3_CPU*, std::deque<uint64_t>> RAS;
 std::map<O3_CPU*, std::deque<uint64_t>> WRONGPATH_BACKUP_RAS;
-std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 
 } // namespace
 
@@ -338,8 +333,8 @@ void O3_CPU::initialize_btb()
   if (intel) {
     _isa_shiftamount = 0;
   }
-  std::cout << "L2_BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == BTB_TAG_REGIONS) << "\nPERFECT MAPPING: " << btb_perfect_mapping
-            << ", FILTER L2_BTB: " << REGION_BTB_FILTER_ENABLED << std::endl;
+  std::cout << "L2_BTB INITIALIZED WITH\nFULLY ASSOCIATIVE REGIONS: " << (BTB_TAG_REGION_WAYS == BTB_TAG_REGIONS)
+            << "\nPERFECT MAPPING: " << btb_perfect_mapping << ", FILTER L2_BTB: " << REGION_BTB_FILTER_ENABLED << std::endl;
 #if USE_SRRIP
   ::L2_BTB.insert({this, champsim::msl::srrip_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
 #else
@@ -377,7 +372,6 @@ void O3_CPU::initialize_btb()
 #endif
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   ::btb_addressing_hash = btb_index_tag_hash;
-  std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
   ::CONDITIONAL_HISTORY[this] = 0;
   _BTB_SET_BITS = champsim::lg2(BTB_SETS);
   if (this->BTB_CLIPPED_TAG) {
@@ -436,20 +430,27 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
   // }
   auto L1hit = ::L1_BTB.at(this).check_hit({ip});
 
-  auto lras =  (!wrongpath) ? &RAS :  & WRONGPATH_BACKUP_RAS;
+  auto lras = (!wrongpath) ? &RAS : &WRONGPATH_BACKUP_RAS;
+  std::optional<std::tuple<uint64_t, uint64_t, uint8_t, uint8_t>> L1_prediction = std::nullopt;
   // Early prediction on L1 hit
   if (L1hit.has_value()) {
-    if(L1hit->type == ::branch_info::RETURN) {
-      if (std::empty((*lras)[this]))
-        return {0, L1hit->ip_tag, true, BRANCH_RETURN};
+    if (L1hit->type == ::branch_info::RETURN) {
+      if (std::empty((*lras)[this])){
+        L1_prediction = {0, L1hit->ip_tag, true, BRANCH_RETURN};
+      }
+      else {
+        // peek at the top of the RAS and adjust for the size of the call instr
+        auto target = (*lras)[this].back();
 
-      // peek at the top of the RAS and adjust for the size of the call instr
-      auto target = (*lras)[this].back();
-      auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
-
-      return {target + size, L1hit->ip_tag, true, BRANCH_RETURN}; // assume fixed size for now
+        L1_prediction = {target + 4, L1hit->ip_tag, true, BRANCH_RETURN}; // assume fixed size for now
+      }
+    } else {
+      L1_prediction = {L1hit->get_prediction(), L1hit->ip_tag, L1hit->type != ::branch_info::CONDITIONAL, L1hit->precise_branch_type};
     }
-    return {L1hit->get_prediction(), L1hit->ip_tag, L1hit->type != ::branch_info::CONDITIONAL, L1hit->precise_branch_type};
+  }  
+  if (L1_prediction.has_value()) {
+    is_l1_btb_prediction = true;
+    return L1_prediction.value();
   }
   std::optional<::BTBEntry> btb_entry = std::nullopt;
   std::optional<::FilterBTBEntry> filter_hit = std::nullopt;
@@ -512,55 +513,44 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     btb_entry = {v.ip_tag, v.target, v.type, v.region_idx_tag};
   }
 
-  // no prediction for this IP
-  // default: no aliasing, thus returning ip itself as recorded ip
-  if (!btb_entry.has_value())
-    return {0, ip, false, NOT_BRANCH};
+  std::optional<std::tuple<uint64_t, uint64_t, uint8_t, uint8_t>> L2_prediction = std::nullopt;
 
-  if (btb_entry->type == ::branch_info::RETURN) {
-    if (std::empty((*lras)[this]))
-      return {0, btb_entry->ip_tag, true, BRANCH_RETURN};
-
-    // peek at the top of the RAS and adjust for the size of the call instr
-    auto target = (*lras)[this].back();
-    auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
-
-    return {target + 4, btb_entry->ip_tag, true, BRANCH_RETURN}; // assume fixed size for now
+  if (btb_entry.has_value() && btb_entry->type == ::branch_info::RETURN) {
+    if (std::empty((*lras)[this])) {
+      L2_prediction = {0, btb_entry->ip_tag, true, BRANCH_RETURN};
+    } else {
+      // peek at the top of the RAS and adjust for the size of the call instr
+      auto target = (*lras)[this].back();
+      L2_prediction = {target + 4, btb_entry->ip_tag, true, BRANCH_RETURN}; // assume fixed size for now
+    }
+  } else if (btb_entry.has_value()) {
+    L2_prediction = {btb_entry->get_prediction(), btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL, btb_entry->precise_branch_type};
   }
-  if (wrongpath && (btb_entry->precise_branch_type == BRANCH_DIRECT_CALL || btb_entry->precise_branch_type == BRANCH_INDIRECT_CALL)) {
+  if (wrongpath
+      && (btb_entry.has_value() && (btb_entry->precise_branch_type == BRANCH_DIRECT_CALL || btb_entry->precise_branch_type == BRANCH_INDIRECT_CALL)
+          || (L1hit.has_value() && (L1hit->precise_branch_type == BRANCH_DIRECT_CALL || L1hit->precise_branch_type == BRANCH_INDIRECT_CALL)))) {
     // modify the wrongpath ras
     (*lras)[this].push_back(ip);
     if (std::size((*lras)[this]) > RAS_SIZE)
       (*lras)[this].pop_front();
   }
-  /*
-    if (btb_entry->type == ::branch_info::INDIRECT) {
-      auto hash = (ip >> isa_shiftamount) ^ ::CONDITIONAL_HISTORY[this].to_ullong();
-      return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
-    }*/
 
-  return {btb_entry->get_prediction(), btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL, btb_entry->precise_branch_type};
+  if (L2_prediction.has_value()) {
+    if (std::get<0>(L2_prediction.value()) == 0) {
+      is_l1_btb_prediction = true; // we did not provide more prediction than l1i so we should account for L2 lookup
+    }
+    return L2_prediction.value();
+  }
+
+  is_l1_btb_prediction = true; // this is the global miss case - we do not wait for l2 to also agree on missing
+  return {0, ip, false, NOT_BRANCH};
 }
 
 // TODO: ONLY UPDATE WHEN FITTING IN THE WAY
 // __attribute__((optimize(0)))
 void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 {
-
-  uint64_t new_region = get_region(ip);
-
-  uint64_t offset_size = (ip >> isa_shiftamount) ^ (branch_target >> isa_shiftamount);
-  uint8_t num_bits = 0;
-  while (offset_size) {
-    offset_size >>= 1;
-    num_bits++;
-  }
-
-  // THIS IS AN APPLICATION PROPERTY -- WE SHOULD MEASURE ALSO THE HW PROPERTY AND COMPARE THE TWO (at prediction time)
-  if (taken && prev_branch_tag != new_region) {
-    sim_stats.btb_region_switching_dynamic++;
-    prev_branch_tag = new_region;
-  }
+  // L1 BTB first
 
   // TODO: Integrate with sim
   bool is_static = branch_ip.insert(ip).second;
@@ -622,15 +612,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // recalibrate call-return offset if our return prediction got us close, but not exact
     auto call_ip = ::RAS[this].back();
     ::RAS[this].pop_back();
-
-    auto estimated_call_instr_size = (call_ip > branch_target) ? call_ip - branch_target : branch_target - call_ip;
-    if (estimated_call_instr_size <= 10) {
-      ::CALL_SIZE[this][call_ip % std::size(::CALL_SIZE[this])] = estimated_call_instr_size;
-    }
-    num_bits = 0; // We don't need to store the target, we store it in the RAS
   }
 
-  // update btb entry
+  // update L1 BTB entry
   auto type = ::branch_info::ALWAYS_TAKEN;
   if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL))
     type = ::branch_info::INDIRECT;
@@ -638,30 +622,49 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     type = ::branch_info::RETURN;
   else if ((branch_type == BRANCH_CONDITIONAL) || (branch_type == BRANCH_OTHER))
     type = ::branch_info::CONDITIONAL;
-    // l1 fill and l2 fill on l1 eviction
+  // l1 fill and l2 fill on l1 eviction
   std::optional<::L1BTBEntry> l1evicted = std::nullopt;
   auto L1opt_entry = ::L1_BTB.at(this).check_hit({ip, branch_target, type});
   if (L1opt_entry.has_value()) {
     L1opt_entry->type = type;
     if (branch_target != 0)
       L1opt_entry->target = branch_target;
-    if (branch_target != 0) {
-      auto fill_entry = ::L1BTBEntry{ip, branch_target, type};
-      fill_entry.precise_branch_type = branch_type;
-      l1evicted = ::L1_BTB.at(this).fill(L1opt_entry.value_or(fill_entry));
-    }
+  }
+  if (branch_target != 0) {
+    auto fill_entry = ::L1BTBEntry{ip, branch_target, type};
+    fill_entry.precise_branch_type = branch_type;
+    l1evicted = ::L1_BTB.at(this).fill(L1opt_entry.value_or(fill_entry));
   }
 
-  if (!l1evicted.has_value()) {
+  if (!l1evicted.has_value() || l1evicted->ip_tag == ip) {
     return;
   }
 
+  // HERE STARTS L2 BTB INSERT //
   // prepare for l2 insert
   ip = l1evicted->ip_tag;
   branch_target = l1evicted->target;
   taken = true;
   branch_type == l1evicted->precise_branch_type;
   type = l1evicted->type;
+
+  uint64_t new_region = get_region(ip);
+
+  uint8_t num_bits = 0;
+  if (branch_type != BRANCH_RETURN) {
+    uint64_t offset_size = (ip >> isa_shiftamount) ^ (branch_target >> isa_shiftamount);
+    while (offset_size) {
+      offset_size >>= 1;
+      num_bits++;
+    }
+  }
+
+  // L2 specific stats
+  //  THIS IS AN APPLICATION PROPERTY -- WE SHOULD MEASURE ALSO THE HW PROPERTY AND COMPARE THE TWO (at prediction time)
+  if (taken && prev_branch_tag != new_region) {
+    sim_stats.btb_region_switching_dynamic++;
+    prev_branch_tag = new_region;
+  }
 
   // update btb entry
 
@@ -702,9 +705,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         tmp_region_idx = (small_way_regions_enabled || big_way_regions_enabled) ? ::REGION_BTB.at(this).check_hit_idx({ip}) : std::nullopt;
 
       } else {
-        // if (valid_replacement) {
-        //   std::cout << "Getting rid for good" << std::endl;
-        // }
         return;
       }
     }
