@@ -31,9 +31,9 @@
 #define SMALL_BIG_WAY_SPLIT 12 // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
-#define SAMPLING_DISTANCE 5000000
+#define SAMPLING_DISTANCE 500000
 #define EAGERLY_EVICT_ON_REGION_REMOVAL false
-#define ITLB_CACHE false
+#define ITLB_CACHE true
 #define PAGE_LOG_SIZE 12
 
 uint64_t invalid_replacements = 0;

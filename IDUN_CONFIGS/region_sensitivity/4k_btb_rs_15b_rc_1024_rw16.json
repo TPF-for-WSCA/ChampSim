@@ -59,9 +59,9 @@
         64
       ],
       "btb_tag_size": 0,
-      "btb_tag_regions": 768,
+      "btb_tag_regions": 1024,
       "btb_tag_region_size": 15,
-      "btb_tag_region_ways": 24,
+      "btb_tag_region_ways": 16,
       "btb_perfect_mapping": 1,
       "btb_invalidate_entry": 1,
       "btb_invalidate_region": 0,
