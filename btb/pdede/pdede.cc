@@ -8,8 +8,8 @@
 
 #include "ooo_cpu.h"
 
-#define BASIC_BTB_SETS 512
-#define BASIC_BTB_WAYS 6
+uint64_t BASIC_BTB_SETS = 0;
+uint64_t BASIC_BTB_WAYS = 6;
 #define BASIC_BTB_INDIRECT_SIZE 4096
 #define BASIC_BTB_RAS_SIZE 64
 #define BASIC_BTB_CALL_INSTR_SIZE_TRACKERS 1024
@@ -40,7 +40,7 @@ struct BASIC_BTB_ENTRY {
   uint64_t lru;
 };
 
-BASIC_BTB_ENTRY basic_btb[NUM_CPUS][BASIC_BTB_SETS][BASIC_BTB_WAYS];
+std::map<uint64_t,std::vector<std::vector<BASIC_BTB_ENTRY>>> basic_btb;
 BASIC_BTB_ENTRY basic_btb1[NUM_CPUS][BASIC_BTB1_SETS][BASIC_BTB1_WAYS];
 uint64_t basic_btb_lru_counter[NUM_CPUS];
 
@@ -146,8 +146,8 @@ uint64_t basic_btb_set_index(uint64_t ip) { return ((ip >> 2) & (BASIC_BTB_SETS-
 BASIC_BTB_ENTRY *basic_btb_find_entry(uint8_t cpu, uint64_t ip) {
   uint64_t set = basic_btb_set_index(ip);
   for (uint32_t i = 0; i < BASIC_BTB_WAYS; i++) {
-    if (get_tag(basic_btb[cpu][set][i].ip_tag) == get_tag(ip)) {
-      return &(basic_btb[cpu][set][i]);
+    if (get_tag(basic_btb.at(cpu)[set][i].ip_tag) == get_tag(ip)) {
+      return &(basic_btb.at(cpu)[set][i]);
     }
   }
 
@@ -164,12 +164,12 @@ BASIC_BTB_ENTRY *basic_btb_find_entry(uint8_t cpu, uint64_t ip) {
 BASIC_BTB_ENTRY *basic_btb_get_lru_entry(uint8_t cpu, uint64_t ip, uint8_t differentPageTarget) {
   uint64_t set = basic_btb_set_index(ip);
   uint32_t lru_way = 0;
-  uint64_t lru_value = basic_btb[cpu][set][lru_way].lru;
+  uint64_t lru_value = basic_btb.at(cpu)[set][lru_way].lru;
   uint32_t waysToCheck = differentPageTarget ? BASIC_BTB_WAYS/2 : BASIC_BTB_WAYS;
   for (uint32_t i = 0; i < waysToCheck; i++) {
-    if (basic_btb[cpu][set][i].lru < lru_value) {
+    if (basic_btb.at(cpu)[set][i].lru < lru_value) {
       lru_way = i;
-      lru_value = basic_btb[cpu][set][lru_way].lru;
+      lru_value = basic_btb.at(cpu)[set][lru_way].lru;
     }
   }
   
@@ -186,7 +186,7 @@ BASIC_BTB_ENTRY *basic_btb_get_lru_entry(uint8_t cpu, uint64_t ip, uint8_t diffe
   }
 
   if (lru_value1 > lru_value)
-  	return &(basic_btb[cpu][set][lru_way]);
+  	return &(basic_btb.at(cpu)[set][lru_way]);
   else 
 	return &(basic_btb1[cpu][set1][lru_way1]);  
 }
@@ -242,23 +242,29 @@ void O3_CPU::initialize_btb() {
     _isa_shiftamount = 0;
   }
   _BTB_SET_BITS = _BTB_SET_BITS = champsim::lg2(BTB_SETS);
+  BASIC_BTB_SETS = BTB_SETS;
+  BASIC_BTB_WAYS = BTB_WAYS;
+  basic_btb.insert({cpu, std::vector<std::vector<BASIC_BTB_ENTRY>>()});
+  basic_btb.at(cpu).resize(BTB_SETS);
+  
   std::cout << "Basic BTB sets: " << BASIC_BTB_SETS
             << " ways: " << BASIC_BTB_WAYS
             << " indirect buffer size: " << BASIC_BTB_INDIRECT_SIZE
             << " RAS size: " << BASIC_BTB_RAS_SIZE << std::endl;
 
   for (uint32_t i = 0; i < BASIC_BTB_SETS; i++) {
+    basic_btb.at(cpu)[i].resize(BTB_WAYS);
     for (uint32_t j = 0; j < BASIC_BTB_WAYS; j++) {
-      basic_btb[cpu][i][j].ip_tag = 0;
-      basic_btb[cpu][i][j].target = 0;
-      basic_btb[cpu][i][j].target_offset = 0;
-      basic_btb[cpu][i][j].pageBTB_set_index = 0;
-      basic_btb[cpu][i][j].pageBTB_way_index = 0;
-      basic_btb[cpu][i][j].regionBTB_index = 0;
-      basic_btb[cpu][i][j].same_page_target = 1;
-      basic_btb[cpu][i][j].always_taken = 0;
-      basic_btb[cpu][i][j].branch_type = NOT_BRANCH;
-      basic_btb[cpu][i][j].lru = 0;
+      basic_btb.at(cpu)[i][j].ip_tag = 0;
+      basic_btb.at(cpu)[i][j].target = 0;
+      basic_btb.at(cpu)[i][j].target_offset = 0;
+      basic_btb.at(cpu)[i][j].pageBTB_set_index = 0;
+      basic_btb.at(cpu)[i][j].pageBTB_way_index = 0;
+      basic_btb.at(cpu)[i][j].regionBTB_index = 0;
+      basic_btb.at(cpu)[i][j].same_page_target = 1;
+      basic_btb.at(cpu)[i][j].always_taken = 0;
+      basic_btb.at(cpu)[i][j].branch_type = NOT_BRANCH;
+      basic_btb.at(cpu)[i][j].lru = 0;
     }
   }
 

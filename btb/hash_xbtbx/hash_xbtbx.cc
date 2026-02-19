@@ -188,17 +188,25 @@ struct BTBEntry {
   {
     uint64_t addr = ip_tag;
     addr = addr >> _isa_shiftamount >> _BTB_SET_BITS;
+    if (!_BTB_CLIPPED_TAG) {
+      return addr;
+    }
     /* We use a _BTB_TAG_SIZE-bit tag.
      * The lower 8-bits stay the same as in the full tag.
      * The upper 8-bits are the folded X-OR of the remaining bits of the full tag.
      */
-    uint64_t tag = addr & 0xFF; // Set the lower 8-bits of the tag
-    addr = addr >> 8;
+    int lower_bits = 8;
+    if (_BTB_TAG_SIZE < 8) {
+      lower_bits = _BTB_TAG_SIZE / 2;
+    }
+    uint64_t lower_mask = (1 << lower_bits) - 1;
+    uint64_t tag = addr & lower_mask; // Set the lower 8-bits of the tag
+    addr = addr >> lower_bits;
     int tagMSBs = 0;
     /*Get the upper 8-bits (folded X-OR)*/
     // _FULL_TAG_MASK
     // _BTB_TAG_SIZE
-    const uint64_t upper_n_bits = _BTB_TAG_SIZE - 8;
+    const uint64_t upper_n_bits = _BTB_TAG_SIZE - lower_bits;
     const uint64_t tag_mask = (1 << upper_n_bits)-1;
     while(addr != 0)
     {
@@ -206,7 +214,7 @@ struct BTBEntry {
       addr = addr >> upper_n_bits;
     }
     /*Concatenate the lower and upper 8-bits of tag*/
-    tag = tag | (tagMSBs << 8);
+    tag = tag | (tagMSBs << lower_bits);
     return tag;
   }
 

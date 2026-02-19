@@ -136,6 +136,7 @@ def normalize_config(config_file):
         "DIB",
         "btb_ways",
         "btb_sets",
+        "l2_btb_latency",
         "btb_clipped_tag",
         "btb_partial_tag_resolution",
         "perfect_btb",

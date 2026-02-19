@@ -452,6 +452,7 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     is_l1_btb_prediction = true;
     return L1_prediction.value();
   }
+  is_l1_btb_prediction = false;
   std::optional<::BTBEntry> btb_entry = std::nullopt;
   std::optional<::FilterBTBEntry> filter_hit = std::nullopt;
   if (REGION_BTB_FILTER_ENABLED && _BTB_TAG_REGIONS)

@@ -44,6 +44,7 @@
       "btb_ways": 10,
       "btb_non_indirect": 10,
       "btb_sets": 2048,
+      "l2_btb_latency": 5,
       "btb_clipped_tag": 1,
       "btb_target_sizes": [
         0,

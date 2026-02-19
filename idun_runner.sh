@@ -22,7 +22,7 @@ module load GCCcore/12.2.0
 #binaries=("champsim32k_base_btb" "champsim32k_base_btbx" "champsim32k_hash_btbx" "champsim32k_perfect_l1i" "champsim32k_perfect_btb")
 # binary_dir=("btb_region_tag" "btb_4k_region_tag_split_exp" "btb_512_region_tag_exp" "btb_256_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp")
 suffix="rebuttal"
-binary_dir=("ispass_multilevel_btb_full_grid_search" "ispass_pdede_btb_full_grid_search") #"ispass_btb_hashed_perceptron_grid_search" "ispass_n2_btb_full_grid_search" "ispass_n4_btb_full_grid_search" "ispass_multilevel_btb_full_grid_search") # "ispass_geometric_btb_full_grid_search" "ispass_hash_btb_full_grid_search") # "region_sensitivity"  "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
+binary_dir=("ispass_btb_hashed_perceptron_grid_search" "ispass_btb_gshare_grid_search") # "ispass_pdede_btb_full_grid_search") #"ispass_btb_hashed_perceptron_grid_search" "ispass_n2_btb_full_grid_search" "ispass_n4_btb_full_grid_search" "ispass_multilevel_btb_full_grid_search") # "ispass_geometric_btb_full_grid_search" "ispass_hash_btb_full_grid_search") # "region_sensitivity"  "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
 count=0
 timelimit="8:00:00"
 warmup=50000000
