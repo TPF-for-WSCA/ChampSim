@@ -49,8 +49,8 @@
       "btb_small_way_regions_enabled": 1,
       "btb_target_sizes": [
         0,
-        4,
         3,
+        4,
         5,
         7,
         9,
