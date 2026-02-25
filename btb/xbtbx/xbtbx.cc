@@ -31,7 +31,7 @@ struct BTBPred {
   bool always_taken;
 };
 
-struct BTBPred current;
+struct BTBPred btb_current;
 uint64_t pred_issued = 0;
 uint64_t pred_requested = 0;
 
@@ -377,16 +377,16 @@ void O3_CPU::initialize_btb()
 // __attribute__((optimize(0)))
 std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool taken_branch)
 {
-  if (current.prediction_instr_ip < ip && ip < current.predicted_branch_ip) {
+  if (btb_current.prediction_instr_ip < ip && ip < btb_current.predicted_branch_ip) {
     if (taken_branch) {
-      current = {0, 0, 0, 0}; // This is needed so we don't miss a mispredict and stay in the wrong path prediction
+      btb_current = {0, 0, 0, 0}; // This is needed so we don't miss a mispredict and stay in the wrong path prediction
     }
     return {0, ip, false}; // We are in the current block, so we predict this to not be a (taken) branch
   }
-  if (get_region(current.predicted_branch_ip) == get_region(ip) &&
-      get_tag(current.predicted_branch_ip) == get_tag(ip) &&
-      get_idx(current.predicted_branch_ip) == get_idx(ip)) {
-    return {current.predicted_target, current.predicted_branch_ip, current.always_taken};
+  if (get_region(btb_current.predicted_branch_ip) == get_region(ip) &&
+      get_tag(btb_current.predicted_branch_ip) == get_tag(ip) &&
+      get_idx(btb_current.predicted_branch_ip) == get_idx(ip)) {
+    return {btb_current.predicted_target, btb_current.predicted_branch_ip, btb_current.always_taken};
   }
   std::optional<::BTBEntry> btb_entry = std::nullopt;
   std::optional<::FilterBTBEntry> filter_hit = std::nullopt;
@@ -456,9 +456,9 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool
 
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this])) {
-      current = {0, btb_entry->basic_block_size + ip - 4, ip, true};
+      btb_current = {0, btb_entry->basic_block_size + ip - 4, ip, true};
       if (btb_entry->basic_block_size == 4) // in case this is a jumptable case
-        return {current.predicted_target, current.predicted_branch_ip, current.always_taken};
+        return {btb_current.predicted_target, btb_current.predicted_branch_ip, btb_current.always_taken};
       return {0, ip, false};
     }
 
@@ -466,9 +466,9 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool
     auto target = ::RAS[this].back();
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
 
-    current = {target + size, btb_entry->basic_block_size + ip - 4, ip, true};
+    btb_current = {target + size, btb_entry->basic_block_size + ip - 4, ip, true};
     if (btb_entry->basic_block_size == 4) // in case this is a jumptable case
-      return {current.predicted_target, current.predicted_branch_ip, current.always_taken};
+      return {btb_current.predicted_target, btb_current.predicted_branch_ip, btb_current.always_taken};
     return {0, ip, false};
   }
   /*
@@ -477,9 +477,9 @@ std::tuple<uint64_t, uint64_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip, bool
       return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
     }*/
 
-  current = {btb_entry->get_prediction(), btb_entry->basic_block_size + ip - 4, ip, btb_entry->type != ::branch_info::CONDITIONAL};
+  btb_current = {btb_entry->get_prediction(), btb_entry->basic_block_size + ip - 4, ip, btb_entry->type != ::branch_info::CONDITIONAL};
   if (btb_entry->basic_block_size == 4) // in case this is a jumptable case
-    return {current.predicted_target, current.predicted_branch_ip, current.always_taken};
+    return {btb_current.predicted_target, btb_current.predicted_branch_ip, btb_current.always_taken};
   return {0, ip, false};
 }
 

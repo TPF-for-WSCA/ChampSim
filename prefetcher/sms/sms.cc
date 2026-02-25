@@ -8,7 +8,6 @@
 #include "cache.h"
 #include "sms.h"
 
-sms current;
 
 void CACHE::prefetcher_initialize()
 {
