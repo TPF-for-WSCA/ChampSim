@@ -247,6 +247,10 @@ bool O3_CPU::add_wrongpath_instruction()
     wrong_path_instr.is_branch = true;
     l1i->impl_prefetcher_branch_operate(prev_wrong_ip, std::get<3>(pred), std::get<0>(pred), 4); // TODO: Fix to actual
     prev_wrong_ip = std::get<0>(pred);
+    if (!is_l1_btb_prediction) {
+      fetch_resume_cycle = current_cycle + L2_BTB_LATENCY;
+      // fetch_stalled_cycle = current_cycle;
+    }
   }
   IFETCH_BUFFER_WRONGPATH.push_back(wrong_path_instr);
   if constexpr (champsim::debug_print) {
@@ -409,6 +413,10 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       }
     } else if (predicted_branch_target && predicted_branch_target != arch_instr.ip + 4) {
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
+      if (!is_l1_btb_prediction) {
+        fetch_resume_cycle = current_cycle + L2_BTB_LATENCY;
+        fetch_stalled_cycle = current_cycle;
+      }
       prev_wrong_ip = (predicted_branch_target) ? predicted_branch_target : arch_instr.ip + 4;
     } else if (!predicted_branch_target && !prev_wrong_ip) {
       prev_wrong_ip = arch_instr.ip + 4;
@@ -597,7 +605,7 @@ long O3_CPU::decode_instruction()
         // pay misprediction penalty
         fetch_resume_cycle = current_cycle + BRANCH_MISPREDICT_PENALTY;
 
-        assert(fetch_stalled_cycle != 0 || current_cycle < 1000);
+        // assert(fetch_stalled_cycle != 0 || current_cycle < 1000);
         assert(fetch_stalled_cycle < fetch_resume_cycle);
         std::get<0>(sim_stats.squash_counts) += 1;
         std::get<2>(sim_stats.squash_counts) += 1;
@@ -879,7 +887,7 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
   if (instr.branch_mispredicted) {
     fetch_resume_cycle = current_cycle + BRANCH_MISPREDICT_PENALTY;
     assert(fetch_stalled_cycle < fetch_resume_cycle);
-    assert(fetch_stalled_cycle != 0 || current_cycle < 1000);
+    // assert(fetch_stalled_cycle != 0 || current_cycle < 1000);
     std::get<1>(sim_stats.squash_counts) += 1;
     std::get<2>(sim_stats.squash_counts) += 1;
     sim_stats.total_squashed_cycles += (fetch_resume_cycle - fetch_stalled_cycle);

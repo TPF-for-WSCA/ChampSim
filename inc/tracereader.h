@@ -82,7 +82,7 @@ class bulk_tracereader
   bool eof_ = false;
   F trace_file;
 
-  constexpr static std::size_t buffer_size = 5000000;
+  constexpr static std::size_t buffer_size = 50000;
   constexpr static std::size_t refresh_thresh = 1;
   std::deque<ooo_model_instr> instr_buffer;
 
