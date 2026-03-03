@@ -112,5 +112,6 @@
     "cmake.ignoreCMakeListsMissing": true,
     "files.watcherExclude": {
         "**/target": true
-    }
+    },
+    "chatgpt.commentCodeLensEnabled": false
 }

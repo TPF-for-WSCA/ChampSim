@@ -145,7 +145,7 @@ std::vector<uint8_t> build_geometric_fold_spans(uint8_t width)
   constexpr uint64_t a = 1;
   constexpr double r = 1.1;
   for (uint64_t i = 1; i < static_cast<uint64_t>(width) + 1; i++) {
-    const auto span = static_cast<uint64_t>(std::round(a * (1 - std::pow(r, i)) / (1.0 - r)) - 1);
+    const auto span = static_cast<uint64_t>(std::round(a * std::pow(r, i)));
     fold_spans[i] = static_cast<uint8_t>(span);
   }
   return fold_spans;
@@ -284,7 +284,8 @@ struct BTBEntry {
     uint64_t upper_addr = addr >> _BTB_TAG_SIZE;
     upper_addr = reverse_bits(upper_addr);
     // _BTB_TAG_SIZE <-- target size
-    uint64_t tag = 0;
+    uint64_t tag = addr & 0x1;
+    addr >>= 1;
     for (uint64_t i = 1; i < _BTB_TAG_SIZE + 1; i++) {
       const uint64_t num_bits = btb_tag_fold_spans[i];
       uint8_t local_bit = addr & 0x1;
@@ -387,6 +388,7 @@ std::unordered_map<O3_CPU*, champsim::msl::lru_table<FilterBTBEntry>> REGION_FIL
 std::unordered_map<O3_CPU*, champsim::msl::lru_table<region_btb_entry_t>> REGION_BTB;
 #endif
 std::unordered_map<O3_CPU*, champsim::msl::lru_table<BTBEntry>> L2_BTB;
+std::map<O3_CPU*, champsim::msl::lru_table<L1BTBEntry>> L1_BTB;
 // TODO: make sure that the BTBEntry types here are always calculating full tags - might require another type
 std::unordered_map<O3_CPU*, std::unordered_map<uint64_t, uint64_t>> REGION_REF_COUNT;
 std::unordered_map<O3_CPU*, std::array<uint64_t, BTB_INDIRECT_SIZE>> INDIRECT_BTB;
@@ -408,6 +410,7 @@ void O3_CPU::initialize_btb()
 #else
   ::L2_BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
 #endif
+  ::L1_BTB.insert({this, champsim::msl::lru_table<L1BTBEntry>{L1_BTB_SETS, L1_BTB_WAYS}});
   USE_REGIONALIZED_BTB_OFFSET = this->BTB_FILTER_BTB_LIMIT;
   INSERT_FILTER_VICTIMS = USE_REGIONALIZED_BTB_OFFSET != 0;
   if (REGION_BTB_FILTER_ENABLED && this->BTB_TAG_REGIONS) {
@@ -525,6 +528,7 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     }
   }  
   if (L1_prediction.has_value()) {
+    sim_stats.l1_btb_hit += (wrongpath) ? 0 : 1;
     is_l1_btb_prediction = true;
     return L1_prediction.value();
   }
@@ -614,6 +618,8 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
   if (L2_prediction.has_value()) {
     if (std::get<0>(L2_prediction.value()) == 0) {
       is_l1_btb_prediction = true; // we did not provide more prediction than l1i so we should account for L2 lookup
+    } else {
+      sim_stats.l2_btb_hit += (wrongpath) ? 0 : 1;
     }
     return L2_prediction.value();
   }

@@ -87,6 +87,8 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   fmt::print(stream, "FULL SQUASHES:\tALIASING:{}\tTOTAL:{}\n", std::get<1>(stats.aliasing_squash_counts), std::get<1>(stats.squash_counts));
   fmt::print(stream, "TOTAL SQUASHES:\tALIASING:{}\tTOTAL:{}\n", std::get<2>(stats.aliasing_squash_counts), std::get<2>(stats.squash_counts));
 
+  fmt::print(stream, "L1 BTB HITS: {}\t L2 BTB HITS: {}\n", stats.l1_btb_hit, stats.l2_btb_hit);
+
   fmt::print(stream, "\nPositive Aliasing: {}\nNegative Aliasing: {}\nNone-Branch Aliasing: {}\nTotal Aliasing: {}", stats.positive_aliasing,
              stats.negative_aliasing, stats.non_branch_btb_hits, stats.total_aliasing);
   fmt::print(stream, "\nALIASING NON BRANCHES: {}\tBRANCHES: {}", stats.aliasing_on_non_branch, stats.aliasing_on_branch);

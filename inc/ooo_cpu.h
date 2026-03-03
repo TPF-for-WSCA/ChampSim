@@ -46,6 +46,9 @@
 #include "util/lru_table.h"
 #include <type_traits>
 
+#define L1_BTB_SETS 64
+#define L1_BTB_WAYS 8
+
 enum STATUS { INFLIGHT = 1, COMPLETED = 2 };
 
 class CACHE;
@@ -98,6 +101,8 @@ struct cpu_stats {
   uint64_t total_squashed_cycles = 0;
   uint64_t aliasing_squashed_cycles = 0;
   uint64_t btb_miss_squashed_cycles = 0;
+  uint64_t l1_btb_hit = 0;
+  uint64_t l2_btb_hit = 0;
   uint64_t bp_mispredict_squashed_cycles = 0;
   std::map<uint64_t, uint64_t> region_way_insertion_counts = {};
   std::map<uint64_t, uint64_t> region_pointer_count = {};

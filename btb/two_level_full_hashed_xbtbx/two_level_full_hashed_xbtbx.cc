@@ -364,8 +364,8 @@ void O3_CPU::initialize_btb()
   ::L2_BTB.insert({this, champsim::msl::srrip_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
 #else
   ::L2_BTB.insert({this, champsim::msl::lru_table<BTBEntry>{BTB_SETS, BTB_WAYS}});
-  ::L1_BTB.insert({this, champsim::msl::lru_table<L1BTBEntry>{64, 8}});
 #endif
+  ::L1_BTB.insert({this, champsim::msl::lru_table<L1BTBEntry>{L1_BTB_SETS, L1_BTB_WAYS}});
   USE_REGIONALIZED_BTB_OFFSET = this->BTB_FILTER_BTB_LIMIT;
   INSERT_FILTER_VICTIMS = USE_REGIONALIZED_BTB_OFFSET != 0;
   if (REGION_BTB_FILTER_ENABLED && this->BTB_TAG_REGIONS) {
@@ -474,6 +474,7 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     }
   }  
   if (L1_prediction.has_value()) {
+    sim_stats.l1_btb_hit += (wrongpath) ? 0 : 1;
     is_l1_btb_prediction = true;
     return L1_prediction.value();
   }
@@ -564,6 +565,8 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
   if (L2_prediction.has_value()) {
     if (std::get<0>(L2_prediction.value()) == 0) {
       is_l1_btb_prediction = true; // we did not provide more prediction than l1i so we should account for L2 lookup
+    } else {
+      sim_stats.l2_btb_hit += (wrongpath) ? 0 : 1;
     }
     return L2_prediction.value();
   }

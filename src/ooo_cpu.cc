@@ -374,7 +374,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     arch_instr.branch_taken = 0;
   }
 
-  if (!warmup && arch_instr.branch_prediction && arch_instr.ip != branch_ip && arch_instr.branch_type != NOT_BRANCH) {
+  if (!warmup && arch_instr.branch_prediction && arch_instr.ip != branch_ip) {
     if (predicted_branch_target == arch_instr.branch_target && arch_instr.branch_taken) {
       sim_stats.positive_aliasing += 1;
     } else {
