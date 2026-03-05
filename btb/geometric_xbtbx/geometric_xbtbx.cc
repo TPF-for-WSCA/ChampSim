@@ -33,7 +33,7 @@
 #define SAMPLING_DISTANCE 50000000
 
 uint64_t invalid_replacements = 0;
-
+/*
 constexpr uint64_t pow2(uint8_t exp)
 {
   assert(exp <= 64);
@@ -44,6 +44,7 @@ constexpr uint64_t pow2(uint8_t exp)
   }
   return result;
 }
+*/
 namespace
 {
 
@@ -210,6 +211,8 @@ struct BTBEntry {
   uint8_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
   uint8_t precise_branch_type;
+  bool useless = false;
+  bool replacement_protected = false;
 
   // TODO: shift indexes and tags into place
   auto index() const
@@ -244,7 +247,7 @@ struct BTBEntry {
       }
       tag |= (local_bit << i);
     }
-    if (ip && _BTB_TAG_REGIONS && utilise_regions(target_size)) {
+    if (ip_tag && _BTB_TAG_REGIONS && utilise_regions(target_size)) {
       // TODO: double check if the shift amount of the L2_BTB TAG size is correct and we are not overriding the actual tag bits
       auto masked_bits = tag & (_REGION_MASK << _BTB_TAG_SIZE);
       tag ^= masked_bits;
@@ -633,7 +636,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         branch_target = filter_hit.value().target; // This ensures we are not removing the target from a not taken branch
       }
       auto replaced = ::REGION_FILTER_BTB.at(this).fill(
-          {ip, branch_target, type, {0, 0, new_region}}); // TODO: add element, only if we cross threshold insert into region and add future branches there and
+          {ip, branch_target, type, {0, 0, new_region}}, &sim_stats); // TODO: add element, only if we cross threshold insert into region and add future branches there and
                                                           // only when replaced from filter btb add to big btb
       bool valid_replacement = replaced.has_value() && replaced.value().ip_tag && replaced.value().ip_tag != ip;
       if (valid_replacement) { // if iptag is 0 its an invalid(ated) entry
@@ -734,7 +737,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         // assert(rv.second);
         auto elem = ::region_btb_entry_t{ip};
         sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
-        replaced = ::REGION_BTB.at(this).fill(elem);
+        replaced = ::REGION_BTB.at(this).fill(elem, &sim_stats);
         sim_stats.branch_tag_set.insert(elem.tag());
         insert = true;
         // region_btb_insers++;
@@ -746,7 +749,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       // assert(rv.second);
       auto elem = ::region_btb_entry_t{ip};
       sim_stats.big_region_small_region_mapping[elem.index()].insert(elem.tag());
-      replaced = ::REGION_BTB.at(this).fill(elem);
+      replaced = ::REGION_BTB.at(this).fill(elem, &sim_stats);
       sim_stats.branch_tag_set.insert(elem.tag());
       insert = true;
       // region_btb_insers++;

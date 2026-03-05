@@ -34,6 +34,7 @@
 
 uint64_t invalid_replacements = 0;
 
+/*
 constexpr uint64_t pow2(uint8_t exp)
 {
   assert(exp <= 64);
@@ -44,6 +45,7 @@ constexpr uint64_t pow2(uint8_t exp)
   }
   return result;
 }
+*/
 namespace
 {
 
@@ -124,6 +126,23 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
       ip_b[i] = ip_tag_b[i];
     }
     return ip_b.to_ullong();
+  }
+}
+
+// TODO: Only makes sense with BTB-X
+bool utilise_regions(size_t way_size)
+{
+  if (way_size > BIGGEST_BTB_X_WAY)
+    return false;
+  if (small_way_regions_enabled && big_way_regions_enabled) {
+    return true;
+  }
+  if (small_way_regions_enabled) {
+    return way_size <= SMALL_BIG_WAY_SPLIT;
+  } else if (big_way_regions_enabled) {
+    return SMALL_BIG_WAY_SPLIT < way_size;
+  } else {
+    return false;
   }
 }
 
@@ -218,7 +237,7 @@ struct BTBEntry {
       /*Concatenate the lower and upper 8-bits of tag*/
       tag = tag | (tagMSBs << lower_bits);
     }
-    if (ip && _BTB_TAG_REGIONS && utilise_regions(target_size)) {
+    if (ip_tag && _BTB_TAG_REGIONS && utilise_regions(target_size)) {
       // TODO: double check if the shift amount of the L2_BTB TAG size is correct and we are not overriding the actual tag bits
       auto masked_bits = tag & (_REGION_MASK << _BTB_TAG_SIZE);
       tag ^= masked_bits;
@@ -320,22 +339,6 @@ std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 
 } // namespace
 
-// TODO: Only makes sense with BTB-X
-bool utilise_regions(size_t way_size)
-{
-  if (way_size > BIGGEST_BTB_X_WAY)
-    return false;
-  if (small_way_regions_enabled && big_way_regions_enabled) {
-    return true;
-  }
-  if (small_way_regions_enabled) {
-    return way_size <= SMALL_BIG_WAY_SPLIT;
-  } else if (big_way_regions_enabled) {
-    return SMALL_BIG_WAY_SPLIT < way_size;
-  } else {
-    return false;
-  }
-}
 
 void O3_CPU::initialize_btb()
 {

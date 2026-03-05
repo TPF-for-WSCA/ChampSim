@@ -28,6 +28,7 @@ constexpr std::size_t BTB_WAY = 8;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
 constexpr std::size_t RAS_SIZE = 64;
 constexpr std::size_t CALL_SIZE_TRACKERS = 1024;
+std::size_t _FULL_TAG_MASK = 0;
 
 struct btb_entry_t {
   uint64_t ip_tag = 0;
@@ -41,7 +42,12 @@ struct btb_entry_t {
   bool replacement_protected = false;
 
   auto index() const { return ip_tag >> 2 & 511; }
-  auto tag() const { return (ip_tag >> 2 >> 9); }
+  auto tag() const
+  {
+    auto tag = ip_tag >> 2 >> 9;
+    tag &= _FULL_TAG_MASK;
+    return tag;
+  }
   auto partial_tag() const { return (ip_tag >> 2 >> 9); }
 };
 
@@ -81,23 +87,16 @@ void O3_CPU::initialize_btb()
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
   std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
   ::CONDITIONAL_HISTORY[this] = 0;
+  ::_FULL_TAG_MASK = pow2(this->BTB_TAG_SIZE) - 1;
 }
 
+void O3_CPU::btb_begin_wrongpath() {}
 
-void O3_CPU::btb_begin_wrongpath()
-{
-}
+void O3_CPU::btb_end_wrongpath() {}
 
-void O3_CPU::btb_end_wrongpath() { }
+void O3_CPU::btb_end_phase(unsigned finished_cpu) {}
 
-void O3_CPU::btb_end_phase(unsigned finished_cpu)
-{
-}
-
-
-void O3_CPU::btb_invalidate_entry(uint64_t ip)
-{
-}
+void O3_CPU::btb_invalidate_entry(uint64_t ip) {}
 
 std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t ip)
 {
@@ -109,8 +108,7 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     if (l1_btb_entry->type == ::branch_info::RETURN) {
       if (std::empty(RAS.at(this))) {
         L1_prediction = {0, l1_btb_entry->ip_tag, true, BRANCH_RETURN};
-      }
-      else {
+      } else {
         // peek at the top of the RAS and adjust for the size of the call instr
         auto target = RAS.at(this).back();
 
@@ -119,9 +117,9 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     } else {
       L1_prediction = {l1_btb_entry->target, l1_btb_entry->ip_tag, l1_btb_entry->type != ::branch_info::CONDITIONAL, l1_btb_entry->precise_branch_type};
     }
-  }  
+  }
   if (L1_prediction.has_value()) {
-    // sim_stats.l1_btb_hit += (wrongpath) ? 0 : 1;
+    sim_stats.l1_btb_hit += 1;
     is_l1_btb_prediction = true;
     return L1_prediction.value();
   }
@@ -135,6 +133,7 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
 
   if (btb_entry->type == ::branch_info::RETURN) {
     if (std::empty(::RAS[this])) {
+      sim_stats.l1_btb_hit += 1;
       is_l1_btb_prediction = true;
       return {0, btb_entry->ip_tag, true, 0};
     }
@@ -142,6 +141,7 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     // peek at the top of the RAS and adjust for the size of the call instr
     auto target = ::RAS[this].back();
     auto size = ::CALL_SIZE[this][target % std::size(::CALL_SIZE[this])];
+    sim_stats.l2_btb_hit += 1;
 
     return {target + size, btb_entry->ip_tag, true, 0};
   }
@@ -151,7 +151,10 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
   //   return {::INDIRECT_BTB[this][hash % std::size(::INDIRECT_BTB[this])], btb_entry->ip_tag, true};
   // }
   if (btb_entry->target == 0) {
+    sim_stats.l1_btb_hit += 1;
     is_l1_btb_prediction = true;
+  } else {
+    sim_stats.l2_btb_hit += 1;
   }
 
   return {btb_entry->target, btb_entry->ip_tag, btb_entry->type != ::branch_info::CONDITIONAL, 0};
@@ -196,10 +199,10 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     type = ::branch_info::RETURN;
   else if ((branch_type == BRANCH_CONDITIONAL) || (branch_type == BRANCH_OTHER))
     type = ::branch_info::CONDITIONAL;
-  
+
   std::optional<::l1_btb_entry_t> l1_evicted = std::nullopt;
   auto L1_opt_entry = ::L1_BTB.at(this).check_hit({ip, branch_target, type});
-  if (L1_opt_entry.has_value() && branch_target != 0){
+  if (L1_opt_entry.has_value() && branch_target != 0) {
     L1_opt_entry->type = type;
     L1_opt_entry->target = branch_target;
   }

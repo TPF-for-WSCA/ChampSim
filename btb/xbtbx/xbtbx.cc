@@ -40,6 +40,7 @@ uint64_t invalid_replacements = 0;
 
 extern bool wrongpath;
 
+/*
 constexpr uint64_t pow2(uint8_t exp)
 {
   assert(exp <= 64);
@@ -50,6 +51,7 @@ constexpr uint64_t pow2(uint8_t exp)
   }
   return result;
 }
+*/
 namespace
 {
 

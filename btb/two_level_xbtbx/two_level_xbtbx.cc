@@ -34,16 +34,7 @@
 
 uint64_t invalid_replacements = 0;
 
-constexpr uint64_t pow2(uint8_t exp)
-{
-  assert(exp <= 64);
-  uint64_t result = 1;
-  while (exp) {
-    result *= 2;
-    exp -= 1;
-  }
-  return result;
-}
+
 namespace
 {
 
