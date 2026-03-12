@@ -30,7 +30,7 @@
 #define SMALL_BIG_WAY_SPLIT 12 // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
-#define SAMPLING_DISTANCE 50000000
+#define SAMPLING_DISTANCE 500000
 
 uint64_t invalid_replacements = 0;
 
@@ -218,7 +218,7 @@ struct BTBEntry {
      */
     uint64_t tag = 0;
 
-    if (_BTB_TAG_SIZE> 0){
+    if (_BTB_TAG_SIZE > 0){
       int lower_bits = _BTB_TAG_SIZE / 2;
       uint64_t lower_mask = (1 << lower_bits) - 1;
       tag = addr & lower_mask; // Set the lower 8-bits of the tag
@@ -277,13 +277,6 @@ struct BTBEntry {
 struct region_btb_entry_t {
   uint64_t ip_tag = 0;
   uint64_t max_pointer = 0;
-  auto index() const
-  {
-    auto ip = shuffle_ip_tag(ip_tag);
-    // NOTE: If shifted by (_BTB_REGION_BITS - _BTB_SET_BITS) this term results in "big idx" inserts, so the msbs of the region are used for indexing
-    uint64_t raw_idx = (ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
-    return raw_idx; // NOTE: keep track how many entries we observe per set
-  }
   auto tag() const
   {
     // TODO: calculate region tag
@@ -308,6 +301,13 @@ struct region_btb_entry_t {
     tag = tag | (tagMSBs << lower_bits);
     tag &= _REGION_MASK;
     return tag;
+  }
+  auto index() const
+  {
+    auto ip = shuffle_ip_tag(ip_tag);
+    // NOTE: If shifted by (_BTB_REGION_BITS - _BTB_SET_BITS) this term results in "big idx" inserts, so the msbs of the region are used for indexing
+    uint64_t raw_idx = this->tag() & (_BTB_TAG_REGION_SETS - 1);
+    return raw_idx; // NOTE: keep track how many entries we observe per set
   }
   auto partial_tag() const { return 0; }
 };

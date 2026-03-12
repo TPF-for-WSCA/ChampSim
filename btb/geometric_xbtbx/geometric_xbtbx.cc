@@ -30,7 +30,7 @@
 #define SMALL_BIG_WAY_SPLIT 12 // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
-#define SAMPLING_DISTANCE 50000000
+#define SAMPLING_DISTANCE 500000
 
 uint64_t invalid_replacements = 0;
 /*
@@ -225,6 +225,9 @@ struct BTBEntry {
   {
     uint64_t addr = ip_tag;
     addr = addr >> _isa_shiftamount >> _BTB_SET_BITS;
+    if (!_BTB_CLIPPED_TAG) {
+      return addr;
+    }
     uint64_t upper_addr = addr >> _BTB_TAG_SIZE;
     upper_addr = reverse_bits(upper_addr);
     // _BTB_TAG_SIZE <-- target size
@@ -287,20 +290,43 @@ struct BTBEntry {
 struct region_btb_entry_t {
   uint64_t ip_tag = 0;
   uint64_t max_pointer = 0;
-  auto index() const
-  {
-    auto ip = shuffle_ip_tag(ip_tag);
-    // NOTE: If shifted by (_BTB_REGION_BITS - _BTB_SET_BITS) this term results in "big idx" inserts, so the msbs of the region are used for indexing
-    uint64_t raw_idx = (ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
-    return raw_idx; // NOTE: keep track how many entries we observe per set
-  }
   auto tag() const
   {
     // TODO: calculate region tag
     auto ip = shuffle_ip_tag(ip_tag);
-    auto tag = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
-    tag &= _REGION_MASK;
+    auto addr = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+    uint64_t tag = 0;
+    if (_BTB_TAG_REGION_SIZE > 0){
+    
+      uint64_t upper_addr = addr >> _BTB_TAG_REGION_SIZE;
+      upper_addr = reverse_bits(upper_addr);
+      const uint64_t a = 1;
+      const double r = 1.1f;
+      for (uint64_t i = 1; i < _BTB_TAG_REGION_SIZE + 1; i++) {
+        uint64_t num_bits = (uint64_t)std::round(a * (1 - std::pow(r, i)) / (1.0 - r)) - 1;
+        uint8_t local_bit = addr & 0x1;
+        addr >>= 1;
+        if (num_bits && upper_addr) {
+          uint64_t mask = (1 << num_bits) - 1;
+          uint16_t partial_tag = upper_addr & mask;
+          upper_addr >>= num_bits;
+          while (partial_tag) {
+            local_bit = local_bit ^ (partial_tag & 0x1);
+            partial_tag >>= 1;
+          }
+        }
+        tag |= (local_bit << i);
+      }
+      tag &= _REGION_MASK;
+    }
     return tag;
+  }
+  auto index() const
+  {
+    auto ip = shuffle_ip_tag(ip_tag);
+    // NOTE: If shifted by (_BTB_REGION_BITS - _BTB_SET_BITS) this term results in "big idx" inserts, so the msbs of the region are used for indexing
+    uint64_t raw_idx = this->tag() & (_BTB_TAG_REGION_SETS - 1);
+    return raw_idx; // NOTE: keep track how many entries we observe per set
   }
   auto partial_tag() const { return 0; }
 };

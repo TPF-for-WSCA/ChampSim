@@ -59,7 +59,7 @@ struct btb_entry_t {
   auto tag() const
   {
     auto tag = ip_tag >> 2 >> _BTB_SET_BITS;
-    if (!_BTB_CLIPPED_TAG) {
+    if (!_BTB_CLIPPED_TAG || target_size == 64) {
       return tag;
     }
     tag &= _TAG_MASK;
@@ -75,7 +75,7 @@ struct btb_entry_t {
   auto partial_tag() const
   {
     uint64_t tag = ip_tag >> 2 >> _BTB_SET_BITS;
-    if (!_BTB_CLIPPED_TAG) {
+    if (!_BTB_CLIPPED_TAG || target_size == 64) {
       return tag;
     }
     tag &= _TAG_MASK;
