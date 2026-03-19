@@ -165,9 +165,32 @@ uint64_t shuffle_ip_tag(uint64_t ip_tag)
 auto get_region(uint64_t ip)
 {
   ip = shuffle_ip_tag(ip);
-  ip = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
-  ip = ip & _REGION_MASK;
-  return ip;
+  auto addr = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+  uint64_t tag = 0;
+  if (_BTB_TAG_REGION_SIZE > 0){
+  
+    uint64_t upper_addr = addr >> _BTB_TAG_REGION_SIZE;
+    upper_addr = reverse_bits(upper_addr);
+    const uint64_t a = 1;
+    const double r = 1.1f;
+    for (uint64_t i = 1; i < _BTB_TAG_REGION_SIZE + 1; i++) {
+      uint64_t num_bits = (uint64_t)std::round(a * (1 - std::pow(r, i)) / (1.0 - r)) - 1;
+      uint8_t local_bit = addr & 0x1;
+      addr >>= 1;
+      if (num_bits && upper_addr) {
+        uint64_t mask = (1 << num_bits) - 1;
+        uint16_t partial_tag = upper_addr & mask;
+        upper_addr >>= num_bits;
+        while (partial_tag) {
+          local_bit = local_bit ^ (partial_tag & 0x1);
+          partial_tag >>= 1;
+        }
+      }
+      tag |= (local_bit << i);
+    }
+    tag &= _REGION_MASK;
+  }
+  return tag;
 }
 
 struct FilterBTBEntry {
@@ -292,34 +315,7 @@ struct region_btb_entry_t {
   uint64_t max_pointer = 0;
   auto tag() const
   {
-    // TODO: calculate region tag
-    auto ip = shuffle_ip_tag(ip_tag);
-    auto addr = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
-    uint64_t tag = 0;
-    if (_BTB_TAG_REGION_SIZE > 0){
-    
-      uint64_t upper_addr = addr >> _BTB_TAG_REGION_SIZE;
-      upper_addr = reverse_bits(upper_addr);
-      const uint64_t a = 1;
-      const double r = 1.1f;
-      for (uint64_t i = 1; i < _BTB_TAG_REGION_SIZE + 1; i++) {
-        uint64_t num_bits = (uint64_t)std::round(a * (1 - std::pow(r, i)) / (1.0 - r)) - 1;
-        uint8_t local_bit = addr & 0x1;
-        addr >>= 1;
-        if (num_bits && upper_addr) {
-          uint64_t mask = (1 << num_bits) - 1;
-          uint16_t partial_tag = upper_addr & mask;
-          upper_addr >>= num_bits;
-          while (partial_tag) {
-            local_bit = local_bit ^ (partial_tag & 0x1);
-            partial_tag >>= 1;
-          }
-        }
-        tag |= (local_bit << i);
-      }
-      tag &= _REGION_MASK;
-    }
-    return tag;
+    return get_region(ip_tag);
   }
   auto index() const
   {

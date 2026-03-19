@@ -135,9 +135,17 @@ bool utilise_regions(size_t way_size)
 auto get_region(uint64_t ip)
 {
   ip = shuffle_ip_tag(ip);
-  ip = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
-  ip = ip & _REGION_MASK;
-  return ip;
+  auto addr = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+  uint64_t tag = 0;
+  if (_BTB_TAG_REGION_SIZE > 0) {
+    while(addr != 0)
+    {
+      tag = tag ^ (addr & _REGION_MASK);
+      addr = addr >> _BTB_TAG_REGION_SIZE;
+    }
+    tag &= _REGION_MASK;
+  }
+  return tag;
 }
 
 struct FilterBTBEntry {
@@ -256,18 +264,7 @@ struct region_btb_entry_t {
   uint64_t max_pointer = 0;
   auto tag() const
   {
-    auto ip = shuffle_ip_tag(ip_tag);
-    auto addr = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
-    uint64_t tag = 0;
-    if (_BTB_TAG_REGION_SIZE > 0) {
-      while(addr != 0)
-      {
-        tag = tag ^ (addr & _REGION_MASK);
-        addr = addr >> _BTB_TAG_REGION_SIZE;
-      }
-      tag &= _REGION_MASK;
-    }
-    return tag;
+    return get_region(ip_tag);
 }
   auto index() const
   {

@@ -1,5 +1,5 @@
 {
-  "executable_name": "region_sampling_half_hash/btbx_8k",
+  "executable_name": "region_sampling_half_hash_google/btbx_8k",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -59,9 +59,9 @@
         64
       ],
       "btb_tag_size": 0,
-      "btb_tag_regions": 2048,
-      "btb_tag_region_size": 11,
-      "btb_tag_region_ways": 2048,
+      "btb_tag_regions": 4096,
+      "btb_tag_region_size": 12,
+      "btb_tag_region_ways": 4096,
       "btb_perfect_mapping": 1,
       "btb_invalidate_entry": 0,
       "btb_invalidate_region": 0,

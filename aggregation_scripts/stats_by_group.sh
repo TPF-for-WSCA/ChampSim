@@ -2,7 +2,7 @@
 
 #benchmarks=("tanvir")
 #inputs: 
-benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "LLBP" "google_merced" "google_charlie" "google_delta" "google_whiskey" "cvp1_server") # "LLBP" "dpc3" "google_merced" "google_charlie" "google_delta" "google_whiskey") #  "LLBP")
+benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "LLBP" "google" "cvp1_server") # "LLBP" "dpc3" "google_merced" "google_charlie" "google_delta" "google_whiskey") #  "LLBP")
 normalise_to_row="sizes_8k_btb_tag_full"  # TODO: Make this the default/add default to look at / baseline
 mean="hmean"  # You might also use: mean (arithmetic), gmean (geometric, but only if you want to upset Lieven ;))
 avg_row_name="HMEAN"  # previousley: AVG
@@ -30,6 +30,7 @@ if [ $# -lt 1 ]; then
     do
         echo "Accumulating ${b}"
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi MPKI &
+        python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi INSTRUCTION_COUNT &
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi REGION_BTB_REPLACEMENTS &
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi BTB_HITS &
         python ${chroot}/ChampSim/aggregation_scripts/ipc_data.py ./${b} multi IPC  &

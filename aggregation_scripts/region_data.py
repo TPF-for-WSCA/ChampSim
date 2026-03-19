@@ -63,7 +63,6 @@ df = pd.DataFrame(plot_data)
 # Calculate mean absolute region count per config
 mean_region_counts = df.groupby("Config")["Region Count"].mean().reset_index()
 
-# df["Region Count"] = df.apply(lambda row: row["Region Count"] / parse_config_value(row["Config"]), axis=1)
 
 import plotly.graph_objects as go
 #garbage graph to get rid of the loading bullshit
@@ -159,6 +158,99 @@ unique_configs = df["Config"].dropna().unique()
 sorted_configs = sorted(unique_configs, key=parse_config_value)
 fig.update_xaxes(type='category', categoryorder='array', categoryarray=sorted_configs)
 
-fig.write_image(os.path.join(output_dir, "region_violin.pdf"))
-fig.write_html(os.path.join(output_dir, "region_violin.html"))
+fig.write_image(os.path.join(output_dir, "region_violin_absolute.pdf"))
+fig.write_html(os.path.join(output_dir, "region_violin_absolute.html"))
+fig.show()
+
+df["Region Count"] = df.apply(lambda row: row["Region Count"] / parse_config_value(row["Config"]), axis=1)
+
+fig = go.Figure()
+fig.update_layout(showlegend=False)
+fig.update_yaxes(tickformat="0%")
+fig.update_yaxes(minor=dict(ticks="", showgrid=False))
+fig.update_yaxes(range=[0, 0.35], dtick=0.05)
+violincolor="rgba(173,216,230,0.5)"
+whiskerscolor="#096BA6"
+line_size=2
+marker=dict(symbol='line-ew', color=whiskerscolor, size=2*line_size, line=dict(color=whiskerscolor, width=line_size))
+for config in df["Config"].unique():
+    config_data = df[df["Config"] == config]["Region Count"]
+    median = config_data.median()
+    min_val = config_data.min()
+    max_val = config_data.max()
+    fig.add_trace(go.Scatter(
+        x=[config],
+        y=[median],
+        mode='markers',
+        marker=marker,
+        showlegend=False,
+        hoverinfo='skip'
+    ))
+    fig.add_trace(go.Scatter(
+        x=[config],
+        y=[max_val],
+        mode='markers',
+        marker=marker,
+        showlegend=False,
+        hoverinfo='skip'
+    ))
+    fig.add_trace(go.Scatter(
+        x=[config],
+        y=[min_val],
+        mode='markers',
+        marker=marker,
+        showlegend=False,
+        hoverinfo='skip'
+    ))
+    fig.add_trace(go.Scatter(
+        x=[config, config],
+        y=[min_val, max_val],
+        mode='lines',
+        line=dict(color=whiskerscolor, width=line_size),
+        showlegend=False,
+        hoverinfo='skip'
+    ))
+    fig.add_trace(go.Violin(
+        y=config_data,
+        x=[config] * len(config_data),
+        box_visible=False,
+        points=False,
+        width=0.75,
+        line_width=0,
+        jitter=False,
+        meanline_visible=False,
+        line_color=violincolor,
+    ))
+# Update figure for paper
+fig.update_yaxes(showgrid=True, gridcolor='rgba(0,0,0,0.2)', zeroline=True, zerolinecolor='black', zerolinewidth=2)
+fig.update_layout(
+    title="",
+    violingap=0,
+    xaxis_title="Number of BTB entries",
+    yaxis_title="% Entries With Unique Tags",
+    font=dict(size=9),
+    #width=340,
+    #height=200, # adjust as needed for clarity
+    template="plotly_white",
+    margin=dict(l=0, r=0, t=0, b=0)
+)
+
+"""
+fig = px.violin(
+    df,
+    x="Config",
+    y="Region Count",
+    box=False,
+    points=False,
+    title="Region Count Distribution per Config"
+).update_layout(violingap=0)
+"""
+
+
+unique_configs = df["Config"].dropna().unique()
+sorted_configs = sorted(unique_configs, key=parse_config_value)
+fig.update_xaxes(type='category', categoryorder='array', categoryarray=sorted_configs)
+
+fig.write_image(os.path.join(output_dir, "region_violin_relative.pdf"))
+fig.write_html(os.path.join(output_dir, "region_violin_relative.html"))
 fig.show()

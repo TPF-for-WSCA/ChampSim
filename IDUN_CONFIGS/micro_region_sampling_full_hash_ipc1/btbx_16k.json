@@ -1,5 +1,5 @@
 {
-  "executable_name": "region_sensitivity_half_hash/2k_abtb_tag_15b",
+  "executable_name": "region_sampling_full_hash_ipc1/btbx_16k",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -40,11 +40,13 @@
       "schedule_latency": 2,
       "execute_latency": 1,
       "branch_predictor": "tage_scl",
-      "btb": "hash_xbtbx",
+      "btb": "fullxor_hash_xbtbx",
       "btb_ways": 9,
       "btb_non_indirect": 9,
-      "btb_sets": 256,
+      "btb_sets": 2048,
       "btb_clipped_tag": 1,
+      "btb_big_way_regions_enabled": 1,
+      "btb_small_way_regions_enabled": 1,
       "btb_target_sizes": [
         0,
         4,
@@ -56,10 +58,13 @@
         25,
         64
       ],
-      "btb_tag_size": 15,
-      "btb_tag_regions": 0,
-      "btb_tag_region_size": 0,
+      "btb_tag_size": 0,
+      "btb_tag_regions": 4096,
+      "btb_tag_region_size": 12,
+      "btb_tag_region_ways": 4096,
+      "btb_perfect_mapping": 1,
       "btb_invalidate_entry": 0,
+      "btb_invalidate_region": 0,
       "align_bits": 5
     }
   ],

@@ -39,13 +39,23 @@ def run_experiment(
         executable,
         "--warmup_instructions",
         str(warmup_instructions),
-        "--simulation_instructions",
-        str(evaluation_instructions),
         # "-result_dir",  # TODO: Re-add when we have more files written
         # str(output_dir),
-        "--json",
-        f"{output_dir}/stats.json",
     ]
+    if evaluation_instructions > 0:
+        cmd.extend(
+            [
+                "--simulation_instructions",
+                str(evaluation_instructions),
+            ]
+        )
+
+    cmd.extend(
+        [
+            "--json",
+            f"{output_dir}/stats.json",
+        ]
+    )
     if args.btb_tag_hash:
         cmd.append("--btb-tag-hash")
         cmd.append(args.btb_tag_hash)
@@ -129,7 +139,6 @@ def main(args):
         global executable
         executable = args.exec
 
-
     pid = os.getpid()
     proc = psutil.Process(pid)
 
@@ -146,9 +155,9 @@ def main(args):
         # run_experiment(trace, output_subdir)
         if path.exists(output_subdir):
             files = os.listdir(output_subdir)
-            if any(f.endswith('.txt') for f in files):
+            if any(f.endswith(".txt") for f in files):
                 cprint(f"{output_subdir} already computed", Color.YELLOW)
-                
+
                 continue
         print(f"Run {trace_name} experiment", flush=True)
         pending_experiments.append(
@@ -160,12 +169,14 @@ def main(args):
                         output_subdir,
                     ],
                 ),
-                trace_name
+                trace_name,
             )
         )
 
     # To prevent subprocesses to be killed
-    experiments = [(experiment[0].get(), experiment[1]) for experiment in pending_experiments]
+    experiments = [
+        (experiment[0].get(), experiment[1]) for experiment in pending_experiments
+    ]
 
     for exp in experiments:
         if exp[0]:
