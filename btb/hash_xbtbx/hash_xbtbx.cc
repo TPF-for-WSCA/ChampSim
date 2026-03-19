@@ -746,10 +746,12 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
       region_idx = ::REGION_BTB.at(this).check_hit_idx({ip});
     }
     if (insert) {
-      if (!replaced.has_value() || replaced.value().ip_tag == 0 || get_region(ip) != get_region(replaced.value().ip_tag)) {
+      bool replaced_valid = replaced.has_value() && replaced.value().ip_tag != 0;
+      uint64_t replaced_region = replaced_valid ? get_region(replaced.value().ip_tag) : 0;
+      if (!replaced_valid || new_region != replaced_region) {
         sim_stats.region_btb_inserts_per_set.at(::region_btb_entry_t{ip}.index())++;
       }
-      if (replaced.has_value() && replaced.value().ip_tag != 0 && get_region(ip) != get_region(replaced.value().ip_tag)) {
+      if (replaced_valid && new_region != replaced_region) {
         sim_stats.region_btb_conflicts++;
         sim_stats.max_region_pointer_sum += replaced.value().max_pointer;
         sim_stats.region_pointer_max_stats[replaced.value().max_pointer]++;
@@ -806,9 +808,10 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         fill_entry,
         entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
     uint64_t old_region = 0;
+    bool replaced_valid = replaced_entry.value().ip_tag != 0;
     sim_stats.regions_inserted_per_way[replaced_entry.value().target_size].insert(new_region);
-    auto replaced_region = get_region(replaced_entry.value().ip_tag);
-    if (replaced_entry.value().ip_tag != 0 && sim_stats.region_pointer_count[replaced_region])
+    auto replaced_region = replaced_valid ? get_region(replaced_entry.value().ip_tag) : 0;
+    if (replaced_valid && sim_stats.region_pointer_count[replaced_region])
       sim_stats.region_pointer_count[replaced_region]--;
     if (region_idx.has_value()) {
       auto fill_region = get_region(fill_entry.ip_tag);
@@ -824,8 +827,8 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     if (utilise_regions(replaced_entry.value().target_size)) {
       region_tag_entry_count[replaced_entry.value().target_size][new_region] += 1;
       total_region_tag_entry_count[new_region] += 1;
-      if (replaced_entry.has_value() && replaced_entry.value().ip_tag) {
-        old_region = get_region(replaced_entry.value().ip_tag);
+      if (replaced_entry.has_value() && replaced_valid) {
+        old_region = replaced_region;
         if (total_region_tag_entry_count[old_region] == 0) {
           // std::cerr << "WARNING: WE TRY REMOVING AN ALREADY 0 VALUE" << std::endl;
           // std::cerr << "OLD REGION: " << old_region << std::endl;
