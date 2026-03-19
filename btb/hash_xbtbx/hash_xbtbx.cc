@@ -70,7 +70,6 @@ std::map<uint64_t, uint64_t> total_region_tag_entry_count = {};
 std::map<uint64_t, uint16_t> region_count_in_small_btb = {};
 std::vector<uint8_t> index_bits;
 std::vector<uint8_t> tag_bits;
-std::vector<uint8_t> btb_addressing_hash;
 std::array<std::set<uint64_t>, 64> observed_entries_per_region_size = {};
 
 bool INSERT_FILTER_VICTIMS = false;
@@ -92,6 +91,10 @@ uint64_t _BTB_TAG_REGION_SETS = 0;
 uint64_t _BTB_TAG_REGION_SET_IDX_BITS = 0;
 uint8_t _BTB_TAG_REGION_SIZE = 0; // This is the size of a single region in bits
 uint64_t _BTB_REGION_BITS = 0;    // This is the number of bits required to assign an ID to all regions in the region BTB (log2(BTB_TAG_REGIONS))
+uint8_t _REGION_LOWER_BITS = 0;
+uint8_t _REGION_UPPER_BITS = 0;
+uint64_t _REGION_LOWER_MASK = 0;
+uint64_t _REGION_UPPER_MASK = 0;
 uint64_t last_stats_cycle = 0;
 uint64_t _isa_shiftamount = 2;
 constexpr std::size_t BTB_INDIRECT_SIZE = 4096;
@@ -127,38 +130,19 @@ bool utilise_regions(size_t way_size)
 
 enum BTB_ReplacementStrategy { LRU, REF0, REF };
 
-uint64_t shuffle_ip_tag(uint64_t ip_tag)
-{
-  if (btb_addressing_hash.empty()) {
-    return ip_tag;
-  } else {
-    std::bitset<64> ip_tag_b{ip_tag};
-    std::bitset<64> ip_b{0};
-    size_t i = 0;
-    for (; i < btb_addressing_hash.size(); i++) {
-      ip_b[i] = ip_tag_b[btb_addressing_hash.at(i)];
-    }
-    for (; i < 64; i++) {
-      ip_b[i] = ip_tag_b[i];
-    }
-    return ip_b.to_ullong();
-  }
-}
-
 auto get_region(uint64_t ip)
 {
-  ip = shuffle_ip_tag(ip);
   auto addr = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
-  int lower_bits = _BTB_TAG_REGION_SIZE / 2;
-  uint64_t lower_mask = (1 << lower_bits) - 1;
+  int lower_bits = _REGION_LOWER_BITS;
+  uint64_t lower_mask = _REGION_LOWER_MASK;
   uint64_t tag = addr & lower_mask; // Set the lower 8-bits of the tag
   addr = addr >> lower_bits;
-  int tagMSBs = 0;
+  uint64_t tagMSBs = 0;
   /*Get the upper 8-bits (folded X-OR)*/
   // _FULL_TAG_MASK
   // _BTB_TAG_SIZE
-  const uint64_t upper_n_bits = _BTB_TAG_REGION_SIZE - lower_bits;
-  const uint64_t tag_mask = (1 << upper_n_bits)-1;
+  const uint64_t upper_n_bits = _REGION_UPPER_BITS;
+  const uint64_t tag_mask = _REGION_UPPER_MASK;
   while(addr != 0)
   {
     tagMSBs = tagMSBs ^ (addr & tag_mask);
@@ -182,14 +166,12 @@ struct FilterBTBEntry {
   // TODO: shift indexes and tags into place
   auto index() const
   {
-    // auto ip = shuffle_ip_tag(ip_tag);
     auto ip = ip_tag;
    auto idx = (ip >> _isa_shiftamount) & _FILTER_INDEX_MASK;
     return idx;
   }
   auto tag() const
   {
-    // auto ip = shuffle_ip_tag(ip_tag);
     auto ip = ip_tag;
    auto tag = ip >> _isa_shiftamount >> _FILTER_BTB_SET_BITS;
     return tag;
@@ -197,7 +179,6 @@ struct FilterBTBEntry {
 
   auto partial_tag() const
   {
-    // auto ip = shuffle_ip_tag(ip_tag);
     auto ip = ip_tag;
    uint64_t tag = ip >> _isa_shiftamount >> _FILTER_BTB_SET_BITS;
     return tag;
@@ -221,7 +202,7 @@ struct BTBEntry {
   // TODO: shift indexes and tags into place
   auto index() const
   {
-    auto ip = shuffle_ip_tag(ip_tag);
+    auto ip = ip_tag;
     auto idx = (ip >> _isa_shiftamount) & _INDEX_MASK;
     return idx;
   }
@@ -271,7 +252,7 @@ struct BTBEntry {
 
   auto partial_tag() const
   {
-    auto ip = shuffle_ip_tag(ip_tag);
+    auto ip = ip_tag;
     uint64_t tag = ip >> _isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
@@ -379,7 +360,6 @@ void O3_CPU::initialize_btb()
   ::REGION_BTB.insert({this, champsim::msl::lru_table<region_btb_entry_t>{sets, ways}});
 #endif
   std::fill(std::begin(::INDIRECT_BTB[this]), std::end(::INDIRECT_BTB[this]), 0);
-  ::btb_addressing_hash = btb_index_tag_hash;
   std::fill(std::begin(::CALL_SIZE[this]), std::end(::CALL_SIZE[this]), 4);
   ::CONDITIONAL_HISTORY[this] = 0;
   _BTB_SET_BITS = champsim::lg2(BTB_SETS);
@@ -403,6 +383,10 @@ void O3_CPU::initialize_btb()
     _BTB_TAG_SIZE = 62 - _BTB_SET_BITS;
     _REGION_MASK = pow2(62 - _BTB_SET_BITS) - 1;
   }
+  _REGION_LOWER_BITS = _BTB_TAG_REGION_SIZE / 2;
+  _REGION_UPPER_BITS = _BTB_TAG_REGION_SIZE - _REGION_LOWER_BITS;
+  _REGION_LOWER_MASK = (_REGION_LOWER_BITS >= 64) ? ~0ULL : ((1ULL << _REGION_LOWER_BITS) - 1);
+  _REGION_UPPER_MASK = (_REGION_UPPER_BITS >= 64) ? ~0ULL : ((1ULL << _REGION_UPPER_BITS) - 1);
   // TODO: Initialize index and tag based on bit information
   _INDEX_MASK = BTB_SETS - 1;
   _BTB_SETS = BTB_SETS;
@@ -823,15 +807,17 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
         entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
     uint64_t old_region = 0;
     sim_stats.regions_inserted_per_way[replaced_entry.value().target_size].insert(new_region);
-    if (replaced_entry.value().ip_tag != 0 && sim_stats.region_pointer_count[get_region(replaced_entry.value().ip_tag)])
-      sim_stats.region_pointer_count[get_region(replaced_entry.value().ip_tag)]--;
+    auto replaced_region = get_region(replaced_entry.value().ip_tag);
+    if (replaced_entry.value().ip_tag != 0 && sim_stats.region_pointer_count[replaced_region])
+      sim_stats.region_pointer_count[replaced_region]--;
     if (region_idx.has_value()) {
-      sim_stats.region_pointer_count[get_region(fill_entry.ip_tag)]++;
+      auto fill_region = get_region(fill_entry.ip_tag);
+      sim_stats.region_pointer_count[fill_region]++;
       auto region_elem = ::REGION_BTB.at(this).begin();
       std::advance(region_elem, std::get<1>(region_idx.value()));
       // if we achieved a new max count of region pointers on this entry increase here
-      if (region_elem->data.max_pointer < sim_stats.region_pointer_count[get_region(fill_entry.ip_tag)]) {
-        region_elem->data.max_pointer = sim_stats.region_pointer_count[get_region(fill_entry.ip_tag)];
+      if (region_elem->data.max_pointer < sim_stats.region_pointer_count[fill_region]) {
+        region_elem->data.max_pointer = sim_stats.region_pointer_count[fill_region];
       }
     }
 
