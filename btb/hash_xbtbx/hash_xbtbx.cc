@@ -17,7 +17,7 @@
 
 #include "ooo_cpu.h"
 // We are only using those in the preprocessor
-#define USE_FIFO true
+#define USE_FIFO false
 #define USE_SRRIP false
 
 #if USE_FIFO
@@ -132,6 +132,9 @@ enum BTB_ReplacementStrategy { LRU, REF0, REF };
 
 auto get_region(uint64_t ip)
 {
+  if (((int)_BTB_TAG_REGION_SIZE) == 0) {
+    return 0ul;
+  }
   auto addr = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
   int lower_bits = _REGION_LOWER_BITS;
   uint64_t lower_mask = _REGION_LOWER_MASK;
@@ -151,7 +154,7 @@ auto get_region(uint64_t ip)
   /*Concatenate the lower and upper 8-bits of tag*/
   tag = tag | (tagMSBs << lower_bits);
   tag &= _REGION_MASK;
-  return tag;;
+  return tag;
 }
 
 struct FilterBTBEntry {
@@ -159,7 +162,7 @@ struct FilterBTBEntry {
   uint64_t target;
   branch_info type = branch_info::ALWAYS_TAKEN;
   std::tuple<uint16_t, uint16_t, uint64_t> region_idx_tag = {0, 0, 0};
-  uint8_t target_size = 64; // TODO: Only update for which we have sizes
+  uint16_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
   bool useless = false;
   bool replacement_protected = false;
@@ -193,7 +196,7 @@ struct BTBEntry {
   branch_info type = branch_info::ALWAYS_TAKEN;
   // Set / precise / magic pointers
   std::tuple<uint16_t, uint16_t, uint64_t> region_idx_tag = {0, 0, 0};
-  uint8_t target_size = 64; // TODO: Only update for which we have sizes
+  uint16_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
   uint8_t precise_branch_type;
   bool useless = false;
@@ -210,7 +213,7 @@ struct BTBEntry {
   {
     uint64_t addr = ip_tag;
     addr = addr >> _isa_shiftamount >> _BTB_SET_BITS;
-    if (!_BTB_CLIPPED_TAG) {
+    if (!_BTB_CLIPPED_TAG || target_size == 64) {
       return addr;
     }
     /* We use a _BTB_TAG_SIZE-bit tag.
@@ -243,9 +246,9 @@ struct BTBEntry {
       tag ^= masked_bits;
       // TODO: add third option / replace _PERFECT_MAPPING with enum / right now we have a hard wired to precise pointers
       if (_PERFECT_MAPPING)
-        tag |= (std::get<1>(region_idx_tag) << _BTB_TAG_SIZE);
+        tag |= (std::get<1>(region_idx_tag) << _BTB_TAG_SIZE); // Precise Pointers
       else
-        tag |= (std::get<0>(region_idx_tag) << _BTB_TAG_SIZE); // Precise pointers
+        tag |= (std::get<2>(region_idx_tag) << _BTB_TAG_SIZE); // Magic Pointers 
     }
     return tag;
   }
@@ -438,7 +441,7 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     std::optional<::BTBEntry> full_64 = std::nullopt;
     if (small_way_regions_enabled && region_idx_.has_value()) {
       full_small = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, region_idx_.value(), 0});
-      if (full_small.has_value() && !utilise_regions(full_small.value().target_size)) {
+      if (full_small.has_value() && (!utilise_regions(full_small.value().target_size) || full_small.value().target_size > SMALL_BIG_WAY_SPLIT)) {
         full_small = std::nullopt;
       }
     } else if (!small_way_regions_enabled) {
@@ -446,8 +449,8 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     }
     if (big_way_regions_enabled && region_idx_.has_value()) {
       full_big = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, region_idx_.value(), BTB_TARGET_SIZES.end()[-2]});
-      if (full_big.has_value() && !utilise_regions(full_big.value().target_size)) {
-        full_small = std::nullopt;
+      if (full_big.has_value() && (!utilise_regions(full_big.value().target_size) || full_big.value().target_size < SMALL_BIG_WAY_SPLIT)) {
+        full_big = std::nullopt;
       }
     } else if (!big_way_regions_enabled) {
       partial_big = ::BTB.at(this).check_hit(
@@ -477,6 +480,10 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     }
   } else if (!filter_hit.has_value()) {
     btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, std::tuple<uint16_t, uint16_t, uint64_t>{0, 0, 0}, 0});
+    std::optional<::BTBEntry> btb_entry_64 = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, std::tuple<uint16_t, uint16_t, uint64_t>{0, 0, 0}, 64});
+    if (btb_entry_64.has_value() && !btb_entry.has_value()) {
+      btb_entry = btb_entry_64.value();
+    }
   } else {
     auto v = filter_hit.value();
     btb_entry = {v.ip_tag, v.target, v.type, v.region_idx_tag};
@@ -611,7 +618,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
   std::optional<std::tuple<uint16_t, uint16_t, uint64_t>> region_idx = std::nullopt;
   std::optional<::BTBEntry> opt_entry;
-  uint8_t entry_size = num_bits;
+  uint16_t entry_size = num_bits;
   // TODO: ADD REGION INFORMATION IF AVAILABLE
   std::optional<std::tuple<uint16_t, uint16_t, uint64_t>> tmp_region_idx =
       (small_way_regions_enabled || big_way_regions_enabled) ? ::REGION_BTB.at(this).check_hit_idx({ip}) : std::nullopt;
@@ -675,7 +682,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   std::optional<::BTBEntry> small_hit = std::nullopt;
   std::optional<::BTBEntry> big_hit = std::nullopt;
   std::optional<::BTBEntry> hit_64 = std::nullopt;
-  std::optional<::BTBEntry> lru_elem = std::nullopt;
 
   if (small_way_regions_enabled && tmp_region_idx.has_value()) {
     small_hit = ::BTB.at(this).check_hit({ip, 0, type, tmp_region_idx.value(), 0});
@@ -697,9 +703,6 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
   if (hit_64.has_value() && hit_64.value().target_size != 64) {
     hit_64 =
         std::nullopt; // fixing up for when we are using perfect matching, as in this case we will alias as we use the actual region bits instead of their index
-  }
-  if (!small_hit.has_value() && !big_hit.has_value() && !hit_64.has_value()) {
-    lru_elem = ::BTB.at(this).get_replacement_element(::BTBEntry{ip, 0}, num_bits);
   }
 
   assert(!(small_hit.has_value() && big_hit.has_value()) || (small_hit.value().ip_tag == big_hit.value().ip_tag));
@@ -800,6 +803,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     // TODO: Check if (since we already know about region or not region) should make two distinct calls out of the below
     auto fill_entry = opt_entry.value_or(
         ::BTBEntry{ip, branch_target, type, region_idx.value_or(std::tuple<uint16_t, uint16_t, uint64_t>{pow2(_BTB_REGION_BITS), 0, 0}), entry_size});
+    assert(!utilise_regions(entry_size) || !region_idx.has_value() || std::get<1>(fill_entry.region_idx_tag) == std::get<1>(region_idx.value()));
     fill_entry.target = branch_target;
     fill_entry.ip_tag = ip;
     fill_entry.type = type;
@@ -1018,7 +1022,7 @@ void O3_CPU::btb_invalidate_entry(uint64_t ip)
     if (big_way_regions_enabled && region_idx_.has_value()) {
       full_big = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, region_idx_.value(), BTB_TARGET_SIZES.end()[-2]});
       if (full_big.has_value() && !::utilise_regions(full_big.value().target_size)) {
-        full_small = std::nullopt;
+        full_big = std::nullopt;
       }
     } else if (!big_way_regions_enabled) {
       partial_big = ::BTB.at(this).check_hit(
@@ -1056,16 +1060,16 @@ void O3_CPU::btb_invalidate_entry(uint64_t ip)
 
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
-  if (!btb_entry.has_value() || !region_idx_.has_value()) {
-    std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR " << ip << std::endl;
-    std::cerr << "ALREADY REPLACED?" << std::endl;
+  if (!btb_entry.has_value()) {
+    // std::cerr << "WE HAVE NOT FOUND THE ALIASING ENTRY FOR " << ip << std::endl;
+    // std::cerr << "ALREADY REPLACED?" << std::endl;
     return;
     // assert(0);
   }
-  if (btb_entry.value().ip_tag == ip) {
+  /* if (btb_entry.value().ip_tag == ip) {
     return; // we already updated the entry in simulation -- evicting it now would result in a double penalty - updating and then throwing away the just updated
             // entry
-  }
+  } */
   if (btb_invalidate_entry_on_alias)
     ::BTB.at(this).invalidate(btb_entry.value());
   else if (btb_invalidate_region)

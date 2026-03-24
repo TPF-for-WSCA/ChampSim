@@ -157,7 +157,7 @@ struct FilterBTBEntry {
   uint64_t target;
   branch_info type = branch_info::ALWAYS_TAKEN;
   std::tuple<uint16_t, uint16_t, uint64_t> region_idx_tag = {0, 0, 0};
-  uint8_t target_size = 64; // TODO: Only update for which we have sizes
+  uint16_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
 
   // TODO: shift indexes and tags into place
@@ -191,7 +191,7 @@ struct L1BTBEntry {
   branch_info type = branch_info::ALWAYS_TAKEN;
   // Set / precise / magic pointers
   std::tuple<uint16_t, uint16_t, uint64_t> region_idx_tag = {0, 0, 0};
-  uint8_t target_size = 64; // TODO: Only update for which we have sizes
+  uint16_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
   uint8_t precise_branch_type;
   bool useless = false;
@@ -227,7 +227,7 @@ struct BTBEntry {
   branch_info type = branch_info::ALWAYS_TAKEN;
   // Set / precise / magic pointers
   std::tuple<uint16_t, uint16_t, uint64_t> region_idx_tag = {0, 0, 0};
-  uint8_t target_size = 64; // TODO: Only update for which we have sizes
+  uint16_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
   uint8_t precise_branch_type;
   bool useless = false;

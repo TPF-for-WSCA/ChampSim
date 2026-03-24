@@ -1,21 +1,18 @@
 {
-  "executable_name": "region_sensitivity_half_hash/16k_btb_rs_10b_rc_512_rw_16",
+  "executable_name": "champsim",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
   "heartbeat_frequency": 10000000,
   "num_cores": 1,
   "CFLAGS": [
-    "-Wall -Wno-reorder -g -O3 -flto"
+    "-Wall -Wno-reorder -g -O0 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
   ],
   "CXXFLAGS": [
-    "-Wall -Wno-reorder -g -O3 -flto"
+    "-Wall -Wno-reorder -g -O0 -I /cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/include"
   ],
   "LDLIBS": [
     "-lxed -lz -lboost_system -fsanitize=bounds -fsanitize=address -lboost_filesystem"
-  ],
-  "LDFLAGS": [
-    "-L/cluster/home/romankb/xed/kits/xed-install-base-2023-04-21-lin-x86-64/lib"
   ],
   "ooo_cpu": [
     {
@@ -59,7 +56,7 @@
         64
       ],
       "btb_tag_size": 0,
-      "btb_tag_regions": 512,
+      "btb_tag_regions": 1024,
       "btb_tag_region_size": 10,
       "btb_tag_region_ways": 16,
       "btb_perfect_mapping": 1,

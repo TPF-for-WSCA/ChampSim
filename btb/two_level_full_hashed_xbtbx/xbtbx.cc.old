@@ -144,7 +144,7 @@ struct FilterBTBEntry {
   uint64_t target;
   branch_info type = branch_info::ALWAYS_TAKEN;
   std::pair<uint16_t, uint64_t> region_idx_tag = {0, 0};
-  uint8_t target_size = 64; // TODO: Only update for which we have sizes
+  uint16_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
 
   // TODO: shift indexes and tags into place
@@ -176,7 +176,7 @@ struct BTBEntry {
   uint64_t target;
   branch_info type = branch_info::ALWAYS_TAKEN;
   std::pair<uint16_t, uint64_t> region_idx_tag = {0, 0};
-  uint8_t target_size = 64; // TODO: Only update for which we have sizes
+  uint16_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
 
   // TODO: shift indexes and tags into place

@@ -35,7 +35,7 @@ struct btb_entry_t {
   uint64_t target = 0;
   branch_info type = branch_info::ALWAYS_TAKEN;
   std::tuple<uint16_t, uint16_t, uint64_t> region_idx_tag = {0, 0, 0};
-  uint8_t target_size = 64; // TODO: Only update for which we have sizes
+  uint16_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
   uint8_t precise_branch_type;
   bool useless = false;
@@ -57,7 +57,7 @@ struct l1_btb_entry_t {
   uint64_t target = 0;
   branch_info type = branch_info::ALWAYS_TAKEN;
   std::tuple<uint16_t, uint16_t, uint64_t> region_idx_tag = {0, 0, 0};
-  uint8_t target_size = 64; // TODO: Only update for which we have sizes
+  uint16_t target_size = 64; // TODO: Only update for which we have sizes
   uint64_t offset_mask = -1;
   uint8_t precise_branch_type = NOT_BRANCH;
   bool useless = false;

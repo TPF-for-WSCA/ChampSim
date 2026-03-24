@@ -1,5 +1,5 @@
 {
-  "executable_name": "region_sensitivity_half_hash/16k_abtb_tag_11b",
+  "executable_name": "region_sensitivity_half_hash/16k_abtb_tag_10b_w_invalidate",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -56,9 +56,10 @@
         25,
         64
       ],
-      "btb_tag_size": 11,
+      "btb_tag_size": 10,
       "btb_tag_regions": 0,
       "btb_tag_region_size": 0,
+      "btb_invalidate_entry": 1,
       "align_bits": 5
     }
   ],
