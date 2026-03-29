@@ -1,5 +1,5 @@
 {
-  "executable_name": "region_sensitivity_half_hash/32k_abtb_tag_13b",
+  "executable_name": "region_sensitivity_half_hash_fifo/32k_abtb_tag_13b",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,

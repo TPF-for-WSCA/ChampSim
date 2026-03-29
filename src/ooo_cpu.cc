@@ -369,6 +369,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     stop_fetch = true;
     prev_wrong_ip = (predicted_branch_target) ? predicted_branch_target : arch_instr.ip + 4;
     arch_instr.branch_mispredicted = 1;
+    // std::cout << "branch mispred " << arch_instr.instr_id << std::endl;
     sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
     arch_instr.branch_prediction = 0;
     arch_instr.branch_taken = 0;
@@ -409,6 +410,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
         stop_fetch = true;
         prev_wrong_ip = (predicted_branch_target) ? predicted_branch_target : arch_instr.ip + 4;
         arch_instr.branch_mispredicted = 1;
+        // std::cout << "branch mispred " << arch_instr.instr_id << std::endl;
         sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
       }
     } else if (predicted_branch_target && predicted_branch_target != arch_instr.ip + 4) {

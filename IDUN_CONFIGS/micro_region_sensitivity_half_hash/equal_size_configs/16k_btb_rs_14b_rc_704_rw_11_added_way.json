@@ -1,5 +1,5 @@
 {
-  "executable_name": "region_sensitivity_half_hash/16k_btb_rs_14b_rc_704_rw_11_added_way",
+  "executable_name": "region_sensitivity_half_hash_fifo/16k_btb_rs_14b_rc_704_rw_11_added_way",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,

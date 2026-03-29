@@ -1,5 +1,5 @@
 {
-  "executable_name": "region_sensitivity_half_hash/16k_btb_rs_10b_rc_288_rw_16",
+  "executable_name": "region_sensitivity_half_hash_fifo/16k_btb_rs_10b_rc_288_rw_16",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -61,7 +61,7 @@
       "btb_tag_size": 0,
       "btb_tag_regions": 288,
       "btb_tag_region_size": 10,
-      "btb_tag_region_ways": 18,
+      "btb_tag_region_ways": 9,
       "btb_perfect_mapping": 1,
       "btb_invalidate_entry": 1,
       "btb_invalidate_region": 0,

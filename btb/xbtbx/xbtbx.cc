@@ -18,7 +18,7 @@
 
 #include "ooo_cpu.h"
 // We are only using those in the preprocessor
-#define USE_FIFO true
+#define USE_FIFO false
 #define USE_SRRIP false
 
 #if USE_FIFO
@@ -33,7 +33,7 @@
 #define REGION_BTB_FILTER_ENABLED false
 #define SAMPLING_DISTANCE 500000
 #define EAGERLY_EVICT_ON_REGION_REMOVAL true
-#define ITLB_CACHE false
+#define ITLB_CACHE true
 #define PAGE_LOG_SIZE 12
 
 uint64_t invalid_replacements = 0;
@@ -131,27 +131,9 @@ bool utilise_regions(size_t way_size)
 
 enum BTB_ReplacementStrategy { LRU, REF0, REF };
 
-uint64_t shuffle_ip_tag(uint64_t ip_tag)
-{
-  if (btb_addressing_hash.empty()) {
-    return ip_tag;
-  } else {
-    std::bitset<64> ip_tag_b{ip_tag};
-    std::bitset<64> ip_b{0};
-    size_t i = 0;
-    for (; i < btb_addressing_hash.size(); i++) {
-      ip_b[i] = ip_tag_b[btb_addressing_hash.at(i)];
-    }
-    for (; i < 64; i++) {
-      ip_b[i] = ip_tag_b[i];
-    }
-    return ip_b.to_ullong();
-  }
-}
 
 auto get_region(uint64_t ip)
 {
-  // ip = shuffle_ip_tag(ip);
   if (ITLB_CACHE) {
     return (ip >> PAGE_LOG_SIZE);
   }
@@ -172,14 +154,12 @@ struct FilterBTBEntry {
   // TODO: shift indexes and tags into place
   auto index() const
   {
-    // auto ip = shuffle_ip_tag(ip_tag);
     auto ip = ip_tag;
     auto idx = (ip >> _isa_shiftamount) & _FILTER_INDEX_MASK;
     return idx;
   }
   auto tag() const
   {
-    // auto ip = shuffle_ip_tag(ip_tag);
     auto ip = ip_tag;
     auto tag = ip >> _isa_shiftamount >> _FILTER_BTB_SET_BITS;
     return tag;
@@ -187,7 +167,6 @@ struct FilterBTBEntry {
 
   auto partial_tag() const
   {
-    // auto ip = shuffle_ip_tag(ip_tag);
     auto ip = ip_tag;
     uint64_t tag = ip >> _isa_shiftamount >> _FILTER_BTB_SET_BITS;
     return tag;
@@ -214,7 +193,6 @@ struct BTBEntry {
     
     auto ip = ip_tag;
     // if (!btb_addressing_hash.empty())
-    //   ip = shuffle_ip_tag(ip_tag);
     auto idx = (ip >> _isa_shiftamount) & _INDEX_MASK;
     return idx;
   }
@@ -222,9 +200,8 @@ struct BTBEntry {
   {
     auto ip = ip_tag;
     // if (!btb_addressing_hash.empty())
-    //   ip = shuffle_ip_tag(ip_tag);
     auto tag = ip >> _isa_shiftamount >> _BTB_SET_BITS;
-    if (!_BTB_CLIPPED_TAG) {
+    if (!_BTB_CLIPPED_TAG || target_size == 64) {
       return tag;
     }
 
@@ -237,7 +214,7 @@ struct BTBEntry {
       if (_PERFECT_MAPPING)
         tag |= (std::get<1>(region_idx_tag) << _BTB_TAG_SIZE);
       else
-        tag |= (std::get<0>(region_idx_tag) << _BTB_TAG_SIZE); // Precise pointers
+        tag |= (std::get<2>(region_idx_tag) << _BTB_TAG_SIZE); // Precise pointers
     }
     return tag;
   }
@@ -246,7 +223,6 @@ struct BTBEntry {
   {
     auto ip = ip_tag;
     // if (!btb_addressing_hash.empty())
-    //    ip = shuffle_ip_tag(ip_tag);
     uint64_t tag = ip >> _isa_shiftamount >> _BTB_SET_BITS;
     if (!_BTB_CLIPPED_TAG) {
       return tag;
@@ -276,23 +252,14 @@ struct region_btb_entry_t {
   bool replacement_protected = false;
   auto index() const
   {
-    // auto ip = shuffle_ip_tag(ip_tag);
     // NOTE: If shifted by (_BTB_REGION_BITS - _BTB_SET_BITS) this term results in "big idx" inserts, so the msbs of the region are used for indexing
-    auto ip = ip_tag;
-    uint64_t raw_idx = (ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE) & (_BTB_TAG_REGION_SETS - 1);
-    return raw_idx; // NOTE: keep track how many entries we observe per set
+    uint64_t region = get_region(ip_tag);
+    return region & (_BTB_TAG_REGION_SETS - 1);
   }
   auto tag() const
   {
     // TODO: calculate region tag
-    // auto ip = shuffle_ip_tag(ip_tag);
-    auto ip = ip_tag;
-    if (ITLB_CACHE) {
-      return (ip >> PAGE_LOG_SIZE);
-    }
-    auto tag = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
-    tag &= _REGION_MASK;
-    return tag;
+    return get_region(ip_tag);
   }
   auto partial_tag() const { return 0; }
 };
@@ -441,7 +408,7 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     std::optional<::BTBEntry> full_64 = std::nullopt;
     if (small_way_regions_enabled && region_idx_.has_value()) {
       full_small = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, region_idx_.value(), 0});
-      if (full_small.has_value() && !utilise_regions(full_small.value().target_size)) {
+      if (full_small.has_value() && (!utilise_regions(full_small.value().target_size) || full_small.value().target_size > SMALL_BIG_WAY_SPLIT)) {
         full_small = std::nullopt;
       }
     } else if (!small_way_regions_enabled) {
@@ -449,8 +416,8 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     }
     if (big_way_regions_enabled && region_idx_.has_value()) {
       full_big = ::BTB.at(this).check_hit({ip, 0, branch_info::ALWAYS_TAKEN, region_idx_.value(), BTB_TARGET_SIZES.end()[-2]});
-      if (full_big.has_value() && !utilise_regions(full_big.value().target_size)) {
-        full_small = std::nullopt;
+      if (full_big.has_value() && (!utilise_regions(full_big.value().target_size) || full_big.value().target_size < SMALL_BIG_WAY_SPLIT)) {
+        full_big = std::nullopt;
       }
     } else if (!big_way_regions_enabled) {
       partial_big = ::BTB.at(this).check_hit(
@@ -480,6 +447,10 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     }
   } else if (!filter_hit.has_value()) {
     btb_entry = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, std::tuple<uint16_t, uint16_t, uint64_t>{0, 0, 0}, 0});
+    std::optional<::BTBEntry> btb_entry_64 = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, std::tuple<uint16_t, uint16_t, uint64_t>{0, 0, 0}, 64});
+    if (btb_entry_64.has_value() && !btb_entry.has_value()) {
+      btb_entry = btb_entry_64.value();
+    }
   } else {
     auto v = filter_hit.value();
     btb_entry = {v.ip_tag, v.target, v.type, v.region_idx_tag};
@@ -627,7 +598,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
   std::optional<std::tuple<uint16_t, uint16_t, uint64_t>> region_idx = std::nullopt;
   std::optional<::BTBEntry> opt_entry;
-  uint8_t entry_size = num_bits;
+  uint16_t entry_size = num_bits;
   // TODO: ADD REGION INFORMATION IF AVAILABLE
   std::optional<std::tuple<uint16_t, uint16_t, uint64_t>> tmp_region_idx =
       (small_way_regions_enabled || big_way_regions_enabled) ? ::REGION_BTB.at(this).check_hit_idx({ip}) : std::nullopt;
