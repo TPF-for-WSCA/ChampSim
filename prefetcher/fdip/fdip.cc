@@ -51,6 +51,8 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
   return metadata_in;
 }
 
+
+// TODO: check commit states?
 void CACHE::prefetcher_cycle_operate()
 {
   while (prefetch_queue.size()) {

@@ -54,6 +54,14 @@ uint64_t _decoded = 0;
 uint64_t _dispatched = 0;
 uint64_t _executed = 0;
 
+enum FRONTEND_STATE {
+  CORRECT,
+  WRONG,
+  RECOVERING
+};
+
+enum FRONTEND_STATE current = .CORRECT;
+
 std::chrono::seconds elapsed_time();
 
 long O3_CPU::operate()
@@ -179,7 +187,7 @@ void O3_CPU::initialize_instruction()
     if (!fetch_stall)
       stop_fetch = do_init_instruction(input_queue.front());
     // std::cout << "INSTR_ID: " << input_queue.front().instr_id << ", IP: " << input_queue.front().ip << ", CURRENT CYCLE: " << current_cycle << std::endl;
-    if (stop_fetch && WRONGPATH_ENABLED) {
+    if (WRONGPATH_ENABLED && stop_fetch && input_queue.front().branch_mispredicted) {
       impl_btb_begin_wrongpath();
       max_decode_bw = ROB_SIZE - ROB.size();
     }
@@ -199,6 +207,8 @@ void O3_CPU::initialize_instruction()
       // Add to IFETCH_BUFFER
       fetch_stall = stop_fetch;
       IFETCH_BUFFER.push_back(input_queue.front());
+      if (current == CORRECT)
+        PREFETCH_QUEUE_STATE.push_back(input_queue.front());
       if constexpr (champsim::debug_print) {
         fmt::print("[IFETCH] initialize_instruction instr_id: {} ip: {:#x} branch: {} stop_fetch: {} current_cycle: {}\n", input_queue.front().instr_id, input_queue.front().ip,
                    input_queue.front().is_branch, stop_fetch, current_cycle);
@@ -220,6 +230,7 @@ void O3_CPU::initialize_instruction()
     if (current_cycle >= fetch_resume_cycle && fetch_stall) {
       fetch_stall = false;
       if (WRONGPATH_ENABLED) {
+      current = RECOVERING;
         impl_btb_end_wrongpath();
         IFETCH_BUFFER_WRONGPATH.erase(std::begin(IFETCH_BUFFER_WRONGPATH), std::end(IFETCH_BUFFER_WRONGPATH));
       }
@@ -253,6 +264,7 @@ bool O3_CPU::add_wrongpath_instruction()
     fmt::print("[IFETCH] add_wrongpath_instruction instr_id: {} ip: {:#x} branch: {}\n", wrong_path_instr.instr_id, wrong_path_instr.ip,
                wrong_path_instr.is_branch);
   }
+  PREFETCH_QUEUE_STATE.push_back(wrong_path_instr);
   return !wrong_path_instr.is_branch;
 }
 
@@ -278,6 +290,7 @@ void do_stack_pointer_folding(ooo_model_instr& arch_instr)
 }
 } // namespace
 
+// here we are on correct path and might go to wrongpath or stay on correct path
 bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 {
   bool is_aliasing = false;

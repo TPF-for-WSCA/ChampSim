@@ -244,6 +244,7 @@ public:
   // reorder buffer, load/store queue, register file
   std::deque<ooo_model_instr> IFETCH_BUFFER;
   std::deque<ooo_model_instr> IFETCH_BUFFER_WRONGPATH;
+  std::deque<ooo_model_instr> PREFETCH_QUEUE_STATE;
   std::deque<ooo_model_instr> DISPATCH_BUFFER;
   std::deque<ooo_model_instr> DECODE_BUFFER;
   std::deque<ooo_model_instr> ROB;
