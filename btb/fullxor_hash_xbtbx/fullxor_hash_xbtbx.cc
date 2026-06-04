@@ -17,7 +17,7 @@
 
 #include "ooo_cpu.h"
 // We are only using those in the preprocessor
-#define USE_FIFO true
+#define USE_FIFO false
 #define USE_SRRIP false
 
 #if USE_FIFO
@@ -594,7 +594,7 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
 
   std::optional<std::tuple<uint16_t, uint16_t, uint64_t>> region_idx = std::nullopt;
   std::optional<::BTBEntry> opt_entry;
-  uint8_t entry_size = num_bits;
+  uint16_t entry_size = num_bits;
   // TODO: ADD REGION INFORMATION IF AVAILABLE
   std::optional<std::tuple<uint16_t, uint16_t, uint64_t>> tmp_region_idx =
       (small_way_regions_enabled || big_way_regions_enabled) ? ::REGION_BTB.at(this).check_hit_idx({ip}) : std::nullopt;

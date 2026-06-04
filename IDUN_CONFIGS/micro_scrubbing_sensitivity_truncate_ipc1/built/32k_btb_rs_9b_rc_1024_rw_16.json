@@ -1,5 +1,5 @@
 {
-  "executable_name": "region_sensitivity_truncate_ipc1/32k_btb_rs_8b_rc_1024_rw_16",
+  "executable_name": "scrubbing_sensitivity_truncate_ipc1/32k_btb_rs_8b_rc_1024_rw_16",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,

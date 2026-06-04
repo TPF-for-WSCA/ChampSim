@@ -33,7 +33,7 @@
 #define REGION_BTB_FILTER_ENABLED false
 #define SAMPLING_DISTANCE 500000
 #define EAGERLY_EVICT_ON_REGION_REMOVAL true
-#define ITLB_CACHE true
+#define ITLB_CACHE false
 #define PAGE_LOG_SIZE 12
 
 uint64_t invalid_replacements = 0;
@@ -135,7 +135,7 @@ enum BTB_ReplacementStrategy { LRU, REF0, REF };
 auto get_region(uint64_t ip)
 {
   if (ITLB_CACHE) {
-    return (ip >> PAGE_LOG_SIZE);
+    return (ip >> PAGE_LOG_SIZE) & _REGION_MASK;
   }
   ip = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
   ip = ip & _REGION_MASK;
@@ -470,10 +470,10 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     return {0, 0, false, 0};
   }
 
-  /*if (btb_entry->useless && ip == btb_entry->ip_tag) {
+  if (btb_entry->useless && ip == btb_entry->ip_tag) {
     sim_stats.btb_eager_invalidation_miss++;
     ::BTB.at(this).validate_entry(btb_entry.value());
-  }*/
+  }
 
   auto lras = (!wrongpath) ? &RAS : &WRONGPATH_BACKUP_RAS;
   if (btb_entry->type == ::branch_info::RETURN) {

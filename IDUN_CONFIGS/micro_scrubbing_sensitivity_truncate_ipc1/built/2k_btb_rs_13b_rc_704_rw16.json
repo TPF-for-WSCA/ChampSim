@@ -1,5 +1,5 @@
 {
-  "executable_name": "region_sensitivity_truncate_ipc1/2k_btb_rs_13b_rc_704_rw_16_entry_replace",
+  "executable_name": "scrubbing_sensitivity_truncate_ipc1/2k_btb_rs_13b_rc_704_rw_16_entry_replace",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
