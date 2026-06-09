@@ -2,7 +2,7 @@
 
 #benchmarks=("tanvir")
 #inputs: 
-benchmarks=("ipc1_server" "ipc1_client" "ipc1_spec" "LLBP" "google" "cvp1_server") # "LLBP" "dpc3" "google_merced" "google_charlie" "google_delta" "google_whiskey") #  "LLBP")
+benchmarks=("dpc4" "ipc1_server" "ipc1_client" "ipc1_spec" "LLBP" "google" "cvp1_server") # "LLBP" "dpc3" "google_merced" "google_charlie" "google_delta" "google_whiskey") #  "LLBP")
 normalise_to_row="sizes_8k_btb_tag_full"  # TODO: Make this the default/add default to look at / baseline
 mean="hmean"  # You might also use: mean (arithmetic), gmean (geometric, but only if you want to upset Lieven ;))
 avg_row_name="HMEAN"  # previousley: AVG

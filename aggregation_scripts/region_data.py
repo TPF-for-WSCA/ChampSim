@@ -133,11 +133,11 @@ fig.update_yaxes(showgrid=True, gridcolor='rgba(0,0,0,0.2)', zeroline=True, zero
 fig.update_layout(
     title="",
     violingap=0,
-    xaxis_title="Number of BTB entries",
+    xaxis_title="BTB Capacity",
     yaxis_title="% Entries With Unique Tags",
     font=dict(size=9),
-    #width=340,
-    #height=200, # adjust as needed for clarity
+    width=340,
+    height=200, # adjust as needed for clarity
     template="plotly_white",
     margin=dict(l=0, r=0, t=0, b=0)
 )
@@ -226,11 +226,11 @@ fig.update_yaxes(showgrid=True, gridcolor='rgba(0,0,0,0.2)', zeroline=True, zero
 fig.update_layout(
     title="",
     violingap=0,
-    xaxis_title="Number of BTB entries",
+    xaxis_title="BTB Capacity",
     yaxis_title="% Entries With Unique Tags",
     font=dict(size=9),
-    #width=340,
-    #height=200, # adjust as needed for clarity
+    width=340,
+    height=200, # adjust as needed for clarity
     template="plotly_white",
     margin=dict(l=0, r=0, t=0, b=0)
 )
