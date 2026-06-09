@@ -138,8 +138,8 @@ int main(int argc, char** argv)
   }
 
   std::vector<champsim::phase_info> phases{
-      {champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names},
-       champsim::phase_info{"Simulation", false, simulation_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names}}};
+      {champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names, false, {}, 0},
+       champsim::phase_info{"Simulation", false, simulation_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names, false, {}, 0}}};
 
   for (auto& p : phases)
     std::iota(std::begin(p.trace_index), std::end(p.trace_index), 0);
@@ -156,10 +156,19 @@ int main(int argc, char** argv)
         phases.at(1).trace_index[cpu_id] = context_switch_trace_index;
     }
     
-    fmt::print("*** Context-Switch Simulation Enabled ***\nWarmup traces: {}",
-               fmt::join(trace_names, ", "));
-    fmt::print("\nContext-switch trace: {}\nContext-switch CPUs: {}\n\n",
-               context_switch_trace_name, fmt::join(context_switch_cpus, ", "));
+    std::string trace_list;
+    for (size_t i = 0; i < trace_names.size(); ++i) {
+      if (i > 0) trace_list += ", ";
+      trace_list += trace_names[i];
+    }
+    fmt::print("*** Context-Switch Simulation Enabled ***\nWarmup traces: {}\n", trace_list);
+    std::string cpu_list;
+    for (size_t i = 0; i < context_switch_cpus.size(); ++i) {
+      if (i > 0) cpu_list += ", ";
+      cpu_list += std::to_string(context_switch_cpus[i]);
+    }
+    fmt::print("Context-switch trace: {}\nContext-switch CPUs: {}\n\n",
+               context_switch_trace_name, cpu_list);
   }
 
   fmt::print("\n*** ChampSim Multicore Out-of-Order Simulator ***\nWarmup Instructions: {}\nSimulation Instructions: {}\nNumber of CPUs: {}\nPage size: {}\n\n",
