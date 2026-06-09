@@ -34,6 +34,7 @@ def run_experiment(
     trace_file_path,
     output_dir,
     vcl_perfect_predictor=None,
+    context_switch_trace_path=None,
 ):
     cmd = [
         executable,
@@ -56,6 +57,13 @@ def run_experiment(
             f"{output_dir}/stats.json",
         ]
     )
+    if context_switch_trace_path:
+        cmd.extend(
+            [
+                "--context-switch-trace",
+                str(context_switch_trace_path),
+            ]
+        )
     if args.btb_tag_hash:
         cmd.append("--btb-tag-hash")
         cmd.append(args.btb_tag_hash)
@@ -150,7 +158,14 @@ def main(args):
         trace_name = trace.split("/")[-1].rsplit(".", 1)[0]
         if args.subdir:
             trace_name = path.split(trace)[0].split("/")[-1]
-        output_subdir = path.join(output_dir, trace_name)
+
+        # Append context-switch trace name if provided
+        if args.context_switch_trace:
+            cs_trace_name = args.context_switch_trace.split("/")[-1].rsplit(".", 1)[0]
+            output_subdir = path.join(output_dir, f"{trace_name}_to_{cs_trace_name}")
+        else:
+            output_subdir = path.join(output_dir, trace_name)
+
         # TEST ONLY
         # run_experiment(trace, output_subdir)
         if path.exists(output_subdir):
@@ -167,6 +182,8 @@ def main(args):
                     [
                         trace,
                         output_subdir,
+                        None,
+                        args.context_switch_trace,
                     ],
                 ),
                 trace_name,
@@ -255,6 +272,14 @@ if __name__ == "__main__":
         action="store_true",
     )
     parser.set_defaults(som=False)
+
+    parser.add_argument(
+        "--context-switch-trace",
+        dest="context_switch_trace",
+        type=str,
+        default=None,
+        help="Path to trace file to switch to after warmup (simulates context switch)",
+    )
 
     args = parser.parse_args()
     main(args)
