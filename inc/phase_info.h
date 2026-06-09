@@ -36,6 +36,9 @@ struct phase_info {
   uint64_t length;
   std::vector<std::size_t> trace_index;
   std::vector<std::string> trace_names;
+  bool context_switch_enabled = false;
+  std::vector<uint8_t> context_switch_cpus;
+  std::size_t context_switch_trace_index = 0;
 };
 
 struct phase_stats {
