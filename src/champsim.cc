@@ -40,7 +40,7 @@ namespace champsim
 {
 phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader>& traces)
 {
-  auto [phase_name, is_warmup, length, trace_index, trace_names] = phase;
+  auto [phase_name, is_warmup, length, trace_index, trace_names, context_switch_enabled, context_switch_cpus, context_switch_trace_index] = phase;
   auto operables = env.operable_view();
 
   // Initialize phase
