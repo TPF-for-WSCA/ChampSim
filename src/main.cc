@@ -62,6 +62,8 @@ int main(int argc, char** argv)
   std::string json_file_name;
   std::string tsv_file_name;
   std::string btb_index_tag_hash_file_name;
+  std::string context_switch_trace_name;
+  std::vector<uint8_t> context_switch_cpus;
   std::vector<std::string> trace_names;
 
   auto set_heartbeat_callback = [&](auto) {
@@ -94,6 +96,11 @@ int main(int argc, char** argv)
   auto btb_index_tag_hash = app.add_option("--btb-tag-hash", btb_index_tag_hash_file_name,
                                            "The name of the file that contains the ordering of the address bits to be used for indexing and tagging")
                                 ->expected(0, 1);
+
+  app.add_option("--context-switch-trace", context_switch_trace_name,
+                 "The path to the trace to switch to after warmup phase (simulates context switch)")->check(CLI::ExistingFile);
+  app.add_option("--context-switch-cpus", context_switch_cpus,
+                 "The CPUs that will switch traces (default: CPU 0). Space-separated list of CPU indices.");
 
   app.add_option("traces", trace_names, "The paths to the traces")->required()->expected(NUM_CPUS)->check(CLI::ExistingFile);
 
@@ -130,12 +137,47 @@ int main(int argc, char** argv)
       std::begin(trace_names), std::end(trace_names), std::back_inserter(traces),
       [knob_cloudsuite, repeat = simulation_given, i = uint8_t(0)](auto name) mutable { return get_tracereader(name, i++, knob_cloudsuite, repeat); });
 
+  // Handle context-switch trace if provided
+  bool context_switch_enabled = !context_switch_trace_name.empty();
+  std::size_t context_switch_trace_index = 0;
+  
+  if (context_switch_enabled) {
+    if (!warmup_given)
+      throw std::runtime_error("Context-switch trace requires --warmup-instructions to be specified");
+    
+    // Add context-switch trace to traces vector
+    context_switch_trace_index = std::size(traces);
+    traces.push_back(get_tracereader(context_switch_trace_name, static_cast<uint8_t>(std::size(traces)), knob_cloudsuite, simulation_given));
+    
+    // Default to CPU 0 if no specific CPUs specified
+    if (context_switch_cpus.empty())
+      context_switch_cpus.push_back(0);
+  }
+
   std::vector<champsim::phase_info> phases{
       {champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names},
        champsim::phase_info{"Simulation", false, simulation_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names}}};
 
   for (auto& p : phases)
     std::iota(std::begin(p.trace_index), std::end(p.trace_index), 0);
+
+  // Configure context-switch for simulation phase
+  if (context_switch_enabled) {
+    phases.at(1).context_switch_enabled = true;
+    phases.at(1).context_switch_cpus = context_switch_cpus;
+    phases.at(1).context_switch_trace_index = context_switch_trace_index;
+    
+    // Set simulation phase trace_index to use context-switch trace for specified CPUs
+    for (uint8_t cpu_id : context_switch_cpus) {
+      if (cpu_id < std::size(phases.at(1).trace_index))
+        phases.at(1).trace_index[cpu_id] = context_switch_trace_index;
+    }
+    
+    fmt::print("*** Context-Switch Simulation Enabled ***\nWarmup traces: {}",
+               fmt::join(trace_names, ", "));
+    fmt::print("\nContext-switch trace: {}\nContext-switch CPUs: {}\n\n",
+               context_switch_trace_name, fmt::join(context_switch_cpus, ", "));
+  }
 
   fmt::print("\n*** ChampSim Multicore Out-of-Order Simulator ***\nWarmup Instructions: {}\nSimulation Instructions: {}\nNumber of CPUs: {}\nPage size: {}\n\n",
              phases.at(0).length, phases.at(1).length, std::size(gen_environment.cpu_view()), PAGE_SIZE);
