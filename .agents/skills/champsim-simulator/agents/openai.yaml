@@ -1,0 +1,4 @@
+interface:
+  display_name: "ChampSim Simulator"
+  short_description: "Workflows for ChampSim experiments"
+  default_prompt: "Use $champsim-simulator to modify, build, and validate a ChampSim simulator experiment."

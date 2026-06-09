@@ -30,6 +30,7 @@
 #include "vmem.h"
 #include <CLI/CLI.hpp>
 #include <fmt/core.h>
+#include <fmt/ranges.h>
 
 namespace champsim
 {
@@ -37,10 +38,10 @@ std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases,
 }
 
 void handler(int nSignum, siginfo_t* si, void* vcontext) {
-  std::cout << "Segmentation fault" << std::endl;
+  /*std::cout << "Segmentation fault" << std::endl;
   
   ucontext_t* context = (ucontext_t*)vcontext;
-  context->uc_mcontext.gregs[REG_RIP]++;
+  context->uc_mcontext.gregs[REG_RIP]++;*/
   exit(-1);
 }
 
@@ -138,8 +139,9 @@ int main(int argc, char** argv)
       [knob_cloudsuite, repeat = simulation_given, i = uint8_t(0)](auto name) mutable { return get_tracereader(name, i++, knob_cloudsuite, repeat); });
 
   // Handle context-switch trace if provided
-  bool context_switch_enabled = !context_switch_trace_name.empty();
+  const bool context_switch_enabled = !context_switch_trace_name.empty();
   std::size_t context_switch_trace_index = 0;
+  auto phase_trace_names = trace_names;
   
   if (context_switch_enabled) {
     if (!warmup_given)
@@ -148,6 +150,7 @@ int main(int argc, char** argv)
     // Add context-switch trace to traces vector
     context_switch_trace_index = std::size(traces);
     traces.push_back(get_tracereader(context_switch_trace_name, static_cast<uint8_t>(std::size(traces)), knob_cloudsuite, simulation_given));
+    phase_trace_names.push_back(context_switch_trace_name);
     
     // Default to CPU 0 if no specific CPUs specified
     if (context_switch_cpus.empty())
@@ -155,8 +158,8 @@ int main(int argc, char** argv)
   }
 
   std::vector<champsim::phase_info> phases{
-      {champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names, false, {}, 0},
-       champsim::phase_info{"Simulation", false, simulation_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names, false, {}, 0}}};
+      {champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), phase_trace_names, false, {}, 0},
+       champsim::phase_info{"Simulation", false, simulation_instructions, std::vector<std::size_t>(std::size(trace_names), 0), phase_trace_names, false, {}, 0}}};
 
   for (auto& p : phases)
     std::iota(std::begin(p.trace_index), std::end(p.trace_index), 0);
