@@ -3,7 +3,7 @@
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
-  "heartbeat_frequency": 100,
+  "heartbeat_frequency": 1000000,
   "num_cores": 1,
   "CFLAGS": [
     "-Wall -Wno-reorder -ferror-limit=5 -DNLOG -g -O3 -I /Users/robrunne/simulators/xed/kits/xed-install-base-2023-06-27-mac-aarch64/include -I /opt/local/include/boost"
