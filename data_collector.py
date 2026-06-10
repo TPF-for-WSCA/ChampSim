@@ -90,7 +90,8 @@ def run_experiment(
     else:
         print(f"Experiment {' '.join(cmd)} completed successfully\n", flush=True)
 
-    config_file_name = path.split(trace_file_path)[1].split(".")[0]
+    result_trace_path = context_switch_trace_path or trace_file_path
+    config_file_name = trace_stem(result_trace_path)
     with open(path.join(output_dir, f"{config_file_name}_log.txt"), mode="ab+") as f:
         now = datetime.now()
         datetimestring = now.strftime("%d.%m.%Y %H:%M")
@@ -117,6 +118,10 @@ def run_experiment(
     sys.stdout.flush()
     sys.stderr.flush()
     return success
+
+
+def trace_stem(trace_path):
+    return path.split(trace_path)[1].rsplit(".", 1)[0]
 
 
 def get_perfect_predictor_file(base_path, trace_dir):
@@ -155,16 +160,15 @@ def main(args):
     pending_experiments = []
 
     for trace in trace_files:
-        trace_name = trace.split("/")[-1].rsplit(".", 1)[0]
+        trace_name = trace_stem(trace)
         if args.subdir:
             trace_name = path.split(trace)[0].split("/")[-1]
 
-        # Append context-switch trace name if provided
+        result_trace_name = trace_name
         if args.context_switch_trace:
-            cs_trace_name = args.context_switch_trace.split("/")[-1].rsplit(".", 1)[0]
-            output_subdir = path.join(output_dir, f"{trace_name}_to_{cs_trace_name}")
-        else:
-            output_subdir = path.join(output_dir, trace_name)
+            result_trace_name = trace_stem(args.context_switch_trace)
+
+        output_subdir = path.join(output_dir, result_trace_name)
 
         # TEST ONLY
         # run_experiment(trace, output_subdir)
@@ -174,7 +178,7 @@ def main(args):
                 cprint(f"{output_subdir} already computed", Color.YELLOW)
 
                 continue
-        print(f"Run {trace_name} experiment", flush=True)
+        print(f"Run {result_trace_name} experiment", flush=True)
         pending_experiments.append(
             (
                 pool.apply_async(
@@ -186,7 +190,7 @@ def main(args):
                         args.context_switch_trace,
                     ],
                 ),
-                trace_name,
+                result_trace_name,
             )
         )
 
