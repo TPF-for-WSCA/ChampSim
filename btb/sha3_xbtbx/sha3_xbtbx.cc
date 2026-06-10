@@ -7,9 +7,11 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <bitset>
 #include <cmath>
 #include <csignal>
+#include <cstdint>
 #include <deque>
 #include <iostream>
 #include <map>
@@ -55,26 +57,83 @@ constexpr uint64_t pow2(uint8_t exp)
 namespace
 {
 
-// Rabin / polynomial fingerprinting implementation producing up to 64 bits.
-// The input value is treated as a polynomial over GF(2) and reduced modulo a
-// fixed degree-64 polynomial.
-static const uint64_t _rabin_poly = 0x1BULL;
+static uint64_t rotl64(uint64_t value, unsigned int shift)
+{
+  return shift == 0 ? value : ((value << shift) | (value >> (64 - shift)));
+}
 
-static uint64_t rabin_hash(uint64_t value, uint8_t out_bits)
+static void keccak_f1600(std::array<uint64_t, 25>& state)
+{
+  static constexpr std::array<uint64_t, 24> round_constants = {
+      0x0000000000000001ULL, 0x0000000000008082ULL, 0x800000000000808aULL, 0x8000000080008000ULL,
+      0x000000000000808bULL, 0x0000000080000001ULL, 0x8000000080008081ULL, 0x8000000000008009ULL,
+      0x000000000000008aULL, 0x0000000000000088ULL, 0x0000000080008009ULL, 0x000000008000000aULL,
+      0x000000008000808bULL, 0x800000000000008bULL, 0x8000000000008089ULL, 0x8000000000008003ULL,
+      0x8000000000008002ULL, 0x8000000000000080ULL, 0x000000000000800aULL, 0x800000008000000aULL,
+      0x8000000080008081ULL, 0x8000000000008080ULL, 0x0000000080000001ULL, 0x8000000080008008ULL};
+  static constexpr std::array<unsigned int, 25> rotation_offsets = {
+      0,  1,  62, 28, 27,
+      36, 44, 6,  55, 20,
+      3,  10, 43, 25, 39,
+      41, 45, 15, 21, 8,
+      18, 2,  61, 56, 14};
+
+  for (auto round_constant : round_constants) {
+    std::array<uint64_t, 5> column{};
+    std::array<uint64_t, 5> delta{};
+    for (std::size_t x = 0; x < 5; ++x) {
+      column[x] = state[x] ^ state[x + 5] ^ state[x + 10] ^ state[x + 15] ^ state[x + 20];
+    }
+    for (std::size_t x = 0; x < 5; ++x) {
+      delta[x] = column[(x + 4) % 5] ^ rotl64(column[(x + 1) % 5], 1);
+    }
+    for (std::size_t y = 0; y < 5; ++y) {
+      for (std::size_t x = 0; x < 5; ++x) {
+        state[x + 5 * y] ^= delta[x];
+      }
+    }
+
+    std::array<uint64_t, 25> rotated{};
+    for (std::size_t y = 0; y < 5; ++y) {
+      for (std::size_t x = 0; x < 5; ++x) {
+        rotated[y + 5 * ((2 * x + 3 * y) % 5)] = rotl64(state[x + 5 * y], rotation_offsets[x + 5 * y]);
+      }
+    }
+
+    for (std::size_t y = 0; y < 5; ++y) {
+      for (std::size_t x = 0; x < 5; ++x) {
+        state[x + 5 * y] = rotated[x + 5 * y] ^ ((~rotated[((x + 1) % 5) + 5 * y]) & rotated[((x + 2) % 5) + 5 * y]);
+      }
+    }
+
+    state[0] ^= round_constant;
+  }
+}
+
+static uint64_t sha3_hash(uint64_t value, uint8_t out_bits)
 {
   if (out_bits == 0)
     return 0;
 
-  uint64_t fingerprint = 0;
-  for (int bit = 63; bit >= 0; --bit) {
-    bool top_bit = (fingerprint >> 63) & 1;
-    fingerprint <<= 1;
-    fingerprint |= (value >> bit) & 1;
-    if (top_bit) {
-      fingerprint ^= _rabin_poly;
-    }
+  constexpr std::size_t rate_bytes = 136; // SHA3-256 rate.
+  std::array<uint64_t, 25> state{};
+  std::array<uint8_t, rate_bytes> block{};
+  for (std::size_t byte = 0; byte < sizeof(value); ++byte) {
+    block[byte] = static_cast<uint8_t>((value >> (byte * 8)) & 0xFF);
   }
+  block[sizeof(value)] ^= 0x06;
+  block[rate_bytes - 1] ^= 0x80;
 
+  for (std::size_t lane = 0; lane < rate_bytes / 8; ++lane) {
+    uint64_t lane_value = 0;
+    for (std::size_t byte = 0; byte < 8; ++byte) {
+      lane_value |= static_cast<uint64_t>(block[lane * 8 + byte]) << (8 * byte);
+    }
+    state[lane] ^= lane_value;
+  }
+  keccak_f1600(state);
+
+  uint64_t fingerprint = state[0];
   if (out_bits < 64) {
     fingerprint &= ((1ULL << out_bits) - 1);
   }
@@ -230,8 +289,7 @@ struct BTBEntry {
     if (!_BTB_CLIPPED_TAG || target_size == 64) {
       return tag;
     }
-    // TODO: implement a pearson hash on tag here with the output width corresponding to the _BTB_TAG_SIZE
-    tag = rabin_hash(tag, _FULL_TAG_MASK);
+    tag = sha3_hash(tag, _FULL_TAG_MASK);
     tag &= _FULL_TAG_MASK;
     if (ip && _BTB_TAG_REGIONS && utilise_regions(target_size)) {
       // TODO: double check if the shift amount of the BTB TAG size is correct and we are not overriding the actual tag bits
