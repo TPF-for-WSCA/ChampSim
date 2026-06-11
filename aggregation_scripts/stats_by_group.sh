@@ -107,6 +107,7 @@ echo "aggregation scripts finished"
 
 percentages=(100 99.5 99 95 90)
 ways=(0 4 5 7 9 11 19 25 64)
+echo "Generating per-benchmark temporal and summary graphs"
 for b in ${benchmarks[@]}
 do
     echo "Plotting ${b}"
@@ -166,6 +167,7 @@ done
 
 echo "aggregation scripts finished"
 
+echo "Generating overall temporal and summary graphs"
 python ${chroot}/ChampSim/aggregation_scripts/offset_plotting.py --result_dir ./ &
 python ${chroot}/ChampSim/aggregation_scripts/plot_timeseries.py --branch-progress . --raw-data-dir ./raw_data --graphs-dir ./graphs &
 for ((i=1;i<=64;i++)); do

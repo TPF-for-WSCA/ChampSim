@@ -1,9 +1,11 @@
 import argparse
 import csv
 import html
+import json
 import os
 import re
 import sys
+import colorsys
 from collections import defaultdict
 from pathlib import Path
 
@@ -177,27 +179,84 @@ def write_html_wrapper(html_path, image_paths, title):
     )
 
 
+def hex_to_rgb(color):
+    color = color.lstrip("#")
+    return tuple(int(color[i : i + 2], 16) / 255 for i in (0, 2, 4))
+
+
+def rgb_to_hex(rgb):
+    return "#" + "".join(f"{max(0, min(255, round(channel * 255))):02x}" for channel in rgb)
+
+
+def shade_color(base_color, shade_idx, shade_count):
+    if shade_count <= 1:
+        return base_color
+
+    hue, lightness, saturation = colorsys.rgb_to_hls(*hex_to_rgb(base_color))
+    lightness_min = 0.34
+    lightness_max = 0.76
+    lightness = lightness_min + (lightness_max - lightness_min) * shade_idx / (shade_count - 1)
+    saturation = min(0.92, max(0.42, saturation))
+    return rgb_to_hex(colorsys.hls_to_rgb(hue, lightness, saturation))
+
+
+def branch_progress_styles(rows):
+    palette = [
+        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b",
+        "#e377c2", "#7f7f7f", "#bcbd22", "#17becf", "#393b79", "#637939",
+        "#8c6d31", "#843c39", "#7b4173", "#3182bd", "#e6550d", "#31a354",
+    ]
+    applications = sorted({row["application"] for row in rows})
+    configs = sorted({row["config"] for row in rows})
+    base_by_application = {
+        application: palette[idx % len(palette)]
+        for idx, application in enumerate(applications)
+    }
+    shade_by_config = {
+        config: idx
+        for idx, config in enumerate(configs)
+    }
+    return base_by_application, shade_by_config, len(configs)
+
+
+def branch_progress_label(config, application, cpu, cpu_count):
+    label = f"{application} [{config}]"
+    if cpu_count > 1:
+        label += f"/CPU{cpu}"
+    return label
+
+
+def grouped_branch_progress(rows):
+    grouped = defaultdict(list)
+    for row in rows:
+        grouped[(row["config"], row["application"], row["cpu"])].append(row)
+    return grouped
+
+
 def plot_branch_progress_metric(rows, metric, ylabel, output_path):
     from matplotlib import pyplot
 
     fig, ax = pyplot.subplots(figsize=(15, 7))
 
-    grouped = defaultdict(list)
-    for row in rows:
-        grouped[(row["config"], row["application"], row["cpu"])].append(row)
+    grouped = grouped_branch_progress(rows)
 
     cpu_count = len({row["cpu"] for row in rows})
+    base_by_application, shade_by_config, config_count = branch_progress_styles(rows)
     for (config, application, cpu), group in sorted(grouped.items()):
         group.sort(key=lambda row: row["sim_cycles"])
-        label = f"{config}/{application}"
-        if cpu_count > 1:
-            label += f"/CPU{cpu}"
+        label = branch_progress_label(config, application, cpu, cpu_count)
+        color = shade_color(
+            base_by_application[application],
+            shade_by_config[config],
+            config_count,
+        )
         ax.plot(
             [row["sim_cycles"] for row in group],
             [row[metric] for row in group],
             marker=".",
             linewidth=1.4,
             label=label,
+            color=color,
         )
 
     ax.set_xlabel("Simulation cycles after warmup")
@@ -210,9 +269,7 @@ def plot_branch_progress_metric(rows, metric, ylabel, output_path):
 
 
 def plot_branch_progress_metric_svg(rows, metric, ylabel, output_path):
-    grouped = defaultdict(list)
-    for row in rows:
-        grouped[(row["config"], row["application"], row["cpu"])].append(row)
+    grouped = grouped_branch_progress(rows)
 
     width = 1400
     height = 720
@@ -222,11 +279,6 @@ def plot_branch_progress_metric_svg(rows, metric, ylabel, output_path):
     bottom = 70
     plot_width = width - left - right
     plot_height = height - top - bottom
-    palette = [
-        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b",
-        "#e377c2", "#7f7f7f", "#bcbd22", "#17becf", "#393b79", "#637939",
-        "#8c6d31", "#843c39", "#7b4173", "#3182bd", "#e6550d", "#31a354",
-    ]
 
     x_values = [row["sim_cycles"] for row in rows]
     y_values = [row[metric] for row in rows]
@@ -244,14 +296,17 @@ def plot_branch_progress_metric_svg(rows, metric, ylabel, output_path):
         return top + plot_height - ((value - y_min) / (y_max - y_min)) * plot_height
 
     cpu_count = len({row["cpu"] for row in rows})
+    base_by_application, shade_by_config, config_count = branch_progress_styles(rows)
     lines = []
     legend = []
     for idx, ((config, application, cpu), group) in enumerate(sorted(grouped.items())):
         group.sort(key=lambda row: row["sim_cycles"])
-        label = f"{config}/{application}"
-        if cpu_count > 1:
-            label += f"/CPU{cpu}"
-        color = palette[idx % len(palette)]
+        label = branch_progress_label(config, application, cpu, cpu_count)
+        color = shade_color(
+            base_by_application[application],
+            shade_by_config[config],
+            config_count,
+        )
         points = " ".join(f"{x_scale(row['sim_cycles']):.2f},{y_scale(row[metric]):.2f}" for row in group)
         lines.append(f'<polyline fill="none" stroke="{color}" stroke-width="2" points="{points}" />')
         for row in group:
@@ -289,8 +344,170 @@ def plot_branch_progress_metric_svg(rows, metric, ylabel, output_path):
     )
 
 
+def plot_branch_progress_interactive(rows, output_path):
+    metrics = [
+        ("aliasing_mpki", "Aliasing per kilo instruction"),
+        ("branch_mpki", "Total branch misses per kilo instruction"),
+    ]
+
+    grouped = grouped_branch_progress(rows)
+    cpu_count = len({row["cpu"] for row in rows})
+    base_by_application, shade_by_config, config_count = branch_progress_styles(rows)
+    traces = []
+
+    for metric_idx, (metric, ylabel) in enumerate(metrics):
+        for config, application, cpu in sorted(grouped):
+            group = sorted(grouped[(config, application, cpu)], key=lambda row: row["sim_cycles"])
+            label = branch_progress_label(config, application, cpu, cpu_count)
+            color = shade_color(
+                base_by_application[application],
+                shade_by_config[config],
+                config_count,
+            )
+            customdata = [
+                [
+                    row["instructions"],
+                    row["cycles"],
+                    row["aliasing"],
+                    row["branch_misses"],
+                    row["log_file"],
+                ]
+                for row in group
+            ]
+            axis_suffix = "" if metric_idx == 0 else str(metric_idx + 1)
+            traces.append(
+                {
+                    "type": "scatter",
+                    "x": [row["sim_cycles"] for row in group],
+                    "y": [row[metric] for row in group],
+                    "customdata": customdata,
+                    "mode": "lines+markers",
+                    "name": label,
+                    "legendgroup": label,
+                    "showlegend": metric_idx == 0,
+                    "xaxis": f"x{axis_suffix}",
+                    "yaxis": f"y{axis_suffix}",
+                    "line": {"color": color, "width": 2},
+                    "marker": {"color": color, "size": 5},
+                    "hovertemplate": (
+                        "<b>%{fullData.name}</b><br>"
+                        "sim cycles=%{x}<br>"
+                        f"{ylabel}=%{{y:.4g}}<br>"
+                        "instructions=%{customdata[0]}<br>"
+                        "cycles=%{customdata[1]}<br>"
+                        "aliasing=%{customdata[2]}<br>"
+                        "branch misses=%{customdata[3]}<br>"
+                        "log=%{customdata[4]}"
+                        "<extra></extra>"
+                    ),
+                }
+            )
+
+    layout = {
+        "title": "Branch Progress Time Series",
+        "template": "plotly_white",
+        "hovermode": "closest",
+        "height": 900,
+        "margin": {"l": 80, "r": 280, "t": 80, "b": 70},
+        "legend": {
+            "title": {"text": "Workload [configuration]"},
+            "x": 1.02,
+            "y": 1,
+            "xanchor": "left",
+            "yanchor": "top",
+            "groupclick": "togglegroup",
+        },
+        "xaxis": {
+            "domain": [0, 1],
+            "anchor": "y",
+            "showticklabels": False,
+            "matches": "x2",
+        },
+        "yaxis": {
+            "domain": [0.56, 1],
+            "anchor": "x",
+            "title": {"text": metrics[0][1]},
+        },
+        "xaxis2": {
+            "domain": [0, 1],
+            "anchor": "y2",
+            "title": {"text": "Simulation cycles after warmup"},
+        },
+        "yaxis2": {
+            "domain": [0, 0.44],
+            "anchor": "x2",
+            "title": {"text": metrics[1][1]},
+        },
+        "annotations": [
+            {
+                "text": metrics[0][1],
+                "xref": "paper",
+                "yref": "paper",
+                "x": 0.5,
+                "y": 1.04,
+                "showarrow": False,
+                "font": {"size": 16},
+            },
+            {
+                "text": metrics[1][1],
+                "xref": "paper",
+                "yref": "paper",
+                "x": 0.5,
+                "y": 0.48,
+                "showarrow": False,
+                "font": {"size": 16},
+            },
+        ],
+    }
+    config = {
+        "responsive": True,
+        "displaylogo": False,
+        "toImageButtonOptions": {
+            "format": "png",
+            "filename": output_path.stem,
+            "height": 900,
+            "width": 1400,
+            "scale": 2,
+        },
+    }
+
+    output_path.write_text(
+        f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Branch Progress Time Series</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    body {{ font-family: sans-serif; margin: 24px; }}
+    #branch-progress {{ width: 100%; min-height: 900px; }}
+  </style>
+</head>
+<body>
+  <div id="branch-progress"></div>
+  <script>
+    const data = {json.dumps(traces)};
+    const layout = {json.dumps(layout)};
+    const config = {json.dumps(config)};
+    Plotly.newPlot("branch-progress", data, layout, config);
+  </script>
+</body>
+</html>
+"""
+    )
+
+
 def plot_branch_progress_combined(rows, output_dir):
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        plot_branch_progress_interactive(
+            rows,
+            output_dir / "branch_progress_timeseries.html",
+        )
+        return
+    except ModuleNotFoundError:
+        pass
 
     try:
         aliasing_path = output_dir / "branch_progress_aliasing_mpki_timeseries.png"
