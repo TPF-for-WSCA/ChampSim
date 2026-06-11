@@ -110,6 +110,7 @@ ways=(0 4 5 7 9 11 19 25 64)
 for b in ${benchmarks[@]}
 do
     echo "Plotting ${b}"
+    python ${chroot}/ChampSim/aggregation_scripts/plot_timeseries.py --branch-progress ./${b} &
 
     echo "${pg_dir}plotgen --debug -i ./${b}/ipc.tsv --drop-any-nan-col --palette bright --normalise-to-column ${normalise_to_row} --apply-func sub 1 --apply-icolumns : --apply-function cset = nan 0 --apply-icolumns : --x-type category --y-tick-format ',.2%' --plot bar --transpose --sort-by-column sizes_champsim_vcl_buffer_fdip_64d --row-names --renameregex '(.*)\..*trace' --add-function ${mean} --add-row ${avg_row_name} --ignore-columns $((2**15)) --column-names 'sizes_champsim_vcl_buffer_fdip_64d:UBS cache' --file ./raw_data/ipc_relative_${b}.tsv --width 1350 --height 300 -o ./graphs/ipc_relative_${b}.html"
     ${pg_dir}/plotgen --debug -i ./${b}/**/squash_counts.tsv --select-icolumns 5 --row-names --renameregex '(.*)\..*trace' --column-names --filename --column-names --renameregex '\./.*/(.*)/\.*' --join index --sort-function name --sort-columns --sort-function name --sort-rows --file ./raw_data/total_squash_count_${b}.tsv
@@ -166,6 +167,7 @@ done
 echo "aggregation scripts finished"
 
 python ${chroot}/ChampSim/aggregation_scripts/offset_plotting.py --result_dir ./ &
+python ${chroot}/ChampSim/aggregation_scripts/plot_timeseries.py --branch-progress . --raw-data-dir ./raw_data --graphs-dir ./graphs &
 for ((i=1;i<=64;i++)); do
     ${pg_dir}plotgen -i ./**/**/**/cpu0_partition${i}_dynamic_offset_count.tsv -i ./**/**/**/cpu0_partition${i}_dynamic_branch_count.tsv -i ./**/**/**/cpu0_partition${i}_dynamic_target_count.tsv --no-columns  --column-names --filename --column-names --renameregex '\./(.*)/(.*)/([a-zA-Z\-_0-9\.]+)/\.*' --normalise-function sum --normalise-columns : --join index --apply-function cset = nan 0 --apply-icolumns : --plot line --file ./raw_data/ordered_offset_partition_${i}.tsv  --palette bright -o ./graphs/ordered_offset_partition_${i}.html &
 done
