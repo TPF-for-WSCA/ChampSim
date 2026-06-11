@@ -24,7 +24,7 @@ module load GCCcore/12.2.0
 suffix=""
 binary_dir=("micro_rebuttal_region_sensitivity_cs") # "micro_rebuttal_sha3_region_sensitivity" "micro_rebuttal_zobrist_region_sensitivity" "micro_rebuttal_rabin_region_sensitivity") #"region_sensitivity_half_hash_fifo_ipc1") # btb_full_grid_search "" "hash_btb_full_grid_search") # run grid search first to figure out correct tag sizing for : [ "region_sampling" "region_sampling_full_hash" "region_sampling_half_hash" "region_sensitivity_hashed" ]
      #"full_hash_btb_full_grid_search" "hash_btb_full_grid_search" "geometric_hash_btb_full_grid_search") #"twolevel_std_btb_full_grid_search") # "region_sensitivity_hashes") # "twolevel_geometric_hash_btb_full_grid_search" ("region_sampling" "btb_full_grid_search") # "btb_size_region_sensitivity" "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
-count=1
+count=2
 timelimit="24:00:00"
 warmup=50000000
 simulation=50000000
