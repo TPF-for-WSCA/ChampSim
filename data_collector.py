@@ -7,8 +7,8 @@ from pathlib import Path
 
 import argparse
 import os
+import random
 import subprocess
-import psutil
 import sys
 
 executable = "/cluster/work/romankb/dynamorio/build/clients/bin64/drcachesim"
@@ -28,6 +28,116 @@ class Color(Enum):
 
 def cprint(string, color: Color):
     print(color.value + string + Color.ENDC.value)
+
+
+def is_trace_file(filename):
+    return filename.endswith(".gz") or filename.endswith(".xz")
+
+
+def collect_trace_files(traces_directory, include_subdirs):
+    workloads = sorted(os.listdir(traces_directory))
+    trace_files = []
+    for workload in workloads:
+        workload_path = path.join(traces_directory, workload)
+        if include_subdirs:
+            if not path.isdir(workload_path):
+                continue
+            filenames = filter(is_trace_file, sorted(os.listdir(workload_path)))
+            trace_files.extend(map(partial(path.join, workload_path), filenames))
+        elif is_trace_file(workload):
+            trace_files.append(workload_path)
+    return trace_files
+
+
+def parse_trace_set(trace_set):
+    if "=" in trace_set:
+        name, directory = trace_set.split("=", 1)
+        name = name.strip()
+        directory = directory.strip()
+    else:
+        directory = trace_set.strip()
+        name = path.basename(path.normpath(directory))
+    if not name:
+        raise ValueError(f"Trace set '{trace_set}' has an empty name")
+    if not directory:
+        raise ValueError(f"Trace set '{trace_set}' has an empty directory")
+    return name, directory
+
+
+def random_ordered_trace_pairs(trace_files, count, rng):
+    if len(trace_files) < 2 or count <= 0:
+        return []
+
+    max_unique_pairs = len(trace_files) * (len(trace_files) - 1)
+    target_count = min(count, max_unique_pairs)
+    pairs = []
+    seen = set()
+    attempts = 0
+    max_attempts = max(target_count * 20, 100)
+
+    while len(pairs) < target_count and attempts < max_attempts:
+        attempts += 1
+        warmup_trace, context_switch_trace = rng.sample(trace_files, 2)
+        pair = (warmup_trace, context_switch_trace)
+        if pair in seen:
+            continue
+        seen.add(pair)
+        pairs.append(pair)
+
+    if len(pairs) < target_count:
+        for warmup_trace in trace_files:
+            for context_switch_trace in trace_files:
+                if warmup_trace == context_switch_trace:
+                    continue
+                pair = (warmup_trace, context_switch_trace)
+                if pair in seen:
+                    continue
+                seen.add(pair)
+                pairs.append(pair)
+                if len(pairs) >= target_count:
+                    return pairs
+
+    return pairs
+
+
+def make_random_context_switch_experiments(args):
+    trace_sets = [parse_trace_set(trace_set) for trace_set in args.trace_set_dirs]
+    rng = random.Random(args.random_seed)
+    per_set_pairs = []
+
+    for trace_set_name, trace_set_dir in trace_sets:
+        trace_files = collect_trace_files(trace_set_dir, args.subdir)
+        if len(trace_files) < 2:
+            cprint(
+                f"Skipping {trace_set_name}: found {len(trace_files)} trace(s), need at least 2",
+                Color.YELLOW,
+            )
+            per_set_pairs.append((trace_set_name, []))
+            continue
+
+        pairs = random_ordered_trace_pairs(
+            trace_files, args.random_context_switch_combinations, rng
+        )
+        rng.shuffle(pairs)
+        per_set_pairs.append((trace_set_name, pairs))
+
+    experiments = []
+    set_index = 0
+    while len(experiments) < args.random_context_switch_combinations:
+        added_pair = False
+        for _ in range(len(per_set_pairs)):
+            trace_set_name, pairs = per_set_pairs[set_index]
+            set_index = (set_index + 1) % len(per_set_pairs)
+            if not pairs:
+                continue
+            warmup_trace, context_switch_trace = pairs.pop()
+            experiments.append((trace_set_name, warmup_trace, context_switch_trace))
+            added_pair = True
+            break
+        if not added_pair:
+            break
+
+    return experiments
 
 
 def run_experiment(
@@ -129,23 +239,11 @@ def get_perfect_predictor_file(base_path, trace_dir):
 
 
 def main(args):
+    import psutil
+
     global warmup_instructions, evaluation_instructions
     warmup_instructions = args.warmup
     evaluation_instructions = args.eval
-    traces_directory = args.traces_directory[0]
-    workloads = os.listdir(traces_directory)
-    trace_files = []
-    for workload in workloads:
-        if args.subdir:
-            workload_dir = path.join(traces_directory, workload)
-            filenames = filter(
-                lambda trace: trace.endswith(".gz") or trace.endswith(".xz"),
-                os.listdir(workload_dir),
-            )
-            trace_files.extend(map(partial(path.join, workload_dir), filenames))
-        else:
-            if workload.endswith(".gz") or workload.endswith(".xz"):
-                trace_files.append(path.join(traces_directory, workload))
 
     output_dir = args.output_dir[0]
     if args.exec:
@@ -159,40 +257,78 @@ def main(args):
     print(f"RUNNING POOL ON {len(proc.cpu_affinity())}")
     pending_experiments = []
 
-    for trace in trace_files:
-        trace_name = trace_stem(trace)
-        if args.subdir:
-            trace_name = path.split(trace)[0].split("/")[-1]
-
-        result_trace_name = trace_name
-        if args.context_switch_trace:
-            result_trace_name = trace_stem(args.context_switch_trace)
-
-        output_subdir = path.join(output_dir, result_trace_name)
-
-        # TEST ONLY
-        # run_experiment(trace, output_subdir)
-        if path.exists(output_subdir):
-            files = os.listdir(output_subdir)
-            if any(f.endswith(".txt") for f in files):
-                cprint(f"{output_subdir} already computed", Color.YELLOW)
-
-                continue
-        print(f"Run {result_trace_name} experiment", flush=True)
-        pending_experiments.append(
-            (
-                pool.apply_async(
-                    run_experiment,
-                    [
-                        trace,
-                        output_subdir,
-                        None,
-                        args.context_switch_trace,
-                    ],
-                ),
-                result_trace_name,
-            )
+    if args.trace_set_dirs:
+        scheduled_experiments = make_random_context_switch_experiments(args)
+        print(
+            f"Scheduled {len(scheduled_experiments)} random context-switch combinations",
+            flush=True,
         )
+        for trace_set_name, warmup_trace, context_switch_trace in scheduled_experiments:
+            result_trace_name = (
+                f"{trace_set_name}/{trace_stem(warmup_trace)}_to_"
+                f"{trace_stem(context_switch_trace)}"
+            )
+            output_subdir = path.join(output_dir, result_trace_name)
+
+            if path.exists(output_subdir):
+                files = os.listdir(output_subdir)
+                if any(f.endswith(".txt") for f in files):
+                    cprint(f"{output_subdir} already computed", Color.YELLOW)
+                    continue
+
+            print(f"Run {result_trace_name} experiment", flush=True)
+            pending_experiments.append(
+                (
+                    pool.apply_async(
+                        run_experiment,
+                        [
+                            warmup_trace,
+                            output_subdir,
+                            None,
+                            context_switch_trace,
+                        ],
+                    ),
+                    result_trace_name,
+                )
+            )
+    else:
+        traces_directory = args.traces_directory[0]
+        trace_files = collect_trace_files(traces_directory, args.subdir)
+
+        for trace in trace_files:
+            trace_name = trace_stem(trace)
+            if args.subdir:
+                trace_name = path.split(trace)[0].split("/")[-1]
+
+            result_trace_name = trace_name
+            if args.context_switch_trace:
+                result_trace_name = trace_stem(args.context_switch_trace)
+
+            output_subdir = path.join(output_dir, result_trace_name)
+
+            # TEST ONLY
+            # run_experiment(trace, output_subdir)
+            if path.exists(output_subdir):
+                files = os.listdir(output_subdir)
+                if any(f.endswith(".txt") for f in files):
+                    cprint(f"{output_subdir} already computed", Color.YELLOW)
+
+                    continue
+            print(f"Run {result_trace_name} experiment", flush=True)
+            pending_experiments.append(
+                (
+                    pool.apply_async(
+                        run_experiment,
+                        [
+                            trace,
+                            output_subdir,
+                            None,
+                            args.context_switch_trace,
+                        ],
+                    ),
+                    result_trace_name,
+                )
+            )
 
     # To prevent subprocesses to be killed
     experiments = [
@@ -227,6 +363,31 @@ if __name__ == "__main__":
         type=str,
         nargs=1,
         help="Directory containing all traces in named subfolders",
+    )
+    parser.add_argument(
+        "--trace-set-dirs",
+        dest="trace_set_dirs",
+        metavar="NAME=TRACE_DIRECTORY",
+        type=str,
+        nargs="+",
+        default=None,
+        help=(
+            "Trace sets to sample for random context-switch experiments. "
+            "Each value can be NAME=DIR or just DIR; when set, --traces_directory "
+            "is ignored."
+        ),
+    )
+    parser.add_argument(
+        "--random-context-switch-combinations",
+        type=int,
+        default=50,
+        help="Maximum number of random warmup/context-switch trace pairs to run.",
+    )
+    parser.add_argument(
+        "--random-seed",
+        type=int,
+        default=None,
+        help="Optional seed for reproducible random trace-pair selection.",
     )
     parser.add_argument(
         "--trace_format",
