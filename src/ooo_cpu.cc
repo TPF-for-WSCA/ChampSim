@@ -36,6 +36,8 @@
 
 extern bool wrongpath;
 
+static constexpr uint64_t BRANCH_PROGRESS_PRINT_PERIOD = 32 * 1024;
+
 uint64_t deadlock_count = 0;
 std::set<uint64_t> branch_seen = {};
 bool fetch_stall = false;
@@ -107,6 +109,19 @@ long O3_CPU::operate()
     last_heartbeat_cycle = current_cycle;
   }
 
+  if (!warmup && current_cycle >= next_branch_progress_cycle) {
+    const auto sim_cycles = current_cycle - sim_stats.begin_cycles;
+    const auto sim_instrs = num_retired - sim_stats.begin_instrs;
+    const auto total_branch_misses = std::accumulate(std::begin(sim_stats.branch_type_misses), std::end(sim_stats.branch_type_misses), 0ll);
+    const auto instrs_per_kilo = std::ceil(sim_instrs) / 1000.0;
+    const auto aliasing_mpki = (sim_instrs == 0) ? 0.0 : std::ceil(sim_stats.total_aliasing) / instrs_per_kilo;
+    const auto branch_mpki = (sim_instrs == 0) ? 0.0 : std::ceil(total_branch_misses) / instrs_per_kilo;
+
+    fmt::print("Branch progress CPU {} sim cycles: {} cycles: {} instructions: {} aliasing: {} aliasing MPKI: {:.4g} total branch misses: {} BRANCH_MPKI: {:.4g}\n",
+               cpu, sim_cycles, current_cycle, sim_instrs, sim_stats.total_aliasing, aliasing_mpki, total_branch_misses, branch_mpki);
+    next_branch_progress_cycle += BRANCH_PROGRESS_PRINT_PERIOD;
+  }
+
   if (wrongpath) 
     return 0;
 
@@ -124,6 +139,7 @@ void O3_CPU::begin_phase()
 {
   begin_phase_instr = num_retired;
   begin_phase_cycle = current_cycle;
+  next_branch_progress_cycle = current_cycle + BRANCH_PROGRESS_PRINT_PERIOD;
 
   // Record where the next phase begins
   stats_type stats;
