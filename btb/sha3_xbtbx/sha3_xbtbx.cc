@@ -1040,13 +1040,17 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     sim_stats.region_history.push_back(stats_entry);
 
     std::map<uint64_t, uint64_t> region_count_sample;
-    std::set<uint64_t> combined_set;
     for (auto const& [way, set] : regions_per_way) {
       region_count_sample[way] = set.size();
-      combined_set.insert(set.begin(), set.end());
+    }
+    std::set<uint64_t> current_regions;
+    for (auto it = ::REGION_BTB.at(this).begin(); it != ::REGION_BTB.at(this).end(); it++) {
+      if (it->data.ip_tag) {
+        current_regions.insert(it->data.tag());
+      }
     }
     sim_stats.regions_per_way_samples.push_back(region_count_sample);
-    sim_stats.region_count_samples.push_back(combined_set.size());
+    sim_stats.region_count_samples.push_back(current_regions.size());
     for (auto it = sim_stats.region_pointer_count.begin(); it != sim_stats.region_pointer_count.end(); it++) {
       if (!it->second) {
         continue;
