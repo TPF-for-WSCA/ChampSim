@@ -59,6 +59,7 @@
       "btb_tag_size": 14,
       "btb_tag_regions": 0,
       "btb_tag_region_size": 0,
+      "btb_invalidate_entry": 1,
       "align_bits": 5
     }
   ],
