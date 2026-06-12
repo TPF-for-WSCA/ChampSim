@@ -30,8 +30,6 @@ warmup=50000000
 simulation=50000000
 mem_per_cpu="5G"
 max_core_count=8
-<<<<<<< ours
-=======
 trace_root="/cluster/work/romankb/dataset/IPC1_new_translated"
 max_trace_combinations=10
 trace_sets=(
@@ -39,7 +37,6 @@ trace_sets=(
     "server=${trace_root}/server"
     "client=${trace_root}/client"
 )
->>>>>>> theirs
 #binary_dir=("size_sensitivity")
 #binaries=("ubs" "ubs_unaligned" "ubs_extended" "ubs_unaligned_extended")
 #binaries=("ubs_overhead_isca_extend_lru" "ubs_overhead_isca_lru")
