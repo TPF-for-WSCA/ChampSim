@@ -23,6 +23,7 @@ BRANCH_PROGRESS_RE = re.compile(
 BRANCH_PROGRESS_COLUMNS = [
     "workload_group",
     "config",
+    "benchmark_subgroup",
     "application",
     "cpu",
     "sim_cycles",
@@ -99,24 +100,32 @@ def label_for_log(root, log_path):
     rel_parent = parent.relative_to(root)
     parts = rel_parent.parts
 
-    if len(parts) >= 2:
-        workload_group = "/".join(parts[:-2]) or "const"
-        config = parts[-2]
+    if len(parts) >= 3:
+        workload_group = "/".join(parts[:-3]) or "const"
+        config = parts[-3]
+        benchmark_subgroup = parts[-2]
         application = parts[-1]
+    elif len(parts) == 2:
+        workload_group = "const"
+        config = parts[0]
+        benchmark_subgroup = "const"
+        application = parts[1]
     elif len(parts) == 1:
         workload_group = "const"
         config = "const"
+        benchmark_subgroup = "const"
         application = parts[0]
     else:
         workload_group = "const"
         config = "const"
+        benchmark_subgroup = "const"
         application = log_path.stem.removesuffix("_log")
 
-    return workload_group, config, application
+    return workload_group, config, benchmark_subgroup, application
 
 
 def extract_latest_branch_progress(root, log_path):
-    workload_group, config, application = label_for_log(root, log_path)
+    workload_group, config, benchmark_subgroup, application = label_for_log(root, log_path)
     rows = []
     with log_path.open() as log:
         for line in log:
@@ -132,6 +141,7 @@ def extract_latest_branch_progress(root, log_path):
             row = {
                 "workload_group": workload_group,
                 "config": config,
+                "benchmark_subgroup": benchmark_subgroup,
                 "application": application,
                 "cpu": int(values["cpu"]),
                 "sim_cycles": int(values["sim_cycles"]),
@@ -242,10 +252,12 @@ def branch_progress_workload_label(application):
     return f"{warmup_workload} -> {context_switch_workload}"
 
 
-def branch_progress_label(workload_group, config, application, cpu, cpu_count):
-    label = f"{branch_progress_workload_label(application)} [{config}]"
+def branch_progress_label(workload_group, config, benchmark_subgroup, application, cpu, cpu_count):
+    label = f"{config}: {branch_progress_workload_label(application)}"
     if workload_group != "const":
-        label = f"{workload_group}: {label}"
+        label = f"{workload_group}/{label}"
+    if benchmark_subgroup != "const":
+        label = f"{label} [{benchmark_subgroup}]"
     if cpu_count > 1:
         label += f"/CPU{cpu}"
     return label
@@ -254,7 +266,7 @@ def branch_progress_label(workload_group, config, application, cpu, cpu_count):
 def grouped_branch_progress(rows):
     grouped = defaultdict(list)
     for row in rows:
-        grouped[(row["workload_group"], row["config"], row["application"], row["cpu"])].append(row)
+        grouped[(row["workload_group"], row["config"], row["benchmark_subgroup"], row["application"], row["cpu"])].append(row)
     return grouped
 
 
@@ -267,9 +279,9 @@ def plot_branch_progress_metric(rows, metric, ylabel, output_path):
 
     cpu_count = len({row["cpu"] for row in rows})
     base_by_config, shade_by_application, application_count = branch_progress_styles(rows)
-    for (workload_group, config, application, cpu), group in sorted(grouped.items()):
+    for (workload_group, config, benchmark_subgroup, application, cpu), group in sorted(grouped.items()):
         group.sort(key=lambda row: row["sim_cycles"])
-        label = branch_progress_label(workload_group, config, application, cpu, cpu_count)
+        label = branch_progress_label(workload_group, config, benchmark_subgroup, application, cpu, cpu_count)
         color = shade_color(
             base_by_config[config],
             shade_by_application[application],
@@ -323,9 +335,9 @@ def plot_branch_progress_metric_svg(rows, metric, ylabel, output_path):
     base_by_config, shade_by_application, application_count = branch_progress_styles(rows)
     lines = []
     legend = []
-    for idx, ((workload_group, config, application, cpu), group) in enumerate(sorted(grouped.items())):
+    for idx, ((workload_group, config, benchmark_subgroup, application, cpu), group) in enumerate(sorted(grouped.items())):
         group.sort(key=lambda row: row["sim_cycles"])
-        label = branch_progress_label(workload_group, config, application, cpu, cpu_count)
+        label = branch_progress_label(workload_group, config, benchmark_subgroup, application, cpu, cpu_count)
         color = shade_color(
             base_by_config[config],
             shade_by_application[application],
@@ -378,9 +390,9 @@ def plot_branch_progress_interactive(rows, output_path):
     traces = []
 
     for metric_idx, (metric, ylabel) in enumerate(metrics):
-        for workload_group, config, application, cpu in sorted(grouped):
-            group = sorted(grouped[(workload_group, config, application, cpu)], key=lambda row: row["sim_cycles"])
-            label = branch_progress_label(workload_group, config, application, cpu, cpu_count)
+        for workload_group, config, benchmark_subgroup, application, cpu in sorted(grouped):
+            group = sorted(grouped[(workload_group, config, benchmark_subgroup, application, cpu)], key=lambda row: row["sim_cycles"])
+            label = branch_progress_label(workload_group, config, benchmark_subgroup, application, cpu, cpu_count)
             color = shade_color(
                 base_by_config[config],
                 shade_by_application[application],
@@ -431,7 +443,7 @@ def plot_branch_progress_interactive(rows, output_path):
         "height": 900,
         "margin": {"l": 80, "r": 280, "t": 80, "b": 70},
         "legend": {
-            "title": {"text": "Workload group: warmup -> context switch [configuration]"},
+            "title": {"text": "Workload group/config: warmup -> context switch [benchmark subgroup]"},
             "x": 1.02,
             "y": 1,
             "xanchor": "left",
@@ -595,7 +607,7 @@ def branch_progress_mode():
     raw_data_dir.mkdir(parents=True, exist_ok=True)
 
     rows = collect_branch_progress(root)
-    rows.sort(key=lambda row: (row["workload_group"], row["config"], row["application"], row["cpu"], row["sim_cycles"]))
+    rows.sort(key=lambda row: (row["workload_group"], row["config"], row["benchmark_subgroup"], row["application"], row["cpu"], row["sim_cycles"]))
     out_tsv = raw_data_dir / "branch_progress_timeseries.tsv"
     if not rows:
         print(f"No branch progress samples found under {root}")
