@@ -6,6 +6,7 @@ from os import path
 from pathlib import Path
 
 import argparse
+import hashlib
 import os
 import random
 import subprocess
@@ -64,12 +65,21 @@ def parse_trace_set(trace_set):
     return name, directory
 
 
-def random_ordered_trace_pairs(trace_files, count, rng):
+def deterministic_ordered_trace_pairs(trace_files, count, selection_key):
+    """Select a stable subset of ordered trace pairs.
+
+    The selected pairs depend only on the trace set identity and the sorted trace
+    file list. This keeps every compiled binary on the same warmup/context-switch
+    pairs when the same input directories are used.
+    """
     if len(trace_files) < 2 or count <= 0:
         return []
 
     max_unique_pairs = len(trace_files) * (len(trace_files) - 1)
     target_count = min(count, max_unique_pairs)
+    seed_material = "\0".join([selection_key, *trace_files]).encode()
+    seed = int.from_bytes(hashlib.sha256(seed_material).digest()[:8], "big")
+    rng = random.Random(seed)
     pairs = []
     seen = set()
     attempts = 0
@@ -100,9 +110,8 @@ def random_ordered_trace_pairs(trace_files, count, rng):
     return pairs
 
 
-def make_random_context_switch_experiments(args):
+def make_context_switch_experiments(args):
     trace_sets = [parse_trace_set(trace_set) for trace_set in args.trace_set_dirs]
-    rng = random.Random(args.random_seed)
     per_set_pairs = []
 
     for trace_set_name, trace_set_dir in trace_sets:
@@ -115,10 +124,11 @@ def make_random_context_switch_experiments(args):
             per_set_pairs.append((trace_set_name, []))
             continue
 
-        pairs = random_ordered_trace_pairs(
-            trace_files, args.random_context_switch_combinations, rng
+        pairs = deterministic_ordered_trace_pairs(
+            trace_files,
+            args.random_context_switch_combinations,
+            f"{trace_set_name}={path.abspath(trace_set_dir)}",
         )
-        rng.shuffle(pairs)
         per_set_pairs.append((trace_set_name, pairs))
 
     experiments = []
@@ -138,6 +148,10 @@ def make_random_context_switch_experiments(args):
             break
 
     return experiments
+
+
+def make_random_context_switch_experiments(args):
+    return make_context_switch_experiments(args)
 
 
 def run_experiment(
@@ -258,9 +272,9 @@ def main(args):
     pending_experiments = []
 
     if args.trace_set_dirs:
-        scheduled_experiments = make_random_context_switch_experiments(args)
+        scheduled_experiments = make_context_switch_experiments(args)
         print(
-            f"Scheduled {len(scheduled_experiments)} random context-switch combinations",
+            f"Scheduled {len(scheduled_experiments)} deterministic context-switch combinations",
             flush=True,
         )
         for trace_set_name, warmup_trace, context_switch_trace in scheduled_experiments:
@@ -372,7 +386,7 @@ if __name__ == "__main__":
         nargs="+",
         default=None,
         help=(
-            "Trace sets to sample for random context-switch experiments. "
+            "Trace sets to sample for deterministic context-switch experiments. "
             "Each value can be NAME=DIR or just DIR; when set, --traces_directory "
             "is ignored."
         ),
@@ -380,14 +394,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--random-context-switch-combinations",
         type=int,
-        default=50,
-        help="Maximum number of random warmup/context-switch trace pairs to run.",
+        default=10,
+        help="Maximum number of deterministic warmup/context-switch trace pairs to run.",
     )
     parser.add_argument(
         "--random-seed",
         type=int,
         default=None,
-        help="Optional seed for reproducible random trace-pair selection.",
+        help="Deprecated compatibility option; trace-pair selection is deterministic from input directories.",
     )
     parser.add_argument(
         "--trace_format",

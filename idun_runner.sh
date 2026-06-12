@@ -31,7 +31,7 @@ simulation=50000000
 mem_per_cpu="5G"
 max_core_count=8
 trace_root="/cluster/work/romankb/dataset/IPC1_new_translated"
-max_trace_combinations=50
+max_trace_combinations=10
 trace_sets=(
     "spec=${trace_root}/spec"
     "server=${trace_root}/server"
@@ -47,10 +47,10 @@ do
     for bin in ~/ChampSim/bin/$dir/*
     do
         echo $bin
-        # IPC-1 random context-switch combinations. For each input trace set
-        # (SPEC, server, client), data_collector.py samples random ordered pairs:
-        # one warmup trace and a different context-switch trace. Across all sets,
-        # at most ${max_trace_combinations} combinations are launched by this srun.
+        # IPC-1 deterministic context-switch combinations. Every binary uses
+        # the same warmup/context-switch trace pairs for a given set of input
+        # trace directories. Across all sets, at most ${max_trace_combinations}
+        # combinations are launched by this srun.
         srun --account=share-ie-idi \
             -J num-collection-$(basename "${bin}")-ctx \
             --mail-user=romankb@ntnu.no \
