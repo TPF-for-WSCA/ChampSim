@@ -30,6 +30,16 @@ warmup=50000000
 simulation=50000000
 mem_per_cpu="5G"
 max_core_count=8
+<<<<<<< ours
+=======
+trace_root="/cluster/work/romankb/dataset/IPC1_new_translated"
+max_trace_combinations=10
+trace_sets=(
+    "spec=${trace_root}/spec"
+    "server=${trace_root}/server"
+    "client=${trace_root}/client"
+)
+>>>>>>> theirs
 #binary_dir=("size_sensitivity")
 #binaries=("ubs" "ubs_unaligned" "ubs_extended" "ubs_unaligned_extended")
 #binaries=("ubs_overhead_isca_extend_lru" "ubs_overhead_isca_lru")
@@ -40,10 +50,36 @@ do
     for bin in ~/ChampSim/bin/$dir/*
     do
         echo $bin
+<<<<<<< ours
         # IPC-1 Benchmarks
        srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=${mem_per_cpu} -n1 -c$((max_core_count / 2)) -t$timelimit -o /cluster/work/romankb/latency-spec-${dir}-$(basename ${bin})-%j.out    -e /cluster/work/romankb/latency-spec-${dir}-$(basename ${bin})-%j.err    python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/spec   --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}_ispass_bench/ipc1_spec/sizes_$(basename ${bin})/              &>> /cluster/work/romankb/pyrunner_latency_fixed_ipc1_spec_$(basename ${bin}).log &
        srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=${mem_per_cpu} -n1 -c$((max_core_count / 2)) -t$timelimit -o /cluster/work/romankb/latency-client-${dir}-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-client-${dir}-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/client --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}_ispass_bench/ipc1_client/sizes_$(basename ${bin})/            &>> /cluster/work/romankb/pyrunner_latency_fixed_ipc1_client_$(basename ${bin}).log &
        srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=${mem_per_cpu} -n1 -c${max_core_count} -t$timelimit -o /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --traces_directory /cluster/work/romankb/dataset/IPC1_new_translated/server --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}_ispass_bench/ipc1_server/sizes_$(basename ${bin})/            &>> /cluster/work/romankb/pyrunner_latency_fixed_ipc1_server_$(basename ${bin}).log &
+=======
+        # IPC-1 deterministic context-switch combinations. Every binary uses
+        # the same warmup/context-switch trace pairs for a given set of input
+        # trace directories. Across all sets, at most ${max_trace_combinations}
+        # combinations are launched by this srun.
+        srun --account=share-ie-idi \
+            -J num-collection-$(basename "${bin}")-ctx \
+            --mail-user=romankb@ntnu.no \
+            --mail-type=FAIL \
+            --mem-per-cpu=${mem_per_cpu} \
+            -n1 \
+            -c$((max_core_count / 2)) \
+            -t${timelimit} \
+            -o /cluster/work/romankb/latency-random-ctx-${dir}-$(basename "${bin}")-%j.out \
+            -e /cluster/work/romankb/latency-random-ctx-${dir}-$(basename "${bin}")-%j.err \
+            python ~/ChampSim/data_collector.py \
+                --warmup ${warmup} \
+                --evaluation ${simulation} \
+                --experiment_executable "${bin}" \
+                --trace-set-dirs "${trace_sets[@]}" \
+                --random-context-switch-combinations ${max_trace_combinations} \
+                --nosub \
+                --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}_ispass_bench/ipc1_random_context_switch/sizes_$(basename "${bin}")/ \
+            &>> /cluster/work/romankb/pyrunner_latency_context_switch_$(basename "${bin}").log &
+>>>>>>> theirs
         # srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=${mem_per_cpu} -n1 -c${max_core_count} -t$timelimit -o /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-server-${dir}-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --intel --traces_directory /cluster/work/romankb/dataset/dpc4/high_mpki --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}${suffix:+_$suffix}/dpc4/sizes_$(basename ${bin})/            &>> /cluster/work/romankb/pyrunner_latency_fixed_dpc4_$(basename ${bin}).log &
         # SPECCPU / DPC-3 Benchmarks # Deactivated for now - most have little impact, biggest impact however also here
         # srun --account=share-ie-idi -J num-collection-$(basename ${bin}) --mail-user=romankb@ntnu.no --mail-type=FAIL --mem-per-cpu=20G -n1 -c8 -t$timelimit -o /cluster/work/romankb/latency-server-$(basename ${bin})-%j.out  -e /cluster/work/romankb/latency-server-$(basename ${bin})-%j.err  python ~/ChampSim/data_collector.py --warmup ${warmup} --evaluation ${simulation} --experiment_executable ${bin} --intel --traces_directory /cluster/work/romankb/dataset/dpc3                       --nosub --output_dir /cluster/work/romankb/results/${dir}_${count}_${suffix}/dpc3/sizes_$(basename ${bin})/           &>> /cluster/work/romankb/pyrunner_latency_fixed_dpc3_$(basename ${bin}).log &
