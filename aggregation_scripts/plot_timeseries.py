@@ -219,8 +219,16 @@ def branch_progress_styles(rows):
     return base_by_application, shade_by_config, len(configs)
 
 
+def branch_progress_workload_label(application):
+    if "_to_" not in application:
+        return application
+
+    warmup_workload, context_switch_workload = application.split("_to_", 1)
+    return f"{warmup_workload} -> {context_switch_workload}"
+
+
 def branch_progress_label(config, application, cpu, cpu_count):
-    label = f"{application} [{config}]"
+    label = f"{branch_progress_workload_label(application)} [{config}]"
     if cpu_count > 1:
         label += f"/CPU{cpu}"
     return label
@@ -410,7 +418,7 @@ def plot_branch_progress_interactive(rows, output_path):
         "height": 900,
         "margin": {"l": 80, "r": 280, "t": 80, "b": 70},
         "legend": {
-            "title": {"text": "Workload [configuration]"},
+            "title": {"text": "Warmup -> context switch [configuration]"},
             "x": 1.02,
             "y": 1,
             "xanchor": "left",
