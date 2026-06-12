@@ -180,6 +180,7 @@ auto get_region(uint64_t ip)
     return (ip >> PAGE_LOG_SIZE) & _REGION_MASK;
   }
   ip = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
+  ip = pearson_hash(ip, _BTB_TAG_REGIONS);
   ip = ip & _REGION_MASK;
   return ip;
 }
