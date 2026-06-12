@@ -31,132 +31,6 @@ def cprint(string, color: Color):
     print(color.value + string + Color.ENDC.value)
 
 
-<<<<<<< ours
-=======
-def is_trace_file(filename):
-    return filename.endswith(".gz") or filename.endswith(".xz")
-
-
-def collect_trace_files(traces_directory, include_subdirs):
-    workloads = sorted(os.listdir(traces_directory))
-    trace_files = []
-    for workload in workloads:
-        workload_path = path.join(traces_directory, workload)
-        if include_subdirs:
-            if not path.isdir(workload_path):
-                continue
-            filenames = filter(is_trace_file, sorted(os.listdir(workload_path)))
-            trace_files.extend(map(partial(path.join, workload_path), filenames))
-        elif is_trace_file(workload):
-            trace_files.append(workload_path)
-    return trace_files
-
-
-def parse_trace_set(trace_set):
-    if "=" in trace_set:
-        name, directory = trace_set.split("=", 1)
-        name = name.strip()
-        directory = directory.strip()
-    else:
-        directory = trace_set.strip()
-        name = path.basename(path.normpath(directory))
-    if not name:
-        raise ValueError(f"Trace set '{trace_set}' has an empty name")
-    if not directory:
-        raise ValueError(f"Trace set '{trace_set}' has an empty directory")
-    return name, directory
-
-
-def deterministic_ordered_trace_pairs(trace_files, count, selection_key):
-    """Select a stable subset of ordered trace pairs.
-
-    The selected pairs depend only on the trace set identity and the sorted trace
-    file list. This keeps every compiled binary on the same warmup/context-switch
-    pairs when the same input directories are used.
-    """
-    if len(trace_files) < 2 or count <= 0:
-        return []
-
-    max_unique_pairs = len(trace_files) * (len(trace_files) - 1)
-    target_count = min(count, max_unique_pairs)
-    seed_material = "\0".join([selection_key, *trace_files]).encode()
-    seed = int.from_bytes(hashlib.sha256(seed_material).digest()[:8], "big")
-    rng = random.Random(seed)
-    pairs = []
-    seen = set()
-    attempts = 0
-    max_attempts = max(target_count * 20, 100)
-
-    while len(pairs) < target_count and attempts < max_attempts:
-        attempts += 1
-        warmup_trace, context_switch_trace = rng.sample(trace_files, 2)
-        pair = (warmup_trace, context_switch_trace)
-        if pair in seen:
-            continue
-        seen.add(pair)
-        pairs.append(pair)
-
-    if len(pairs) < target_count:
-        for warmup_trace in trace_files:
-            for context_switch_trace in trace_files:
-                if warmup_trace == context_switch_trace:
-                    continue
-                pair = (warmup_trace, context_switch_trace)
-                if pair in seen:
-                    continue
-                seen.add(pair)
-                pairs.append(pair)
-                if len(pairs) >= target_count:
-                    return pairs
-
-    return pairs
-
-
-def make_context_switch_experiments(args):
-    trace_sets = [parse_trace_set(trace_set) for trace_set in args.trace_set_dirs]
-    per_set_pairs = []
-
-    for trace_set_name, trace_set_dir in trace_sets:
-        trace_files = collect_trace_files(trace_set_dir, args.subdir)
-        if len(trace_files) < 2:
-            cprint(
-                f"Skipping {trace_set_name}: found {len(trace_files)} trace(s), need at least 2",
-                Color.YELLOW,
-            )
-            per_set_pairs.append((trace_set_name, []))
-            continue
-
-        pairs = deterministic_ordered_trace_pairs(
-            trace_files,
-            args.random_context_switch_combinations,
-            f"{trace_set_name}={path.abspath(trace_set_dir)}",
-        )
-        per_set_pairs.append((trace_set_name, pairs))
-
-    experiments = []
-    set_index = 0
-    while len(experiments) < args.random_context_switch_combinations:
-        added_pair = False
-        for _ in range(len(per_set_pairs)):
-            trace_set_name, pairs = per_set_pairs[set_index]
-            set_index = (set_index + 1) % len(per_set_pairs)
-            if not pairs:
-                continue
-            warmup_trace, context_switch_trace = pairs.pop()
-            experiments.append((trace_set_name, warmup_trace, context_switch_trace))
-            added_pair = True
-            break
-        if not added_pair:
-            break
-
-    return experiments
-
-
-def make_random_context_switch_experiments(args):
-    return make_context_switch_experiments(args)
-
-
->>>>>>> theirs
 def run_experiment(
     trace_file_path,
     output_dir,
@@ -273,7 +147,6 @@ def main(args):
     print(f"RUNNING POOL ON {len(proc.cpu_affinity())}")
     pending_experiments = []
 
-<<<<<<< ours
     for trace in trace_files:
         trace_name = trace.split("/")[-1].rsplit(".", 1)[0]
         if args.subdir:
@@ -285,20 +158,6 @@ def main(args):
             files = os.listdir(output_subdir)
             if any(f.endswith(".txt") for f in files):
                 cprint(f"{output_subdir} already computed", Color.YELLOW)
-=======
-    if args.trace_set_dirs:
-        scheduled_experiments = make_context_switch_experiments(args)
-        print(
-            f"Scheduled {len(scheduled_experiments)} deterministic context-switch combinations",
-            flush=True,
-        )
-        for trace_set_name, warmup_trace, context_switch_trace in scheduled_experiments:
-            result_trace_name = (
-                f"{trace_set_name}/{trace_stem(warmup_trace)}_to_"
-                f"{trace_stem(context_switch_trace)}"
-            )
-            output_subdir = path.join(output_dir, result_trace_name)
->>>>>>> theirs
 
                 continue
         print(f"Run {trace_name} experiment", flush=True)
@@ -350,34 +209,6 @@ if __name__ == "__main__":
         help="Directory containing all traces in named subfolders",
     )
     parser.add_argument(
-<<<<<<< ours
-=======
-        "--trace-set-dirs",
-        dest="trace_set_dirs",
-        metavar="NAME=TRACE_DIRECTORY",
-        type=str,
-        nargs="+",
-        default=None,
-        help=(
-            "Trace sets to sample for deterministic context-switch experiments. "
-            "Each value can be NAME=DIR or just DIR; when set, --traces_directory "
-            "is ignored."
-        ),
-    )
-    parser.add_argument(
-        "--random-context-switch-combinations",
-        type=int,
-        default=10,
-        help="Maximum number of deterministic warmup/context-switch trace pairs to run.",
-    )
-    parser.add_argument(
-        "--random-seed",
-        type=int,
-        default=None,
-        help="Deprecated compatibility option; trace-pair selection is deterministic from input directories.",
-    )
-    parser.add_argument(
->>>>>>> theirs
         "--trace_format",
         type=str,
         nargs="?",
@@ -399,7 +230,6 @@ if __name__ == "__main__":
         type=int,
         help=f"Optional: Number of instructions to warmup. Default is {warmup_instructions}",
     )
-    parser.add_argument(
         "--evaluation",
         dest="eval",
         type=int,
@@ -411,20 +241,6 @@ if __name__ == "__main__":
         dest="subdir",
         action="store_false",
     )
-    parser.set_defaults(subdir=True)
-
-    parser.add_argument(
-        "--intel",
-        action="store_true",
-    )
-    parser.add_argument("--btb_tag_hash", type=str, default=None)
-    parser.set_defaults(intel=False)
-
-    parser.add_argument(
-        "--som",
-        action="store_true",
-    )
-    parser.set_defaults(som=False)
 
     args = parser.parse_args()
     main(args)
