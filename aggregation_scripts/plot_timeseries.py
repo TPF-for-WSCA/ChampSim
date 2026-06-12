@@ -240,6 +240,16 @@ def branch_progress_styles(rows):
     return base_by_config, shade_by_application, len(applications)
 
 
+def branch_progress_config_label(config):
+    if config.endswith("_full") or "_full_" in config:
+        return "Full Tag"
+    if "_abtb_" in config or config.endswith("_abtb"):
+        return "Baseline"
+    if "_rc_" in config or config.endswith("_rc"):
+        return "LiteBTB"
+    return config
+
+
 def branch_progress_x_value(row):
     return row["sim_cycles"] / BRANCH_PROGRESS_SAMPLE_RATE
 
@@ -302,6 +312,120 @@ def plot_branch_progress_metric(rows, metric, ylabel, output_path):
     fig.tight_layout()
     fig.savefig(output_path, dpi=160)
     pyplot.close(fig)
+
+
+def plot_branch_progress_paper_metric(rows, metric, ylabel, output_path):
+    from matplotlib import pyplot
+    from matplotlib.lines import Line2D
+
+    fig, ax = pyplot.subplots(figsize=(6.6, 3.2))
+    grouped = grouped_branch_progress(rows)
+
+    base_by_config, shade_by_application, application_count = branch_progress_styles(rows)
+    for (workload_group, config, benchmark_subgroup, application, cpu), group in sorted(grouped.items()):
+        group.sort(key=lambda row: row["sim_cycles"])
+        color = shade_color(
+            base_by_config[config],
+            shade_by_application[application],
+            application_count,
+        )
+        ax.plot(
+            [branch_progress_x_value(row) for row in group],
+            [row[metric] for row in group],
+            linewidth=1.2,
+            color=color,
+        )
+
+    legend_handles = [
+        Line2D([0], [0], color=base_by_config[config], linewidth=2.0, label=branch_progress_config_label(config))
+        for config in sorted(base_by_config)
+    ]
+    ax.legend(handles=legend_handles, loc="best", frameon=False, fontsize=8)
+    ax.set_xlabel("Sample after warmup")
+    ax.set_ylabel(ylabel)
+    ax.grid(True, alpha=0.2, linewidth=0.6)
+    fig.tight_layout()
+    fig.savefig(output_path)
+    pyplot.close(fig)
+
+
+def plot_branch_progress_paper_metric_svg(rows, metric, ylabel, output_path):
+    grouped = grouped_branch_progress(rows)
+
+    width = 720
+    height = 360
+    left = 72
+    right = 130
+    top = 24
+    bottom = 52
+    plot_width = width - left - right
+    plot_height = height - top - bottom
+
+    x_values = [branch_progress_x_value(row) for row in rows]
+    y_values = [row[metric] for row in rows]
+    x_min, x_max = min(x_values), max(x_values)
+    y_min, y_max = min(y_values), max(y_values)
+    if x_min == x_max:
+        x_max = x_min + 1
+    if y_min == y_max:
+        y_max = y_min + 1
+
+    y_padding = (y_max - y_min) * 0.04
+    y_min -= y_padding
+    y_max += y_padding
+
+    def x_scale(value):
+        return left + ((value - x_min) / (x_max - x_min)) * plot_width
+
+    def y_scale(value):
+        return top + plot_height - ((value - y_min) / (y_max - y_min)) * plot_height
+
+    base_by_config, shade_by_application, application_count = branch_progress_styles(rows)
+    lines = []
+    for (workload_group, config, benchmark_subgroup, application, cpu), group in sorted(grouped.items()):
+        group.sort(key=lambda row: row["sim_cycles"])
+        color = shade_color(
+            base_by_config[config],
+            shade_by_application[application],
+            application_count,
+        )
+        points = " ".join(f"{x_scale(branch_progress_x_value(row)):.2f},{y_scale(row[metric]):.2f}" for row in group)
+        lines.append(f'<polyline fill="none" stroke="{color}" stroke-width="1.6" points="{points}" />')
+
+    x_ticks = []
+    y_ticks = []
+    for i in range(5):
+        x_value = x_min + (x_max - x_min) * i / 4
+        x = x_scale(x_value)
+        x_ticks.append(f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_height}" stroke="#e6e6e6" />')
+        x_ticks.append(f'<text x="{x:.2f}" y="{height - 18}" text-anchor="middle" font-size="11">{x_value:.0f}</text>')
+
+        y_value = y_min + (y_max - y_min) * i / 4
+        y = y_scale(y_value)
+        y_ticks.append(f'<line x1="{left}" y1="{y:.2f}" x2="{left + plot_width}" y2="{y:.2f}" stroke="#e6e6e6" />')
+        y_ticks.append(f'<text x="{left - 8}" y="{y + 4:.2f}" text-anchor="end" font-size="11">{y_value:.3g}</text>')
+
+    legend = []
+    legend_x = left + plot_width + 18
+    legend_y = top + 14
+    for idx, config in enumerate(sorted(base_by_config)):
+        y = legend_y + idx * 18
+        legend.append(f'<line x1="{legend_x}" y1="{y}" x2="{legend_x + 24}" y2="{y}" stroke="{base_by_config[config]}" stroke-width="2.4" />')
+        legend.append(f'<text x="{legend_x + 32}" y="{y + 4}" font-size="11">{html.escape(branch_progress_config_label(config))}</text>')
+
+    output_path.write_text(
+        f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
+  <rect width="100%" height="100%" fill="white" />
+  {"".join(x_ticks)}
+  {"".join(y_ticks)}
+  <rect x="{left}" y="{top}" width="{plot_width}" height="{plot_height}" fill="none" stroke="#333" />
+  {"".join(lines)}
+  <text x="{left + plot_width / 2}" y="{height - 4}" text-anchor="middle" font-size="12">Sample after warmup</text>
+  <text transform="translate(16 {top + plot_height / 2}) rotate(-90)" text-anchor="middle" font-size="12">{html.escape(ylabel)}</text>
+  {"".join(legend)}
+</svg>
+"""
+    )
 
 
 def plot_branch_progress_metric_svg(rows, metric, ylabel, output_path):
@@ -532,6 +656,33 @@ def plot_branch_progress_interactive(rows, output_path):
 
 def plot_branch_progress_combined(rows, output_dir):
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        plot_branch_progress_paper_metric(
+            rows,
+            "aliasing_mpki",
+            "Aliasing per kilo instruction",
+            output_dir / "branch_progress_aliasing_mpki_paper.pdf",
+        )
+        plot_branch_progress_paper_metric(
+            rows,
+            "branch_mpki",
+            "Total branch misses per kilo instruction",
+            output_dir / "branch_progress_branch_mpki_paper.pdf",
+        )
+    except ModuleNotFoundError:
+        plot_branch_progress_paper_metric_svg(
+            rows,
+            "aliasing_mpki",
+            "Aliasing per kilo instruction",
+            output_dir / "branch_progress_aliasing_mpki_paper.svg",
+        )
+        plot_branch_progress_paper_metric_svg(
+            rows,
+            "branch_mpki",
+            "Total branch misses per kilo instruction",
+            output_dir / "branch_progress_branch_mpki_paper.svg",
+        )
 
     try:
         plot_branch_progress_interactive(
