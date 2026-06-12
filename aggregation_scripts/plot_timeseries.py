@@ -200,16 +200,20 @@ def shade_color(base_color, shade_idx, shade_count):
     return rgb_to_hex(colorsys.hls_to_rgb(hue, lightness, saturation))
 
 
+def distinct_workload_color(idx, color_count):
+    if color_count <= 1:
+        hue = 0.58
+    else:
+        hue = idx / color_count
+
+    return rgb_to_hex(colorsys.hls_to_rgb(hue, 0.52, 0.78))
+
+
 def branch_progress_styles(rows):
-    palette = [
-        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b",
-        "#e377c2", "#7f7f7f", "#bcbd22", "#17becf", "#393b79", "#637939",
-        "#8c6d31", "#843c39", "#7b4173", "#3182bd", "#e6550d", "#31a354",
-    ]
     applications = sorted({row["application"] for row in rows})
     configs = sorted({row["config"] for row in rows})
     base_by_application = {
-        application: palette[idx % len(palette)]
+        application: distinct_workload_color(idx, len(applications))
         for idx, application in enumerate(applications)
     }
     shade_by_config = {
