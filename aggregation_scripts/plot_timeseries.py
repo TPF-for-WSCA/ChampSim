@@ -21,6 +21,7 @@ BRANCH_PROGRESS_RE = re.compile(
 )
 
 BRANCH_PROGRESS_COLUMNS = [
+    "workload_group",
     "config",
     "application",
     "cpu",
@@ -33,6 +34,8 @@ BRANCH_PROGRESS_COLUMNS = [
     "branch_mpki",
     "log_file",
 ]
+
+BRANCH_PROGRESS_SAMPLE_RATE = 32 * 1024
 
 
 def draw_invalid_entry(path, fix, ax, workload, color="r"):
@@ -97,20 +100,23 @@ def label_for_log(root, log_path):
     parts = rel_parent.parts
 
     if len(parts) >= 2:
-        config = parts[0]
-        application = parts[1]
+        workload_group = "/".join(parts[:-2]) or "const"
+        config = parts[-2]
+        application = parts[-1]
     elif len(parts) == 1:
+        workload_group = "const"
         config = "const"
         application = parts[0]
     else:
+        workload_group = "const"
         config = "const"
         application = log_path.stem.removesuffix("_log")
 
-    return config, application
+    return workload_group, config, application
 
 
 def extract_latest_branch_progress(root, log_path):
-    config, application = label_for_log(root, log_path)
+    workload_group, config, application = label_for_log(root, log_path)
     rows = []
     with log_path.open() as log:
         for line in log:
@@ -124,6 +130,7 @@ def extract_latest_branch_progress(root, log_path):
 
             values = match.groupdict()
             row = {
+                "workload_group": workload_group,
                 "config": config,
                 "application": application,
                 "cpu": int(values["cpu"]),
@@ -212,15 +219,19 @@ def distinct_workload_color(idx, color_count):
 def branch_progress_styles(rows):
     applications = sorted({row["application"] for row in rows})
     configs = sorted({row["config"] for row in rows})
-    base_by_application = {
-        application: distinct_workload_color(idx, len(applications))
-        for idx, application in enumerate(applications)
-    }
-    shade_by_config = {
-        config: idx
+    base_by_config = {
+        config: distinct_workload_color(idx, len(configs))
         for idx, config in enumerate(configs)
     }
-    return base_by_application, shade_by_config, len(configs)
+    shade_by_application = {
+        application: idx
+        for idx, application in enumerate(applications)
+    }
+    return base_by_config, shade_by_application, len(applications)
+
+
+def branch_progress_x_value(row):
+    return row["sim_cycles"] / BRANCH_PROGRESS_SAMPLE_RATE
 
 
 def branch_progress_workload_label(application):
@@ -231,8 +242,10 @@ def branch_progress_workload_label(application):
     return f"{warmup_workload} -> {context_switch_workload}"
 
 
-def branch_progress_label(config, application, cpu, cpu_count):
+def branch_progress_label(workload_group, config, application, cpu, cpu_count):
     label = f"{branch_progress_workload_label(application)} [{config}]"
+    if workload_group != "const":
+        label = f"{workload_group}: {label}"
     if cpu_count > 1:
         label += f"/CPU{cpu}"
     return label
@@ -241,7 +254,7 @@ def branch_progress_label(config, application, cpu, cpu_count):
 def grouped_branch_progress(rows):
     grouped = defaultdict(list)
     for row in rows:
-        grouped[(row["config"], row["application"], row["cpu"])].append(row)
+        grouped[(row["workload_group"], row["config"], row["application"], row["cpu"])].append(row)
     return grouped
 
 
@@ -253,25 +266,24 @@ def plot_branch_progress_metric(rows, metric, ylabel, output_path):
     grouped = grouped_branch_progress(rows)
 
     cpu_count = len({row["cpu"] for row in rows})
-    base_by_application, shade_by_config, config_count = branch_progress_styles(rows)
-    for (config, application, cpu), group in sorted(grouped.items()):
+    base_by_config, shade_by_application, application_count = branch_progress_styles(rows)
+    for (workload_group, config, application, cpu), group in sorted(grouped.items()):
         group.sort(key=lambda row: row["sim_cycles"])
-        label = branch_progress_label(config, application, cpu, cpu_count)
+        label = branch_progress_label(workload_group, config, application, cpu, cpu_count)
         color = shade_color(
-            base_by_application[application],
-            shade_by_config[config],
-            config_count,
+            base_by_config[config],
+            shade_by_application[application],
+            application_count,
         )
         ax.plot(
-            [row["sim_cycles"] for row in group],
+            [branch_progress_x_value(row) for row in group],
             [row[metric] for row in group],
-            marker=".",
             linewidth=1.4,
             label=label,
             color=color,
         )
 
-    ax.set_xlabel("Simulation cycles after warmup")
+    ax.set_xlabel("Sample after warmup")
     ax.set_ylabel(ylabel)
     ax.grid(True, alpha=0.25)
     ax.legend(loc="center left", bbox_to_anchor=(1.0, 0.5), fontsize="small")
@@ -292,7 +304,7 @@ def plot_branch_progress_metric_svg(rows, metric, ylabel, output_path):
     plot_width = width - left - right
     plot_height = height - top - bottom
 
-    x_values = [row["sim_cycles"] for row in rows]
+    x_values = [branch_progress_x_value(row) for row in rows]
     y_values = [row[metric] for row in rows]
     x_min, x_max = min(x_values), max(x_values)
     y_min, y_max = min(y_values), max(y_values)
@@ -308,21 +320,19 @@ def plot_branch_progress_metric_svg(rows, metric, ylabel, output_path):
         return top + plot_height - ((value - y_min) / (y_max - y_min)) * plot_height
 
     cpu_count = len({row["cpu"] for row in rows})
-    base_by_application, shade_by_config, config_count = branch_progress_styles(rows)
+    base_by_config, shade_by_application, application_count = branch_progress_styles(rows)
     lines = []
     legend = []
-    for idx, ((config, application, cpu), group) in enumerate(sorted(grouped.items())):
+    for idx, ((workload_group, config, application, cpu), group) in enumerate(sorted(grouped.items())):
         group.sort(key=lambda row: row["sim_cycles"])
-        label = branch_progress_label(config, application, cpu, cpu_count)
+        label = branch_progress_label(workload_group, config, application, cpu, cpu_count)
         color = shade_color(
-            base_by_application[application],
-            shade_by_config[config],
-            config_count,
+            base_by_config[config],
+            shade_by_application[application],
+            application_count,
         )
-        points = " ".join(f"{x_scale(row['sim_cycles']):.2f},{y_scale(row[metric]):.2f}" for row in group)
+        points = " ".join(f"{x_scale(branch_progress_x_value(row)):.2f},{y_scale(row[metric]):.2f}" for row in group)
         lines.append(f'<polyline fill="none" stroke="{color}" stroke-width="2" points="{points}" />')
-        for row in group:
-            lines.append(f'<circle cx="{x_scale(row["sim_cycles"]):.2f}" cy="{y_scale(row[metric]):.2f}" r="2.4" fill="{color}" />')
         legend_y = top + 18 * idx
         legend.append(f'<line x1="{width - right + 25}" y1="{legend_y}" x2="{width - right + 55}" y2="{legend_y}" stroke="{color}" stroke-width="3" />')
         legend.append(f'<text x="{width - right + 65}" y="{legend_y + 4}" font-size="12">{html.escape(label)}</text>')
@@ -348,7 +358,7 @@ def plot_branch_progress_metric_svg(rows, metric, ylabel, output_path):
   {"".join(y_ticks)}
   <rect x="{left}" y="{top}" width="{plot_width}" height="{plot_height}" fill="none" stroke="#333" />
   {"".join(lines)}
-  <text x="{left + plot_width / 2}" y="{height - 10}" text-anchor="middle" font-size="14">Simulation cycles after warmup</text>
+  <text x="{left + plot_width / 2}" y="{height - 10}" text-anchor="middle" font-size="14">Sample after warmup</text>
   <text transform="translate(18 {top + plot_height / 2}) rotate(-90)" text-anchor="middle" font-size="14">{html.escape(ylabel)}</text>
   {"".join(legend)}
 </svg>
@@ -364,17 +374,17 @@ def plot_branch_progress_interactive(rows, output_path):
 
     grouped = grouped_branch_progress(rows)
     cpu_count = len({row["cpu"] for row in rows})
-    base_by_application, shade_by_config, config_count = branch_progress_styles(rows)
+    base_by_config, shade_by_application, application_count = branch_progress_styles(rows)
     traces = []
 
     for metric_idx, (metric, ylabel) in enumerate(metrics):
-        for config, application, cpu in sorted(grouped):
-            group = sorted(grouped[(config, application, cpu)], key=lambda row: row["sim_cycles"])
-            label = branch_progress_label(config, application, cpu, cpu_count)
+        for workload_group, config, application, cpu in sorted(grouped):
+            group = sorted(grouped[(workload_group, config, application, cpu)], key=lambda row: row["sim_cycles"])
+            label = branch_progress_label(workload_group, config, application, cpu, cpu_count)
             color = shade_color(
-                base_by_application[application],
-                shade_by_config[config],
-                config_count,
+                base_by_config[config],
+                shade_by_application[application],
+                application_count,
             )
             customdata = [
                 [
@@ -390,20 +400,19 @@ def plot_branch_progress_interactive(rows, output_path):
             traces.append(
                 {
                     "type": "scatter",
-                    "x": [row["sim_cycles"] for row in group],
+                    "x": [branch_progress_x_value(row) for row in group],
                     "y": [row[metric] for row in group],
                     "customdata": customdata,
-                    "mode": "lines+markers",
+                    "mode": "lines",
                     "name": label,
                     "legendgroup": label,
                     "showlegend": metric_idx == 0,
                     "xaxis": f"x{axis_suffix}",
                     "yaxis": f"y{axis_suffix}",
                     "line": {"color": color, "width": 2},
-                    "marker": {"color": color, "size": 5},
                     "hovertemplate": (
                         "<b>%{fullData.name}</b><br>"
-                        "sim cycles=%{x}<br>"
+                        "sample=%{x}<br>"
                         f"{ylabel}=%{{y:.4g}}<br>"
                         "instructions=%{customdata[0]}<br>"
                         "cycles=%{customdata[1]}<br>"
@@ -422,7 +431,7 @@ def plot_branch_progress_interactive(rows, output_path):
         "height": 900,
         "margin": {"l": 80, "r": 280, "t": 80, "b": 70},
         "legend": {
-            "title": {"text": "Warmup -> context switch [configuration]"},
+            "title": {"text": "Workload group: warmup -> context switch [configuration]"},
             "x": 1.02,
             "y": 1,
             "xanchor": "left",
@@ -443,7 +452,7 @@ def plot_branch_progress_interactive(rows, output_path):
         "xaxis2": {
             "domain": [0, 1],
             "anchor": "y2",
-            "title": {"text": "Simulation cycles after warmup"},
+            "title": {"text": "Sample after warmup"},
         },
         "yaxis2": {
             "domain": [0, 0.44],
@@ -586,7 +595,7 @@ def branch_progress_mode():
     raw_data_dir.mkdir(parents=True, exist_ok=True)
 
     rows = collect_branch_progress(root)
-    rows.sort(key=lambda row: (row["config"], row["application"], row["cpu"], row["sim_cycles"]))
+    rows.sort(key=lambda row: (row["workload_group"], row["config"], row["application"], row["cpu"], row["sim_cycles"]))
     out_tsv = raw_data_dir / "branch_progress_timeseries.tsv"
     if not rows:
         print(f"No branch progress samples found under {root}")
