@@ -24,7 +24,7 @@ module load GCCcore/12.2.0
 suffix=""
 binary_dir=("micro_rebuttal_region_sensitivity_cs") # "micro_rebuttal_sha3_region_sensitivity" "micro_rebuttal_zobrist_region_sensitivity" "micro_rebuttal_rabin_region_sensitivity") #"region_sensitivity_half_hash_fifo_ipc1") # btb_full_grid_search "" "hash_btb_full_grid_search") # run grid search first to figure out correct tag sizing for : [ "region_sampling" "region_sampling_full_hash" "region_sampling_half_hash" "region_sensitivity_hashed" ]
      #"full_hash_btb_full_grid_search" "hash_btb_full_grid_search" "geometric_hash_btb_full_grid_search") #"twolevel_std_btb_full_grid_search") # "region_sensitivity_hashes") # "twolevel_geometric_hash_btb_full_grid_search" ("region_sampling" "btb_full_grid_search") # "btb_size_region_sensitivity" "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
-count=2
+count=4
 timelimit="24:00:00"
 warmup=50000000
 simulation=50000000
@@ -33,7 +33,6 @@ max_core_count=8
 trace_root="/cluster/work/romankb/dataset/IPC1_new_translated"
 max_trace_combinations=10
 trace_sets=(
-    "spec=${trace_root}/spec"
     "server=${trace_root}/server"
     "client=${trace_root}/client"
 )
