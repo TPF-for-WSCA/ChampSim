@@ -1,5 +1,5 @@
 {
-  "executable_name": "micro_rebuttal_rabin_region_sensitivity/4k_btb_rs_14b_rc_640_rw_10",
+  "executable_name": "micro_rebuttal_rabin_region_sensitivity/4k_btb_rs_14b_rc_512_rw_10",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
@@ -59,9 +59,9 @@
         64
       ],
       "btb_tag_size": 0,
-      "btb_tag_regions": 640,
-      "btb_tag_region_size": 14,
-      "btb_tag_region_ways": 10,
+      "btb_tag_regions": 512,
+      "btb_tag_region_size": 12,
+      "btb_tag_region_ways": 16,
       "btb_perfect_mapping": 1,
       "btb_invalidate_entry": 1,
       "btb_invalidate_region": 0,
