@@ -57,9 +57,6 @@ def run_experiment(
             f"{output_dir}/stats.json",
         ]
     )
-    if args.btb_tag_hash:
-        cmd.append("--btb-tag-hash")
-        cmd.append(args.btb_tag_hash)
     if args.intel:
         cmd.append("--intel")
     if args.som:
@@ -230,6 +227,7 @@ if __name__ == "__main__":
         type=int,
         help=f"Optional: Number of instructions to warmup. Default is {warmup_instructions}",
     )
+    parser.add_argument(
         "--evaluation",
         dest="eval",
         type=int,
@@ -241,6 +239,20 @@ if __name__ == "__main__":
         dest="subdir",
         action="store_false",
     )
+    parser.set_defaults(subdir=True)
+
+    parser.add_argument(
+        "--intel",
+        action="store_true",
+    )
+    parser.add_argument("--btb_tag_hash", type=str, default=None)
+    parser.set_defaults(intel=False)
+
+    parser.add_argument(
+        "--som",
+        action="store_true",
+    )
+    parser.set_defaults(som=False)
 
     args = parser.parse_args()
     main(args)

@@ -165,7 +165,7 @@ auto get_region(uint64_t ip)
   }
 
   ip = ip >> _isa_shiftamount >> _BTB_SET_BITS >> _BTB_TAG_SIZE;
-  ip = rabin_hash(ip, _BTB_REGION_BITS);
+  ip = rabin_hash(ip, _BTB_TAG_REGION_SIZE);
   ip = ip & _REGION_MASK;
   return ip;
 }
