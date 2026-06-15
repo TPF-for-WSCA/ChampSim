@@ -87,6 +87,7 @@ struct cpu_stats {
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
   uint64_t total_aliasing = 0, positive_aliasing = 0, negative_aliasing = 0;
   uint64_t aliasing_on_non_branch=0, aliasing_on_branch=0;
+  uint64_t btb_target_mispredictions = 0;
   uint64_t max_regions = 0;
   uint64_t min_regions = 0;
   std::array<uint64_t, 64> max_regions_per_region_size = {};

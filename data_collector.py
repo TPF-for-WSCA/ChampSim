@@ -52,32 +52,48 @@ def collect_trace_files(traces_directory, include_subdirs):
 
 def parse_trace_set(trace_set):
     if "=" in trace_set:
-        name, directory = trace_set.split("=", 1)
+        name, directories = trace_set.split("=", 1)
         name = name.strip()
-        directory = directory.strip()
+        directories = directories.strip()
     else:
-        directory = trace_set.strip()
-        name = path.basename(path.normpath(directory))
+        directories = trace_set.strip()
+        name = path.basename(path.normpath(directories))
+    if "=>" in directories:
+        warmup_directory, context_switch_directory = directories.split("=>", 1)
+        warmup_directory = warmup_directory.strip()
+        context_switch_directory = context_switch_directory.strip()
+    else:
+        warmup_directory = directories
+        context_switch_directory = directories
     if not name:
         raise ValueError(f"Trace set '{trace_set}' has an empty name")
-    if not directory:
+    if not warmup_directory:
+        raise ValueError(f"Trace set '{trace_set}' has an empty warmup directory")
+    if not context_switch_directory:
         raise ValueError(f"Trace set '{trace_set}' has an empty directory")
-    return name, directory
+    return name, warmup_directory, context_switch_directory
 
 
-def deterministic_ordered_trace_pairs(trace_files, count, selection_key):
+def deterministic_ordered_trace_pairs(warmup_trace_files, context_switch_trace_files, count, selection_key):
     """Select a stable subset of ordered trace pairs.
 
     The selected pairs depend only on the trace set identity and the sorted trace
     file list. This keeps every compiled binary on the same warmup/context-switch
     pairs when the same input directories are used.
     """
-    if len(trace_files) < 2 or count <= 0:
+    if not warmup_trace_files or not context_switch_trace_files or count <= 0:
         return []
 
-    max_unique_pairs = len(trace_files) * (len(trace_files) - 1)
+    max_unique_pairs = sum(
+        1
+        for warmup_trace in warmup_trace_files
+        for context_switch_trace in context_switch_trace_files
+        if warmup_trace != context_switch_trace
+    )
     target_count = min(count, max_unique_pairs)
-    seed_material = "\0".join([selection_key, *trace_files]).encode()
+    seed_material = "\0".join(
+        [selection_key, *warmup_trace_files, "=>", *context_switch_trace_files]
+    ).encode()
     seed = int.from_bytes(hashlib.sha256(seed_material).digest()[:8], "big")
     rng = random.Random(seed)
     pairs = []
@@ -87,7 +103,10 @@ def deterministic_ordered_trace_pairs(trace_files, count, selection_key):
 
     while len(pairs) < target_count and attempts < max_attempts:
         attempts += 1
-        warmup_trace, context_switch_trace = rng.sample(trace_files, 2)
+        warmup_trace = rng.choice(warmup_trace_files)
+        context_switch_trace = rng.choice(context_switch_trace_files)
+        if warmup_trace == context_switch_trace:
+            continue
         pair = (warmup_trace, context_switch_trace)
         if pair in seen:
             continue
@@ -95,8 +114,8 @@ def deterministic_ordered_trace_pairs(trace_files, count, selection_key):
         pairs.append(pair)
 
     if len(pairs) < target_count:
-        for warmup_trace in trace_files:
-            for context_switch_trace in trace_files:
+        for warmup_trace in warmup_trace_files:
+            for context_switch_trace in context_switch_trace_files:
                 if warmup_trace == context_switch_trace:
                     continue
                 pair = (warmup_trace, context_switch_trace)
@@ -114,21 +133,32 @@ def make_context_switch_experiments(args):
     trace_sets = [parse_trace_set(trace_set) for trace_set in args.trace_set_dirs]
     per_set_pairs = []
 
-    for trace_set_name, trace_set_dir in trace_sets:
-        trace_files = collect_trace_files(trace_set_dir, args.subdir)
-        if len(trace_files) < 2:
+    for trace_set_name, warmup_trace_set_dir, context_switch_trace_set_dir in trace_sets:
+        warmup_trace_files = collect_trace_files(warmup_trace_set_dir, args.subdir)
+        context_switch_trace_files = collect_trace_files(context_switch_trace_set_dir, args.subdir)
+        if not warmup_trace_files or not context_switch_trace_files:
             cprint(
-                f"Skipping {trace_set_name}: found {len(trace_files)} trace(s), need at least 2",
+                f"Skipping {trace_set_name}: found {len(warmup_trace_files)} warmup "
+                f"trace(s) and {len(context_switch_trace_files)} context-switch trace(s)",
                 Color.YELLOW,
             )
             per_set_pairs.append((trace_set_name, []))
             continue
 
         pairs = deterministic_ordered_trace_pairs(
-            trace_files,
+            warmup_trace_files,
+            context_switch_trace_files,
             args.random_context_switch_combinations,
-            f"{trace_set_name}={path.abspath(trace_set_dir)}",
+            (
+                f"{trace_set_name}={path.abspath(warmup_trace_set_dir)}"
+                f"=>{path.abspath(context_switch_trace_set_dir)}"
+            ),
         )
+        if not pairs:
+            cprint(
+                f"Skipping {trace_set_name}: no valid warmup/context-switch pairs",
+                Color.YELLOW,
+            )
         per_set_pairs.append((trace_set_name, pairs))
 
     experiments = []

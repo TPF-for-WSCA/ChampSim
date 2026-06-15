@@ -116,9 +116,11 @@ long O3_CPU::operate()
     const auto instrs_per_kilo = std::ceil(sim_instrs) / 1000.0;
     const auto aliasing_mpki = (sim_instrs == 0) ? 0.0 : std::ceil(sim_stats.total_aliasing) / instrs_per_kilo;
     const auto branch_mpki = (sim_instrs == 0) ? 0.0 : std::ceil(total_branch_misses) / instrs_per_kilo;
+    const auto btb_target_mpki = (sim_instrs == 0) ? 0.0 : std::ceil(sim_stats.btb_target_mispredictions) / instrs_per_kilo;
 
-    fmt::print("Branch progress CPU {} sim cycles: {} cycles: {} instructions: {} aliasing: {} aliasing MPKI: {:.4g} total branch misses: {} BRANCH_MPKI: {:.4g}\n",
-               cpu, sim_cycles, current_cycle, sim_instrs, sim_stats.total_aliasing, aliasing_mpki, total_branch_misses, branch_mpki);
+    fmt::print("Branch progress CPU {} sim cycles: {} cycles: {} instructions: {} aliasing: {} aliasing MPKI: {:.4g} total branch misses: {} BRANCH_MPKI: {:.4g} total BTB target mispredicts: {} BTB_TARGET_MPKI: {:.4g}\n",
+               cpu, sim_cycles, current_cycle, sim_instrs, sim_stats.total_aliasing, aliasing_mpki, total_branch_misses, branch_mpki,
+               sim_stats.btb_target_mispredictions, btb_target_mpki);
     next_branch_progress_cycle += BRANCH_PROGRESS_PRINT_PERIOD;
   }
 
@@ -366,6 +368,10 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
       sim_stats.utb_replacement_misses++;
     }
     sim_stats.branch_type_misses[arch_instr.branch_type]++;
+  }
+
+  if (!warmup && arch_instr.is_branch && arch_instr.branch_taken && predicted_branch_target != arch_instr.branch_target) {
+    sim_stats.btb_target_mispredictions++;
   }
 
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip) || always_taken;

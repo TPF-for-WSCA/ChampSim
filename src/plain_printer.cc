@@ -50,6 +50,8 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   fmt::print(stream, "{} Branch Prediction Accuracy: {:.4g}% MPKI: {:.4g} Average ROB Occupancy at Mispredict: {:.4g}\n", stats.name,
              (100.0 * std::ceil(total_branch - total_mispredictions)) / total_branch, (1000.0 * total_mispredictions) / std::ceil(stats.instrs()),
              std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / total_mispredictions);
+  fmt::print(stream, "{} BTB Target Mispredicts: {} MPKI: {:.4g}\n", stats.name, stats.btb_target_mispredictions,
+             (1000.0 * std::ceil(stats.btb_target_mispredictions)) / std::ceil(stats.instrs()));
 
   fmt::print(stream, "\nXXX REGION BTB POINTER COUNT SAMPLED:\n");
   for (auto it = stats.region_pointer_cycle_probe_stats.begin(); it != stats.region_pointer_cycle_probe_stats.end(); it++) {

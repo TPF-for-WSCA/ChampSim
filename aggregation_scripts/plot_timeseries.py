@@ -18,6 +18,8 @@ BRANCH_PROGRESS_RE = re.compile(
     r"aliasing MPKI: (?P<aliasing_mpki>[-+0-9.eE]+) "
     r"total branch misses: (?P<branch_misses>\d+) "
     r"BRANCH_MPKI: (?P<branch_mpki>[-+0-9.eE]+)"
+    r"(?: total BTB target mispredicts: (?P<btb_target_mispredicts>\d+) "
+    r"BTB_TARGET_MPKI: (?P<btb_target_mpki>[-+0-9.eE]+))?"
 )
 
 BRANCH_PROGRESS_COLUMNS = [
@@ -33,6 +35,8 @@ BRANCH_PROGRESS_COLUMNS = [
     "aliasing_mpki",
     "branch_misses",
     "branch_mpki",
+    "btb_target_mispredicts",
+    "btb_target_mpki",
     "log_file",
 ]
 
@@ -151,6 +155,8 @@ def extract_latest_branch_progress(root, log_path):
                 "aliasing_mpki": float(values["aliasing_mpki"]),
                 "branch_misses": int(values["branch_misses"]),
                 "branch_mpki": float(values["branch_mpki"]),
+                "btb_target_mispredicts": int(values["btb_target_mispredicts"] or 0),
+                "btb_target_mpki": float(values["btb_target_mpki"] or 0.0),
                 "log_file": str(log_path),
             }
             rows.append(row)
@@ -210,6 +216,9 @@ def shade_color(base_color, shade_idx, shade_count):
         return base_color
 
     hue, lightness, saturation = colorsys.rgb_to_hls(*hex_to_rgb(base_color))
+    hue_span = min(0.18, 0.035 * (shade_count - 1))
+    hue_offset = (shade_idx / (shade_count - 1) - 0.5) * hue_span
+    hue = (hue + hue_offset) % 1.0
     lightness_min = 0.34
     lightness_max = 0.76
     lightness = lightness_min + (lightness_max - lightness_min) * shade_idx / (shade_count - 1)
@@ -262,8 +271,16 @@ def branch_progress_workload_label(application):
     return f"{warmup_workload} -> {context_switch_workload}"
 
 
+def branch_progress_application_label(application):
+    return branch_progress_workload_label(application)
+
+
+def branch_progress_legend_label(config, application):
+    return f"{branch_progress_config_label(config)} - {branch_progress_application_label(application)}"
+
+
 def branch_progress_label(workload_group, config, benchmark_subgroup, application, cpu, cpu_count):
-    label = f"{config}: {branch_progress_workload_label(application)}"
+    label = branch_progress_legend_label(config, application)
     if workload_group != "const":
         label = f"{workload_group}/{label}"
     if benchmark_subgroup != "const":
@@ -276,8 +293,19 @@ def branch_progress_label(workload_group, config, benchmark_subgroup, applicatio
 def grouped_branch_progress(rows):
     grouped = defaultdict(list)
     for row in rows:
-        grouped[(row["workload_group"], row["config"], row["benchmark_subgroup"], row["application"], row["cpu"])].append(row)
+        grouped[(row["config"], row["application"], row["workload_group"], row["benchmark_subgroup"], row["cpu"])].append(row)
     return grouped
+
+
+def branch_progress_row_sort_key(row):
+    return (
+        row["config"],
+        row["application"],
+        row["workload_group"],
+        row["benchmark_subgroup"],
+        row["cpu"],
+        row["sim_cycles"],
+    )
 
 
 def plot_branch_progress_metric(rows, metric, ylabel, output_path):
@@ -289,9 +317,12 @@ def plot_branch_progress_metric(rows, metric, ylabel, output_path):
 
     cpu_count = len({row["cpu"] for row in rows})
     base_by_config, shade_by_application, application_count = branch_progress_styles(rows)
-    for (workload_group, config, benchmark_subgroup, application, cpu), group in sorted(grouped.items()):
+    shown_labels = set()
+    for (config, application, workload_group, benchmark_subgroup, cpu), group in sorted(grouped.items()):
         group.sort(key=lambda row: row["sim_cycles"])
-        label = branch_progress_label(workload_group, config, benchmark_subgroup, application, cpu, cpu_count)
+        label = branch_progress_legend_label(config, application)
+        show_label = label if label not in shown_labels else "_nolegend_"
+        shown_labels.add(label)
         color = shade_color(
             base_by_config[config],
             shade_by_application[application],
@@ -301,7 +332,7 @@ def plot_branch_progress_metric(rows, metric, ylabel, output_path):
             [branch_progress_x_value(row) for row in group],
             [row[metric] for row in group],
             linewidth=1.4,
-            label=label,
+            label=show_label,
             color=color,
         )
 
@@ -322,8 +353,10 @@ def plot_branch_progress_paper_metric(rows, metric, ylabel, output_path):
     grouped = grouped_branch_progress(rows)
 
     base_by_config, shade_by_application, application_count = branch_progress_styles(rows)
-    for (workload_group, config, benchmark_subgroup, application, cpu), group in sorted(grouped.items()):
+    seen_labels = set()
+    for (config, application, workload_group, benchmark_subgroup, cpu), group in sorted(grouped.items()):
         group.sort(key=lambda row: row["sim_cycles"])
+        label = branch_progress_legend_label(config, application)
         color = shade_color(
             base_by_config[config],
             shade_by_application[application],
@@ -335,10 +368,11 @@ def plot_branch_progress_paper_metric(rows, metric, ylabel, output_path):
             linewidth=1.2,
             color=color,
         )
+        seen_labels.add((label, color))
 
     legend_handles = [
-        Line2D([0], [0], color=base_by_config[config], linewidth=2.0, label=branch_progress_config_label(config))
-        for config in sorted(base_by_config)
+        Line2D([0], [0], color=color, linewidth=2.0, label=label)
+        for label, color in sorted(seen_labels)
     ]
     ax.legend(handles=legend_handles, loc="best", frameon=False, fontsize=8)
     ax.set_xlabel("Sample after warmup")
@@ -382,7 +416,7 @@ def plot_branch_progress_paper_metric_svg(rows, metric, ylabel, output_path):
 
     base_by_config, shade_by_application, application_count = branch_progress_styles(rows)
     lines = []
-    for (workload_group, config, benchmark_subgroup, application, cpu), group in sorted(grouped.items()):
+    for (config, application, workload_group, benchmark_subgroup, cpu), group in sorted(grouped.items()):
         group.sort(key=lambda row: row["sim_cycles"])
         color = shade_color(
             base_by_config[config],
@@ -408,10 +442,17 @@ def plot_branch_progress_paper_metric_svg(rows, metric, ylabel, output_path):
     legend = []
     legend_x = left + plot_width + 18
     legend_y = top + 14
-    for idx, config in enumerate(sorted(base_by_config)):
+    legend_items = {}
+    for config, application, workload_group, benchmark_subgroup, cpu in sorted(grouped):
+        label = branch_progress_legend_label(config, application)
+        legend_items.setdefault(
+            label,
+            shade_color(base_by_config[config], shade_by_application[application], application_count),
+        )
+    for idx, (label, color) in enumerate(sorted(legend_items.items())):
         y = legend_y + idx * 18
-        legend.append(f'<line x1="{legend_x}" y1="{y}" x2="{legend_x + 24}" y2="{y}" stroke="{base_by_config[config]}" stroke-width="2.4" />')
-        legend.append(f'<text x="{legend_x + 32}" y="{y + 4}" font-size="11">{html.escape(branch_progress_config_label(config))}</text>')
+        legend.append(f'<line x1="{legend_x}" y1="{y}" x2="{legend_x + 24}" y2="{y}" stroke="{color}" stroke-width="2.4" />')
+        legend.append(f'<text x="{legend_x + 32}" y="{y + 4}" font-size="11">{html.escape(label)}</text>')
 
     output_path.write_text(
         f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
@@ -459,9 +500,10 @@ def plot_branch_progress_metric_svg(rows, metric, ylabel, output_path):
     base_by_config, shade_by_application, application_count = branch_progress_styles(rows)
     lines = []
     legend = []
-    for idx, ((workload_group, config, benchmark_subgroup, application, cpu), group) in enumerate(sorted(grouped.items())):
+    shown_labels = set()
+    for idx, ((config, application, workload_group, benchmark_subgroup, cpu), group) in enumerate(sorted(grouped.items())):
         group.sort(key=lambda row: row["sim_cycles"])
-        label = branch_progress_label(workload_group, config, benchmark_subgroup, application, cpu, cpu_count)
+        label = branch_progress_legend_label(config, application)
         color = shade_color(
             base_by_config[config],
             shade_by_application[application],
@@ -469,6 +511,9 @@ def plot_branch_progress_metric_svg(rows, metric, ylabel, output_path):
         )
         points = " ".join(f"{x_scale(branch_progress_x_value(row)):.2f},{y_scale(row[metric]):.2f}" for row in group)
         lines.append(f'<polyline fill="none" stroke="{color}" stroke-width="2" points="{points}" />')
+        if label in shown_labels:
+            continue
+        shown_labels.add(label)
         legend_y = top + 18 * idx
         legend.append(f'<line x1="{width - right + 25}" y1="{legend_y}" x2="{width - right + 55}" y2="{legend_y}" stroke="{color}" stroke-width="3" />')
         legend.append(f'<text x="{width - right + 65}" y="{legend_y + 4}" font-size="12">{html.escape(label)}</text>')
@@ -506,17 +551,24 @@ def plot_branch_progress_interactive(rows, output_path):
     metrics = [
         ("aliasing_mpki", "Aliasing per kilo instruction"),
         ("branch_mpki", "Total branch misses per kilo instruction"),
+        ("btb_target_mpki", "BTB target mispredicts per kilo instruction"),
     ]
 
     grouped = grouped_branch_progress(rows)
     cpu_count = len({row["cpu"] for row in rows})
     base_by_config, shade_by_application, application_count = branch_progress_styles(rows)
     traces = []
+    shown_legend_entries = set()
 
     for metric_idx, (metric, ylabel) in enumerate(metrics):
-        for workload_group, config, benchmark_subgroup, application, cpu in sorted(grouped):
-            group = sorted(grouped[(workload_group, config, benchmark_subgroup, application, cpu)], key=lambda row: row["sim_cycles"])
-            label = branch_progress_label(workload_group, config, benchmark_subgroup, application, cpu, cpu_count)
+        for config, application, workload_group, benchmark_subgroup, cpu in sorted(grouped):
+            group = sorted(grouped[(config, application, workload_group, benchmark_subgroup, cpu)], key=lambda row: row["sim_cycles"])
+            label = branch_progress_legend_label(config, application)
+            detail_label = branch_progress_label(workload_group, config, benchmark_subgroup, application, cpu, cpu_count)
+            legend_key = (config, application)
+            showlegend = metric_idx == 0 and legend_key not in shown_legend_entries
+            if showlegend:
+                shown_legend_entries.add(legend_key)
             color = shade_color(
                 base_by_config[config],
                 shade_by_application[application],
@@ -528,6 +580,7 @@ def plot_branch_progress_interactive(rows, output_path):
                     row["cycles"],
                     row["aliasing"],
                     row["branch_misses"],
+                    row["btb_target_mispredicts"],
                     row["log_file"],
                 ]
                 for row in group
@@ -541,88 +594,87 @@ def plot_branch_progress_interactive(rows, output_path):
                     "customdata": customdata,
                     "mode": "lines",
                     "name": label,
-                    "legendgroup": label,
-                    "showlegend": metric_idx == 0,
+                    "legendgroup": config,
+                    "legendgrouptitle": {"text": branch_progress_config_label(config)},
+                    "showlegend": showlegend,
                     "xaxis": f"x{axis_suffix}",
                     "yaxis": f"y{axis_suffix}",
                     "line": {"color": color, "width": 2},
                     "hovertemplate": (
-                        "<b>%{fullData.name}</b><br>"
+                        f"<b>{html.escape(detail_label)}</b><br>"
                         "sample=%{x}<br>"
                         f"{ylabel}=%{{y:.4g}}<br>"
                         "instructions=%{customdata[0]}<br>"
                         "cycles=%{customdata[1]}<br>"
                         "aliasing=%{customdata[2]}<br>"
                         "branch misses=%{customdata[3]}<br>"
-                        "log=%{customdata[4]}"
+                        "BTB target mispredicts=%{customdata[4]}<br>"
+                        "log=%{customdata[5]}"
                         "<extra></extra>"
                     ),
                 }
             )
 
+    plot_count = len(metrics)
+    plot_gap = 0.06
+    plot_height = (1.0 - plot_gap * (plot_count - 1)) / plot_count
+    matched_xaxis = f"x{plot_count if plot_count > 1 else ''}"
     layout = {
         "title": "Branch Progress Time Series",
         "template": "plotly_white",
         "hovermode": "closest",
-        "height": 900,
+        "height": 1100,
         "margin": {"l": 80, "r": 280, "t": 80, "b": 70},
         "legend": {
-            "title": {"text": "Workload group/config: warmup -> context switch [benchmark subgroup]"},
+            "title": {"text": "Config - application. Click one item to toggle its config group."},
             "x": 1.02,
             "y": 1,
             "xanchor": "left",
             "yanchor": "top",
             "groupclick": "togglegroup",
         },
-        "xaxis": {
-            "domain": [0, 1],
-            "anchor": "y",
-            "showticklabels": False,
-            "matches": "x2",
-        },
-        "yaxis": {
-            "domain": [0.56, 1],
-            "anchor": "x",
-            "title": {"text": metrics[0][1]},
-        },
-        "xaxis2": {
-            "domain": [0, 1],
-            "anchor": "y2",
-            "title": {"text": "Sample after warmup"},
-        },
-        "yaxis2": {
-            "domain": [0, 0.44],
-            "anchor": "x2",
-            "title": {"text": metrics[1][1]},
-        },
-        "annotations": [
-            {
-                "text": metrics[0][1],
-                "xref": "paper",
-                "yref": "paper",
-                "x": 0.5,
-                "y": 1.04,
-                "showarrow": False,
-                "font": {"size": 16},
-            },
-            {
-                "text": metrics[1][1],
-                "xref": "paper",
-                "yref": "paper",
-                "x": 0.5,
-                "y": 0.48,
-                "showarrow": False,
-                "font": {"size": 16},
-            },
-        ],
+        "annotations": [],
     }
+    for metric_idx, (_, ylabel) in enumerate(metrics):
+        suffix = "" if metric_idx == 0 else str(metric_idx + 1)
+        xaxis_name = f"xaxis{suffix}"
+        yaxis_name = f"yaxis{suffix}"
+        xref = f"x{suffix}"
+        yref = f"y{suffix}"
+        domain_top = 1.0 - metric_idx * (plot_height + plot_gap)
+        domain_bottom = domain_top - plot_height
+        layout[xaxis_name] = {
+            "domain": [0, 1],
+            "anchor": yref,
+            "showticklabels": metric_idx == plot_count - 1,
+        }
+        if metric_idx != plot_count - 1:
+            layout[xaxis_name]["matches"] = matched_xaxis
+        else:
+            layout[xaxis_name]["title"] = {"text": "Sample after warmup"}
+        layout[yaxis_name] = {
+            "domain": [domain_bottom, domain_top],
+            "anchor": xref,
+            "title": {"text": ylabel},
+        }
+        layout["annotations"].append(
+            {
+                "text": ylabel,
+                "xref": "paper",
+                "yref": "paper",
+                "x": 0.5,
+                "y": min(1.04, domain_top + 0.04),
+                "showarrow": False,
+                "font": {"size": 16},
+            }
+        )
     config = {
         "responsive": True,
         "displaylogo": False,
         "toImageButtonOptions": {
             "format": "png",
             "filename": output_path.stem,
-            "height": 900,
+            "height": 1100,
             "width": 1400,
             "scale": 2,
         },
@@ -637,7 +689,7 @@ def plot_branch_progress_interactive(rows, output_path):
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     body {{ font-family: sans-serif; margin: 24px; }}
-    #branch-progress {{ width: 100%; min-height: 900px; }}
+    #branch-progress {{ width: 100%; min-height: 1100px; }}
   </style>
 </head>
 <body>
@@ -670,6 +722,12 @@ def plot_branch_progress_combined(rows, output_dir):
             "Total branch misses per kilo instruction",
             output_dir / "branch_progress_branch_mpki_paper.pdf",
         )
+        plot_branch_progress_paper_metric(
+            rows,
+            "btb_target_mpki",
+            "BTB target mispredicts per kilo instruction",
+            output_dir / "branch_progress_btb_target_mpki_paper.pdf",
+        )
     except ModuleNotFoundError:
         plot_branch_progress_paper_metric_svg(
             rows,
@@ -682,6 +740,12 @@ def plot_branch_progress_combined(rows, output_dir):
             "branch_mpki",
             "Total branch misses per kilo instruction",
             output_dir / "branch_progress_branch_mpki_paper.svg",
+        )
+        plot_branch_progress_paper_metric_svg(
+            rows,
+            "btb_target_mpki",
+            "BTB target mispredicts per kilo instruction",
+            output_dir / "branch_progress_btb_target_mpki_paper.svg",
         )
 
     try:
@@ -696,6 +760,7 @@ def plot_branch_progress_combined(rows, output_dir):
     try:
         aliasing_path = output_dir / "branch_progress_aliasing_mpki_timeseries.png"
         branch_path = output_dir / "branch_progress_branch_mpki_timeseries.png"
+        btb_target_path = output_dir / "branch_progress_btb_target_mpki_timeseries.png"
 
         plot_branch_progress_metric(
             rows,
@@ -708,10 +773,17 @@ def plot_branch_progress_combined(rows, output_dir):
             "branch_mpki",
             "Total branch misses per kilo instruction",
             branch_path,
+        )
+        plot_branch_progress_metric(
+            rows,
+            "btb_target_mpki",
+            "BTB target mispredicts per kilo instruction",
+            btb_target_path,
         )
     except ModuleNotFoundError:
         aliasing_path = output_dir / "branch_progress_aliasing_mpki_timeseries.svg"
         branch_path = output_dir / "branch_progress_branch_mpki_timeseries.svg"
+        btb_target_path = output_dir / "branch_progress_btb_target_mpki_timeseries.svg"
 
         plot_branch_progress_metric_svg(
             rows,
@@ -725,10 +797,16 @@ def plot_branch_progress_combined(rows, output_dir):
             "Total branch misses per kilo instruction",
             branch_path,
         )
+        plot_branch_progress_metric_svg(
+            rows,
+            "btb_target_mpki",
+            "BTB target mispredicts per kilo instruction",
+            btb_target_path,
+        )
 
     write_html_wrapper(
         output_dir / "branch_progress_timeseries.html",
-        [aliasing_path, branch_path],
+        [aliasing_path, branch_path, btb_target_path],
         "Branch Progress Time Series",
     )
 
@@ -758,7 +836,7 @@ def branch_progress_mode():
     raw_data_dir.mkdir(parents=True, exist_ok=True)
 
     rows = collect_branch_progress(root)
-    rows.sort(key=lambda row: (row["workload_group"], row["config"], row["benchmark_subgroup"], row["application"], row["cpu"], row["sim_cycles"]))
+    rows.sort(key=branch_progress_row_sort_key)
     out_tsv = raw_data_dir / "branch_progress_timeseries.tsv"
     if not rows:
         print(f"No branch progress samples found under {root}")

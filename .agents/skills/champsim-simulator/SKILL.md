@@ -20,6 +20,7 @@ For concrete commands, paths, module contracts, and validation guidance, read `r
 - Validate JSON configs structurally before building, and keep names stable because scripts often key off config and executable names.
 - For simulation commands, use short warmup/simulation instruction counts for smoke tests unless the user explicitly requests research-scale runs.
 - When traces are required but absent, validate configuration/build first and report the missing trace as the remaining blocker.
+- Update this skill whenever you find new information or information has changed. Ask the user if this update is ok.
 
 ## Common Task Flow
 
