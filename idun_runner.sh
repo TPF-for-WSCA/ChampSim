@@ -21,10 +21,10 @@ module load GCCcore/12.2.0
 #binaries=("champsim32k" "ubs_12_ways_not_extending" "ubs_12_ways" "ubs_14_ways" "ubs_14_small_ways" "ubs_12_small_ways_not_extending" "ubs_12_small_ways" "ubs_14_small_ways_not_extending" "ubs_14_small_ways" "ubs_16_ways_precise" "ubs_16_ways_precise_not_extending")
 #binaries=("champsim32k_base_btb" "champsim32k_base_btbx" "champsim32k_hash_btbx" "champsim32k_perfect_l1i" "champsim32k_perfect_btb")
 # binary_dir=("btb_region_tag" "btb_4k_region_tag_split_exp" "btb_512_region_tag_exp" "btb_256_region_tag_exp" "btb_1k_region_tag_exp" "btb_2k_region_tag_exp" "btb_4k_region_tag_exp" "btb_8k_region_tag_exp")
-suffix="squashes"
+suffix=""
 binary_dir=("micro_rebuttal_region_sensitivity_cs") # "micro_rebuttal_sha3_region_sensitivity" "micro_rebuttal_zobrist_region_sensitivity" "micro_rebuttal_rabin_region_sensitivity") #"region_sensitivity_half_hash_fifo_ipc1") # btb_full_grid_search "" "hash_btb_full_grid_search") # run grid search first to figure out correct tag sizing for : [ "region_sampling" "region_sampling_full_hash" "region_sampling_half_hash" "region_sensitivity_hashed" ]
      #"full_hash_btb_full_grid_search" "hash_btb_full_grid_search" "geometric_hash_btb_full_grid_search") #"twolevel_std_btb_full_grid_search") # "region_sensitivity_hashes") # "twolevel_geometric_hash_btb_full_grid_search" ("region_sampling" "btb_full_grid_search") # "btb_size_region_sensitivity" "btb_4k_10b_tag_sensitivity" "btb_4k_12b_tag_sensitivity" )
-count=6
+count=7
 timelimit="24:00:00"
 warmup=50000000
 simulation=50000000
