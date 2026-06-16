@@ -73,6 +73,7 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
       {"region_samples_per_way", stats.regions_per_way_samples},
       {"region_count_samples", stats.region_count_samples},
       {"mispredict", mpki},
+      {"region_btb_induced_misses", stats.region_btb_induced_misses},
       {"btb_target_mispredicts", stats.btb_target_mispredictions},
       {"aliasing", aliasing},
       {"btb_regions", btb_regions},

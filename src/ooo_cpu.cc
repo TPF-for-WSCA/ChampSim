@@ -116,11 +116,12 @@ long O3_CPU::operate()
     const auto instrs_per_kilo = std::ceil(sim_instrs) / 1000.0;
     const auto aliasing_mpki = (sim_instrs == 0) ? 0.0 : std::ceil(sim_stats.total_aliasing) / instrs_per_kilo;
     const auto branch_mpki = (sim_instrs == 0) ? 0.0 : std::ceil(total_branch_misses) / instrs_per_kilo;
+    const auto region_btb_mpki = (sim_instrs == 0) ? 0.0 : std::ceil(sim_stats.region_btb_induced_misses) / instrs_per_kilo;
     const auto btb_target_mpki = (sim_instrs == 0) ? 0.0 : std::ceil(sim_stats.btb_target_mispredictions) / instrs_per_kilo;
 
-    fmt::print("Branch progress CPU {} sim cycles: {} cycles: {} instructions: {} aliasing: {} aliasing MPKI: {:.4g} total branch misses: {} BRANCH_MPKI: {:.4g} total BTB target mispredicts: {} BTB_TARGET_MPKI: {:.4g}\n",
+    fmt::print("Branch progress CPU {} sim cycles: {} cycles: {} instructions: {} aliasing: {} aliasing MPKI: {:.4g} total branch misses: {} BRANCH_MPKI: {:.4g} region BTB induced misses: {} REGION_BTB_MPKI: {:.4g} total BTB target mispredicts: {} BTB_TARGET_MPKI: {:.4g}\n",
                cpu, sim_cycles, current_cycle, sim_instrs, sim_stats.total_aliasing, aliasing_mpki, total_branch_misses, branch_mpki,
-               sim_stats.btb_target_mispredictions, btb_target_mpki);
+               sim_stats.region_btb_induced_misses, region_btb_mpki, sim_stats.btb_target_mispredictions, btb_target_mpki);
     next_branch_progress_cycle += BRANCH_PROGRESS_PRINT_PERIOD;
   }
 
@@ -333,6 +334,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types[arch_instr.branch_type]++;
   // TODO: Check if this is good enough to identify branches
+  last_btb_miss_was_region_btb_induced = false;
   auto [predicted_branch_target, branch_ip, always_taken, branch_type] = impl_btb_prediction(arch_instr.ip);
   sim_stats.btb_reads++;
   if (predicted_branch_target) {
@@ -366,6 +368,9 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   if (!warmup && arch_instr.branch_taken && predicted_branch_target == 0) {
     if (branch_ip == arch_instr.ip) {
       sim_stats.utb_replacement_misses++;
+    }
+    if (last_btb_miss_was_region_btb_induced) {
+      sim_stats.region_btb_induced_misses++;
     }
     sim_stats.branch_type_misses[arch_instr.branch_type]++;
   }

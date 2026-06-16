@@ -326,6 +326,14 @@ std::map<O3_CPU*, std::deque<uint64_t>> RAS;
 std::map<O3_CPU*, std::deque<uint64_t>> WRONGPATH_BACKUP_RAS;
 std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
 
+bool btb_contains_full_ip_tag(O3_CPU* cpu, uint64_t ip)
+{
+  auto lookup = ::BTBEntry{};
+  lookup.ip_tag = ip;
+  auto [set_begin, set_end] = ::BTB.at(cpu).get_set_span(lookup.index());
+  return std::any_of(set_begin, set_end, [ip](const auto& entry) { return entry.last_used > 0 && entry.data.ip_tag == ip; });
+}
+
 } // namespace
 
 void O3_CPU::initialize_btb()
@@ -432,8 +440,10 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
   std::optional<::FilterBTBEntry> filter_hit = std::nullopt;
   if (REGION_BTB_FILTER_ENABLED && _BTB_TAG_REGIONS)
     filter_hit = ::REGION_FILTER_BTB.at(this).check_hit({ip});
+  bool region_btb_lookup_missed = false;
   if (_BTB_TAG_REGIONS && !filter_hit.has_value()) {
     auto region_idx_ = ::REGION_BTB.at(this).check_hit_idx({ip});
+    region_btb_lookup_missed = !region_idx_.has_value();
     std::optional<::BTBEntry> partial = std::nullopt;
     if (BTB_PARTIAL_TAG_RESOLUTION) {
       partial = ::BTB.at(this).check_hit({ip, 0, ::branch_info::ALWAYS_TAKEN, std::tuple<uint16_t, uint16_t, uint64_t>{0, 0, 0}}, true, false);
@@ -496,6 +506,7 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
   // no prediction for this IP
   // default: no aliasing, thus returning ip itself as recorded ip
   if (!btb_entry.has_value()) {
+    last_btb_miss_was_region_btb_induced = region_btb_lookup_missed && ::btb_contains_full_ip_tag(this, ip);
     if (false && !warmup) { // disabled to see if this is the culprit
       auto hit = std::find_if(::BTB.at(this).begin(), ::BTB.at(this).end(), [ip](const auto& x) { return x.data.ip_tag == ip && x.last_used; });
       if (hit != ::BTB.at(this).end()) {

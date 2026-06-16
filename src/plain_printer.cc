@@ -226,6 +226,8 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   fmt::print(stream, "TOTAL UNFORCED USEFUL EVICTIONS: {}\n", stats.btb_unforced_useful_evictions);
 
   fmt::print(stream, "UTB INDUCED MPKI: {:.3g}\n\n", 1000.0 * std::ceil(stats.utb_replacement_misses) / std::ceil(stats.instrs()));
+  fmt::print(stream, "REGION BTB INDUCED MISSES: {}\n", stats.region_btb_induced_misses);
+  fmt::print(stream, "REGION BTB INDUCED MPKI: {:.3g}\n\n", 1000.0 * std::ceil(stats.region_btb_induced_misses) / std::ceil(stats.instrs()));
 
   fmt::print(stream, "Way\t% of Insertions\n");
   const uint64_t total_insertions = std::accumulate(

@@ -397,6 +397,14 @@ std::unordered_map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDI
 std::unordered_map<O3_CPU*, std::deque<uint64_t>> RAS;
 std::unordered_map<O3_CPU*, std::deque<uint64_t>> WRONGPATH_BACKUP_RAS;
 
+bool l2_btb_contains_full_ip_tag(O3_CPU* cpu, uint64_t ip)
+{
+  auto lookup = ::BTBEntry{};
+  lookup.ip_tag = ip;
+  auto [set_begin, set_end] = ::L2_BTB.at(cpu).get_set_span(lookup.index());
+  return std::any_of(set_begin, set_end, [ip](const auto& entry) { return entry.last_used > 0 && entry.data.ip_tag == ip; });
+}
+
 } // namespace
 
 void O3_CPU::initialize_btb()
@@ -538,8 +546,10 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
   std::optional<::FilterBTBEntry> filter_hit = std::nullopt;
   if (filter_btb != nullptr)
     filter_hit = filter_btb->check_hit({ip});
+  bool region_btb_lookup_missed = false;
   if (_BTB_TAG_REGIONS && !filter_hit.has_value()) {
     auto region_idx_ = region_btb.check_hit_idx({ip});
+    region_btb_lookup_missed = !region_idx_.has_value();
     std::optional<::BTBEntry> partial = std::nullopt;
     std::optional<::BTBEntry> full_small = std::nullopt;
     std::optional<::BTBEntry> partial_small = std::nullopt;
@@ -625,6 +635,7 @@ std::tuple<uint64_t, uint64_t, uint8_t, uint8_t> O3_CPU::btb_prediction(uint64_t
     return L2_prediction.value();
   }
 
+  last_btb_miss_was_region_btb_induced = region_btb_lookup_missed && ::l2_btb_contains_full_ip_tag(this, ip);
   is_l1_btb_prediction = true; // this is the global miss case - we do not wait for l2 to also agree on missing
   return {0, ip, false, NOT_BRANCH};
 }

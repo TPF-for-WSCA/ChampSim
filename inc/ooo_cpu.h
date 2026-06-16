@@ -97,6 +97,7 @@ struct cpu_stats {
   std::vector<std::map<uint64_t, uint64_t>> regions_per_way_samples;
   std::vector<uint64_t> region_count_samples;
   uint64_t region_btb_conflicts = 0;
+  uint64_t region_btb_induced_misses = 0;
   std::map<uint16_t, uint64_t> region_btb_inserts_per_set = {};
   uint64_t btb_updates = 0;
   uint64_t btb_region_switching_dynamic = 0;
@@ -195,6 +196,7 @@ private:
   bool realistic_perfect;
   bool full_tag, clipped_tag;
   bool is_l1_btb_prediction = true;
+  bool last_btb_miss_was_region_btb_induced = false;
   uint8_t clipped_tag_size;
 
 public:
