@@ -18,6 +18,8 @@ BRANCH_PROGRESS_RE = re.compile(
     r"aliasing MPKI: (?P<aliasing_mpki>[-+0-9.eE]+) "
     r"total branch misses: (?P<branch_misses>\d+) "
     r"BRANCH_MPKI: (?P<branch_mpki>[-+0-9.eE]+)"
+    r"(?: region BTB induced misses: (?P<region_btb_misses>\d+) "
+    r"REGION_BTB_MPKI: (?P<region_btb_mpki>[-+0-9.eE]+))?"
     r"(?: total BTB target mispredicts: (?P<btb_target_mispredicts>\d+) "
     r"BTB_TARGET_MPKI: (?P<btb_target_mpki>[-+0-9.eE]+))?"
 )
@@ -35,6 +37,10 @@ BRANCH_PROGRESS_COLUMNS = [
     "aliasing_mpki",
     "branch_misses",
     "branch_mpki",
+    "btb_misses",
+    "btb_mpki",
+    "region_btb_misses",
+    "region_btb_mpki",
     "btb_target_mispredicts",
     "btb_target_mpki",
     "log_file",
@@ -142,6 +148,12 @@ def extract_latest_branch_progress(root, log_path):
                 continue
 
             values = match.groupdict()
+            branch_misses = int(values["branch_misses"])
+            branch_mpki = float(values["branch_mpki"])
+            region_btb_misses = int(values["region_btb_misses"] or 0)
+            region_btb_mpki = float(values["region_btb_mpki"] or 0.0)
+            btb_misses = max(0, branch_misses - region_btb_misses)
+            btb_mpki = max(0.0, branch_mpki - region_btb_mpki)
             row = {
                 "workload_group": workload_group,
                 "config": config,
@@ -153,8 +165,12 @@ def extract_latest_branch_progress(root, log_path):
                 "instructions": int(values["instructions"]),
                 "aliasing": int(values["aliasing"]),
                 "aliasing_mpki": float(values["aliasing_mpki"]),
-                "branch_misses": int(values["branch_misses"]),
-                "branch_mpki": float(values["branch_mpki"]),
+                "branch_misses": branch_misses,
+                "branch_mpki": branch_mpki,
+                "btb_misses": btb_misses,
+                "btb_mpki": btb_mpki,
+                "region_btb_misses": region_btb_misses,
+                "region_btb_mpki": region_btb_mpki,
                 "btb_target_mispredicts": int(values["btb_target_mispredicts"] or 0),
                 "btb_target_mpki": float(values["btb_target_mpki"] or 0.0),
                 "log_file": str(log_path),
@@ -551,6 +567,8 @@ def plot_branch_progress_interactive(rows, output_path):
     metrics = [
         ("aliasing_mpki", "Aliasing per kilo instruction"),
         ("branch_mpki", "Total branch misses per kilo instruction"),
+        ("btb_mpki", "BTB misses per kilo instruction"),
+        ("region_btb_mpki", "Region BTB misses per kilo instruction"),
         ("btb_target_mpki", "BTB target mispredicts per kilo instruction"),
     ]
 
@@ -580,6 +598,8 @@ def plot_branch_progress_interactive(rows, output_path):
                     row["cycles"],
                     row["aliasing"],
                     row["branch_misses"],
+                    row["btb_misses"],
+                    row["region_btb_misses"],
                     row["btb_target_mispredicts"],
                     row["log_file"],
                 ]
@@ -607,9 +627,11 @@ def plot_branch_progress_interactive(rows, output_path):
                         "instructions=%{customdata[0]}<br>"
                         "cycles=%{customdata[1]}<br>"
                         "aliasing=%{customdata[2]}<br>"
-                        "branch misses=%{customdata[3]}<br>"
-                        "BTB target mispredicts=%{customdata[4]}<br>"
-                        "log=%{customdata[5]}"
+                        "total branch misses=%{customdata[3]}<br>"
+                        "BTB misses=%{customdata[4]}<br>"
+                        "region BTB misses=%{customdata[5]}<br>"
+                        "BTB target mispredicts=%{customdata[6]}<br>"
+                        "log=%{customdata[7]}"
                         "<extra></extra>"
                     ),
                 }
@@ -623,7 +645,7 @@ def plot_branch_progress_interactive(rows, output_path):
         "title": "Branch Progress Time Series",
         "template": "plotly_white",
         "hovermode": "closest",
-        "height": 1100,
+        "height": 1500,
         "margin": {"l": 80, "r": 280, "t": 80, "b": 70},
         "legend": {
             "title": {"text": "Config - application. Click one item to toggle its config group."},
@@ -674,7 +696,7 @@ def plot_branch_progress_interactive(rows, output_path):
         "toImageButtonOptions": {
             "format": "png",
             "filename": output_path.stem,
-            "height": 1100,
+            "height": 1500,
             "width": 1400,
             "scale": 2,
         },
@@ -689,7 +711,7 @@ def plot_branch_progress_interactive(rows, output_path):
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     body {{ font-family: sans-serif; margin: 24px; }}
-    #branch-progress {{ width: 100%; min-height: 1100px; }}
+    #branch-progress {{ width: 100%; min-height: 1500px; }}
   </style>
 </head>
 <body>
@@ -724,6 +746,18 @@ def plot_branch_progress_combined(rows, output_dir):
         )
         plot_branch_progress_paper_metric(
             rows,
+            "btb_mpki",
+            "BTB misses per kilo instruction",
+            output_dir / "branch_progress_btb_mpki_paper.pdf",
+        )
+        plot_branch_progress_paper_metric(
+            rows,
+            "region_btb_mpki",
+            "Region BTB misses per kilo instruction",
+            output_dir / "branch_progress_region_btb_mpki_paper.pdf",
+        )
+        plot_branch_progress_paper_metric(
+            rows,
             "btb_target_mpki",
             "BTB target mispredicts per kilo instruction",
             output_dir / "branch_progress_btb_target_mpki_paper.pdf",
@@ -740,6 +774,18 @@ def plot_branch_progress_combined(rows, output_dir):
             "branch_mpki",
             "Total branch misses per kilo instruction",
             output_dir / "branch_progress_branch_mpki_paper.svg",
+        )
+        plot_branch_progress_paper_metric_svg(
+            rows,
+            "btb_mpki",
+            "BTB misses per kilo instruction",
+            output_dir / "branch_progress_btb_mpki_paper.svg",
+        )
+        plot_branch_progress_paper_metric_svg(
+            rows,
+            "region_btb_mpki",
+            "Region BTB misses per kilo instruction",
+            output_dir / "branch_progress_region_btb_mpki_paper.svg",
         )
         plot_branch_progress_paper_metric_svg(
             rows,
@@ -760,6 +806,8 @@ def plot_branch_progress_combined(rows, output_dir):
     try:
         aliasing_path = output_dir / "branch_progress_aliasing_mpki_timeseries.png"
         branch_path = output_dir / "branch_progress_branch_mpki_timeseries.png"
+        btb_path = output_dir / "branch_progress_btb_mpki_timeseries.png"
+        region_btb_path = output_dir / "branch_progress_region_btb_mpki_timeseries.png"
         btb_target_path = output_dir / "branch_progress_btb_target_mpki_timeseries.png"
 
         plot_branch_progress_metric(
@@ -776,6 +824,18 @@ def plot_branch_progress_combined(rows, output_dir):
         )
         plot_branch_progress_metric(
             rows,
+            "btb_mpki",
+            "BTB misses per kilo instruction",
+            btb_path,
+        )
+        plot_branch_progress_metric(
+            rows,
+            "region_btb_mpki",
+            "Region BTB misses per kilo instruction",
+            region_btb_path,
+        )
+        plot_branch_progress_metric(
+            rows,
             "btb_target_mpki",
             "BTB target mispredicts per kilo instruction",
             btb_target_path,
@@ -783,6 +843,8 @@ def plot_branch_progress_combined(rows, output_dir):
     except ModuleNotFoundError:
         aliasing_path = output_dir / "branch_progress_aliasing_mpki_timeseries.svg"
         branch_path = output_dir / "branch_progress_branch_mpki_timeseries.svg"
+        btb_path = output_dir / "branch_progress_btb_mpki_timeseries.svg"
+        region_btb_path = output_dir / "branch_progress_region_btb_mpki_timeseries.svg"
         btb_target_path = output_dir / "branch_progress_btb_target_mpki_timeseries.svg"
 
         plot_branch_progress_metric_svg(
@@ -799,6 +861,18 @@ def plot_branch_progress_combined(rows, output_dir):
         )
         plot_branch_progress_metric_svg(
             rows,
+            "btb_mpki",
+            "BTB misses per kilo instruction",
+            btb_path,
+        )
+        plot_branch_progress_metric_svg(
+            rows,
+            "region_btb_mpki",
+            "Region BTB misses per kilo instruction",
+            region_btb_path,
+        )
+        plot_branch_progress_metric_svg(
+            rows,
             "btb_target_mpki",
             "BTB target mispredicts per kilo instruction",
             btb_target_path,
@@ -806,7 +880,7 @@ def plot_branch_progress_combined(rows, output_dir):
 
     write_html_wrapper(
         output_dir / "branch_progress_timeseries.html",
-        [aliasing_path, branch_path, btb_target_path],
+        [aliasing_path, branch_path, btb_path, region_btb_path, btb_target_path],
         "Branch Progress Time Series",
     )
 
