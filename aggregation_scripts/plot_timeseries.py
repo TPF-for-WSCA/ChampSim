@@ -47,6 +47,22 @@ BRANCH_PROGRESS_COLUMNS = [
 ]
 
 BRANCH_PROGRESS_SAMPLE_RATE = 32 * 1024
+BRANCH_PROGRESS_PAPER_SAMPLE_LIMIT = 100
+BRANCH_PROGRESS_IEEE_TEXT_WIDTH_IN = 7.16
+BRANCH_PROGRESS_PAPER_FONT_SIZE = 12
+BRANCH_PROGRESS_PAPER_SMALL_FIGSIZE = (BRANCH_PROGRESS_IEEE_TEXT_WIDTH_IN / 3, 2.1)
+BRANCH_PROGRESS_PAPER_CONFIGS = [
+    ("Baseline", "baseline"),
+    ("Full Tag", "full_tag"),
+    ("LiteBTB", "litebtb"),
+]
+BRANCH_PROGRESS_PAPER_METRICS = [
+    ("aliasing_mpki", "Aliasing per kilo instruction"),
+    ("branch_mpki", "Total branch misses per kilo instruction"),
+    ("btb_mpki", "BTB misses per kilo instruction"),
+    ("region_btb_mpki", "Region BTB misses per kilo instruction"),
+    ("btb_target_mpki", "BTB target mispredicts per kilo instruction"),
+]
 
 
 def draw_invalid_entry(path, fix, ax, workload, color="r"):
@@ -265,18 +281,44 @@ def branch_progress_styles(rows):
     return base_by_config, shade_by_application, len(applications)
 
 
+def branch_progress_application_colors(rows):
+    applications = sorted({row["application"] for row in rows})
+    return {
+        application: distinct_workload_color(idx, len(applications))
+        for idx, application in enumerate(applications)
+    }
+
+
 def branch_progress_config_label(config):
-    if config.endswith("_full") or "_full_" in config:
-        return "Full Tag"
     if "_abtb_" in config or config.endswith("_abtb"):
         return "Baseline"
     if "_rc_" in config or config.endswith("_rc"):
         return "LiteBTB"
+    if config.endswith("_full") or "_full_" in config:
+        return "Full Tag"
     return config
 
 
 def branch_progress_x_value(row):
     return row["sim_cycles"] / BRANCH_PROGRESS_SAMPLE_RATE
+
+
+def branch_progress_rows_in_sample_window(rows, x_limits):
+    x_min, x_max = x_limits
+    return [
+        row for row in rows
+        if x_min <= branch_progress_x_value(row) <= x_max
+    ]
+
+
+def branch_progress_metric_y_limits(rows, metric):
+    y_values = [row[metric] for row in rows]
+    y_min, y_max = min(y_values), max(y_values)
+    if y_min == y_max:
+        pad = abs(y_min) * 0.05 or 1.0
+    else:
+        pad = (y_max - y_min) * 0.05
+    return y_min - pad, y_max + pad
 
 
 def branch_progress_workload_label(application):
@@ -399,6 +441,43 @@ def plot_branch_progress_paper_metric(rows, metric, ylabel, output_path):
     pyplot.close(fig)
 
 
+def plot_branch_progress_small_paper_metric(
+    rows,
+    style_rows,
+    metric,
+    ylabel,
+    output_path,
+    title,
+    x_limits,
+    y_limits,
+):
+    from matplotlib import pyplot
+
+    fig, ax = pyplot.subplots(figsize=BRANCH_PROGRESS_PAPER_SMALL_FIGSIZE)
+    grouped = grouped_branch_progress(rows)
+    application_colors = branch_progress_application_colors(style_rows)
+
+    for (config, application, workload_group, benchmark_subgroup, cpu), group in sorted(grouped.items()):
+        group = sorted(group, key=lambda row: row["sim_cycles"])
+        ax.plot(
+            [branch_progress_x_value(row) for row in group],
+            [row[metric] for row in group],
+            linewidth=0.9,
+            color=application_colors[application],
+        )
+
+    ax.set_title(title, fontsize=BRANCH_PROGRESS_PAPER_FONT_SIZE, pad=2)
+    ax.set_xlabel("Sample after warmup", fontsize=BRANCH_PROGRESS_PAPER_FONT_SIZE)
+    ax.set_ylabel(ylabel, fontsize=BRANCH_PROGRESS_PAPER_FONT_SIZE)
+    ax.set_xlim(*x_limits)
+    ax.set_ylim(*y_limits)
+    ax.tick_params(axis="both", labelsize=BRANCH_PROGRESS_PAPER_FONT_SIZE, pad=1)
+    ax.grid(True, alpha=0.2, linewidth=0.5)
+    fig.tight_layout(pad=0.25)
+    fig.savefig(output_path)
+    pyplot.close(fig)
+
+
 def plot_branch_progress_paper_metric_svg(rows, metric, ylabel, output_path):
     grouped = grouped_branch_progress(rows)
 
@@ -480,6 +559,75 @@ def plot_branch_progress_paper_metric_svg(rows, metric, ylabel, output_path):
   <text x="{left + plot_width / 2}" y="{height - 4}" text-anchor="middle" font-size="12">Sample after warmup</text>
   <text transform="translate(16 {top + plot_height / 2}) rotate(-90)" text-anchor="middle" font-size="12">{html.escape(ylabel)}</text>
   {"".join(legend)}
+</svg>
+"""
+    )
+
+
+def plot_branch_progress_small_paper_metric_svg(
+    rows,
+    style_rows,
+    metric,
+    ylabel,
+    output_path,
+    title,
+    x_limits,
+    y_limits,
+):
+    grouped = grouped_branch_progress(rows)
+
+    width = round(BRANCH_PROGRESS_IEEE_TEXT_WIDTH_IN / 3 * 100)
+    height = 210
+    left = 62
+    right = 10
+    top = 26
+    bottom = 52
+    plot_width = width - left - right
+    plot_height = height - top - bottom
+    x_min, x_max = x_limits
+    y_min, y_max = y_limits
+
+    def x_scale(value):
+        return left + ((value - x_min) / (x_max - x_min)) * plot_width
+
+    def y_scale(value):
+        return top + plot_height - ((value - y_min) / (y_max - y_min)) * plot_height
+
+    application_colors = branch_progress_application_colors(style_rows)
+    lines = []
+    for (config, application, workload_group, benchmark_subgroup, cpu), group in sorted(grouped.items()):
+        group = sorted(group, key=lambda row: row["sim_cycles"])
+        points = " ".join(
+            f"{x_scale(branch_progress_x_value(row)):.2f},{y_scale(row[metric]):.2f}"
+            for row in group
+        )
+        lines.append(
+            f'<polyline fill="none" stroke="{application_colors[application]}" stroke-width="1" points="{points}" />'
+        )
+
+    x_ticks = []
+    y_ticks = []
+    for i in range(5):
+        x_value = x_min + (x_max - x_min) * i / 4
+        x = x_scale(x_value)
+        x_ticks.append(f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_height}" stroke="#e6e6e6" />')
+        x_ticks.append(f'<text x="{x:.2f}" y="{height - 22}" text-anchor="middle" font-size="{BRANCH_PROGRESS_PAPER_FONT_SIZE}">{x_value:.0f}</text>')
+
+        y_value = y_min + (y_max - y_min) * i / 4
+        y = y_scale(y_value)
+        y_ticks.append(f'<line x1="{left}" y1="{y:.2f}" x2="{left + plot_width}" y2="{y:.2f}" stroke="#e6e6e6" />')
+        y_ticks.append(f'<text x="{left - 5}" y="{y + 2.5:.2f}" text-anchor="end" font-size="{BRANCH_PROGRESS_PAPER_FONT_SIZE}">{y_value:.3g}</text>')
+
+    output_path.write_text(
+        f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
+  <rect width="100%" height="100%" fill="white" />
+  <text x="{left + plot_width / 2}" y="12" text-anchor="middle" font-size="{BRANCH_PROGRESS_PAPER_FONT_SIZE}">{html.escape(title)}</text>
+  {"".join(x_ticks)}
+  {"".join(y_ticks)}
+  <rect x="{left}" y="{top}" width="{plot_width}" height="{plot_height}" fill="none" stroke="#333" stroke-width="0.8" />
+  {"".join(lines)}
+  <text x="{left + plot_width / 2}" y="{height - 6}" text-anchor="middle" font-size="{BRANCH_PROGRESS_PAPER_FONT_SIZE}">Sample after warmup</text>
+  <text transform="translate(12 {top + plot_height / 2}) rotate(-90)" text-anchor="middle" font-size="{BRANCH_PROGRESS_PAPER_FONT_SIZE}">{html.escape(ylabel)}</text>
 </svg>
 """
     )
@@ -728,10 +876,48 @@ def plot_branch_progress_interactive(rows, output_path):
     )
 
 
+def plot_branch_progress_separate_paper_metrics(rows, output_dir, svg=False):
+    x_limits = (0, BRANCH_PROGRESS_PAPER_SAMPLE_LIMIT)
+    paper_config_labels = {label for label, slug in BRANCH_PROGRESS_PAPER_CONFIGS}
+    paper_rows = [
+        row for row in branch_progress_rows_in_sample_window(rows, x_limits)
+        if branch_progress_config_label(row["config"]) in paper_config_labels
+    ]
+    if not paper_rows:
+        return
+
+    plotter = (
+        plot_branch_progress_small_paper_metric_svg
+        if svg
+        else plot_branch_progress_small_paper_metric
+    )
+    suffix = "svg" if svg else "pdf"
+    for metric, ylabel in BRANCH_PROGRESS_PAPER_METRICS:
+        y_limits = branch_progress_metric_y_limits(paper_rows, metric)
+        for config_label, config_slug in BRANCH_PROGRESS_PAPER_CONFIGS:
+            config_rows = [
+                row for row in paper_rows
+                if branch_progress_config_label(row["config"]) == config_label
+            ]
+            if not config_rows:
+                continue
+            plotter(
+                config_rows,
+                paper_rows,
+                metric,
+                ylabel,
+                output_dir / f"branch_progress_{metric}_paper_{config_slug}.{suffix}",
+                config_label,
+                x_limits,
+                y_limits,
+            )
+
+
 def plot_branch_progress_combined(rows, output_dir):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
+        plot_branch_progress_separate_paper_metrics(rows, output_dir)
         plot_branch_progress_paper_metric(
             rows,
             "aliasing_mpki",
@@ -763,6 +949,7 @@ def plot_branch_progress_combined(rows, output_dir):
             output_dir / "branch_progress_btb_target_mpki_paper.pdf",
         )
     except ModuleNotFoundError:
+        plot_branch_progress_separate_paper_metrics(rows, output_dir, svg=True)
         plot_branch_progress_paper_metric_svg(
             rows,
             "aliasing_mpki",
