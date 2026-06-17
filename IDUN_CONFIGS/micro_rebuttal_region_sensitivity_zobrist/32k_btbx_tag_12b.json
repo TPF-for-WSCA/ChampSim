@@ -1,5 +1,5 @@
 {
-  "executable_name": "micro_rebuttal_rabin_region_sensitivity/32k_abtb_tag_12b",
+  "executable_name": "micro_rebuttal_zobrist_region_sensitivity/32k_abtb_tag_12b",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,

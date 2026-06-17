@@ -6,6 +6,7 @@ benchmarks=("dpc4" "ipc1_server" "ipc1_client" "ipc1_spec" "LLBP" "google" "cvp1
 normalise_to_row="sizes_8k_btb_tag_full"  # TODO: Make this the default/add default to look at / baseline
 mean="hmean"  # You might also use: mean (arithmetic), gmean (geometric, but only if you want to upset Lieven ;))
 avg_row_name="HMEAN"  # previousley: AVG
+btb_replacement_regions_config="${btb_replacement_regions_config:-${normalise_to_row}}"
 #end inputs~
 #benchmarks=("crc2_spec" "crc2_cloud" "dpc3")
 pg_dir=""
@@ -20,6 +21,7 @@ chroot=""
 if [ -z ${champsim_root+x} ]; then chroot="/cluster/projects/nn4650k/workspace"; else chroot=$champsim_root; fi
 
 echo "chroot: ${chroot}"
+echo "btb_replacement_regions_config: ${btb_replacement_regions_config}"
 
 mkdir -p raw_data
 mkdir -p graphs
@@ -110,6 +112,20 @@ ways=(0 4 5 7 9 11 19 25 64)
 for b in ${benchmarks[@]}
 do
     echo "Plotting ${b}"
+    btb_replacement_regions_args=(
+        --btb-replacement-regions
+        "./${b}"
+        --raw-data-dir
+        "./raw_data/btb_replacement_regions_${b}"
+        --graphs-dir
+        "./graphs"
+        --output-basename
+        "btb_replacement_regions_distribution_${b}"
+    )
+    if [ -n "${btb_replacement_regions_config}" ]; then
+        btb_replacement_regions_args+=(--config "${btb_replacement_regions_config}")
+    fi
+    python3 ${chroot}/ChampSim/aggregation_scripts/plot_timeseries.py "${btb_replacement_regions_args[@]}" &
 
     echo "${pg_dir}plotgen --debug -i ./${b}/ipc.tsv --drop-any-nan-col --palette bright --normalise-to-column ${normalise_to_row} --apply-func sub 1 --apply-icolumns : --apply-function cset = nan 0 --apply-icolumns : --x-type category --y-tick-format ',.2%' --plot bar --transpose --sort-by-column sizes_champsim_vcl_buffer_fdip_64d --row-names --renameregex '(.*)\..*trace' --add-function ${mean} --add-row ${avg_row_name} --ignore-columns $((2**15)) --column-names 'sizes_champsim_vcl_buffer_fdip_64d:UBS cache' --file ./raw_data/ipc_relative_${b}.tsv --width 1350 --height 300 -o ./graphs/ipc_relative_${b}.html"
     ${pg_dir}/plotgen --debug -i ./${b}/**/squash_counts.tsv --select-icolumns 5 --row-names --renameregex '(.*)\..*trace' --column-names --filename --column-names --renameregex '\./.*/(.*)/\.*' --join index --sort-function name --sort-columns --sort-function name --sort-rows --file ./raw_data/total_squash_count_${b}.tsv

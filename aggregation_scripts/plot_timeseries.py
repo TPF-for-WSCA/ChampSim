@@ -73,6 +73,20 @@ BRANCH_PROGRESS_MARKER_SAMPLE_OFFSETS = {
     "LiteBTB": 8,
 }
 
+BTB_REPLACEMENT_REGIONS_RE = re.compile(
+    r"AVG BTB REGIONS AT REPLACEMENT: (?P<value>[-+0-9.eE]+|---)"
+)
+CPU_SUMMARY_RE = re.compile(r"(?P<cpu>.+?) cumulative IPC:")
+BTB_REPLACEMENT_REGIONS_COLUMNS = [
+    "workload_group",
+    "config",
+    "benchmark_subgroup",
+    "application",
+    "cpu",
+    "avg_btb_regions_at_replacement",
+    "log_file",
+]
+
 
 def draw_invalid_entry(path, fix, ax, workload, color="r"):
     import numpy as np
@@ -216,6 +230,91 @@ def write_branch_progress_tsv(rows, out_tsv):
         writer = csv.DictWriter(outfile, fieldnames=BRANCH_PROGRESS_COLUMNS, delimiter="\t")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def extract_latest_btb_replacement_regions(root, log_path):
+    workload_group, config, benchmark_subgroup, application = label_for_log(root, log_path)
+    rows = []
+    pending_value = None
+
+    def append_row(value, cpu):
+        rows.append(
+            {
+                "workload_group": workload_group,
+                "config": config,
+                "benchmark_subgroup": benchmark_subgroup,
+                "application": application,
+                "cpu": cpu,
+                "avg_btb_regions_at_replacement": value,
+                "log_file": str(log_path),
+            }
+        )
+
+    with log_path.open() as log:
+        for line in log:
+            if "NEW RUN -" in line:
+                rows = []
+                pending_value = None
+                continue
+
+            match = BTB_REPLACEMENT_REGIONS_RE.search(line)
+            if match:
+                value = match.group("value")
+                pending_value = None if value == "---" else float(value)
+                continue
+
+            if pending_value is None:
+                continue
+
+            summary_match = CPU_SUMMARY_RE.search(line)
+            if summary_match:
+                append_row(pending_value, summary_match.group("cpu").strip())
+                pending_value = None
+
+    if pending_value is not None:
+        append_row(pending_value, "")
+
+    return rows
+
+
+def collect_btb_replacement_regions(root):
+    rows = []
+    for log_path in iter_log_files(root):
+        rows.extend(extract_latest_btb_replacement_regions(root, log_path))
+    return rows
+
+
+def btb_replacement_regions_row_sort_key(row):
+    return (
+        row["config"],
+        row["workload_group"],
+        row["benchmark_subgroup"],
+        row["application"],
+        row["cpu"],
+    )
+
+
+def write_btb_replacement_regions_tsv(rows, out_tsv):
+    with out_tsv.open("w", newline="") as outfile:
+        writer = csv.DictWriter(outfile, fieldnames=BTB_REPLACEMENT_REGIONS_COLUMNS, delimiter="\t")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def btb_replacement_regions_filter_config(rows, config):
+    exact_rows = [row for row in rows if row["config"] == config]
+    if exact_rows:
+        return exact_rows
+
+    return [
+        row for row in rows
+        if branch_progress_config_label(row["config"]) == config
+    ]
+
+
+def slug_for_filename(value):
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip())
+    return slug.strip("._-") or "config"
 
 
 def write_html_wrapper(html_path, image_paths, title):
@@ -1088,6 +1187,178 @@ def plot_branch_progress_interactive(rows, output_path):
     )
 
 
+def grouped_btb_replacement_regions(rows):
+    grouped = defaultdict(list)
+    for row in rows:
+        grouped[row["config"]].append(row["avg_btb_regions_at_replacement"])
+    return grouped
+
+
+def plot_btb_replacement_regions_distribution(rows, output_path):
+    from matplotlib import pyplot
+
+    grouped = grouped_btb_replacement_regions(rows)
+    configs = sorted(grouped)
+    values = [grouped[config] for config in configs]
+    colors = [distinct_workload_color(idx, len(configs)) for idx in range(len(configs))]
+
+    fig_width = max(7.0, 1.0 + 0.75 * len(configs))
+    fig, ax = pyplot.subplots(figsize=(fig_width, 4.4))
+    violin_values = [
+        (idx, config_values)
+        for idx, config_values in enumerate(values, start=1)
+        if len(config_values) > 1
+    ]
+    if violin_values:
+        violin_positions, violin_data = zip(*violin_values)
+        violin = ax.violinplot(
+            violin_data,
+            positions=violin_positions,
+            showmeans=False,
+            showmedians=True,
+            showextrema=True,
+        )
+        for body, position in zip(violin["bodies"], violin_positions):
+            body.set_facecolor(colors[position - 1])
+            body.set_edgecolor("#222222")
+            body.set_alpha(0.35)
+        for key in ("cbars", "cmins", "cmaxes", "cmedians"):
+            if key in violin:
+                violin[key].set_color("#222222")
+                violin[key].set_linewidth(0.8)
+
+    box = ax.boxplot(
+        values,
+        widths=0.22,
+        showfliers=False,
+        patch_artist=True,
+        medianprops={"color": "#111111", "linewidth": 1.2},
+        boxprops={"facecolor": "white", "edgecolor": "#333333", "linewidth": 0.8},
+        whiskerprops={"color": "#333333", "linewidth": 0.8},
+        capprops={"color": "#333333", "linewidth": 0.8},
+    )
+    for patch in box["boxes"]:
+        patch.set_alpha(0.8)
+
+    for idx, (config, config_values) in enumerate(zip(configs, values), start=1):
+        x_values = [
+            idx + ((sample_idx % 7) - 3) * 0.018
+            for sample_idx in range(len(config_values))
+        ]
+        ax.scatter(x_values, config_values, s=10, alpha=0.55, color=colors[idx - 1], edgecolors="none")
+
+    ax.set_xticks(range(1, len(configs) + 1))
+    ax.set_xticklabels([branch_progress_config_label(config) for config in configs], rotation=25, ha="right")
+    ax.set_ylabel("Average BTB regions at replacement")
+    ax.set_xlabel("Config")
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=180)
+    pyplot.close(fig)
+
+
+def percentile(sorted_values, percent):
+    if not sorted_values:
+        return 0.0
+    position = (len(sorted_values) - 1) * percent
+    lower = int(position)
+    upper = min(lower + 1, len(sorted_values) - 1)
+    fraction = position - lower
+    return sorted_values[lower] * (1.0 - fraction) + sorted_values[upper] * fraction
+
+
+def plot_btb_replacement_regions_distribution_svg(rows, output_path):
+    grouped = grouped_btb_replacement_regions(rows)
+    configs = sorted(grouped)
+    all_values = [value for values in grouped.values() for value in values]
+    y_min, y_max = min(all_values), max(all_values)
+    if y_min == y_max:
+        y_min -= 1.0
+        y_max += 1.0
+    padding = (y_max - y_min) * 0.08
+    y_min -= padding
+    y_max += padding
+
+    width = max(720, 120 + 90 * len(configs))
+    height = 460
+    left = 82
+    right = 26
+    top = 28
+    bottom = 108
+    plot_width = width - left - right
+    plot_height = height - top - bottom
+    step = plot_width / len(configs)
+
+    def y_scale(value):
+        return top + plot_height - ((value - y_min) / (y_max - y_min)) * plot_height
+
+    grid = []
+    for idx in range(5):
+        value = y_min + (y_max - y_min) * idx / 4
+        y = y_scale(value)
+        grid.append(f'<line x1="{left}" y1="{y:.2f}" x2="{left + plot_width}" y2="{y:.2f}" stroke="#e0e0e0" />')
+        grid.append(f'<text x="{left - 8}" y="{y + 4:.2f}" text-anchor="end" font-size="11">{value:.3g}</text>')
+
+    marks = []
+    labels = []
+    for idx, config in enumerate(configs):
+        values = sorted(grouped[config])
+        q1 = percentile(values, 0.25)
+        median = percentile(values, 0.50)
+        q3 = percentile(values, 0.75)
+        x = left + step * (idx + 0.5)
+        color = distinct_workload_color(idx, len(configs))
+        box_width = min(36, step * 0.42)
+        marks.append(f'<line x1="{x:.2f}" y1="{y_scale(values[0]):.2f}" x2="{x:.2f}" y2="{y_scale(values[-1]):.2f}" stroke="#333" stroke-width="1" />')
+        marks.append(
+            f'<rect x="{x - box_width / 2:.2f}" y="{y_scale(q3):.2f}" width="{box_width:.2f}" '
+            f'height="{max(1.0, y_scale(q1) - y_scale(q3)):.2f}" fill="{color}" fill-opacity="0.32" stroke="#333" />'
+        )
+        marks.append(f'<line x1="{x - box_width / 2:.2f}" y1="{y_scale(median):.2f}" x2="{x + box_width / 2:.2f}" y2="{y_scale(median):.2f}" stroke="#111" stroke-width="1.4" />')
+        for sample_idx, value in enumerate(values):
+            jitter = ((sample_idx % 7) - 3) * min(2.0, step * 0.025)
+            marks.append(f'<circle cx="{x + jitter:.2f}" cy="{y_scale(value):.2f}" r="2" fill="{color}" fill-opacity="0.55" />')
+        label = branch_progress_config_label(config)
+        labels.append(
+            f'<text transform="translate({x:.2f} {height - 52}) rotate(-25)" '
+            f'text-anchor="end" font-size="11">{html.escape(label)}</text>'
+        )
+
+    output_path.write_text(
+        f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
+  <rect width="100%" height="100%" fill="white" />
+  {"".join(grid)}
+  <rect x="{left}" y="{top}" width="{plot_width}" height="{plot_height}" fill="none" stroke="#333" />
+  {"".join(marks)}
+  {"".join(labels)}
+  <text x="{left + plot_width / 2}" y="{height - 10}" text-anchor="middle" font-size="13">Config</text>
+  <text transform="translate(18 {top + plot_height / 2}) rotate(-90)" text-anchor="middle" font-size="13">Average BTB regions at replacement</text>
+</svg>
+"""
+    )
+
+
+def plot_btb_replacement_regions_combined(
+    rows,
+    output_dir,
+    output_basename="btb_replacement_regions_distribution",
+    title="BTB Replacement Region Distribution",
+):
+    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        output_path = output_dir / f"{output_basename}.png"
+        plot_btb_replacement_regions_distribution(rows, output_path)
+    except ModuleNotFoundError:
+        output_path = output_dir / f"{output_basename}.svg"
+        plot_btb_replacement_regions_distribution_svg(rows, output_path)
+    write_html_wrapper(
+        output_dir / f"{output_basename}.html",
+        [output_path],
+        title,
+    )
+    return output_path
+
+
 def plot_branch_progress_separate_paper_metrics(rows, output_dir, svg=False):
     x_limits = (0, BRANCH_PROGRESS_PAPER_SAMPLE_LIMIT)
     paper_config_labels = {label for label, slug in BRANCH_PROGRESS_PAPER_CONFIGS}
@@ -1325,8 +1596,95 @@ def branch_progress_mode():
     print(f"Wrote {graphs_dir / 'branch_progress_timeseries.html'}")
 
 
+def btb_replacement_regions_mode():
+    parser = argparse.ArgumentParser(
+        description=(
+            "Collect and plot the distribution of average BTB regions at "
+            "replacement from ChampSim *_log.txt files."
+        )
+    )
+    parser.add_argument("result_dir", type=Path)
+    parser.add_argument(
+        "--raw-data-dir",
+        type=Path,
+        default=None,
+        help="Directory for the combined TSV. Defaults to RESULT_DIR/raw_data.",
+    )
+    parser.add_argument(
+        "--graphs-dir",
+        type=Path,
+        default=None,
+        help="Directory for generated plots. Defaults to RESULT_DIR/graphs.",
+    )
+    parser.add_argument(
+        "--config",
+        default=None,
+        help=(
+            "Only plot samples from this config. Matches the result directory "
+            "name first, then the display label such as Baseline or LiteBTB."
+        ),
+    )
+    parser.add_argument(
+        "--output-basename",
+        default=None,
+        help=(
+            "Basename for the generated graph files. Defaults to "
+            "btb_replacement_regions_distribution, with the config appended "
+            "when --config is used."
+        ),
+    )
+    args = parser.parse_args(sys.argv[2:])
+
+    root = args.result_dir
+    raw_data_dir = args.raw_data_dir or root / "raw_data"
+    graphs_dir = args.graphs_dir or root / "graphs"
+    raw_data_dir.mkdir(parents=True, exist_ok=True)
+
+    rows = collect_btb_replacement_regions(root)
+    rows.sort(key=btb_replacement_regions_row_sort_key)
+    out_tsv = raw_data_dir / "btb_replacement_regions.tsv"
+    if not rows:
+        print(f"No average BTB regions at replacement samples found under {root}")
+        write_btb_replacement_regions_tsv(rows, out_tsv)
+        return
+
+    write_btb_replacement_regions_tsv(rows, out_tsv)
+    plot_rows = rows
+    output_basename = args.output_basename or "btb_replacement_regions_distribution"
+    title = "BTB Replacement Region Distribution"
+    if args.config:
+        plot_rows = btb_replacement_regions_filter_config(rows, args.config)
+        if not plot_rows:
+            available_configs = sorted({row["config"] for row in rows})
+            print(f"No average BTB regions at replacement samples found for config {args.config!r}")
+            print("Available configs:")
+            for config in available_configs:
+                print(f"\t{config} ({branch_progress_config_label(config)})")
+            return
+
+        config_slug = slug_for_filename(args.config)
+        selected_tsv = raw_data_dir / f"btb_replacement_regions_{config_slug}.tsv"
+        write_btb_replacement_regions_tsv(plot_rows, selected_tsv)
+        if not args.output_basename:
+            output_basename = f"btb_replacement_regions_distribution_{config_slug}"
+        title = f"BTB Replacement Region Distribution: {args.config}"
+        print(f"Wrote {selected_tsv}")
+
+    plot_path = plot_btb_replacement_regions_combined(
+        plot_rows,
+        graphs_dir,
+        output_basename,
+        title,
+    )
+    print(f"Wrote {out_tsv}")
+    print(f"Wrote {plot_path}")
+    print(f"Wrote {graphs_dir / f'{output_basename}.html'}")
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--branch-progress":
         branch_progress_mode()
+    elif len(sys.argv) > 1 and sys.argv[1] == "--btb-replacement-regions":
+        btb_replacement_regions_mode()
     else:
         legacy_invalid_entry_plot()

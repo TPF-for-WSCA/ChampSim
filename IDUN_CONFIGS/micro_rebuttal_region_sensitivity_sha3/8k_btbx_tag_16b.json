@@ -1,5 +1,5 @@
 {
-  "executable_name": "micro_rebuttal_rabin_region_sensitivity/8k_abtb_tag_16b",
+  "executable_name": "micro_rebuttal_sha3_region_sensitivity/8k_abtb_tag_16b",
   "block_size": 64,
   "bucket_size": 100,
   "page_size": 4096,
