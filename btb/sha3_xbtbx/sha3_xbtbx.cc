@@ -33,7 +33,7 @@
 #define SMALL_BIG_WAY_SPLIT 12 // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
-#define SAMPLING_DISTANCE 500000
+#define SAMPLING_DISTANCE 50000
 #define EAGERLY_EVICT_ON_REGION_REMOVAL true
 #define ITLB_CACHE false
 #define PAGE_LOG_SIZE 12
