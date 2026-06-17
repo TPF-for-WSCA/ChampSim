@@ -56,6 +56,10 @@ BRANCH_PROGRESS_PAPER_CONFIGS = [
     ("Full Tag", "full_tag"),
     ("LiteBTB", "litebtb"),
 ]
+BRANCH_PROGRESS_PAPER_COMBINED_CONFIGS = [
+    ("Baseline", "baseline"),
+    ("LiteBTB", "litebtb"),
+]
 BRANCH_PROGRESS_PAPER_METRICS = [
     ("aliasing_mpki", "APKI"),
     ("branch_mpki", "MPKI"),
@@ -63,6 +67,11 @@ BRANCH_PROGRESS_PAPER_METRICS = [
     ("region_btb_mpki", "UTB MPKI"),
     ("btb_target_mpki", "MPKI"),
 ]
+BRANCH_PROGRESS_MARKER_SAMPLE_PERIOD = 16
+BRANCH_PROGRESS_MARKER_SAMPLE_OFFSETS = {
+    "Baseline": 0,
+    "LiteBTB": 8,
+}
 
 
 def draw_invalid_entry(path, fix, ax, workload, color="r"):
@@ -299,6 +308,101 @@ def branch_progress_config_label(config):
     return config
 
 
+def branch_progress_paper_line_style(config):
+    return ":" if branch_progress_config_label(config) == "Baseline" else "-"
+
+
+def branch_progress_paper_svg_dasharray(config):
+    return ' stroke-dasharray="2 2"' if branch_progress_config_label(config) == "Baseline" else ""
+
+
+def branch_progress_marker(config):
+    markers = {
+        "Baseline": "x",
+        "LiteBTB": "s",
+    }
+    return markers.get(branch_progress_config_label(config))
+
+
+def branch_progress_marker_style(config, color):
+    if not branch_progress_marker(config):
+        return {}
+    return {
+        "marker": branch_progress_marker(config),
+        "markerfacecolor": "none",
+        "markeredgecolor": color,
+        "markeredgewidth": 0.45,
+    }
+
+
+def branch_progress_plotly_marker(config):
+    markers = {
+        "Baseline": "x",
+        "LiteBTB": "square-open",
+    }
+    return markers.get(branch_progress_config_label(config))
+
+
+def branch_progress_svg_marker(config, x, y, color, size=3.0):
+    marker = branch_progress_marker(config)
+    if marker == "x":
+        return (
+            f'<line x1="{x - size:.2f}" y1="{y - size:.2f}" '
+            f'x2="{x + size:.2f}" y2="{y + size:.2f}" stroke="{color}" stroke-width="0.5" />'
+            f'<line x1="{x - size:.2f}" y1="{y + size:.2f}" '
+            f'x2="{x + size:.2f}" y2="{y - size:.2f}" stroke="{color}" stroke-width="0.5" />'
+        )
+    if marker == "s":
+        origin = size
+        width = size * 2
+        return (
+            f'<rect x="{x - origin:.2f}" y="{y - origin:.2f}" '
+            f'width="{width:.2f}" height="{width:.2f}" fill="none" '
+            f'stroke="{color}" stroke-width="0.5" />'
+        )
+    return ""
+
+
+def branch_progress_should_mark_sample(config, row):
+    config_label = branch_progress_config_label(config)
+    if config_label not in BRANCH_PROGRESS_MARKER_SAMPLE_OFFSETS:
+        return False
+
+    sample = int(branch_progress_x_value(row))
+    return (
+        sample % BRANCH_PROGRESS_MARKER_SAMPLE_PERIOD
+        == BRANCH_PROGRESS_MARKER_SAMPLE_OFFSETS[config_label]
+    )
+
+
+def branch_progress_marker_indices(config, group):
+    return [
+        idx for idx, row in enumerate(group)
+        if branch_progress_should_mark_sample(config, row)
+    ]
+
+
+def branch_progress_marker_rows(config, group):
+    marker_indices = set(branch_progress_marker_indices(config, group))
+    return [
+        row for idx, row in enumerate(group)
+        if idx in marker_indices
+    ]
+
+
+def branch_progress_svg_markers(config, group, points, color, size=3.0):
+    marker_indices = set(branch_progress_marker_indices(config, group))
+    return "".join(
+        branch_progress_svg_marker(config, x, y, color, size)
+        for idx, (x, y) in enumerate(points)
+        if idx in marker_indices
+    )
+
+
+def branch_progress_plot_markevery(config, group):
+    return branch_progress_marker_indices(config, group)
+
+
 def branch_progress_x_value(row):
     return row["sim_cycles"] / BRANCH_PROGRESS_SAMPLE_RATE
 
@@ -389,9 +493,12 @@ def plot_branch_progress_metric(rows, metric, ylabel, output_path):
         ax.plot(
             [branch_progress_x_value(row) for row in group],
             [row[metric] for row in group],
-            linewidth=1.4,
+            linewidth=0.7,
             label=show_label,
             color=color,
+            markersize=2,
+            markevery=branch_progress_plot_markevery(config, group),
+            **branch_progress_marker_style(config, color),
         )
 
     ax.set_xlabel("Sample after Context Switch")
@@ -423,13 +530,24 @@ def plot_branch_progress_paper_metric(rows, metric, ylabel, output_path):
         ax.plot(
             [branch_progress_x_value(row) for row in group],
             [row[metric] for row in group],
-            linewidth=1.2,
+            linewidth=0.6,
             color=color,
+            markersize=1.75,
+            markevery=branch_progress_plot_markevery(config, group),
+            **branch_progress_marker_style(config, color),
         )
         seen_labels.add((label, color))
 
     legend_handles = [
-        Line2D([0], [0], color=color, linewidth=2.0, label=label)
+        Line2D(
+            [0],
+            [0],
+            color=color,
+            linewidth=1.0,
+            markersize=2,
+            label=label,
+            **branch_progress_marker_style(label, color),
+        )
         for label, color in sorted(seen_labels)
     ]
     ax.legend(handles=legend_handles, loc="best", frameon=False, fontsize=8)
@@ -452,18 +570,25 @@ def plot_branch_progress_small_paper_metric(
     y_limits,
 ):
     from matplotlib import pyplot
+    from matplotlib.lines import Line2D
 
     fig, ax = pyplot.subplots(figsize=BRANCH_PROGRESS_PAPER_SMALL_FIGSIZE)
     grouped = grouped_branch_progress(rows)
     application_colors = branch_progress_application_colors(style_rows)
+    config_labels = set()
 
     for (config, application, workload_group, benchmark_subgroup, cpu), group in sorted(grouped.items()):
         group = sorted(group, key=lambda row: row["sim_cycles"])
+        config_labels.add(branch_progress_config_label(config))
         ax.plot(
             [branch_progress_x_value(row) for row in group],
             [row[metric] for row in group],
-            linewidth=0.9,
+            linewidth=0.5,
             color=application_colors[application],
+            linestyle=branch_progress_paper_line_style(config),
+            markersize=1.5,
+            markevery=branch_progress_plot_markevery(config, group),
+            **branch_progress_marker_style(config, application_colors[application]),
         )
 
     # ax.set_title(title, fontsize=BRANCH_PROGRESS_PAPER_FONT_SIZE, pad=2)
@@ -473,6 +598,22 @@ def plot_branch_progress_small_paper_metric(
     ax.set_ylim(*y_limits)
     ax.tick_params(axis="both", labelsize=BRANCH_PROGRESS_PAPER_FONT_SIZE, pad=1)
     ax.grid(True, alpha=0.2, linewidth=0.5)
+    legend_handles = [
+        Line2D(
+            [0],
+            [0],
+            color="black",
+            linewidth=0.5,
+            linestyle=linestyle,
+            markersize=1.5,
+            label=label,
+            **branch_progress_marker_style(label, "black"),
+        )
+        for label, linestyle in [("Baseline", ":"), ("LiteBTB", "-")]
+        if label in config_labels
+    ]
+    if legend_handles:
+        ax.legend(handles=legend_handles, loc="best", frameon=False, fontsize=8)
     fig.tight_layout(pad=0.25)
     fig.savefig(output_path)
     pyplot.close(fig)
@@ -518,8 +659,13 @@ def plot_branch_progress_paper_metric_svg(rows, metric, ylabel, output_path):
             shade_by_application[application],
             application_count,
         )
-        points = " ".join(f"{x_scale(branch_progress_x_value(row)):.2f},{y_scale(row[metric]):.2f}" for row in group)
-        lines.append(f'<polyline fill="none" stroke="{color}" stroke-width="1.6" points="{points}" />')
+        scaled_points = [
+            (x_scale(branch_progress_x_value(row)), y_scale(row[metric]))
+            for row in group
+        ]
+        points = " ".join(f"{x:.2f},{y:.2f}" for x, y in scaled_points)
+        lines.append(f'<polyline fill="none" stroke="{color}" stroke-width="0.8" points="{points}" />')
+        lines.append(branch_progress_svg_markers(config, group, scaled_points, color, size=1.4))
 
     x_ticks = []
     y_ticks = []
@@ -546,7 +692,8 @@ def plot_branch_progress_paper_metric_svg(rows, metric, ylabel, output_path):
         )
     for idx, (label, color) in enumerate(sorted(legend_items.items())):
         y = legend_y + idx * 18
-        legend.append(f'<line x1="{legend_x}" y1="{y}" x2="{legend_x + 24}" y2="{y}" stroke="{color}" stroke-width="2.4" />')
+        legend.append(f'<line x1="{legend_x}" y1="{y}" x2="{legend_x + 24}" y2="{y}" stroke="{color}" stroke-width="1.2" />')
+        legend.append(branch_progress_svg_marker(label, legend_x + 12, y, color, size=1.5))
         legend.append(f'<text x="{legend_x + 32}" y="{y + 4}" font-size="11">{html.escape(label)}</text>')
 
     output_path.write_text(
@@ -576,7 +723,7 @@ def plot_branch_progress_small_paper_metric_svg(
 ):
     grouped = grouped_branch_progress(rows)
 
-    width = round(BRANCH_PROGRESS_IEEE_TEXT_WIDTH_IN / 3 * 100)
+    width = round(BRANCH_PROGRESS_PAPER_SMALL_FIGSIZE[0] * 100)
     height = 210
     left = 62
     right = 10
@@ -595,14 +742,27 @@ def plot_branch_progress_small_paper_metric_svg(
 
     application_colors = branch_progress_application_colors(style_rows)
     lines = []
+    config_labels = set()
     for (config, application, workload_group, benchmark_subgroup, cpu), group in sorted(grouped.items()):
         group = sorted(group, key=lambda row: row["sim_cycles"])
-        points = " ".join(
-            f"{x_scale(branch_progress_x_value(row)):.2f},{y_scale(row[metric]):.2f}"
+        config_labels.add(branch_progress_config_label(config))
+        scaled_points = [
+            (x_scale(branch_progress_x_value(row)), y_scale(row[metric]))
             for row in group
+        ]
+        points = " ".join(f"{x:.2f},{y:.2f}" for x, y in scaled_points)
+        lines.append(
+            f'<polyline fill="none" stroke="{application_colors[application]}" stroke-width="0.5"'
+            f'{branch_progress_paper_svg_dasharray(config)} points="{points}" />'
         )
         lines.append(
-            f'<polyline fill="none" stroke="{application_colors[application]}" stroke-width="1" points="{points}" />'
+            branch_progress_svg_markers(
+                config,
+                group,
+                scaled_points,
+                application_colors[application],
+                size=1.2,
+            )
         )
 
     x_ticks = []
@@ -618,6 +778,15 @@ def plot_branch_progress_small_paper_metric_svg(
         y_ticks.append(f'<line x1="{left}" y1="{y:.2f}" x2="{left + plot_width}" y2="{y:.2f}" stroke="#e6e6e6" />')
         y_ticks.append(f'<text x="{left - 5}" y="{y + 2.5:.2f}" text-anchor="end" font-size="{BRANCH_PROGRESS_PAPER_FONT_SIZE}">{y_value:.3g}</text>')
 
+    legend = []
+    legend_items = [("Baseline", ' stroke-dasharray="2 2"'), ("LiteBTB", "")]
+    for idx, (label, dasharray) in enumerate((item for item in legend_items if item[0] in config_labels)):
+        y = top + 14 + idx * 15
+        x = left + plot_width - 82
+        legend.append(f'<line x1="{x}" y1="{y}" x2="{x + 26}" y2="{y}" stroke="#111" stroke-width="0.6"{dasharray} />')
+        legend.append(branch_progress_svg_marker(label, x + 13, y, "#111", size=1.2))
+        legend.append(f'<text x="{x + 32}" y="{y + 4}" font-size="10">{html.escape(label)}</text>')
+
     output_path.write_text(
         f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
   <rect width="100%" height="100%" fill="white" />
@@ -626,6 +795,7 @@ def plot_branch_progress_small_paper_metric_svg(
   {"".join(y_ticks)}
   <rect x="{left}" y="{top}" width="{plot_width}" height="{plot_height}" fill="none" stroke="#333" stroke-width="0.8" />
   {"".join(lines)}
+  {"".join(legend)}
   <text x="{left + plot_width / 2}" y="{height - 6}" text-anchor="middle" font-size="{BRANCH_PROGRESS_PAPER_FONT_SIZE}">Sample after Context Switch</text>
   <text transform="translate(12 {top + plot_height / 2}) rotate(-90)" text-anchor="middle" font-size="{BRANCH_PROGRESS_PAPER_FONT_SIZE}">{html.escape(ylabel)}</text>
 </svg>
@@ -673,13 +843,19 @@ def plot_branch_progress_metric_svg(rows, metric, ylabel, output_path):
             shade_by_application[application],
             application_count,
         )
-        points = " ".join(f"{x_scale(branch_progress_x_value(row)):.2f},{y_scale(row[metric]):.2f}" for row in group)
-        lines.append(f'<polyline fill="none" stroke="{color}" stroke-width="2" points="{points}" />')
+        scaled_points = [
+            (x_scale(branch_progress_x_value(row)), y_scale(row[metric]))
+            for row in group
+        ]
+        points = " ".join(f"{x:.2f},{y:.2f}" for x, y in scaled_points)
+        lines.append(f'<polyline fill="none" stroke="{color}" stroke-width="1" points="{points}" />')
+        lines.append(branch_progress_svg_markers(config, group, scaled_points, color, size=1.5))
         if label in shown_labels:
             continue
         shown_labels.add(label)
         legend_y = top + 18 * idx
-        legend.append(f'<line x1="{width - right + 25}" y1="{legend_y}" x2="{width - right + 55}" y2="{legend_y}" stroke="{color}" stroke-width="3" />')
+        legend.append(f'<line x1="{width - right + 25}" y1="{legend_y}" x2="{width - right + 55}" y2="{legend_y}" stroke="{color}" stroke-width="1.5" />')
+        legend.append(branch_progress_svg_marker(label, width - right + 40, legend_y, color, size=1.6))
         legend.append(f'<text x="{width - right + 65}" y="{legend_y + 4}" font-size="12">{html.escape(label)}</text>')
 
     x_ticks = []
@@ -754,6 +930,34 @@ def plot_branch_progress_interactive(rows, output_path):
                 for row in group
             ]
             axis_suffix = "" if metric_idx == 0 else str(metric_idx + 1)
+            marker_rows = branch_progress_marker_rows(config, group)
+            marker_customdata = [
+                [
+                    row["instructions"],
+                    row["cycles"],
+                    row["aliasing"],
+                    row["branch_misses"],
+                    row["btb_misses"],
+                    row["region_btb_misses"],
+                    row["btb_target_mispredicts"],
+                    row["log_file"],
+                ]
+                for row in marker_rows
+            ]
+            hovertemplate = (
+                f"<b>{html.escape(detail_label)}</b><br>"
+                "sample=%{x}<br>"
+                f"{ylabel}=%{{y:.4g}}<br>"
+                "instructions=%{customdata[0]}<br>"
+                "cycles=%{customdata[1]}<br>"
+                "aliasing=%{customdata[2]}<br>"
+                "total branch misses=%{customdata[3]}<br>"
+                "BTB misses=%{customdata[4]}<br>"
+                "region BTB misses=%{customdata[5]}<br>"
+                "BTB target mispredicts=%{customdata[6]}<br>"
+                "log=%{customdata[7]}"
+                "<extra></extra>"
+            )
             traces.append(
                 {
                     "type": "scatter",
@@ -767,24 +971,32 @@ def plot_branch_progress_interactive(rows, output_path):
                     "showlegend": showlegend,
                     "xaxis": f"x{axis_suffix}",
                     "yaxis": f"y{axis_suffix}",
-                    "line": {"color": color, "width": 2},
-                    "hovertemplate": (
-                        f"<b>{html.escape(detail_label)}</b><br>"
-                        "sample=%{x}<br>"
-                        f"{ylabel}=%{{y:.4g}}<br>"
-                        "instructions=%{customdata[0]}<br>"
-                        "cycles=%{customdata[1]}<br>"
-                        "aliasing=%{customdata[2]}<br>"
-                        "total branch misses=%{customdata[3]}<br>"
-                        "BTB misses=%{customdata[4]}<br>"
-                        "region BTB misses=%{customdata[5]}<br>"
-                        "BTB target mispredicts=%{customdata[6]}<br>"
-                        "log=%{customdata[7]}"
-                        "<extra></extra>"
-                    ),
+                    "line": {"color": color, "width": 1},
+                    "hovertemplate": hovertemplate,
                 }
             )
-
+            if marker_rows:
+                traces.append(
+                    {
+                        "type": "scatter",
+                        "x": [branch_progress_x_value(row) for row in marker_rows],
+                        "y": [row[metric] for row in marker_rows],
+                        "customdata": marker_customdata,
+                        "mode": "markers",
+                        "name": label,
+                        "legendgroup": config,
+                        "showlegend": False,
+                        "xaxis": f"x{axis_suffix}",
+                        "yaxis": f"y{axis_suffix}",
+                        "marker": {
+                            "color": color,
+                            "line": {"color": color, "width": 0.5},
+                            "size": 2.5,
+                            "symbol": branch_progress_plotly_marker(config),
+                        },
+                        "hovertemplate": hovertemplate,
+                    }
+                )
     plot_count = len(metrics)
     plot_gap = 0.06
     plot_height = (1.0 - plot_gap * (plot_count - 1)) / plot_count
@@ -894,10 +1106,13 @@ def plot_branch_progress_separate_paper_metrics(rows, output_dir, svg=False):
     suffix = "svg" if svg else "pdf"
     for metric, ylabel in BRANCH_PROGRESS_PAPER_METRICS:
         y_limits = branch_progress_metric_y_limits(paper_rows, metric)
-        for config_label, config_slug in BRANCH_PROGRESS_PAPER_CONFIGS:
+        for config_specs in [BRANCH_PROGRESS_PAPER_COMBINED_CONFIGS, [("Full Tag", "full_tag")]]:
+            config_labels = {label for label, slug in config_specs}
+            config_slug = "_".join(slug for label, slug in config_specs)
+            config_title = " / ".join(label for label, slug in config_specs)
             config_rows = [
                 row for row in paper_rows
-                if branch_progress_config_label(row["config"]) == config_label
+                if branch_progress_config_label(row["config"]) in config_labels
             ]
             if not config_rows:
                 continue
@@ -907,7 +1122,7 @@ def plot_branch_progress_separate_paper_metrics(rows, output_dir, svg=False):
                 metric,
                 ylabel,
                 output_dir / f"branch_progress_{metric}_paper_{config_slug}.{suffix}",
-                config_label,
+                config_title,
                 x_limits,
                 y_limits,
             )

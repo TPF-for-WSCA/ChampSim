@@ -31,7 +31,7 @@
 #define SMALL_BIG_WAY_SPLIT 12 // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
-#define SAMPLING_DISTANCE 500000
+#define SAMPLING_DISTANCE 10000000
 #define EAGERLY_EVICT_ON_REGION_REMOVAL true
 #define ITLB_CACHE false
 #define PAGE_LOG_SIZE 12
@@ -317,6 +317,19 @@ std::map<O3_CPU*, std::bitset<champsim::lg2(BTB_INDIRECT_SIZE)>> CONDITIONAL_HIS
 std::map<O3_CPU*, std::deque<uint64_t>> RAS;
 std::map<O3_CPU*, std::deque<uint64_t>> WRONGPATH_BACKUP_RAS;
 std::map<O3_CPU*, std::array<uint64_t, CALL_SIZE_TRACKERS>> CALL_SIZE;
+
+void sample_btb_replacement_region_count(O3_CPU* cpu)
+{
+  std::set<uint64_t> regions;
+  for (auto it = ::BTB.at(cpu).begin(); it != ::BTB.at(cpu).end(); it++) {
+    if (it->last_used && it->data.ip_tag) {
+      regions.insert(it->data.tag());
+    }
+  }
+
+  cpu->sim_stats.btb_replacement_region_sample_count++;
+  cpu->sim_stats.btb_replacement_region_sample_sum += regions.size();
+}
 
 } // namespace
 
@@ -841,6 +854,9 @@ void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint
     replaced_entry = ::BTB.at(this).fill(
         fill_entry,
         entry_size); // ASSIGN to region 2^BTB_REGION_BITS if not using regions for this entry to not interfere with the ones that are using regions
+    if (replaced_entry.has_value() && replaced_entry.value().ip_tag != 0 && replaced_entry.value().ip_tag != fill_entry.ip_tag) {
+      sample_btb_replacement_region_count(this);
+    }
     if (::BTB.at(this).find_useless(fill_entry)) {
       sim_stats.btb_total_evictions++;
       if (replaced_entry.has_value() && (!replaced_entry.value().useless && replaced_entry.value().ip_tag != 0))

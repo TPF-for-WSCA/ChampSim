@@ -42,6 +42,12 @@ void champsim::plain_printer::print(O3_CPU::stats_type stats)
   } else {
     fmt::print(stream, "\nAVG MAX POINTER REGIONS: ---\n");
   }
+  if (stats.btb_replacement_region_sample_count) {
+    fmt::print(stream, "\nAVG BTB REGIONS AT REPLACEMENT: {:.4f}\n",
+               static_cast<long double>(stats.btb_replacement_region_sample_sum) / static_cast<long double>(stats.btb_replacement_region_sample_count));
+  } else {
+    fmt::print(stream, "\nAVG BTB REGIONS AT REPLACEMENT: ---\n");
+  }
 
   fmt::print(stream, "\nBACK TO BACK BRANCHES: {}\tUNIQUE BRANCHES: {}", stats.back_to_back_branches, stats.unique_aligned_branches);
 

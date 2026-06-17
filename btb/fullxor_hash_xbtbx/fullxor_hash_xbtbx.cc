@@ -30,7 +30,7 @@
 #define SMALL_BIG_WAY_SPLIT 12 // NOTE: This has a semantic meaning, as in smaller targets reside within the same tag region (for 512 sets)
 #define BIGGEST_BTB_X_WAY 25
 #define REGION_BTB_FILTER_ENABLED false
-#define SAMPLING_DISTANCE 50000
+#define SAMPLING_DISTANCE 10000000
 
 uint64_t invalid_replacements = 0;
 namespace

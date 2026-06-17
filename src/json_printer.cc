@@ -35,6 +35,13 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
       {"max", stats.max_regions},
       {"min", stats.min_regions},
   };
+  nlohmann::json btb_replacement_regions = {
+      {"samples", stats.btb_replacement_region_sample_count},
+      {"sum", stats.btb_replacement_region_sample_sum},
+      {"average", stats.btb_replacement_region_sample_count
+                      ? static_cast<double>(stats.btb_replacement_region_sample_sum) / static_cast<double>(stats.btb_replacement_region_sample_count)
+                      : 0.0},
+  };
   // std::vector<uint64_t> percentile90;
   // percentile90.reserve(stats.region_history.size());
   // std::vector<uint64_t> percentile95;
@@ -75,6 +82,7 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type stats)
       {"mispredict", mpki},
       {"aliasing", aliasing},
       {"btb_regions", btb_regions},
+      {"btb_replacement_regions", btb_replacement_regions},
       {"regions_covered", regions_by_way},
       {"btb_tags", stats.branch_tag_set},
       {"dynamic_branch_count_by_region", stats.dynamic_branch_count_per_address_space_global_region},

@@ -95,6 +95,8 @@ struct cpu_stats {
   std::map<uint64_t, std::set<uint64_t>> regions_inserted_per_way;
   std::vector<std::map<uint64_t, uint64_t>> regions_per_way_samples;
   std::vector<uint64_t> region_count_samples;
+  uint64_t btb_replacement_region_sample_count = 0;
+  uint64_t btb_replacement_region_sample_sum = 0;
   uint64_t region_btb_conflicts = 0;
   std::map<uint16_t, uint64_t> region_btb_inserts_per_set = {};
   uint64_t btb_updates = 0;
