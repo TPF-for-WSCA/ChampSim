@@ -44,6 +44,7 @@ void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
   using hits_value_type = typename decltype(stats.hits)::value_type;
   using misses_value_type = typename decltype(stats.misses)::value_type;
   using miss_merge_value_type = typename decltype(stats.miss_merge)::value_type;
+  using partial_misses_value_type = typename decltype(stats.partial_misses)::value_type;
   using fill_value_type = typename decltype(stats.fill)::value_type;
 
   std::map<std::string, nlohmann::json> statsmap;
@@ -61,14 +62,17 @@ void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
     std::vector<hits_value_type> hits;
     std::vector<misses_value_type> misses;
     std::vector<miss_merge_value_type> miss_merges;
+    std::vector<partial_misses_value_type> partial_misses;
 
     for (std::size_t cpu = 0; cpu < NUM_CPUS; ++cpu) {
       hits.push_back(stats.hits.value_or(std::pair{type, cpu}, hits_value_type{}));
       misses.push_back(stats.misses.value_or(std::pair{type, cpu}, misses_value_type{}));
       miss_merges.push_back(stats.miss_merge.value_or(std::pair{type, cpu}, miss_merge_value_type{}));
+      partial_misses.push_back(stats.partial_misses.value_or(std::pair{type, cpu}, partial_misses_value_type{}));
     }
 
-    statsmap.emplace(access_type_names.at(champsim::to_underlying(type)), nlohmann::json{{"hit", hits}, {"miss", misses}, {"miss_merge", miss_merges}});
+    statsmap.emplace(access_type_names.at(champsim::to_underlying(type)),
+                     nlohmann::json{{"hit", hits}, {"miss", misses}, {"partial_miss", partial_misses}, {"miss_merge", miss_merges}});
   }
 
   j = statsmap;

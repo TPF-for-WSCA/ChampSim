@@ -349,6 +349,7 @@ class NormalizedConfiguration:
 
         # Instantiate any missing default caches
         caches = util.combine_named(self.caches.values(), ({ 'name': 'LLC' },), *map(defaults.cache_core_defaults, cores))
+        ubs_way_sizes = {name: cache['ubs_way_sizes'] for name, cache in caches.items() if 'ubs_way_sizes' in cache}
         ptws = util.combine_named(self.ptws.values(), *map(defaults.ptw_core_defaults, cores))
 
         # Remove caches that are inaccessible
@@ -356,6 +357,15 @@ class NormalizedConfiguration:
 
         # Follow paths and apply default sizings
         caches = util.combine_named(caches.values(), defaults.list_defaults(cores, caches))
+        caches = {
+            name: {**cache, **({'ubs_way_sizes': ubs_way_sizes[name]} if name in ubs_way_sizes else {})}
+            for name, cache in caches.items()
+        }
+        invalid_ubs = [cache['name'] for cache in caches.values() if cache.get('ubs', False) and not cache.get('_is_instruction_cache', False)]
+        if invalid_ubs:
+            raise ValueError(
+                f'UBS data caches are unsupported for now because UBS does not support writebacks or other data-cache behavior: {", ".join(invalid_ubs)}'
+            )
 
         branch_parse = functools.partial(module_parse, context=branch_context)
         btb_parse = functools.partial(module_parse, context=btb_context)

@@ -77,6 +77,35 @@ The default prefetcher is the do-nothing prefetcher, and the default replacement
 Specifying a cache this way will create an identical L1D for each core in the configuration.
 So far, we've only handled the single-core case.
 
+Uneven Block Size instruction cache
+-----------------------------------
+
+The MICRO-24 Uneven Block Size instruction cache (called VCL in the original implementation)
+can be selected on an L1I with the ``ubs`` flag. The conventional cache remains
+the default. For example::
+
+    {
+        "L1I": {
+            "ubs": true,
+            "prefetcher": "fdip"
+        }
+    }
+
+With only the flag specified, UBS uses the paper configuration: a direct-mapped
+predictor with one entry per cache set, 16 ways sized ``4, 4, 8, 8, 8, 12, 12,
+16, 24, 32, 36, 36, 52, 64, 64, 64`` bytes, and four candidate ways for its
+modified-LRU replacement. Experiments can override ``ubs_way_sizes`` and
+``ubs_candidate_ways``; custom way sizes must be sorted, positive, and end in a
+64-byte way. UBS currently requires the standard 64-byte cache line and always
+uses its internal modified-LRU policy rather than the configured replacement module.
+Specify ``sets`` explicitly when scaling UBS capacity; a generic cache ``size``
+is converted to sets using the conventional ``ways`` geometry before UBS replaces
+those ways with its uneven organization.
+
+UBS partial misses are reported as misses to the configured instruction
+prefetcher, and appear as ``partial_miss`` in JSON cache statistics and as
+``UBS PARTIAL MISSES`` in the plain-text statistics.
+
 --------------------------
 Multi-core configurations
 --------------------------

@@ -22,7 +22,9 @@
 #undef CHAMPSIM_MODULE
 #endif
 
+#include <algorithm>
 #include <array>
+#include <cassert>
 #include <cstddef> // for size_t
 #include <cstdint> // for uint64_t, uint32_t, uint8_t
 #include <deque>
@@ -72,6 +74,10 @@ class CACHE : public champsim::operable
     bool skip_fill;
     bool is_translated;
     bool translate_issued = false;
+    bool partial_miss = false;
+    bool hit = false;
+    uint64_t requested_bytes = 0;
+    uint64_t ubs_preserved_bytes = 0;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
@@ -100,6 +106,9 @@ public:
 
     access_type type;
     bool prefetch_from_this;
+    bool partial_miss = false;
+    uint64_t requested_bytes = 0;
+    uint64_t ubs_preserved_bytes = 0;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
@@ -113,8 +122,9 @@ public:
   };
 
 private:
-  bool try_hit(const tag_lookup_type& handle_pkt);
+  bool try_hit(tag_lookup_type& handle_pkt);
   bool handle_fill(const fill_type& fill);
+  bool handle_ubs_fill(const fill_type& fill);
   bool handle_miss(const tag_lookup_type& handle_pkt);
   bool handle_write(const tag_lookup_type& handle_pkt);
   void finish_packet(const response_type& packet);
@@ -128,6 +138,15 @@ public:
 private:
   static BLOCK fill_block(fill_type fill, uint32_t metadata);
   using set_type = std::vector<BLOCK>;
+
+  struct ubs_predictor_entry {
+    BLOCK block{};
+    uint64_t accessed_bytes = 0;
+    champsim::address ip{};
+    uint64_t instr_id = 0;
+    uint32_t cpu = 0;
+    access_type type{access_type::LOAD};
+  };
 
   std::pair<set_type::iterator, set_type::iterator> get_set_span(champsim::address address);
   [[nodiscard]] std::pair<set_type::const_iterator, set_type::const_iterator> get_set_span(champsim::address address) const;
@@ -143,6 +162,10 @@ private:
   champsim::address module_address(const T& element) const;
 
   auto matches_address(champsim::address address) const;
+  [[nodiscard]] uint64_t get_requested_bytes(const tag_lookup_type& packet) const;
+  [[nodiscard]] uint64_t get_ubs_block_mask(const BLOCK& cache_block) const;
+  void install_ubs_predictor_victim(const ubs_predictor_entry& victim);
+  [[nodiscard]] uint64_t install_ubs_subblock(const ubs_predictor_entry& victim, uint32_t offset, uint32_t requested_size);
   std::pair<fill_type, request_type> mshr_and_forward_packet(const tag_lookup_type& handle_pkt);
 
   std::deque<tag_lookup_type> internal_PQ{};
@@ -161,7 +184,16 @@ public:
   champsim::chrono::clock::duration HIT_LATENCY;
   champsim::chrono::clock::duration FILL_LATENCY;
   champsim::data::bits OFFSET_BITS;
+  bool ubs;
+  std::vector<uint32_t> UBS_WAY_SIZES;
+  uint32_t UBS_CANDIDATE_WAYS;
   set_type block{static_cast<typename set_type::size_type>(NUM_SET * NUM_WAY)};
+
+private:
+  std::vector<ubs_predictor_entry> ubs_predictor{NUM_SET};
+  uint64_t ubs_access_counter = 0;
+
+public:
   champsim::bandwidth::maximum_type MAX_TAG, MAX_FILL;
   bool prefetch_as_load;
   bool match_offset_bits;
@@ -318,11 +350,20 @@ public:
   template <typename... Ps, typename... Rs>
   explicit CACHE(champsim::cache_builder<champsim::cache_builder_module_type_holder<Ps...>, champsim::cache_builder_module_type_holder<Rs...>> b)
       : champsim::operable(b.m_clock_period), upper_levels(b.m_uls), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name), NUM_SET(b.get_num_sets()),
-        NUM_WAY(b.get_num_ways()), MSHR_SIZE(b.get_num_mshrs()), PQ_SIZE(b.m_pq_size), HIT_LATENCY(b.get_hit_latency() * b.m_clock_period),
-        FILL_LATENCY(b.get_fill_latency() * b.m_clock_period), OFFSET_BITS(b.m_offset_bits), MAX_TAG(b.get_tag_bandwidth()), MAX_FILL(b.get_fill_bandwidth()),
+        NUM_WAY(b.m_ubs ? static_cast<uint32_t>(std::size(b.m_ubs_way_sizes)) : b.get_num_ways()), MSHR_SIZE(b.get_num_mshrs()), PQ_SIZE(b.m_pq_size),
+        HIT_LATENCY(b.get_hit_latency() * b.m_clock_period), FILL_LATENCY(b.get_fill_latency() * b.m_clock_period), OFFSET_BITS(b.m_offset_bits), ubs(b.m_ubs),
+        UBS_WAY_SIZES(b.m_ubs_way_sizes), UBS_CANDIDATE_WAYS(b.m_ubs_candidate_ways), MAX_TAG(b.get_tag_bandwidth()), MAX_FILL(b.get_fill_bandwidth()),
         prefetch_as_load(b.m_pref_load), match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),
         pref_module_pimpl(std::make_unique<prefetcher_module_model<Ps...>>(this)), repl_module_pimpl(std::make_unique<replacement_module_model<Rs...>>(this))
   {
+    assert(!(ubs && b.m_data_cache) &&
+           "UBS data caches are unsupported for now because UBS does not support writebacks or other data-cache behavior");
+    if (ubs && (champsim::to_underlying(OFFSET_BITS) != 6 || UBS_WAY_SIZES.empty() || UBS_WAY_SIZES.front() == 0 || UBS_CANDIDATE_WAYS == 0
+                || !std::is_sorted(std::begin(UBS_WAY_SIZES), std::end(UBS_WAY_SIZES))
+                || UBS_WAY_SIZES.back() != (1ull << champsim::to_underlying(OFFSET_BITS)))) {
+      throw std::invalid_argument{
+          "UBS requires 64-byte lines, sorted positive way sizes ending in 64, and a nonzero candidate-way count"};
+    }
   }
 
   CACHE(const CACHE&) = delete;

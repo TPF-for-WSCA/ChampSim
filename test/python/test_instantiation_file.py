@@ -172,6 +172,16 @@ class CacheBuilderTests(unittest.TestCase):
         self.get_element_diff(['.set_virtual_prefetch()'], virtual_prefetch=True)
         self.get_element_diff(['.reset_virtual_prefetch()'], virtual_prefetch=False)
 
+    def test_ubs(self):
+        self.get_element_diff(['.set_ubs()'], ubs=True)
+        self.get_element_diff(['.reset_ubs()'], ubs=False)
+
+    def test_ubs_way_sizes(self):
+        self.get_element_diff(['.ubs_way_sizes({4, 8, 64})'], ubs_way_sizes=[4, 8, 64])
+
+    def test_ubs_candidate_ways(self):
+        self.get_element_diff(['.ubs_candidate_ways(3)'], ubs_candidate_ways=3)
+
     def test_prefetch_activate(self):
         self.get_element_diff(['.prefetch_activate(access_type::LOAD)'], prefetch_activate=['LOAD'])
         self.get_element_diff(['.prefetch_activate(access_type::LOAD, access_type::WRITE)'], prefetch_activate=['LOAD', 'WRITE'])

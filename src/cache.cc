@@ -38,8 +38,10 @@ CACHE::CACHE(CACHE&& other)
       upper_levels(std::move(other.upper_levels)), lower_level(std::move(other.lower_level)), lower_translate(std::move(other.lower_translate)),
 
       cpu(other.cpu), NAME(std::move(other.NAME)), NUM_SET(other.NUM_SET), NUM_WAY(other.NUM_WAY), MSHR_SIZE(other.MSHR_SIZE), PQ_SIZE(other.PQ_SIZE),
-      HIT_LATENCY(other.HIT_LATENCY), FILL_LATENCY(other.FILL_LATENCY), OFFSET_BITS(other.OFFSET_BITS), block(std::move(other.block)), MAX_TAG(other.MAX_TAG),
-      MAX_FILL(other.MAX_FILL), prefetch_as_load(other.prefetch_as_load), match_offset_bits(other.match_offset_bits), virtual_prefetch(other.virtual_prefetch),
+      HIT_LATENCY(other.HIT_LATENCY), FILL_LATENCY(other.FILL_LATENCY), OFFSET_BITS(other.OFFSET_BITS), ubs(other.ubs),
+      UBS_WAY_SIZES(std::move(other.UBS_WAY_SIZES)), UBS_CANDIDATE_WAYS(other.UBS_CANDIDATE_WAYS), block(std::move(other.block)),
+      ubs_predictor(std::move(other.ubs_predictor)), ubs_access_counter(other.ubs_access_counter), MAX_TAG(other.MAX_TAG), MAX_FILL(other.MAX_FILL),
+      prefetch_as_load(other.prefetch_as_load), match_offset_bits(other.match_offset_bits), virtual_prefetch(other.virtual_prefetch),
       pref_activate_mask(std::move(other.pref_activate_mask)),
 
       sim_stats(std::move(other.sim_stats)), roi_stats(std::move(other.roi_stats)),
@@ -71,8 +73,12 @@ auto CACHE::operator=(CACHE&& other) -> CACHE&
   this->HIT_LATENCY = other.HIT_LATENCY;
   this->FILL_LATENCY = other.FILL_LATENCY;
   this->OFFSET_BITS = other.OFFSET_BITS;
-  ;
+  this->ubs = other.ubs;
+  this->UBS_WAY_SIZES = std::move(other.UBS_WAY_SIZES);
+  this->UBS_CANDIDATE_WAYS = other.UBS_CANDIDATE_WAYS;
   this->block = std::move(other.block);
+  this->ubs_predictor = std::move(other.ubs_predictor);
+  this->ubs_access_counter = other.ubs_access_counter;
   this->MAX_TAG = other.MAX_TAG;
   this->MAX_FILL = other.MAX_FILL;
   this->prefetch_as_load = other.prefetch_as_load;
@@ -94,13 +100,15 @@ auto CACHE::operator=(CACHE&& other) -> CACHE&
 
 CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref, bool skip)
     : address(req.address), v_address(req.v_address), data(req.data), ip(req.ip), instr_id(req.instr_id), pf_metadata(req.pf_metadata), cpu(req.cpu),
-      type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), instr_depend_on_me(req.instr_depend_on_me)
+      type(req.type), prefetch_from_this(local_pref), skip_fill(skip), is_translated(req.is_translated), requested_bytes(req.requested_bytes),
+      instr_depend_on_me(req.instr_depend_on_me)
 {
 }
 
 CACHE::fill_type::fill_type(const tag_lookup_type& req, champsim::chrono::clock::time_point _time_enqueued)
     : address(req.address), v_address(req.v_address), ip(req.ip), instr_id(req.instr_id), cpu(req.cpu), type(req.type),
-      prefetch_from_this(req.prefetch_from_this), time_enqueued(_time_enqueued), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
+      prefetch_from_this(req.prefetch_from_this), partial_miss(req.partial_miss), requested_bytes(req.requested_bytes),
+      ubs_preserved_bytes(req.ubs_preserved_bytes), time_enqueued(_time_enqueued), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
 {
 }
 
@@ -122,6 +130,9 @@ CACHE::fill_type CACHE::fill_type::merge(fill_type predecessor, fill_type succes
   retval.instr_depend_on_me = merged_instr;
   retval.to_return = merged_return;
   retval.data_promise = predecessor.data_promise;
+  retval.partial_miss = predecessor.partial_miss || successor.partial_miss;
+  retval.requested_bytes = predecessor.requested_bytes | successor.requested_bytes;
+  retval.ubs_preserved_bytes = predecessor.ubs_preserved_bytes | successor.ubs_preserved_bytes;
 
   if constexpr (champsim::debug_print) {
     if (successor.type == access_type::PREFETCH) {
@@ -159,6 +170,95 @@ auto CACHE::matches_address(champsim::address addr) const
   };
 }
 
+uint64_t CACHE::get_requested_bytes(const tag_lookup_type& packet) const
+{
+  if (packet.requested_bytes != 0)
+    return packet.requested_bytes;
+
+  const auto request_address = packet.v_address != champsim::address{} ? packet.v_address : packet.address;
+  const auto offset = request_address.slice_lower(OFFSET_BITS).to<uint32_t>();
+  return uint64_t{1} << offset;
+}
+
+uint64_t CACHE::get_ubs_block_mask(const BLOCK& cache_block) const
+{
+  if (cache_block.size >= 64)
+    return std::numeric_limits<uint64_t>::max();
+  return ((uint64_t{1} << cache_block.size) - 1) << cache_block.offset;
+}
+
+uint64_t CACHE::install_ubs_subblock(const ubs_predictor_entry& victim, uint32_t offset, uint32_t requested_size)
+{
+  auto first_candidate = std::find_if(std::begin(UBS_WAY_SIZES), std::end(UBS_WAY_SIZES), [requested_size](auto size) { return size >= requested_size; });
+  if (first_candidate == std::end(UBS_WAY_SIZES))
+    return 0;
+
+  const auto first_way = static_cast<std::size_t>(std::distance(std::begin(UBS_WAY_SIZES), first_candidate));
+  const auto last_way = std::min<std::size_t>(NUM_WAY, first_way + UBS_CANDIDATE_WAYS);
+  auto [set_begin, set_end] = get_set_span(victim.block.address);
+  auto candidate_begin = std::next(set_begin, static_cast<set_type::difference_type>(first_way));
+  auto candidate_end = std::next(set_begin, static_cast<set_type::difference_type>(last_way));
+
+  auto way = std::find_if_not(candidate_begin, candidate_end, [](const auto& entry) { return entry.valid; });
+  if (way == candidate_end) {
+    way = std::min_element(candidate_begin, candidate_end, [](const auto& lhs, const auto& rhs) { return lhs.last_used < rhs.last_used; });
+  }
+
+  const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way));
+  const auto capacity = UBS_WAY_SIZES.at(way_idx);
+  const auto line_size = uint32_t{1} << champsim::to_underlying(OFFSET_BITS);
+  const auto stored_offset = std::min(offset, line_size - capacity);
+
+  champsim::address evicting_address{};
+  if (way->valid) {
+    evicting_address = module_address(*way);
+    if (way->prefetch)
+      ++sim_stats.pf_useless;
+  }
+
+  const auto metadata = impl_prefetcher_cache_fill(module_address(victim.block), get_set_index(victim.block.address), static_cast<long>(way_idx), false,
+                                                   evicting_address, victim.block.pf_metadata);
+
+  *way = victim.block;
+  way->valid = true;
+  way->prefetch = false;
+  way->dirty = false;
+  way->offset = static_cast<uint8_t>(stored_offset);
+  way->size = static_cast<uint8_t>(capacity);
+  way->last_used = ++ubs_access_counter;
+  way->pf_metadata = metadata;
+
+  return get_ubs_block_mask(*way);
+}
+
+void CACHE::install_ubs_predictor_victim(const ubs_predictor_entry& victim)
+{
+  if (!victim.block.valid)
+    return;
+
+  if (victim.accessed_bytes == 0) {
+    if (victim.block.prefetch)
+      ++sim_stats.pf_useless;
+    return;
+  }
+
+  auto remaining = victim.accessed_bytes;
+  while (remaining != 0) {
+    uint32_t first = 0;
+    while (((remaining >> first) & 1) == 0)
+      ++first;
+
+    uint32_t count = 0;
+    while (first + count < 64 && ((remaining >> (first + count)) & 1) != 0)
+      ++count;
+
+    const auto inserted = install_ubs_subblock(victim, first, count);
+    if (inserted == 0)
+      break;
+    remaining &= ~inserted;
+  }
+}
+
 template <typename T>
 champsim::address CACHE::module_address(const T& element) const
 {
@@ -168,6 +268,9 @@ champsim::address CACHE::module_address(const T& element) const
 
 bool CACHE::handle_fill(const fill_type& fill)
 {
+  if (ubs)
+    return handle_ubs_fill(fill);
+
   cpu = fill.cpu;
 
   // find victim
@@ -244,9 +347,141 @@ bool CACHE::handle_fill(const fill_type& fill)
   return true;
 }
 
-bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
+bool CACHE::handle_ubs_fill(const fill_type& fill)
+{
+  cpu = fill.cpu;
+
+  const auto set = get_set_index(fill.address);
+  auto& predictor = ubs_predictor.at(static_cast<std::size_t>(set));
+  const auto same_predictor_line = predictor.block.valid && matches_address(fill.address)(predictor.block);
+
+  if (!same_predictor_line) {
+    // Capture any sub-blocks which appeared after the miss was accepted before
+    // installing the old predictor victim. The victim insertion may otherwise
+    // overwrite one of these ways before its useful-byte mask is preserved.
+    auto preserved_bytes = fill.ubs_preserved_bytes;
+    auto [set_begin, set_end] = get_set_span(fill.address);
+    for (auto way = set_begin; way != set_end; ++way) {
+      if (way->valid && matches_address(fill.address)(*way)) {
+        preserved_bytes |= get_ubs_block_mask(*way);
+        way->valid = false;
+      }
+    }
+
+    install_ubs_predictor_victim(predictor);
+    predictor = {};
+    predictor.accessed_bytes = preserved_bytes;
+    predictor.block = fill_block(fill, fill.data_promise->pf_metadata);
+    predictor.block.offset = 0;
+    predictor.block.size = static_cast<uint8_t>(uint32_t{1} << champsim::to_underlying(OFFSET_BITS));
+    predictor.ip = fill.ip;
+    predictor.instr_id = fill.instr_id;
+    predictor.cpu = fill.cpu;
+    predictor.type = fill.type;
+  }
+  predictor.accessed_bytes |= fill.ubs_preserved_bytes;
+
+  if (fill.type != access_type::PREFETCH) {
+    uint64_t requested = fill.requested_bytes;
+    if (requested == 0) {
+      const auto request_address = fill.v_address != champsim::address{} ? fill.v_address : fill.address;
+      requested = uint64_t{1} << request_address.slice_lower(OFFSET_BITS).to<uint32_t>();
+    }
+    predictor.accessed_bytes |= requested;
+
+    if (predictor.block.prefetch) {
+      ++sim_stats.pf_useful;
+      predictor.block.prefetch = false;
+    }
+  }
+
+  const auto metadata = impl_prefetcher_cache_fill(module_address(fill), set, NUM_WAY, fill.type == access_type::PREFETCH, {}, fill.data_promise->pf_metadata);
+  predictor.block.pf_metadata = metadata;
+  predictor.block.data = fill.data_promise->data;
+
+  if (fill.type == access_type::PREFETCH)
+    ++sim_stats.pf_fill;
+
+  if (fill.type != access_type::PREFETCH)
+    sim_stats.total_miss_latency_cycles += (current_time - (fill.time_enqueued + clock_period)) / clock_period;
+  sim_stats.fill.increment(std::pair{fill.type, fill.cpu});
+
+  response_type response{fill.address, fill.v_address, fill.data_promise->data, metadata, fill.instr_depend_on_me};
+  for (auto* ret : fill.to_return)
+    ret->push_back(response);
+
+  return true;
+}
+
+bool CACHE::try_hit(tag_lookup_type& handle_pkt)
 {
   cpu = handle_pkt.cpu;
+
+  if (ubs) {
+    const auto requested = get_requested_bytes(handle_pkt);
+    handle_pkt.requested_bytes = requested;
+    handle_pkt.partial_miss = false;
+    handle_pkt.ubs_preserved_bytes = 0;
+    auto& predictor = ubs_predictor.at(static_cast<std::size_t>(get_set_index(handle_pkt.address)));
+
+    bool hit = predictor.block.valid && matches_address(handle_pkt.address)(predictor.block);
+    bool useful_prefetch = hit && predictor.block.prefetch && !handle_pkt.prefetch_from_this;
+    champsim::address response_data = predictor.block.data;
+
+    auto [set_begin, set_end] = get_set_span(handle_pkt.address);
+    if (!hit) {
+      uint64_t present_bytes = 0;
+      bool matching_tag = false;
+      for (auto way = set_begin; way != set_end; ++way) {
+        if (way->valid && matches_address(handle_pkt.address)(*way)) {
+          matching_tag = true;
+          present_bytes |= get_ubs_block_mask(*way);
+          response_data = way->data;
+          useful_prefetch |= way->prefetch && (get_ubs_block_mask(*way) & requested) != 0 && !handle_pkt.prefetch_from_this;
+        }
+      }
+
+      hit = (present_bytes & requested) == requested;
+      useful_prefetch &= hit;
+      handle_pkt.partial_miss = matching_tag && !hit;
+      if (handle_pkt.partial_miss)
+        handle_pkt.ubs_preserved_bytes = present_bytes;
+
+      if (hit) {
+        for (auto way = set_begin; way != set_end; ++way) {
+          if (way->valid && matches_address(handle_pkt.address)(*way) && (get_ubs_block_mask(*way) & requested) != 0) {
+            way->last_used = ++ubs_access_counter;
+            if (way->prefetch && !handle_pkt.prefetch_from_this)
+              way->prefetch = false;
+          }
+        }
+      }
+    } else if (!handle_pkt.prefetch_from_this) {
+      predictor.accessed_bytes |= requested;
+      predictor.block.last_used = ++ubs_access_counter;
+      if (predictor.block.prefetch)
+        predictor.block.prefetch = false;
+    }
+
+    auto metadata_thru = handle_pkt.pf_metadata;
+    if (should_activate_prefetcher(handle_pkt)) {
+      // A tag-only match is deliberately reported as a miss. This preserves
+      // the current prefetcher/predictor training behavior for partial misses.
+      metadata_thru = impl_prefetcher_cache_operate(module_address(handle_pkt), handle_pkt.ip, hit, useful_prefetch, handle_pkt.type, metadata_thru);
+    }
+
+    if (hit) {
+      sim_stats.hits.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
+      if (useful_prefetch)
+        ++sim_stats.pf_useful;
+
+      response_type response{handle_pkt.address, handle_pkt.v_address, response_data, metadata_thru, handle_pkt.instr_depend_on_me};
+      for (auto* ret : handle_pkt.to_return)
+        ret->push_back(response);
+    }
+
+    return hit;
+  }
 
   // access cache
   auto [set_begin, set_end] = get_set_span(handle_pkt.address);
@@ -307,6 +542,7 @@ auto CACHE::mshr_and_forward_packet(const tag_lookup_type& handle_pkt) -> std::p
   fwd_pkt.data = handle_pkt.data;
   fwd_pkt.instr_id = handle_pkt.instr_id;
   fwd_pkt.ip = handle_pkt.ip;
+  fwd_pkt.requested_bytes = handle_pkt.requested_bytes;
 
   fwd_pkt.instr_depend_on_me = handle_pkt.instr_depend_on_me;
   fwd_pkt.response_requested = (!handle_pkt.prefetch_from_this || !handle_pkt.skip_fill);
@@ -331,13 +567,15 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
   // check mshr
   auto fill_entry = std::find_if(std::begin(MSHR), std::end(MSHR), matches_address(handle_pkt.address));
   bool mshr_full = (MSHR.size() == MSHR_SIZE);
+  bool fill_already_pending = fill_entry != MSHR.end();
 
   // check inflight fills
-  if (fill_entry == MSHR.end()) {
+  if (!fill_already_pending) {
     fill_entry = std::find_if(inflight_fills.begin(), inflight_fills.end(), matches_address(handle_pkt.address));
+    fill_already_pending = fill_entry != inflight_fills.end();
   }
 
-  if (fill_entry != inflight_fills.end()) // miss or fill already inflight
+  if (fill_already_pending) // miss or fill already inflight
   {
     if (fill_entry->type == access_type::PREFETCH && handle_pkt.type != access_type::PREFETCH) {
       // Mark the prefetch as useful
@@ -368,7 +606,20 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     }
   }
 
+  if (ubs && handle_pkt.partial_miss && (fill_already_pending || mshr_pkt.second.response_requested)) {
+    // Once the miss is guaranteed to make progress, remove the old fragments.
+    // Their coverage travels with the MSHR and is restored in the predictor on
+    // fill, preventing both duplicates and loss from intervening evictions.
+    auto [set_begin, set_end] = get_set_span(handle_pkt.address);
+    for (auto way = set_begin; way != set_end; ++way) {
+      if (way->valid && matches_address(handle_pkt.address)(*way))
+        way->valid = false;
+    }
+  }
+
   sim_stats.misses.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
+  if (handle_pkt.partial_miss)
+    sim_stats.partial_misses.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
   return true;
 }
@@ -504,7 +755,8 @@ long CACHE::operate()
   auto [tag_check_ready_begin, tag_check_ready_end] =
       champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), tag_check_bw,
                            [is_ready, is_translated](const auto& pkt) { return is_ready(pkt) && is_translated(pkt); });
-  auto hits_end = std::stable_partition(tag_check_ready_begin, tag_check_ready_end, [this](const auto& pkt) { return this->try_hit(pkt); });
+  std::for_each(tag_check_ready_begin, tag_check_ready_end, [this](auto& pkt) { pkt.hit = this->try_hit(pkt); });
+  auto hits_end = std::stable_partition(tag_check_ready_begin, tag_check_ready_end, [](const auto& pkt) { return pkt.hit; });
   auto finish_tag_check_end = std::stable_partition(hits_end, tag_check_ready_end, do_handle_miss);
   tag_check_bw.consume(std::distance(tag_check_ready_begin, finish_tag_check_end));
   inflight_tag_check.erase(tag_check_ready_begin, finish_tag_check_end);
@@ -560,9 +812,17 @@ uint64_t CACHE::get_way(uint64_t address, uint64_t /*unused set index*/) const
 long CACHE::invalidate_entry(champsim::address inval_addr)
 {
   auto [begin, end] = get_set_span(inval_addr);
-  auto inv_way = std::find_if(begin, end, matches_address(inval_addr));
+  auto inv_way = std::find_if(begin, end, [matcher = matches_address(inval_addr)](const auto& entry) { return entry.valid && matcher(entry); });
 
-  if (inv_way != end) {
+  if (ubs) {
+    for (auto way = begin; way != end; ++way) {
+      if (way->valid && matches_address(inval_addr)(*way))
+        way->valid = false;
+    }
+    auto& predictor = ubs_predictor.at(static_cast<std::size_t>(get_set_index(inval_addr)));
+    if (predictor.block.valid && matches_address(inval_addr)(predictor.block))
+      predictor = {};
+  } else if (inv_way != end) {
     inv_way->valid = false;
   }
 
@@ -584,6 +844,8 @@ bool CACHE::prefetch_line(champsim::address pf_addr, bool fill_this_level, uint3
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : champsim::address{};
   pf_packet.is_translated = !virtual_prefetch;
+  if (ubs)
+    pf_packet.requested_bytes = uint64_t{1} << pf_addr.slice_lower(OFFSET_BITS).to<uint32_t>();
 
   internal_PQ.emplace_back(pf_packet, true, !fill_this_level);
   ++sim_stats.pf_issued;
@@ -864,6 +1126,7 @@ void CACHE::end_phase(unsigned finished_cpu)
 
   roi_stats.hits = sim_stats.hits;
   roi_stats.misses = sim_stats.misses;
+  roi_stats.partial_misses = sim_stats.partial_misses;
   roi_stats.miss_merge = sim_stats.miss_merge;
   roi_stats.fill = sim_stats.fill;
 

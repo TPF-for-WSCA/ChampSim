@@ -31,6 +31,11 @@ struct cache_block {
   champsim::address data{};
 
   uint32_t pf_metadata = 0;
+
+  // UBS metadata. Conventional caches leave these fields at their defaults.
+  uint8_t offset = 0;
+  uint8_t size = 0;
+  uint64_t last_used = 0;
 };
 } // namespace champsim
 

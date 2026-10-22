@@ -75,7 +75,7 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
   std::vector<std::size_t> cpus;
 
   // build a vector of all existing cpus
-  auto stat_keys = {stats.hits.get_keys(), stats.misses.get_keys(), stats.miss_merge.get_keys(), stats.fill.get_keys()};
+  auto stat_keys = {stats.hits.get_keys(), stats.misses.get_keys(), stats.partial_misses.get_keys(), stats.miss_merge.get_keys(), stats.fill.get_keys()};
   for (auto keys : stat_keys) {
     std::transform(std::begin(keys), std::end(keys), std::back_inserter(cpus), [](auto val) { return val.second; });
   }
@@ -118,6 +118,12 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
 
     lines.push_back(fmt::format("cpu{}->{} PREFETCH REQUESTED: {:10} ISSUED: {:10} USEFUL: {:10} USELESS: {:10}", cpu, stats.name, stats.pf_requested,
                                 stats.pf_issued, stats.pf_useful, stats.pf_useless));
+
+    uint64_t total_partial_misses = 0;
+    for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION})
+      total_partial_misses += stats.partial_misses.value_or(std::pair{type, cpu}, uint64_t{});
+    if (total_partial_misses != 0)
+      lines.push_back(fmt::format("cpu{}->{} UBS PARTIAL MISSES: {:10}", cpu, stats.name, total_partial_misses));
 
     uint64_t total_downstream_demands = total_fill - stats.fill.value_or(std::pair{access_type::PREFETCH, cpu}, fill_value_type{});
     lines.push_back(

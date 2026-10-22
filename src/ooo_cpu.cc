@@ -254,7 +254,19 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
 
-  std::transform(begin, end, std::back_inserter(fetch_packet.instr_depend_on_me), [](const auto& instr) { return instr.instr_id; });
+  for (auto instr = begin; instr != end; ++instr) {
+    fetch_packet.instr_depend_on_me.push_back(instr->instr_id);
+
+    // UBS tracks useful instruction bytes in its predictor. The traces used by
+    // this frontend expose instruction PCs but not decoded lengths, so retain
+    // the MICRO-1 model's four-byte instruction granularity.
+    if (l1i->ubs) {
+      const auto offset = instr->ip.slice_lower(champsim::data::bits{LOG2_BLOCK_SIZE}).to<uint32_t>();
+      const auto bytes_in_line = std::min<uint32_t>(4, BLOCK_SIZE - offset);
+      const auto instruction_mask = ((uint64_t{1} << bytes_in_line) - 1) << offset;
+      fetch_packet.requested_bytes |= instruction_mask;
+    }
+  }
 
   if constexpr (champsim::debug_print) {
     fmt::print("[IFETCH] {} instr_id: {} ip: {} dependents: {} event_cycle: {}\n", __func__, begin->instr_id, begin->ip,

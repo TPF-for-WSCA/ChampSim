@@ -18,10 +18,12 @@
 #define CACHE_BUILDER_H
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <vector>
 
 #include "champsim.h"
 #include "channel.h"
@@ -57,6 +59,10 @@ struct cache_builder_base {
   bool m_pref_load{};
   bool m_wq_full_addr{};
   bool m_va_pref{};
+  bool m_data_cache{};
+  bool m_ubs{};
+  std::vector<uint32_t> m_ubs_way_sizes{4, 4, 8, 8, 8, 12, 12, 16, 24, 32, 36, 36, 52, 64, 64, 64};
+  uint32_t m_ubs_candidate_ways{4};
 
   std::vector<access_type> m_pref_act_mask{access_type::LOAD, access_type::PREFETCH};
   std::vector<champsim::channel*> m_uls{};
@@ -211,6 +217,21 @@ public:
    * Specify that prefetchers should operate in the physical address space.
    */
   self_type& reset_virtual_prefetch();
+
+  /** Mark this cache as a data or unified cache capable of receiving writebacks. */
+  self_type& set_data_cache();
+
+  /** Enable the Uneven Block Size (UBS, formerly VCL) L1 instruction-cache organization. */
+  self_type& set_ubs();
+
+  /** Use the conventional fixed-block cache organization. */
+  self_type& reset_ubs();
+
+  /** Specify the capacity, in bytes, of each UBS way. */
+  self_type& ubs_way_sizes(std::vector<uint32_t> way_sizes_);
+
+  /** Specify how many successively larger UBS ways participate in replacement. */
+  self_type& ubs_candidate_ways(uint32_t candidate_ways_);
 
   /**
    * Specify the ``access_type`` values that should activate the prefetcher.
@@ -482,6 +503,43 @@ template <typename P, typename R>
 auto champsim::cache_builder<P, R>::reset_virtual_prefetch() -> self_type&
 {
   m_va_pref = false;
+  return *this;
+}
+
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::set_data_cache() -> self_type&
+{
+  m_data_cache = true;
+  return *this;
+}
+
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::set_ubs() -> self_type&
+{
+  assert(!m_data_cache &&
+         "UBS data caches are unsupported for now because UBS does not support writebacks or other data-cache behavior");
+  m_ubs = true;
+  return *this;
+}
+
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::reset_ubs() -> self_type&
+{
+  m_ubs = false;
+  return *this;
+}
+
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::ubs_way_sizes(std::vector<uint32_t> way_sizes_) -> self_type&
+{
+  m_ubs_way_sizes = std::move(way_sizes_);
+  return *this;
+}
+
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::ubs_candidate_ways(uint32_t candidate_ways_) -> self_type&
+{
+  m_ubs_candidate_ways = candidate_ways_;
   return *this;
 }
 

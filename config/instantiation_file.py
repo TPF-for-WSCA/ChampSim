@@ -89,6 +89,8 @@ cache_builder_parts = {
     '_prefetcher_data': '.prefetcher<{^prefetcher_string}>()',
     'lower_translate': '.lower_translate(&{^lower_translate_queues})',
     'lower_level': '.lower_level(&{^lower_level_queues})',
+    'ubs_way_sizes': '.ubs_way_sizes({{{^ubs_way_sizes_string}}})',
+    'ubs_candidate_ways': '.ubs_candidate_ways({ubs_candidate_ways})',
     'frequency': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'
 }
 
@@ -153,7 +155,9 @@ def get_cache_builder(elem, ul_pairs):
         ('wq_check_full_addr', True): '.set_wq_checks_full_addr()',
         ('wq_check_full_addr', False): '.reset_wq_checks_full_addr()',
         ('virtual_prefetch', True): '.set_virtual_prefetch()',
-        ('virtual_prefetch', False): '.reset_virtual_prefetch()'
+        ('virtual_prefetch', False): '.reset_virtual_prefetch()',
+        ('ubs', True): '.set_ubs()',
+        ('ubs', False): '.reset_ubs()'
     }
 
     uppers = (v for v in ul_pairs if v[0] == elem.get('name'))
@@ -163,6 +167,7 @@ def get_cache_builder(elem, ul_pairs):
         '^prefetch_activate_string': ', '.join('access_type::'+t for t in elem.get('prefetch_activate',[])),
         '^replacement_string': ', '.join(f'class {k["class"]}' for k in elem.get('_replacement_data',[])),
         '^prefetcher_string': ', '.join(f'class {k["class"]}' for k in elem.get('_prefetcher_data',[])),
+        '^ubs_way_sizes_string': ', '.join(str(v) for v in elem.get('ubs_way_sizes', [])),
         '^lower_level_queues': f'channels.at({ul_pairs.index((elem.get("lower_level"), elem.get("name")))})'
     }
     if 'frequency' in elem:

@@ -23,7 +23,7 @@ fi
 trace_root=${TRACE_ROOT:-/cluster/work/romankb/dataset/IPC1_new_translated}
 warmup_instructions=${WARMUP_INSTRUCTIONS:-50000000}
 simulation_instructions=${SIMULATION_INSTRUCTIONS:-50000000}
-max_parallel=${ARRAY_MAX_CONCURRENT:-16}
+max_parallel=${ARRAY_MAX_CONCURRENT:-32}
 
 trace_groups=(spec server client)
 

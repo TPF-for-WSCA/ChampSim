@@ -13,7 +13,9 @@
 
 set -euo pipefail
 
-if [[ -n ${SLURM_SUBMIT_DIR:-} ]]; then
+if [[ -n ${CHAMPSIM_REPO_ROOT:-} ]]; then
+  repo_root=${CHAMPSIM_REPO_ROOT}
+elif [[ -n ${SLURM_SUBMIT_DIR:-} ]]; then
   repo_root=${SLURM_SUBMIT_DIR}
 else
   repo_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
@@ -41,6 +43,18 @@ mapfile -d '' configs < <(find "${config_dir}" -maxdepth 1 -type f -name '*.json
 if (( ${#configs[@]} == 0 )); then
   echo "No JSON configs found in ${config_dir}" >&2
   exit 1
+fi
+
+# Outside a Slurm allocation, this script acts as the submission frontend.
+# All configurations are built sequentially within the submitted job because
+# concurrent ChampSim builds would interfere with one another in the worktree.
+if [[ -z ${SLURM_JOB_ID:-} ]]; then
+  echo "Submitting one Slurm job to build ${#configs[@]} configuration(s) sequentially."
+  exec sbatch \
+    --job-name="build-${experiment_name}" \
+    --chdir="${repo_root}" \
+    --export="ALL,CHAMPSIM_REPO_ROOT=${repo_root}" \
+    "${repo_root}/idun_build.sh" "${experiment_name}"
 fi
 
 if command -v module >/dev/null 2>&1; then

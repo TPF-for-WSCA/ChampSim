@@ -141,6 +141,13 @@ def select_default_baseline(configurations):
     """Return the configuration whose name identifies it as the 16 KiB variant."""
     size_pattern = re.compile(rf"(?:^|[_-]){DEFAULT_BASELINE_SIZE}(?:$|[_-])", re.IGNORECASE)
     matches = [configuration for configuration in configurations if size_pattern.search(configuration)]
+    baseline_matches = [
+        configuration
+        for configuration in matches
+        if not re.search(r"(?:^|[_-])ubs(?:$|[_-])", configuration, re.IGNORECASE)
+    ]
+    if len(baseline_matches) == 1:
+        return baseline_matches[0]
     if len(matches) != 1:
         available = ", ".join(configurations)
         if matches:
@@ -273,12 +280,12 @@ def parse_args():
     parser.add_argument(
         "--relative-output",
         type=Path,
-        help="Normalized IPC plot path (default: <output stem>_relative<suffix>)",
+        help="Relative IPC deviation plot path (default: <output stem>_relative<suffix>)",
     )
     parser.add_argument(
         "--relative-csv",
         type=Path,
-        help="Normalized per-trace data path (default: alongside the relative plot)",
+        help="Per-trace IPC deviation data path (default: alongside the relative plot)",
     )
     parser.add_argument(
         "--baseline",

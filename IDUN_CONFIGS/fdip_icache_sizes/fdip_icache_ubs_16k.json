@@ -1,0 +1,12 @@
+{
+  "executable_name": "fdip_icache/fdip_icache_ubs_16k",
+  "block_size": 64,
+  "L1I": {
+    "sets": 32,
+    "ways": 8,
+    "ubs": true,
+    "prefetcher": "fdip",
+    "prefetch_activate": "LOAD,PREFETCH",
+    "virtual_prefetch": true
+  }
+}

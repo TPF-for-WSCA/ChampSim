@@ -61,6 +61,10 @@ class channel
     uint64_t instr_id = 0;
     champsim::address ip{};
 
+    // Bytes requested within a cache line. UBS uses this to distinguish hits
+    // from partial misses and to train its useful-byte predictor.
+    uint64_t requested_bytes = 0;
+
     std::vector<uint64_t> instr_depend_on_me{};
   };
 

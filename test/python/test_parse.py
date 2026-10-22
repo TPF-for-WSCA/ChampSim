@@ -187,6 +187,30 @@ class PassthroughContext:
 
 class ParseNormalizedTests(unittest.TestCase):
 
+    def test_ubs_configuration_survives_default_application(self):
+        way_sizes = [4, 8, 12, 64]
+        test_config = config.parse.NormalizedConfiguration({
+            'L1I': {
+                'ubs': True,
+                'ubs_way_sizes': way_sizes,
+                'ubs_candidate_ways': 3
+            }
+        })
+
+        result = test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
+        l1i_name = result[0]['cores'][0]['L1I']
+        l1i = next(cache for cache in result[0]['caches'] if cache['name'] == l1i_name)
+
+        self.assertTrue(l1i['ubs'])
+        self.assertEqual(l1i['ubs_way_sizes'], way_sizes)
+        self.assertEqual(l1i['ubs_candidate_ways'], 3)
+
+    def test_ubs_rejects_non_instruction_cache(self):
+        test_config = config.parse.NormalizedConfiguration({'L1D': {'ubs': True}})
+
+        with self.assertRaisesRegex(ValueError, 'does not support writebacks'):
+            test_config.apply_defaults_in(PassthroughContext(), PassthroughContext(), PassthroughContext(), PassthroughContext())
+
     def test_generates_default_caches(self):
         test_config = config.parse.NormalizedConfiguration({ 'ooo_cpu': [{ 'name': 'test_cpu' }] })
 

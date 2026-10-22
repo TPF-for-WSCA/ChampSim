@@ -69,6 +69,7 @@ const auto default_l1i = champsim::cache_builder<champsim::cache_builder_module_
                              .prefetch_activate(access_type::LOAD, access_type::PREFETCH);
 
 const auto default_l1d = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>>{}
+                             .set_data_cache()
                              .sets_factor(64)
                              .ways(12)
                              .pq_size(8)
@@ -79,6 +80,7 @@ const auto default_l1d = champsim::cache_builder<champsim::cache_builder_module_
                              .prefetch_activate(access_type::LOAD, access_type::PREFETCH);
 
 const auto default_l2c = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>>{}
+                             .set_data_cache()
                              .sets_factor(512)
                              .ways(8)
                              .pq_size(16)
@@ -121,6 +123,7 @@ const auto default_stlb = champsim::cache_builder<champsim::cache_builder_module
 
 const auto default_llc = champsim::cache_builder<champsim::cache_builder_module_type_holder<no>, champsim::cache_builder_module_type_holder<lru>>{}
                              .name("LLC")
+                             .set_data_cache()
                              .sets_factor(2048)
                              .ways(16)
                              .pq_size(32)
