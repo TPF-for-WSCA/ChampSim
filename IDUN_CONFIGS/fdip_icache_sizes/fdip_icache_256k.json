@@ -1,0 +1,11 @@
+{
+  "executable_name": "fdip_icache/fdip_icache_256k",
+  "block_size": 64,
+  "L1I": {
+    "sets": 512,
+    "ways": 8,
+    "prefetcher": "fdip",
+    "prefetch_activate": "LOAD,PREFETCH",
+    "virtual_prefetch": true
+  }
+}

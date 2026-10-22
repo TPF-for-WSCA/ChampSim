@@ -20,7 +20,7 @@ override CPPFLAGS += -I$(OBJ_ROOT)
 override LDFLAGS  += -L$(TRIPLET_DIR)/lib -L$(TRIPLET_DIR)/lib/manual-link
 override LDLIBS   += -lCLI11 -llzma -lz -lbz2 -lfmt
 
-.PHONY: all clean compile_commands compile_commands_clean configclean test pytest maketest
+.PHONY: all clean compile_commands compile_commands_clean configclean experiment run test pytest maketest
 
 test_main_name=test/bin/000-test-main
 build_ids:=
@@ -88,6 +88,32 @@ rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(
 # $1 - the path
 parent_dir = $(patsubst %/,%,$(dir $1))
 
+# Experiment convenience targets accept either of these forms:
+#   make experiment <config-directory>
+#   make experiment EXPERIMENT_DIR=<config-directory>
+#   make run <binary-directory>
+#   make run EXPERIMENT_DIR=<binary-directory>
+experiment_actions := $(filter experiment run,$(MAKECMDGOALS))
+experiment_positional_args := $(filter-out experiment run,$(MAKECMDGOALS))
+experiment_directory := $(strip $(if $(EXPERIMENT_DIR),$(EXPERIMENT_DIR),$(firstword $(experiment_positional_args))))
+
+ifneq ($(experiment_actions),)
+ifneq ($(words $(experiment_actions)),1)
+$(error Use exactly one of the experiment or run targets)
+endif
+ifneq ($(word 2,$(experiment_positional_args)),)
+$(error Expected exactly one directory argument)
+endif
+
+# GNU Make treats the positional directory as a second goal. Give that goal a
+# no-op recipe; the experiment/run recipe consumes its name above.
+ifneq ($(experiment_positional_args),)
+.PHONY: $(experiment_positional_args)
+$(experiment_positional_args):
+	@:
+endif
+endif
+
 .DEFAULT_GOAL := all
 
 generated_files = $(OBJ_ROOT)/module_decl.inc $(OBJ_ROOT)/legacy_bridge.h
@@ -111,6 +137,14 @@ compile_commands_clean:
 configclean: clean compile_commands_clean
 	@-find $(module_dirs) -name 'legacy*' -delete &> /dev/null
 	@-$(RM) $(generated_files) _configuration.mk
+
+experiment:
+	@if [ -z "$(experiment_directory)" ]; then echo "Usage: make experiment <config-directory>" >&2; exit 2; fi
+	sbatch --wait --job-name="build-$(experiment_directory)" $(ROOT_DIR)/idun_build.sh "$(experiment_directory)"
+
+run:
+	@if [ -z "$(experiment_directory)" ]; then echo "Usage: make run <binary-directory>" >&2; exit 2; fi
+	$(ROOT_DIR)/idun_runner.sh "$(experiment_directory)"
 
 reverse = $(if $(wordlist 2,2,$(1)),$(call reverse,$(call tail,$1)) $(firstword $(1)),$(1))
 
@@ -208,7 +242,7 @@ $(OBJ_ROOT)/legacy_bridge.h: $$(call legacy_bridge_prereqs,$$(dir $(base_module_
 # Generated configuration makefile contains:
 #  - $(executable_name), the list of all executables in the configuration
 #  - All dependencies and flags assigned according to the modules
-ifeq (,$(filter clean compile_commands_clean configclean pytest maketest, $(MAKECMDGOALS)))
+ifeq (,$(filter clean compile_commands_clean configclean experiment run pytest maketest, $(MAKECMDGOALS)))
 include _configuration.mk
 endif
 
@@ -331,7 +365,7 @@ test: $(test_main_name)
 pytest:
 	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'
 
-ifeq (,$(filter clean compile_commands compile_commands_clean configclean pytest maketest, $(MAKECMDGOALS)))
+ifeq (,$(filter clean compile_commands compile_commands_clean configclean experiment run pytest maketest, $(MAKECMDGOALS)))
 -include $(patsubst $(OBJ_ROOT)/%.o,$(DEP_ROOT)/%.d,$(foreach build_id,TEST $(build_ids),$(call get_base_objs,$(build_id))) $(test_base_objs) $(base_module_objs))
 endif
 
