@@ -6,6 +6,7 @@
 
 #include "cache.h"
 #include "modules.h"
+#include "storage.h"
 #include "msl/bits.h"
 #include "msl/stat_methods.h"
 
@@ -43,6 +44,14 @@ public:
   std::vector<std::array<champsim::msl::fwcounter<champsim::msl::lg2(SHCT_MAX + 1)>, SHCT_SIZE>> SHCT;
 
   explicit ship(CACHE* cache);
+
+  std::optional<uint64_t> storage_bits() const
+  {
+    // Sampled tag + signature + valid/used + per-set LRU rank, and 3-bit SHCT counters.
+    const uint64_t sampler_bits = 64 - champsim::to_underlying(sampler_tag_bits) + 64 + 2 + champsim::storage_bits(static_cast<uint64_t>(NUM_WAY));
+    return rrpv_values.size() * champsim::storage_bits(maxRRPV + 1)
+        + sampler.size() * sampler_bits + SHCT.size() * SHCT_SIZE * champsim::storage_bits(SHCT_MAX + 1);
+  }
 
   long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,
                    champsim::address full_addr, access_type type);

@@ -134,6 +134,18 @@ public:
 
   champsim::bandwidth::maximum_type L1I_BANDWIDTH, L1D_BANDWIDTH;
 
+  // Runtime parameters consumed by the LiteBTB/XBTBX module family.
+  const std::size_t BTB_SETS, BTB_WAYS;
+  const unsigned L2_BTB_LATENCY;
+  const bool BTB_CLIPPED_TAG, BTB_PARTIAL_TAG_RESOLUTION;
+  const std::vector<uint8_t> BTB_TARGET_SIZES;
+  const bool BTB_SMALL_WAY_REGIONS_ENABLED, BTB_BIG_WAY_REGIONS_ENABLED, BTB_PERFECT_MAPPING;
+  const bool BTB_INVALIDATE_ENTRY, BTB_INVALIDATE_REGION;
+  const uint8_t BTB_TAG_SIZE;
+  const std::size_t BTB_TAG_REGIONS, BTB_FILTER_BTB_LIMIT, BTB_TAG_REGION_WAYS;
+  const uint8_t BTB_TAG_REGION_SIZE;
+  const std::vector<uint8_t> BTB_INDEX_TAG_HASH;
+
   RegisterAllocator reg_allocator{REGISTER_FILE_SIZE};
 
   // branch
@@ -247,7 +259,13 @@ public:
         BRANCH_MISPREDICT_PENALTY(b.m_mispredict_penalty * b.m_clock_period), DISPATCH_LATENCY(b.m_dispatch_latency * b.m_clock_period),
         DECODE_LATENCY(b.m_decode_latency * b.m_clock_period), SCHEDULING_LATENCY(b.m_schedule_latency * b.m_clock_period),
         EXEC_LATENCY(b.m_execute_latency * b.m_clock_period), DIB_HIT_LATENCY(b.m_dib_hit_latency * b.m_clock_period), L1I_BANDWIDTH(b.m_l1i_bw),
-        L1D_BANDWIDTH(b.m_l1d_bw), IN_QUEUE_SIZE(2 * champsim::to_underlying(b.m_fetch_width)), L1I_bus(b.m_cpu, b.m_fetch_queues),
+        L1D_BANDWIDTH(b.m_l1d_bw), BTB_SETS(b.m_btb_sets), BTB_WAYS(b.m_btb_ways), L2_BTB_LATENCY(b.m_l2_btb_latency),
+        BTB_CLIPPED_TAG(b.m_btb_clipped_tag), BTB_PARTIAL_TAG_RESOLUTION(b.m_btb_partial_tag_resolution), BTB_TARGET_SIZES(b.m_btb_target_sizes),
+        BTB_SMALL_WAY_REGIONS_ENABLED(b.m_btb_small_way_regions_enabled), BTB_BIG_WAY_REGIONS_ENABLED(b.m_btb_big_way_regions_enabled),
+        BTB_PERFECT_MAPPING(b.m_btb_perfect_mapping), BTB_INVALIDATE_ENTRY(b.m_btb_invalidate_entry), BTB_INVALIDATE_REGION(b.m_btb_invalidate_region),
+        BTB_TAG_SIZE(b.m_btb_tag_size), BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_FILTER_BTB_LIMIT(b.m_btb_filter_btb_limit),
+        BTB_TAG_REGION_WAYS(b.m_btb_tag_region_ways), BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), BTB_INDEX_TAG_HASH(b.m_btb_index_tag_hash),
+        IN_QUEUE_SIZE(2 * champsim::to_underlying(b.m_fetch_width)), L1I_bus(b.m_cpu, b.m_fetch_queues),
         L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), branch_module_pimpl(std::make_unique<branch_module_model<Bs...>>(this)),
         btb_module_pimpl(std::make_unique<btb_module_model<Ts...>>(this))
   {

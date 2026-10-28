@@ -7,6 +7,78 @@
 
 ChampSim is a trace-based simulator for a microarchitecture study. If you have questions about how to use ChampSim, we encourage you to search the threads in the Discussions tab or start your own thread. If you are aware of a bug or have a feature request, open a new Issue.
 
+# Research extensions in this branch
+
+This branch contains forward ports of the Uneven Block Size instruction cache
+(UBS) and LiteBTB to the current ChampSim configuration and module APIs.
+
+## Uneven Block Size instruction cache (UBS)
+
+UBS is the MICRO-24 instruction-cache organization called VCL in the original
+artifact. Instead of dividing every set into equally sized cache lines, UBS
+uses a full-line predictor entry and unevenly sized ways for the instruction
+bytes that were actually used. The default paper organization has 16 ways of
+4–64 bytes and considers four successively larger candidate ways during its
+modified-LRU replacement.
+
+Enable UBS on an L1 instruction cache with `"ubs": true`:
+
+```json
+{
+  "L1I": {
+    "sets": 64,
+    "ubs": true,
+    "prefetcher": "fdip"
+  }
+}
+```
+
+UBS currently supports instruction caches with 64-byte lines. It uses its
+internal replacement policy rather than the configured replacement module;
+data-cache writebacks are not supported. The way geometry can be changed with
+`ubs_way_sizes` and `ubs_candidate_ways`. See
+[`IDUN_CONFIGS/fdip_icache_sizes`](IDUN_CONFIGS/fdip_icache_sizes/README.md) for
+paired conventional/UBS capacity sweeps and
+[`Creating-a-configuration-file.rst`](docs/src/Creating-a-configuration-file.rst#uneven-block-size-instruction-cache)
+for the complete constraints and statistics.
+
+## LiteBTB
+
+LiteBTB is the variable-target-width BTB used for the MICRO'26 experiments. It
+is named `xbtbx` in the paper artifact and therefore retains that module name
+for compatibility. Each way has a configured target-offset width, allowing
+near targets to occupy narrower ways while a full-width way handles distant
+targets. The port also includes the artifact's half-XOR, full-XOR, geometric,
+Pearson, Rabin, SHA-3, and Zobrist tag variants. The artifact's plain,
+half-XOR, full-XOR, and geometric two-level forms are included as well.
+
+The final 4 KiB LiteBTB geometry can be selected as follows:
+
+```json
+{
+  "ooo_cpu": [{
+    "btb": "xbtbx",
+    "btb_sets": 512,
+    "btb_ways": 9,
+    "btb_clipped_tag": true,
+    "btb_target_sizes": [0, 4, 5, 7, 9, 11, 19, 25, 64],
+    "btb_tag_size": 13
+  }]
+}
+```
+
+The final plain and Rabin-tag MICRO'26 configurations are in
+[`IDUN_CONFIGS/litebtb_micro26`](IDUN_CONFIGS/litebtb_micro26/README.md). They
+port the no-region state tagged `MICRO'26` at commit `12894621`; select the
+Rabin version with `"btb": "rabin_xbtbx"`.
+
+Build either experiment in the same way as any other ChampSim configuration:
+
+```sh
+./config.sh IDUN_CONFIGS/litebtb_micro26/litebtb_4k.json
+make -j
+```
+
 # Using ChampSim
 
 ChampSim is the result of academic research. If you use this software in your work, please cite it using the following reference:

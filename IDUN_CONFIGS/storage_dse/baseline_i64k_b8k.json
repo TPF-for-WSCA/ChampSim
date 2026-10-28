@@ -1,0 +1,20 @@
+{
+  "executable_name": "storage_dse/baseline_i64k_b8k",
+  "block_size": 64,
+  "ooo_cpu": [
+    {
+      "btb": "basic_btb",
+      "btb_sets": 1024,
+      "btb_ways": 8
+    }
+  ],
+  "L1I": {
+    "sets": 128,
+    "ways": 8,
+    "ubs": false,
+    "prefetcher": "fdip",
+    "replacement": "lru",
+    "prefetch_activate": "LOAD,PREFETCH",
+    "virtual_prefetch": true
+  }
+}

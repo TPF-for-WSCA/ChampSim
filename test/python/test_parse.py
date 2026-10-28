@@ -187,6 +187,20 @@ class PassthroughContext:
 
 class ParseNormalizedTests(unittest.TestCase):
 
+    def test_litebtb_top_level_configuration_is_applied_to_cores(self):
+        target_sizes = [0, 4, 64]
+        test_config = config.parse.NormalizedConfiguration({
+            'btb_sets': 512,
+            'btb_ways': 3,
+            'btb_target_sizes': target_sizes,
+            'btb_tag_size': 13
+        })
+
+        self.assertEqual(test_config.cores[0]['btb_sets'], 512)
+        self.assertEqual(test_config.cores[0]['btb_ways'], 3)
+        self.assertEqual(test_config.cores[0]['btb_target_sizes'], target_sizes)
+        self.assertEqual(test_config.cores[0]['btb_tag_size'], 13)
+
     def test_ubs_configuration_survives_default_application(self):
         way_sizes = [4, 8, 12, 64]
         test_config = config.parse.NormalizedConfiguration({

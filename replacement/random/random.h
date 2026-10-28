@@ -5,6 +5,7 @@
 
 #include "cache.h"
 #include "modules.h"
+#include "storage.h"
 
 struct random : public champsim::modules::replacement {
   std::mt19937_64 rng{};
@@ -12,6 +13,12 @@ struct random : public champsim::modules::replacement {
 
   explicit random(CACHE* cache);
   random(CACHE* cache, long ways);
+
+  std::optional<uint64_t> storage_bits() const
+  {
+    // No per-line state. Model a 64-bit random source, not the host MT engine.
+    return 64;
+  }
 
   // void initialize_replacement();
   long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const CACHE::BLOCK* current_set, uint64_t ip, uint64_t full_addr, access_type type);

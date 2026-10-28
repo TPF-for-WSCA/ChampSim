@@ -6,6 +6,7 @@
 
 #include "cache.h"
 #include "modules.h"
+#include "storage.h"
 
 struct srrip_set_helper {
   using rrpv_type = int;
@@ -26,6 +27,14 @@ struct srrip : public champsim::modules::replacement {
 
   explicit srrip(CACHE* cache);
   srrip(CACHE* cache, long sets_, long ways_);
+
+  std::optional<uint64_t> storage_bits() const
+  {
+    uint64_t count = 0;
+    for (const auto& set : sets)
+      count += set.rrpv_values.size();
+    return count * champsim::storage_bits(srrip_set_helper::maxRRPV + 1);
+  }
 
   // void initialize_replacement() {}
   long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,

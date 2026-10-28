@@ -87,6 +87,7 @@ the default. For example::
     {
         "L1I": {
             "ubs": true,
+            "ubs_way_sizes": [4, 4, 8, 8, 8, 12, 12, 16, 24, 32, 36, 36, 52, 64, 64, 64],
             "prefetcher": "fdip"
         }
     }

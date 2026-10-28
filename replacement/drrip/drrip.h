@@ -6,6 +6,7 @@
 
 #include "cache.h"
 #include "modules.h"
+#include "storage.h"
 #include "msl/stat_methods.h"
 
 struct drrip : public champsim::modules::replacement {
@@ -27,6 +28,11 @@ public:
   std::vector<champsim::msl::dscounter<long, PSEL_WIDTH>> PSEL;
 
   drrip(CACHE* cache);
+
+  std::optional<uint64_t> storage_bits() const
+  {
+    return rrpv.size() * champsim::storage_bits(maxRRPV + 1) + PSEL.size() * PSEL_WIDTH + champsim::storage_bits(BRRIP_MAX);
+  }
 
   // void initialize_replacement()
   long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,

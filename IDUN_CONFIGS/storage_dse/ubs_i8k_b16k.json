@@ -1,0 +1,38 @@
+{
+  "executable_name": "storage_dse/ubs_i8k_b16k",
+  "block_size": 64,
+  "ooo_cpu": [
+    {
+      "btb": "basic_btb",
+      "btb_sets": 2048,
+      "btb_ways": 8
+    }
+  ],
+  "L1I": {
+    "sets": 16,
+    "ubs": true,
+    "prefetcher": "fdip",
+    "replacement": "lru",
+    "prefetch_activate": "LOAD,PREFETCH",
+    "virtual_prefetch": true,
+    "ubs_way_sizes": [
+      4,
+      4,
+      8,
+      8,
+      8,
+      12,
+      12,
+      16,
+      24,
+      32,
+      36,
+      36,
+      52,
+      64,
+      64,
+      64
+    ],
+    "ubs_candidate_ways": 4
+  }
+}

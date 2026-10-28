@@ -234,7 +234,12 @@ class NormalizedConfiguration:
                 'frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'register_file_size', 'rob_size', 'lq_size',
                 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width',
                 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency',
-                'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB'
+                'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB',
+                'btb_sets', 'btb_ways', 'l2_btb_latency', 'btb_clipped_tag', 'btb_partial_tag_resolution',
+                'btb_target_sizes', 'btb_small_way_regions_enabled', 'btb_big_way_regions_enabled',
+                'btb_perfect_mapping', 'btb_invalidate_entry', 'btb_invalidate_region', 'btb_tag_size',
+                'btb_tag_regions', 'btb_filter_btb_limit', 'btb_tag_region_ways', 'btb_tag_region_size',
+                'btb_index_tag_hash'
             )
         )
         self.cores = [util.chain(cpu, core_from_config, {'name': f'cpu{i}'}) for i,cpu in enumerate(self.cores)]

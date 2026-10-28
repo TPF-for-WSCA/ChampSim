@@ -22,6 +22,21 @@ def natural_key(value):
     return tuple(int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", value))
 
 
+def configuration_storage(configuration):
+    """Return nominal cache capacity in KiB from the configuration name."""
+    match = re.search(r"(?:^|[_-])(\d+)k(?:$|[_-])", configuration, re.IGNORECASE)
+    if match is None:
+        return None
+    size = int(match.group(1))
+    return size
+
+
+def configuration_key(configuration):
+    storage = configuration_storage(configuration)
+    is_ubs = bool(re.search(r"(?:^|[_-])ubs(?:$|[_-])", configuration, re.IGNORECASE))
+    return (storage is None, storage or 0, is_ubs, natural_key(configuration))
+
+
 def trace_name(trace_path):
     name = Path(trace_path).name
     return name[: -len(TRACE_SUFFIX)] if name.endswith(TRACE_SUFFIX) else Path(name).stem
@@ -108,7 +123,7 @@ def select_traces(records, allow_incomplete):
     return set.intersection(*trace_sets)
 
 
-def summarize(records, configurations, selected_traces):
+def summarize(records, configurations, selected_traces, relative=False):
     groups = sorted(
         {
             entry["group"]
@@ -130,7 +145,10 @@ def summarize(records, configurations, selected_traces):
             ]
             if values:
                 summary[configuration][category] = {
-                    "mean": statistics.fmean(values),
+                    # Relative values may be negative; average their positive
+                    # speedup ratios harmonically before converting back to %.
+                    "mean": (100 * (statistics.harmonic_mean(1 + v / 100 for v in values) - 1)
+                             if relative else statistics.harmonic_mean(values)),
                     "count": len(values),
                 }
 
@@ -189,7 +207,21 @@ def write_csv(records, configurations, selected_traces, output_path, value_name=
                 entry = records[configuration].get(trace)
                 if entry is None:
                     continue
-                writer.writerow([configuration, entry["group"], trace, f'{entry["ipc"]:.9f}', entry["path"]])
+                writer.writerow([configuration, entry["group"], trace, entry["ipc"], entry["path"]])
+
+
+def write_plot_csv(summary, configurations, categories, output_path, value_name):
+    """Export the aggregated bar heights, preserving Python float precision."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["configuration", "category", "storage_kib", "metric", "value", "trace_count"])
+        for configuration in sorted(configurations, key=configuration_key):
+            for category in categories:
+                details = summary[configuration].get(category)
+                if details is not None:
+                    writer.writerow([configuration, category, configuration_storage(configuration),
+                                     value_name, details["mean"], details["count"]])
 
 
 def plot(
@@ -220,30 +252,44 @@ def plot(
 
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+        from matplotlib.patches import Patch
     except ImportError as error:
         raise RuntimeError("matplotlib and its Python dependencies are required to generate the plot") from error
 
     plt.style.use("tableau-colorblind10")
-    figure_width = max(7.0, 1.15 * len(configurations))
+    storage_groups = defaultdict(list)
+    for configuration in sorted(configurations, key=configuration_key):
+        storage = configuration_storage(configuration)
+        storage_groups[storage if storage is not None else configuration].append(configuration)
+
+    figure_width = max(7.0, 1.6 * len(storage_groups))
     figure, axis = plt.subplots(figsize=(figure_width, 4.8), constrained_layout=True)
 
     group_width = 0.82
-    bar_width = group_width / len(categories)
-    x_positions = list(range(len(configurations)))
-
-    for category_index, category in enumerate(categories):
-        offset = -group_width / 2 + bar_width / 2 + category_index * bar_width
-        positions = [position + offset for position in x_positions]
-        values = [summary[configuration].get(category, {}).get("mean", float("nan")) for configuration in configurations]
-        axis.bar(positions, values, width=bar_width, label=category)
+    variant_count = max(map(len, storage_groups.values()))
+    bar_width = group_width / (len(categories) * variant_count)
+    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    for group_index, members in enumerate(storage_groups.values()):
+        for category_index, category in enumerate(categories):
+            for variant_index, configuration in enumerate(members):
+                offset = (category_index - (len(categories) - 1) / 2) * variant_count * bar_width
+                offset += (variant_index - (len(members) - 1) / 2) * bar_width
+                is_ubs = bool(re.search(r"(?:^|[_-])ubs(?:$|[_-])", configuration, re.IGNORECASE))
+                value = summary[configuration].get(category, {}).get("mean", float("nan"))
+                axis.bar(
+                    group_index + offset, value, width=bar_width,
+                    color=colors[category_index % len(colors)],
+                    hatch="///" if is_ubs else "", edgecolor="black", linewidth=0.4,
+                )
 
     if reference_line is not None:
         axis.axhline(reference_line, color="black", linewidth=1, linestyle="--", alpha=0.65)
 
     axis.set_title(title)
     axis.set_ylabel(ylabel)
-    axis.set_xlabel("Configuration")
-    axis.set_xticks(x_positions, configurations, rotation=30, ha="right")
+    axis.set_xlabel("Nominal cache capacity (KiB)")
+    labels = [f"{storage:g} KiB" if isinstance(storage, (int, float)) else storage for storage in storage_groups]
+    axis.set_xticks(range(len(storage_groups)), labels)
     if center_on_reference:
         values = [
             details["mean"]
@@ -256,10 +302,17 @@ def plot(
     else:
         axis.set_ylim(bottom=0)
     axis.grid(axis="y", linestyle=":", alpha=0.55)
-    axis.legend(title="Trace set", ncols=min(4, len(categories)))
+    handles = [Patch(facecolor=colors[index % len(colors)], label=category) for index, category in enumerate(categories)]
+    handles.extend([
+        Patch(facecolor="white", edgecolor="black", label="Conventional"),
+        Patch(facecolor="white", edgecolor="black", hatch="///", label="UBS"),
+    ])
+    axis.legend(handles=handles, ncols=min(4, len(handles)))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(output_path, dpi=200)
+    plot_csv_path = output_path.with_name(output_path.stem + "_plot.csv")
+    write_plot_csv(summary, configurations, categories, plot_csv_path, ylabel)
     plt.close(figure)
 
 
@@ -271,6 +324,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=(
             "Plot mean ROI IPC for every binary configuration in a result directory. "
+            "Configurations are ordered by nominal cache capacity; UBS and conventional sizes pair directly. "
             "By default, only traces present for every configuration are compared."
         )
     )
@@ -320,7 +374,7 @@ def main():
     if not records:
         raise SystemExit(f"No ChampSim JSON results found below {results_root}")
 
-    configurations = sorted(records, key=natural_key)
+    configurations = sorted(records, key=configuration_key)
     try:
         baseline = args.baseline or select_default_baseline(configurations)
     except ValueError as error:
@@ -338,7 +392,7 @@ def main():
         deviation_records = deviation_from_baseline(records, configurations, selected_traces, baseline)
     except ValueError as error:
         raise SystemExit(str(error)) from error
-    relative_categories, relative_summary = summarize(deviation_records, configurations, selected_traces)
+    relative_categories, relative_summary = summarize(deviation_records, configurations, selected_traces, relative=True)
 
     write_csv(records, configurations, selected_traces, csv_path)
     write_csv(
@@ -348,14 +402,14 @@ def main():
         relative_csv_path,
         value_name=f"ipc_percent_deviation_from_{baseline}",
     )
-    plot(summary, configurations, categories, output_path, args.title, "Mean ROI IPC")
+    plot(summary, configurations, categories, output_path, args.title, "Harmonic mean ROI IPC")
     plot(
         relative_summary,
         configurations,
         relative_categories,
         relative_output_path,
         f"{args.title} (deviation from {baseline})",
-        f"Mean IPC deviation from {baseline} (%)",
+        f"Harmonic mean speedup vs {baseline} (%)",
         reference_line=0.0,
         center_on_reference=True,
     )
@@ -372,9 +426,11 @@ def main():
         print(f"  {configuration}: {details}")
     print(f"Plot: {output_path}")
     print(f"CSV:  {csv_path}")
+    print(f"Exact plot CSV: {output_path.with_name(output_path.stem + '_plot.csv')}")
     print(f"Relative baseline: {baseline}")
     print(f"Relative plot: {relative_output_path}")
     print(f"Relative CSV:  {relative_csv_path}")
+    print(f"Exact relative plot CSV: {relative_output_path.with_name(relative_output_path.stem + '_plot.csv')}")
 
 
 if __name__ == "__main__":

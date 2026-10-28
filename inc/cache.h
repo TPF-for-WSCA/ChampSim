@@ -274,6 +274,7 @@ public:
     virtual void bind(CACHE* cache) = 0;
 
     virtual void impl_initialize_replacement() = 0;
+    virtual std::optional<uint64_t> impl_replacement_storage_bits() const = 0;
     virtual long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip,
                                   champsim::address full_addr, access_type type) = 0;
     virtual void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
@@ -315,6 +316,7 @@ public:
     }
 
     void impl_initialize_replacement() final;
+    std::optional<uint64_t> impl_replacement_storage_bits() const final;
     [[nodiscard]] long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip,
                                         champsim::address full_addr, access_type type) final;
     void impl_update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
@@ -462,6 +464,20 @@ void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_branch_operate(champ
   };
 
   std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
+}
+
+template <typename... Rs>
+std::optional<uint64_t> CACHE::replacement_module_model<Rs...>::impl_replacement_storage_bits() const
+{
+  uint64_t total = 0;
+  bool known = true;
+  [[maybe_unused]] auto process_one = [&](const auto& r) {
+    auto bits = r.storage_bits();
+    known = known && bits.has_value();
+    total += bits.value_or(0);
+  };
+  std::apply([&](const auto&... r) { (..., process_one(r)); }, intern_);
+  return known ? std::optional<uint64_t>{total} : std::nullopt;
 }
 
 template <typename... Rs>

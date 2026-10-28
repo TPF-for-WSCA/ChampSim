@@ -48,6 +48,23 @@ core_builder_parts = {
     'dispatch_latency': '.dispatch_latency({dispatch_latency})',
     'schedule_latency': '.schedule_latency({schedule_latency})',
     'execute_latency': '.execute_latency({execute_latency})',
+    'btb_sets': '.btb_sets({btb_sets})',
+    'btb_ways': '.btb_ways({btb_ways})',
+    'l2_btb_latency': '.l2_btb_latency({l2_btb_latency})',
+    'btb_clipped_tag': '.btb_clipped_tag({btb_clipped_tag:b})',
+    'btb_partial_tag_resolution': '.btb_partial_tag_resolution({btb_partial_tag_resolution:b})',
+    'btb_target_sizes': '.btb_target_sizes({{{^btb_target_sizes_string}}})',
+    'btb_small_way_regions_enabled': '.btb_small_way_regions_enabled({btb_small_way_regions_enabled:b})',
+    'btb_big_way_regions_enabled': '.btb_big_way_regions_enabled({btb_big_way_regions_enabled:b})',
+    'btb_perfect_mapping': '.btb_perfect_mapping({btb_perfect_mapping:b})',
+    'btb_invalidate_entry': '.btb_invalidate_entry({btb_invalidate_entry:b})',
+    'btb_invalidate_region': '.btb_invalidate_region({btb_invalidate_region:b})',
+    'btb_tag_size': '.btb_tag_size({btb_tag_size})',
+    'btb_tag_regions': '.btb_tag_regions({btb_tag_regions})',
+    'btb_filter_btb_limit': '.btb_filter_btb_limit({btb_filter_btb_limit})',
+    'btb_tag_region_ways': '.btb_tag_region_ways({btb_tag_region_ways})',
+    'btb_tag_region_size': '.btb_tag_region_size({btb_tag_region_size})',
+    'btb_index_tag_hash': '.btb_index_tag_hash({{{^btb_index_tag_hash_string}}})',
     'dib_set': '  .dib_set({dib_set})',
     'dib_way': '  .dib_way({dib_way})',
     'dib_window': '  .dib_window({dib_window})',
@@ -129,6 +146,8 @@ def get_cpu_builder(cpu, caches, ul_pairs):
         '^l1i_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1I"))}))',
         '^l1d_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1D"))}))'
     }
+    local_params['^btb_target_sizes_string'] = ', '.join(str(v) for v in cpu.get('btb_target_sizes', []))
+    local_params['^btb_index_tag_hash_string'] = ', '.join(str(v) for v in cpu.get('btb_index_tag_hash', []))
     if 'frequency' in cpu:
         local_params['^clock_period'] = int(1000000/cpu['frequency'])
 

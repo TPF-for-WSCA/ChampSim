@@ -14,10 +14,10 @@ class basic_btb : champsim::modules::btb
   direct_predictor direct{};
 
 public:
-  using btb::btb;
-  basic_btb() : btb(nullptr) {}
+  explicit basic_btb(O3_CPU* cpu);
+  basic_btb() : basic_btb(nullptr) {}
 
-  // void initialize_btb();
+  void initialize_btb();
   std::pair<champsim::address, bool> btb_prediction(champsim::address ip);
   void update_btb(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type);
 };

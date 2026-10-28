@@ -19,6 +19,8 @@
 
 #include <cstdint>
 #include <limits>
+#include <utility>
+#include <vector>
 
 #include "chrono.h"
 
@@ -73,6 +75,25 @@ struct core_builder_base {
   champsim::bandwidth::maximum_type m_l1d_bw{1};
   champsim::channel* m_fetch_queues{};
   champsim::channel* m_data_queues{};
+
+  // LiteBTB (called XBTBX in the MICRO'26 artifact) configuration.
+  std::size_t m_btb_sets{1024};
+  std::size_t m_btb_ways{8};
+  unsigned m_l2_btb_latency{3};
+  bool m_btb_clipped_tag{true};
+  bool m_btb_partial_tag_resolution{};
+  std::vector<uint8_t> m_btb_target_sizes{};
+  bool m_btb_small_way_regions_enabled{};
+  bool m_btb_big_way_regions_enabled{};
+  bool m_btb_perfect_mapping{};
+  bool m_btb_invalidate_entry{};
+  bool m_btb_invalidate_region{};
+  uint8_t m_btb_tag_size{12};
+  std::size_t m_btb_tag_regions{};
+  std::size_t m_btb_filter_btb_limit{};
+  std::size_t m_btb_tag_region_ways{};
+  uint8_t m_btb_tag_region_size{16};
+  std::vector<uint8_t> m_btb_index_tag_hash{};
 };
 } // namespace detail
 
@@ -254,6 +275,24 @@ public:
    * Specify the downstream queues to the data cache.
    */
   self_type& data_queues(champsim::channel* data_queues_);
+
+  self_type& btb_sets(std::size_t value);
+  self_type& btb_ways(std::size_t value);
+  self_type& l2_btb_latency(unsigned value);
+  self_type& btb_clipped_tag(bool value);
+  self_type& btb_partial_tag_resolution(bool value);
+  self_type& btb_target_sizes(std::vector<uint8_t> value);
+  self_type& btb_small_way_regions_enabled(bool value);
+  self_type& btb_big_way_regions_enabled(bool value);
+  self_type& btb_perfect_mapping(bool value);
+  self_type& btb_invalidate_entry(bool value);
+  self_type& btb_invalidate_region(bool value);
+  self_type& btb_tag_size(uint8_t value);
+  self_type& btb_tag_regions(std::size_t value);
+  self_type& btb_filter_btb_limit(std::size_t value);
+  self_type& btb_tag_region_ways(std::size_t value);
+  self_type& btb_tag_region_size(uint8_t value);
+  self_type& btb_index_tag_hash(std::vector<uint8_t> value);
 
   /**
    * Specify the branch direction predictor.
@@ -499,6 +538,34 @@ auto champsim::core_builder<B, T>::data_queues(champsim::channel* data_queues_) 
   m_data_queues = data_queues_;
   return *this;
 }
+
+#define CHAMPSIM_CORE_BUILDER_SETTER(name, type)                                                                            \
+  template <typename B, typename T>                                                                                           \
+  auto champsim::core_builder<B, T>::name(type value) -> self_type&                                                          \
+  {                                                                                                                           \
+    m_##name = std::move(value);                                                                                              \
+    return *this;                                                                                                             \
+  }
+
+CHAMPSIM_CORE_BUILDER_SETTER(btb_sets, std::size_t)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_ways, std::size_t)
+CHAMPSIM_CORE_BUILDER_SETTER(l2_btb_latency, unsigned)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_clipped_tag, bool)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_partial_tag_resolution, bool)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_target_sizes, std::vector<uint8_t>)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_small_way_regions_enabled, bool)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_big_way_regions_enabled, bool)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_perfect_mapping, bool)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_invalidate_entry, bool)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_invalidate_region, bool)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_tag_size, uint8_t)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_tag_regions, std::size_t)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_filter_btb_limit, std::size_t)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_tag_region_ways, std::size_t)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_tag_region_size, uint8_t)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_index_tag_hash, std::vector<uint8_t>)
+
+#undef CHAMPSIM_CORE_BUILDER_SETTER
 
 template <typename B, typename T>
 template <typename... Bs>

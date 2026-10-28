@@ -15,6 +15,7 @@
  */
 
 #include "cache.h"
+#include "storage.h"
 
 #include <algorithm>
 #include <cassert>
@@ -1096,6 +1097,32 @@ void CACHE::impl_replacement_final_stats() const { repl_module_pimpl->impl_repla
 
 void CACHE::initialize()
 {
+  // Report every cache, including L1I even when it has a custom name.
+  const auto offset_bits = champsim::to_underlying(OFFSET_BITS);
+  const auto tag_bits = 64 - offset_bits - champsim::storage_bits(NUM_SET);
+  const uint64_t line_bytes = uint64_t{1} << offset_bits;
+  const uint64_t bytes_per_set = ubs ? std::accumulate(UBS_WAY_SIZES.begin(), UBS_WAY_SIZES.end(), uint64_t{0}) : NUM_WAY * line_bytes;
+  const uint64_t data = NUM_SET * bytes_per_set * 8;
+  const uint64_t count = uint64_t{NUM_SET} * NUM_WAY;
+  const uint64_t tags = count * tag_bits;
+  const uint64_t status = count * 3; // valid, dirty, prefetch
+  // UBS replaces subblocks with its own LRU timestamps; other caches use
+  // the configured replacement module's model, rather than assuming LRU.
+  const auto policy_bits = repl_module_pimpl->impl_replacement_storage_bits();
+  const uint64_t replacement = ubs ? count * champsim::storage_bits(NUM_WAY) : policy_bits.value_or(0);
+  const auto report_name = NAME + ((!ubs && !policy_bits) ? " [partial: replacement storage unavailable]" : "");
+  if (ubs) {
+    champsim::print_storage(report_name + " UBS", {
+        {"Cache data", data}, {"Cache tags", tags}, {"Cache valid/dirty/prefetch", status},
+        {"Cache replacement policy state", replacement}, {"Subblock offsets", count * offset_bits},
+        {"Predictor data (one full line per set)", uint64_t{NUM_SET} * line_bytes * 8},
+        {"Predictor tags", uint64_t{NUM_SET} * tag_bits}, {"Predictor valid/dirty/prefetch", uint64_t{NUM_SET} * 3},
+        {"Predictor useful-byte masks", uint64_t{NUM_SET} * line_bytes}});
+  } else {
+    champsim::print_storage(report_name + " conventional", {
+        {"Cache data", data}, {"Cache tags", tags}, {"Cache valid/dirty/prefetch", status},
+        {"Cache replacement policy state", replacement}});
+  }
   impl_prefetcher_initialize();
   impl_initialize_replacement();
 }

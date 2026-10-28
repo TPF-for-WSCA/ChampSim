@@ -18,6 +18,7 @@
 #define MODULES_H
 
 #include <cstdint>
+#include <optional>
 #include <type_traits>
 #include <utility>
 
@@ -154,6 +155,9 @@ struct prefetcher : public bound_to<CACHE> {
 };
 
 struct replacement : public bound_to<CACHE> {
+  // Optional packed hardware-state model. Custom policies can override it.
+  std::optional<uint64_t> storage_bits() const { return std::nullopt; }
+
   explicit replacement(CACHE* cache) : bound_to<CACHE>(cache) {}
 
   template <typename T, typename... Args>

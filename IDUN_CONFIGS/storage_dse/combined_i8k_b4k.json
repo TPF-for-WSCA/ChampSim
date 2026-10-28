@@ -1,0 +1,54 @@
+{
+  "executable_name": "storage_dse/combined_i8k_b4k",
+  "block_size": 64,
+  "ooo_cpu": [
+    {
+      "btb": "xbtbx",
+      "btb_sets": 512,
+      "btb_ways": 8,
+      "btb_target_sizes": [
+        0,
+        4,
+        5,
+        7,
+        9,
+        11,
+        19,
+        64
+      ],
+      "btb_clipped_tag": true,
+      "btb_tag_size": 13,
+      "btb_tag_regions": 0,
+      "btb_perfect_mapping": false,
+      "btb_invalidate_entry": false,
+      "btb_invalidate_region": false
+    }
+  ],
+  "L1I": {
+    "sets": 16,
+    "ubs": true,
+    "prefetcher": "fdip",
+    "replacement": "lru",
+    "prefetch_activate": "LOAD,PREFETCH",
+    "virtual_prefetch": true,
+    "ubs_way_sizes": [
+      4,
+      4,
+      8,
+      8,
+      8,
+      12,
+      12,
+      16,
+      24,
+      32,
+      36,
+      36,
+      52,
+      64,
+      64,
+      64
+    ],
+    "ubs_candidate_ways": 4
+  }
+}

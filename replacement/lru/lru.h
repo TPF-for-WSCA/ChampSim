@@ -5,6 +5,7 @@
 
 #include "cache.h"
 #include "modules.h"
+#include "storage.h"
 
 class lru : public champsim::modules::replacement
 {
@@ -15,6 +16,11 @@ class lru : public champsim::modules::replacement
 public:
   explicit lru(CACHE* cache);
   lru(CACHE* cache, long sets, long ways);
+
+  std::optional<uint64_t> storage_bits() const
+  {
+    return last_used_cycles.size() * champsim::storage_bits(static_cast<uint64_t>(NUM_WAY));
+  }
 
   // void initialize_replacement();
   long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,

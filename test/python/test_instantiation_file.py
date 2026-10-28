@@ -112,6 +112,19 @@ class CpuBuilderTest(unittest.TestCase):
         self.get_element_diff(['.btb<class a_class>()'], _btb_data=[{ 'name': 'a', 'class': 'a_class' }])
         self.get_element_diff(['.btb<class a_class, class b_class>()'], _btb_data=[{ 'name': 'a', 'class': 'a_class' }, { 'name': 'b', 'class': 'b_class' }])
 
+    def test_litebtb_geometry(self):
+        self.get_element_diff(
+            ['.btb_sets(512)', '.btb_ways(3)', '.btb_clipped_tag(1)', '.btb_target_sizes({4, 8, 64})', '.btb_tag_size(13)'],
+            btb_sets=512,
+            btb_ways=3,
+            btb_clipped_tag=True,
+            btb_target_sizes=[4, 8, 64],
+            btb_tag_size=13
+        )
+
+    def test_litebtb_address_permutation(self):
+        self.get_element_diff(['.btb_index_tag_hash({3, 2, 1, 0})'], btb_index_tag_hash=[3, 2, 1, 0])
+
 class CacheBuilderTests(unittest.TestCase):
 
     def get_element_diff(self, added_lines, **kwargs):
