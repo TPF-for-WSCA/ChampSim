@@ -77,6 +77,8 @@ class CACHE : public champsim::operable
     bool partial_miss = false;
     bool hit = false;
     uint64_t requested_bytes = 0;
+    // Snapshot of all resident sub-block bytes on a partial miss. Carry this
+    // through the miss state even after the original fragments are invalidated.
     uint64_t ubs_preserved_bytes = 0;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
@@ -108,6 +110,8 @@ public:
     bool prefetch_from_this;
     bool partial_miss = false;
     uint64_t requested_bytes = 0;
+    // Union of resident-byte snapshots from merged misses; restored into the
+    // predictor's useful-byte mask on fill, alongside the newly requested bytes.
     uint64_t ubs_preserved_bytes = 0;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};

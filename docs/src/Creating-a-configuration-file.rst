@@ -94,10 +94,14 @@ the default. For example::
 
 With only the flag specified, UBS uses the paper configuration: a direct-mapped
 predictor with one entry per cache set, 16 ways sized ``4, 4, 8, 8, 8, 12, 12,
-16, 24, 32, 36, 36, 52, 64, 64, 64`` bytes, and four candidate ways for its
-modified-LRU replacement. Experiments can override ``ubs_way_sizes`` and
+16, 24, 32, 36, 36, 52, 64, 64, 64`` bytes, and historical ``LRU2BOUND4``
+replacement. Empty fitting slots are searched across the entire set. When
+replacement is necessary, the bound counts size transitions, including the
+first way of the class that reaches the bound. New fragments enter at rank
+``NUM_WAY - 2`` and hits promote to rank zero. Experiments can override ``ubs_way_sizes`` and
 ``ubs_candidate_ways``; custom way sizes must be sorted, positive, and end in a
-64-byte way. UBS currently requires the standard 64-byte cache line and always
+64-byte way. Despite its name, ``ubs_candidate_ways`` specifies this historical
+size-transition bound, not a count of physical ways. UBS currently requires the standard 64-byte cache line and always
 uses its internal modified-LRU policy rather than the configured replacement module.
 Specify ``sets`` explicitly when scaling UBS capacity; a generic cache ``size``
 is converted to sets using the conventional ``ways`` geometry before UBS replaces

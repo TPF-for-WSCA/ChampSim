@@ -195,14 +195,26 @@ uint64_t CACHE::install_ubs_subblock(const ubs_predictor_entry& victim, uint32_t
     return 0;
 
   const auto first_way = static_cast<std::size_t>(std::distance(std::begin(UBS_WAY_SIZES), first_candidate));
-  const auto last_way = std::min<std::size_t>(NUM_WAY, first_way + UBS_CANDIDATE_WAYS);
+  // Historical BOUND4 counts size transitions, including the first way of
+  // the class which reaches the bound, rather than four physical ways.
+  auto last_way = first_way;
+  uint32_t transitions = 0;
+  auto previous_size = UBS_WAY_SIZES.at(first_way);
+  while (last_way < NUM_WAY && transitions < UBS_CANDIDATE_WAYS) {
+    if (UBS_WAY_SIZES.at(last_way) != previous_size) {
+      previous_size = UBS_WAY_SIZES.at(last_way);
+      ++transitions;
+    }
+    ++last_way;
+  }
   auto [set_begin, set_end] = get_set_span(victim.block.address);
   auto candidate_begin = std::next(set_begin, static_cast<set_type::difference_type>(first_way));
   auto candidate_end = std::next(set_begin, static_cast<set_type::difference_type>(last_way));
 
-  auto way = std::find_if_not(candidate_begin, candidate_end, [](const auto& entry) { return entry.valid; });
-  if (way == candidate_end) {
-    way = std::min_element(candidate_begin, candidate_end, [](const auto& lhs, const auto& rhs) { return lhs.last_used < rhs.last_used; });
+  // Empty fitting slots anywhere in the set take precedence over replacement.
+  auto way = std::find_if_not(candidate_begin, set_end, [](const auto& entry) { return entry.valid; });
+  if (way == set_end) {
+    way = std::max_element(candidate_begin, candidate_end, [](const auto& lhs, const auto& rhs) { return lhs.last_used < rhs.last_used; });
   }
 
   const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way));
@@ -220,13 +232,21 @@ uint64_t CACHE::install_ubs_subblock(const ubs_predictor_entry& victim, uint32_t
   const auto metadata = impl_prefetcher_cache_fill(module_address(victim.block), get_set_index(victim.block.address), static_cast<long>(way_idx), false,
                                                    evicting_address, victim.block.pf_metadata);
 
+  // Reproduce LRU2 insertion and its historical physical-way rank-update
+  // subset, which starts at the selected slot (not the victim-search window).
+  const auto insertion_rank = NUM_WAY > 1 ? NUM_WAY - 2 : 0;
+  const auto update_end = std::next(set_begin, static_cast<set_type::difference_type>(std::min<std::size_t>(NUM_WAY, way_idx + UBS_CANDIDATE_WAYS)));
+  for (auto entry = way; entry != update_end; ++entry)
+    if (entry->last_used > 0 && entry->last_used <= insertion_rank && entry->last_used <= NUM_WAY)
+      ++entry->last_used;
+
   *way = victim.block;
   way->valid = true;
   way->prefetch = false;
   way->dirty = false;
   way->offset = static_cast<uint8_t>(stored_offset);
   way->size = static_cast<uint8_t>(capacity);
-  way->last_used = ++ubs_access_counter;
+  way->last_used = insertion_rank;
   way->pf_metadata = metadata;
 
   return get_ubs_block_mask(*way);
@@ -451,7 +471,11 @@ bool CACHE::try_hit(tag_lookup_type& handle_pkt)
       if (hit) {
         for (auto way = set_begin; way != set_end; ++way) {
           if (way->valid && matches_address(handle_pkt.address)(*way) && (get_ubs_block_mask(*way) & requested) != 0) {
-            way->last_used = ++ubs_access_counter;
+            const auto hit_rank = way->last_used;
+            for (auto entry = set_begin; entry != set_end; ++entry)
+              if (entry->last_used < NUM_WAY && entry->last_used <= hit_rank)
+                ++entry->last_used;
+            way->last_used = 0;
             if (way->prefetch && !handle_pkt.prefetch_from_this)
               way->prefetch = false;
           }
@@ -1106,7 +1130,7 @@ void CACHE::initialize()
   const uint64_t count = uint64_t{NUM_SET} * NUM_WAY;
   const uint64_t tags = count * tag_bits;
   const uint64_t status = count * 3; // valid, dirty, prefetch
-  // UBS replaces subblocks with its own LRU timestamps; other caches use
+  // UBS replaces subblocks with its own LRU ranks; other caches use
   // the configured replacement module's model, rather than assuming LRU.
   const auto policy_bits = repl_module_pimpl->impl_replacement_storage_bits();
   const uint64_t replacement = ubs ? count * champsim::storage_bits(NUM_WAY) : policy_bits.value_or(0);

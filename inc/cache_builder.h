@@ -230,7 +230,7 @@ public:
   /** Specify the capacity, in bytes, of each UBS way. */
   self_type& ubs_way_sizes(std::vector<uint32_t> way_sizes_);
 
-  /** Specify how many successively larger UBS ways participate in replacement. */
+  /** Historical UBS size-transition bound (4 selects LRU2BOUND4), not a physical-way count. */
   self_type& ubs_candidate_ways(uint32_t candidate_ways_);
 
   /**
