@@ -33,7 +33,10 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
     mpki.emplace(branch_type_names.at(champsim::to_underlying(type)), stats.branch_type_misses.value_or(type, 0));
   }
 
-  j = nlohmann::json{{"instructions", stats.instrs()},
+  j = nlohmann::json{{"wrong_path_fetched", stats.wrong_path_fetched},
+                     {"wrong_path_squashed", stats.wrong_path_squashed},
+                     {"wrong_path_unknown", stats.wrong_path_unknown},
+                     {"instructions", stats.instrs()},
                      {"cycles", stats.cycles()},
                      {"Avg ROB occupancy at mispredict", std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions)},
                      {"mispredict", mpki}};

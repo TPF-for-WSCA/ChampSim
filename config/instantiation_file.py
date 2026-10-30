@@ -28,6 +28,8 @@ vmem_fmtstr = 'champsim::data::bytes{{{pte_page_size}}}, {num_levels}, champsim:
 queue_fmtstr = '{rq_size}, {pq_size}, {wq_size}, champsim::data::bits{{{_offset_bits}}}, {_queue_check_full_addr:b}'
 
 core_builder_parts = {
+    'wrong_path': '.wrong_path({wrong_path:b})',
+    'wrong_path_history_size': '.wrong_path_history_size({wrong_path_history_size})',
     'ifetch_buffer_size': '.ifetch_buffer_size({ifetch_buffer_size})',
     'decode_buffer_size': '.decode_buffer_size({decode_buffer_size})',
     'dispatch_buffer_size': '.dispatch_buffer_size({dispatch_buffer_size})',
@@ -94,6 +96,7 @@ cache_builder_parts = {
     'ways': '.ways({ways})',
     'log2_ways': '.log2_ways({log2_ways})',
     'pq_size': '.pq_size({pq_size})',
+    'prefetch_buffer_size': '.prefetch_buffer_size({prefetch_buffer_size})',
     'mshr_size': '.mshr_size({mshr_size})',
     'latency': '.latency({latency})',
     'hit_latency': '.hit_latency({hit_latency})',

@@ -1,0 +1,10 @@
+[
+  {
+    "executable_name": "champsim-no-wp",
+    "ooo_cpu": [{"wrong_path": false}]
+  },
+  {
+    "executable_name": "champsim-ti-wp",
+    "ooo_cpu": [{"wrong_path": true, "wrong_path_history_size": 65536}]
+  }
+]

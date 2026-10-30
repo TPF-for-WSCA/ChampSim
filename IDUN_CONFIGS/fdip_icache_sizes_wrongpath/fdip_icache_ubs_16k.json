@@ -1,0 +1,17 @@
+{
+  "executable_name": "fdip_icache_wrongpath/fdip_icache_ubs_16k",
+  "block_size": 64,
+  "ooo_cpu": [{"wrong_path": true}],
+  "L1I": {
+    "mshr_size": 8,
+    "max_tag_check": 2,
+    "max_fill": 2,
+    "sets": 32,
+    "ubs": true,
+    "ubs_way_sizes": [4, 4, 8, 8, 8, 12, 12, 16, 24, 32, 36, 36, 52, 64, 64, 64],
+    "ubs_candidate_ways": 4,
+    "prefetcher": "fdip",
+    "prefetch_activate": "LOAD,PREFETCH",
+    "virtual_prefetch": true
+  }
+}

@@ -2,6 +2,8 @@
 
 #include <array>
 #include <map>
+#include <sstream>
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <vector>
 
@@ -10,6 +12,7 @@
 #include "instr.h"
 #include "mocks.hpp"
 #include "ooo_cpu.h"
+#include "stats_printer.h"
 
 namespace
 {
@@ -88,6 +91,8 @@ SCENARIO("UBS predictor evictions install useful sub-blocks and preserve partial
   REQUIRE(lower.packet_count() == lower_requests_before_hit);
   REQUIRE(ubs_prefetcher_hits.at(&uut).back());
 
+  const auto misses_before_partial = uut.sim_stats.misses.value_or(std::pair{access_type::LOAD, 0u}, 0);
+  const auto hits_before_partial = uut.sim_stats.hits.value_or(std::pair{access_type::LOAD, 0u}, 0);
   const uint64_t second_instruction = uint64_t{0xf} << 8;
   REQUIRE(upper.issue(make_request(line_a + 8, second_instruction, id++)));
   run_cycles(elements, 20);
@@ -95,6 +100,9 @@ SCENARIO("UBS predictor evictions install useful sub-blocks and preserve partial
   REQUIRE(lower.packet_count() == lower_requests_before_hit + 1);
   REQUIRE_FALSE(ubs_prefetcher_hits.at(&uut).back());
   REQUIRE(uut.sim_stats.partial_misses.value_or(std::pair{access_type::LOAD, 0u}, 0) == 1);
+  // Partial misses contribute once to the numerator of demand MPKI.
+  CHECK(uut.sim_stats.misses.value_or(std::pair{access_type::LOAD, 0u}, 0) == misses_before_partial + 1);
+  CHECK(uut.sim_stats.hits.value_or(std::pair{access_type::LOAD, 0u}, 0) == hits_before_partial);
 
   REQUIRE(upper.issue(make_request(line_c, 0xfull, id++)));
   run_cycles(elements, 20); // evicts A again, now retaining both accessed regions
@@ -110,6 +118,17 @@ SCENARIO("UBS predictor evictions install useful sub-blocks and preserve partial
   REQUIRE(upper.issue(make_request(line_a, 0xfull | second_instruction, id++)));
   run_cycles(elements, 10);
   REQUIRE(lower.packet_count() == lower_requests_before_preserved_hits);
+
+  uut.end_phase(0);
+  champsim::phase_stats phase;
+  phase.roi_cache_stats.push_back(uut.roi_stats);
+  std::vector<champsim::phase_stats> phases{phase};
+  std::ostringstream output;
+  champsim::json_printer printer{output};
+  printer.print(phases);
+  const auto demand = nlohmann::json::parse(output.str()).at(0).at("roi").at("409-ubs").at("LOAD");
+  CHECK(demand.at("miss").at(0) == 4); // Three full misses plus one partial miss.
+  CHECK(demand.at("partial_miss").at(0) == 1); // Subset of those four, not an extra miss.
 }
 
 SCENARIO("Disabling UBS retains conventional full-line cache behavior")
@@ -401,10 +420,12 @@ TEST_CASE("UBS partial misses transfer all resident bytes through merged MSHRs b
   REQUIRE(probe.cache.MSHR.size() == 1);
   REQUIRE(probe.cache.MSHR.front().ubs_preserved_bytes == resident);
   REQUIRE(probe.cache.MSHR.front().requested_bytes == first_request);
-  REQUIRE(std::none_of(probe.cache.block.begin(), probe.cache.block.end(), [](const auto& b) { return b.valid; }));
+  REQUIRE(std::count_if(probe.cache.block.begin(), probe.cache.block.end(), [](const auto& b) { return b.valid; }) == 2);
 
-  // The original fragments are now gone. A second miss must retain the first
-  // miss's snapshot even though its own tag lookup finds no resident bytes.
+  // Simulate intervening replacement, independently of partial-miss acceptance.
+  // A second miss must retain the first snapshot even if its lookup finds no bytes.
+  for (auto& block : probe.cache.block)
+    block.valid = false;
   probe.issue(0, second_request);
   run_cycles(probe.elements, 10);
   REQUIRE(probe.lower.packet_count() == 1);
@@ -429,3 +450,88 @@ TEST_CASE("UBS partial misses transfer all resident bytes through merged MSHRs b
   REQUIRE(probe.lower.packet_count() == 2);
 }
 
+
+TEST_CASE("UBS resident fragments serve hits while independent partial refills are outstanding", "[ubs-partial-inflight]")
+{
+  const auto mshrs = GENERATE(2u, 8u);
+  release_MRC lower;
+  champsim::channel upper{32, 32, 32, champsim::data::bits{6}, false};
+  CACHE cache{champsim::cache_builder{champsim::defaults::default_l1i}
+                  .sets(1).set_ubs().ubs_way_sizes(sweep_layout).mshr_size(mshrs)
+                  .hit_latency(1).fill_latency(1).prefetch_buffer_size(0)
+                  .upper_levels({&upper}).lower_level(&lower.queues)};
+  std::array<champsim::operable*, 2> elements{&lower, &cache};
+  for (auto* element : elements) {
+    element->initialize();
+    element->warmup = false;
+    element->begin_phase();
+  }
+  const champsim::address a{0x10000}, b{0x10040};
+  for (unsigned way = 0; way < 2; ++way) {
+    auto& fragment = cache.block[way];
+    fragment.valid = true;
+    fragment.address = way == 0 ? a : b;
+    fragment.v_address = fragment.address;
+    fragment.size = 4;
+    fragment.offset = 0;
+  }
+  auto issue = [&](champsim::address line, uint64_t mask, uint64_t id) {
+    auto packet = make_request(line, mask, id);
+    packet.instr_depend_on_me = {id};
+    REQUIRE(upper.add_rq(packet));
+    run_cycles(elements, 10);
+  };
+  auto returned = [&](uint64_t id) {
+    return std::any_of(upper.returned.begin(), upper.returned.end(), [id](const auto& response) {
+      return std::find(response.instr_depend_on_me.begin(), response.instr_depend_on_me.end(), id) != response.instr_depend_on_me.end();
+    });
+  };
+  const auto missing = uint64_t{0xf} << 32;
+  const auto more_missing = uint64_t{0xf} << 48;
+  issue(a, missing, 1);
+  issue(b, missing, 2);
+  REQUIRE(cache.MSHR.size() == 2);
+  REQUIRE(lower.packet_count() == 2);
+  REQUIRE_FALSE(returned(1));
+  REQUIRE_FALSE(returned(2));
+
+  issue(a, 0xf, 3);
+  issue(b, 0xf, 4);
+  REQUIRE(returned(3));
+  REQUIRE(returned(4));
+  REQUIRE_FALSE(returned(1));
+  REQUIRE_FALSE(returned(2));
+  REQUIRE(cache.sim_stats.hits.value_or(std::pair{access_type::LOAD, 0u}, 0) == 2);
+  REQUIRE(cache.sim_stats.miss_merge.value_or(std::pair{access_type::LOAD, 0u}, 0) == 0);
+  REQUIRE(cache.is_instruction_present(a));
+  REQUIRE(cache.is_instruction_present(b));
+
+  // Uncovered bytes merge into A's refill, rather than becoming premature hits.
+  issue(a, more_missing, 5);
+  REQUIRE_FALSE(returned(5));
+  REQUIRE(cache.sim_stats.miss_merge.value_or(std::pair{access_type::LOAD, 0u}, 0) == 1);
+  REQUIRE(lower.packet_count() == 2);
+
+  // Return the younger miss first. It must not destroy A's resident coverage.
+  lower.release(b);
+  run_cycles(elements, 10);
+  REQUIRE(returned(2));
+  REQUIRE_FALSE(returned(1));
+  REQUIRE(cache.MSHR.size() == 1);
+  issue(a, 0xf, 6);
+  REQUIRE(returned(6));
+  REQUIRE_FALSE(returned(1));
+  lower.release(a);
+  run_cycles(elements, 10);
+  REQUIRE(returned(1));
+  REQUIRE(returned(5));
+  REQUIRE(cache.MSHR.empty());
+  REQUIRE(std::none_of(cache.block.begin(), cache.block.end(), [a](const auto& fragment) {
+    return fragment.valid && fragment.address == a;
+  })); // A now lives in the full-line predictor, with no duplicate fragments.
+  issue(b, 0xf | missing, 7);
+  issue(a, 0xf | missing | more_missing, 8);
+  REQUIRE(returned(7));
+  REQUIRE(returned(8));
+  REQUIRE(lower.packet_count() == 2);
+}

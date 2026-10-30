@@ -26,6 +26,7 @@
 #include <bitset>
 #include <deque>
 #include <limits>
+#include <map>
 #include <memory>
 #include <optional>
 #include <queue>
@@ -148,6 +149,23 @@ public:
 
   RegisterAllocator reg_allocator{REGISTER_FILE_SIZE};
 
+  // TI-WP frontend replay. History contains only instructions consumed on the correct path.
+  const bool WRONG_PATH;
+  const std::size_t WRONG_PATH_HISTORY_SIZE;
+  struct replay_entry {
+    ooo_model_instr instruction;
+    champsim::address fallthrough{};
+  };
+  std::map<champsim::address, replay_entry> wrong_path_history;
+  std::deque<champsim::address> wrong_path_history_order;
+  std::optional<ooo_model_instr> previous_trace_instruction;
+  bool wrong_path_active = false;
+  champsim::address wrong_path_next{};
+  uint64_t wrong_path_id = uint64_t{1} << 63;
+  void remember_instruction(const ooo_model_instr& instr);
+  void initialize_wrong_path(champsim::bandwidth& bandwidth);
+  void recover_wrong_path();
+
   // branch
   champsim::chrono::clock::time_point fetch_resume_time{};
 
@@ -265,7 +283,8 @@ public:
         BTB_PERFECT_MAPPING(b.m_btb_perfect_mapping), BTB_INVALIDATE_ENTRY(b.m_btb_invalidate_entry), BTB_INVALIDATE_REGION(b.m_btb_invalidate_region),
         BTB_TAG_SIZE(b.m_btb_tag_size), BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_FILTER_BTB_LIMIT(b.m_btb_filter_btb_limit),
         BTB_TAG_REGION_WAYS(b.m_btb_tag_region_ways), BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), BTB_INDEX_TAG_HASH(b.m_btb_index_tag_hash),
-        IN_QUEUE_SIZE(2 * champsim::to_underlying(b.m_fetch_width)), L1I_bus(b.m_cpu, b.m_fetch_queues),
+        WRONG_PATH(b.m_wrong_path), WRONG_PATH_HISTORY_SIZE(b.m_wrong_path_history_size), IN_QUEUE_SIZE(2 * champsim::to_underlying(b.m_fetch_width)),
+        L1I_bus(b.m_cpu, b.m_fetch_queues),
         L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), branch_module_pimpl(std::make_unique<branch_module_model<Bs...>>(this)),
         btb_module_pimpl(std::make_unique<btb_module_model<Ts...>>(this))
   {

@@ -54,3 +54,9 @@ IPC bars use the harmonic mean across traces in each category. Relative bars
 use `100 * (harmonic_mean(IPC / baseline_IPC) - 1)`, so negative percentage
 changes are handled through positive speedup ratios. Exact plot CSVs use these
 same aggregates; per-trace exports remain unchanged.
+
+All sweep points explicitly use 8 L1I MSHRs, 2 tag checks per cycle, and
+2 fills per cycle (`mshr_size`, `max_tag_check`, `max_fill`). These resources
+are fixed across cache sizes and organizations; they no longer inherit
+size-dependent defaults. Latency retains the existing configuration defaults.
+Rebuild and rerun existing results to apply these settings.

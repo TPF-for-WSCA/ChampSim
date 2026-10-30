@@ -48,6 +48,15 @@ class StorageDSETests(unittest.TestCase):
             self.assertAlmostEqual(summary[0]['ipc_per_kib'], 2 / 1.5)
             self.assertEqual(len(traces), 2)
 
+    def test_prefetch_buffer_budget_is_excluded_from_icache_storage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'run.log'
+            path.write_text('CPU 0 basic_btb STORAGE (modeled): total=4096 bits\n'
+                'cpu0_L1I UBS STORAGE (modeled): total=8192 bits\n'
+                'Prefetcher cpu0_L1I prefetch buffer STORAGE (modeled): total=19312 bits\n'
+                'Simulation complete\n')
+            self.assertEqual(storage_from_log(path), (8192, 4096))
+
     def test_uses_harmonic_mean(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

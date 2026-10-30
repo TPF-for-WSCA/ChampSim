@@ -1,0 +1,25 @@
+{
+  "executable_name": "fdip_icache_wrongpath/fdip_icache_4k",
+  "block_size": 64,
+  "ooo_cpu": [{"wrong_path": true}],
+  "L1I": {
+    "mshr_size": 8,
+    "max_tag_check": 2,
+    "max_fill": 2,
+    "sets": 8,
+    "ways": 8,
+    "replacement": "srrip",
+    "prefetcher": "fdip",
+    "prefetch_activate": "LOAD,PREFETCH",
+    "virtual_prefetch": true
+  },
+  "L1D": {
+    "prefetcher": "berti"
+  },
+  "L2C": {
+    "prefetcher": "pythia"
+  },
+  "LLC": {
+    "replacement": "drrip"
+  }
+}

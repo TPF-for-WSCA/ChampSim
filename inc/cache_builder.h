@@ -48,6 +48,7 @@ struct cache_builder_base {
   std::optional<uint32_t> m_sets{};
   double m_sets_factor{64};
   std::optional<uint32_t> m_ways{};
+  std::size_t m_prefetch_buffer_size{0};
   std::size_t m_pq_size{std::numeric_limits<std::size_t>::max()};
   std::optional<uint32_t> m_mshr_size{};
   std::optional<uint64_t> m_hit_lat{};
@@ -226,6 +227,9 @@ public:
 
   /** Use the conventional fixed-block cache organization. */
   self_type& reset_ubs();
+
+  /** Full-line FIFO entries for prefetched data; zero enables direct prefetch insertion. */
+  self_type& prefetch_buffer_size(std::size_t entries);
 
   /** Specify the capacity, in bytes, of each UBS way. */
   self_type& ubs_way_sizes(std::vector<uint32_t> way_sizes_);
@@ -526,6 +530,13 @@ template <typename P, typename R>
 auto champsim::cache_builder<P, R>::reset_ubs() -> self_type&
 {
   m_ubs = false;
+  return *this;
+}
+
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::prefetch_buffer_size(std::size_t entries) -> self_type&
+{
+  m_prefetch_buffer_size = entries;
   return *this;
 }
 

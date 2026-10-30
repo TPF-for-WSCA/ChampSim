@@ -26,6 +26,11 @@ class CpuBuilderTest(unittest.TestCase):
         modified = list(config.instantiation_file.get_cpu_builder({**base_cpu, **kwargs}, caches, ul_pairs))
         self.assertEqual({l.strip() for l in itertools.chain(empty, added_lines)}, {l.strip() for l in modified}) # Ignore whitespace
 
+    def test_wrong_path(self):
+        self.get_element_diff(['.wrong_path(1)'], wrong_path=True)
+        self.get_element_diff(['.wrong_path(0)'], wrong_path=False)
+        self.get_element_diff(['.wrong_path_history_size(1024)'], wrong_path_history_size=1024)
+
     def test_ifetch_buffer_size(self):
         self.get_element_diff(['.ifetch_buffer_size(1)'], ifetch_buffer_size=1)
 
@@ -151,6 +156,9 @@ class CacheBuilderTests(unittest.TestCase):
 
     def test_log2_ways(self):
         self.get_element_diff(['.log2_ways(1)'], log2_ways=1)
+
+    def test_prefetch_buffer_size(self):
+        self.get_element_diff(['.prefetch_buffer_size(32)'], prefetch_buffer_size=32)
 
     def test_pq_size(self):
         self.get_element_diff(['.pq_size(1)'], pq_size=1)

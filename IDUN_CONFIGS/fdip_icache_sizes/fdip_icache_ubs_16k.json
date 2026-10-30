@@ -2,6 +2,9 @@
   "executable_name": "fdip_icache/fdip_icache_ubs_16k",
   "block_size": 64,
   "L1I": {
+    "mshr_size": 8,
+    "max_tag_check": 2,
+    "max_fill": 2,
     "sets": 32,
     "ubs": true,
     "ubs_way_sizes": [4, 4, 8, 8, 8, 12, 12, 16, 24, 32, 36, 36, 52, 64, 64, 64],

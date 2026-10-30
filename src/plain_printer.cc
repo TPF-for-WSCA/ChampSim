@@ -56,6 +56,10 @@ std::vector<std::string> champsim::plain_printer::format(O3_CPU::stats_type stat
                               ::print_ratio(std::kilo::num * total_mispredictions, stats.instrs()),
                               ::print_ratio(stats.total_rob_occupancy_at_branch_mispredict, total_mispredictions)));
 
+  if (stats.wrong_path_fetched || stats.wrong_path_squashed || stats.wrong_path_unknown)
+    lines.push_back(fmt::format("{} Wrong-path instructions fetched: {} squashed: {} unknown PCs: {}", stats.name, stats.wrong_path_fetched,
+                                stats.wrong_path_squashed, stats.wrong_path_unknown));
+
   lines.emplace_back("Branch type MPKI");
   for (auto idx : types) {
     lines.push_back(fmt::format("{}: {}", branch_type_names.at(champsim::to_underlying(idx)),

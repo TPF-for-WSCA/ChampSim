@@ -62,6 +62,7 @@ const auto default_l1i = champsim::cache_builder<champsim::cache_builder_module_
                              .sets_factor(64)
                              .ways(8)
                              .pq_size(32)
+                             .prefetch_buffer_size(32)
                              .offset_bits(champsim::data::bits{LOG2_BLOCK_SIZE})
                              .reset_prefetch_as_load()
                              .set_virtual_prefetch()

@@ -77,8 +77,8 @@ class CACHE : public champsim::operable
     bool partial_miss = false;
     bool hit = false;
     uint64_t requested_bytes = 0;
-    // Snapshot of all resident sub-block bytes on a partial miss. Carry this
-    // through the miss state even after the original fragments are invalidated.
+    // Snapshot of resident sub-block bytes on a partial miss. Fragments remain
+    // hittable until refill, but normal replacement can evict them in the meantime.
     uint64_t ubs_preserved_bytes = 0;
 
     uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
@@ -127,8 +127,10 @@ public:
 
 private:
   bool try_hit(tag_lookup_type& handle_pkt);
-  bool handle_fill(const fill_type& fill);
-  bool handle_ubs_fill(const fill_type& fill);
+  bool handle_fill(const fill_type& fill, bool buffer_promotion = false);
+  bool handle_ubs_fill(const fill_type& fill, bool buffer_promotion);
+  bool try_prefetch_buffer_hit(tag_lookup_type& packet);
+  bool handle_prefetch_buffer_fill(const fill_type& fill);
   bool handle_miss(const tag_lookup_type& handle_pkt);
   bool handle_write(const tag_lookup_type& handle_pkt);
   void finish_packet(const response_type& packet);
@@ -181,10 +183,14 @@ public:
   channel_type* lower_level;
   channel_type* lower_translate;
 
+  // Side-effect-free virtual-PC probe for instruction prefetchers, including UBS byte coverage.
+  [[nodiscard]] bool is_instruction_present(champsim::address virtual_pc) const;
+
   uint32_t cpu = 0;
   std::string NAME;
   uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
   std::size_t PQ_SIZE;
+  std::size_t PREFETCH_BUFFER_SIZE;
   champsim::chrono::clock::duration HIT_LATENCY;
   champsim::chrono::clock::duration FILL_LATENCY;
   champsim::data::bits OFFSET_BITS;
@@ -194,6 +200,8 @@ public:
   set_type block{static_cast<typename set_type::size_type>(NUM_SET * NUM_WAY)};
 
 private:
+  // Fully associative FIFO, owned by the prefetcher storage budget.
+  std::deque<BLOCK> prefetch_buffer{};
   std::vector<ubs_predictor_entry> ubs_predictor{NUM_SET};
   uint64_t ubs_access_counter = 0;
 
@@ -357,6 +365,7 @@ public:
   explicit CACHE(champsim::cache_builder<champsim::cache_builder_module_type_holder<Ps...>, champsim::cache_builder_module_type_holder<Rs...>> b)
       : champsim::operable(b.m_clock_period), upper_levels(b.m_uls), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name), NUM_SET(b.get_num_sets()),
         NUM_WAY(b.m_ubs ? static_cast<uint32_t>(std::size(b.m_ubs_way_sizes)) : b.get_num_ways()), MSHR_SIZE(b.get_num_mshrs()), PQ_SIZE(b.m_pq_size),
+        PREFETCH_BUFFER_SIZE(b.m_prefetch_buffer_size),
         HIT_LATENCY(b.get_hit_latency() * b.m_clock_period), FILL_LATENCY(b.get_fill_latency() * b.m_clock_period), OFFSET_BITS(b.m_offset_bits), ubs(b.m_ubs),
         UBS_WAY_SIZES(b.m_ubs_way_sizes), UBS_CANDIDATE_WAYS(b.m_ubs_candidate_ways), MAX_TAG(b.get_tag_bandwidth()), MAX_FILL(b.get_fill_bandwidth()),
         prefetch_as_load(b.m_pref_load), match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),

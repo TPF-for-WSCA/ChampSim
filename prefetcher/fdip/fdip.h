@@ -13,7 +13,7 @@ struct fdip : public champsim::modules::prefetcher {
   static constexpr std::size_t MAX_QUEUED_TARGETS = 128;
   static constexpr std::size_t MAX_RECENT_PREFETCHES = 4;
 
-  std::deque<champsim::block_number> queued_targets;
+  std::deque<champsim::address> queued_targets;
   std::deque<champsim::block_number> recent_prefetches;
 
   using prefetcher::prefetcher;

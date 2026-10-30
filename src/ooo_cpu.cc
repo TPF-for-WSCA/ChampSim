@@ -86,6 +86,73 @@ void O3_CPU::end_phase(unsigned finished_cpu)
   }
 }
 
+void O3_CPU::remember_instruction(const ooo_model_instr& instr)
+{
+  if (WRONG_PATH_HISTORY_SIZE == 0)
+    return;
+  if (previous_trace_instruction && (!previous_trace_instruction->is_branch || !previous_trace_instruction->branch_taken)) {
+    auto prev = wrong_path_history.find(previous_trace_instruction->ip);
+    if (prev != wrong_path_history.end())
+      prev->second.fallthrough = instr.ip;
+  }
+  auto found = wrong_path_history.find(instr.ip);
+  if (found == wrong_path_history.end()) {
+    if (wrong_path_history.size() >= WRONG_PATH_HISTORY_SIZE) {
+      wrong_path_history.erase(wrong_path_history_order.front());
+      wrong_path_history_order.pop_front();
+    }
+    wrong_path_history.emplace(instr.ip, replay_entry{instr, {}});
+    wrong_path_history_order.push_back(instr.ip);
+  } else {
+    found->second.instruction = instr;
+  }
+  previous_trace_instruction = instr;
+}
+
+void O3_CPU::initialize_wrong_path(champsim::bandwidth& bandwidth)
+{
+  while (wrong_path_active && bandwidth.has_remaining() && wrong_path_next != champsim::address{}) {
+    auto entry = wrong_path_history.find(wrong_path_next);
+    if (entry == wrong_path_history.end()) {
+      ++sim_stats.wrong_path_unknown;
+      wrong_path_next = {};
+      break;
+    }
+    auto instr = entry->second.instruction;
+    instr.wrong_path = true;
+    instr.instr_id = wrong_path_id++;
+    instr.ready_time = current_time;
+    wrong_path_next = entry->second.fallthrough;
+    bool taken = false;
+    if (instr.is_branch) {
+      auto [target, always_taken] = impl_btb_prediction(instr.ip, instr.branch);
+      taken = impl_predict_branch(instr.ip, target, always_taken, instr.branch) || always_taken;
+      if (taken)
+        wrong_path_next = target;
+      l1i->impl_prefetcher_branch_operate(instr.ip, instr.branch, taken ? target : champsim::address{});
+    }
+    // No outcome training or data-side activity for inferred wrong-path instructions.
+    IFETCH_BUFFER.push_back(std::move(instr));
+    ++sim_stats.wrong_path_fetched;
+    bandwidth.consume();
+    if (taken)
+      break;
+  }
+}
+
+void O3_CPU::recover_wrong_path()
+{
+  if (!wrong_path_active)
+    return;
+  for (auto* buffer : {&IFETCH_BUFFER, &DECODE_BUFFER, &DIB_HIT_BUFFER, &DISPATCH_BUFFER}) {
+    auto end = std::remove_if(buffer->begin(), buffer->end(), [](const auto& instr) { return instr.wrong_path; });
+    sim_stats.wrong_path_squashed += std::distance(end, buffer->end());
+    buffer->erase(end, buffer->end());
+  }
+  wrong_path_active = false;
+  wrong_path_next = {};
+}
+
 void O3_CPU::initialize_instruction()
 {
   champsim::bandwidth instrs_to_read_this_cycle{
@@ -95,6 +162,8 @@ void O3_CPU::initialize_instruction()
   while (current_time >= fetch_resume_time && instrs_to_read_this_cycle.has_remaining() && !stop_fetch && !std::empty(input_queue)) {
     instrs_to_read_this_cycle.consume();
 
+    if (WRONG_PATH)
+      remember_instruction(input_queue.front());
     stop_fetch = do_init_instruction(input_queue.front());
 
     // Add to IFETCH_BUFFER
@@ -103,6 +172,8 @@ void O3_CPU::initialize_instruction()
 
     IFETCH_BUFFER.back().ready_time = current_time;
   }
+  if (WRONG_PATH && wrong_path_active && !stop_fetch)
+    initialize_wrong_path(instrs_to_read_this_cycle);
 }
 
 namespace
@@ -157,6 +228,12 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
         fetch_resume_time = champsim::chrono::clock::time_point::max();
         stop_fetch = true;
         arch_instr.branch_mispredicted = true;
+        if (WRONG_PATH) {
+          wrong_path_active = true;
+          const auto entry = wrong_path_history.find(arch_instr.ip);
+          wrong_path_next = arch_instr.branch_prediction ? predicted_branch_target
+                            : (entry != wrong_path_history.end() ? entry->second.fallthrough : champsim::address{});
+        }
       }
     } else {
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
@@ -227,17 +304,23 @@ long O3_CPU::fetch_instruction()
     return champsim::block_number{lhs.ip} != champsim::block_number{rhs.ip};
   };
 
+  champsim::bandwidth fetch_bw{FETCH_WIDTH};
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
-  for (champsim::bandwidth l1i_bw{L1I_BANDWIDTH}; l1i_bw.has_remaining() && l1i_req_begin != std::end(IFETCH_BUFFER); l1i_bw.consume()) {
-    auto l1i_req_end = std::adjacent_find(l1i_req_begin, std::end(IFETCH_BUFFER), no_match_ip);
-    if (l1i_req_end != std::end(IFETCH_BUFFER)) {
+  for (champsim::bandwidth l1i_bw{L1I_BANDWIDTH}; fetch_bw.has_remaining() && l1i_bw.has_remaining() && l1i_req_begin != std::end(IFETCH_BUFFER);
+       l1i_bw.consume()) {
+    auto [window_begin, window_end] = champsim::get_span(l1i_req_begin, std::end(IFETCH_BUFFER), fetch_bw);
+    auto l1i_req_end = std::adjacent_find(window_begin, window_end, no_match_ip);
+    if (l1i_req_end != window_end) {
       l1i_req_end = std::next(l1i_req_end); // adjacent_find returns the first of the non-equal elements
     }
 
     // Issue to L1I
     auto success = do_fetch_instruction(l1i_req_begin, l1i_req_end);
     if (success) {
-      std::for_each(l1i_req_begin, l1i_req_end, [](auto& x) { x.fetch_issued = true; });
+      for (auto instr = l1i_req_begin; instr != l1i_req_end; ++instr) {
+        instr->fetch_issued = true;
+        fetch_bw.consume();
+      }
       ++progress;
     }
 
@@ -260,7 +343,7 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
     // UBS tracks useful instruction bytes in its predictor. The traces used by
     // this frontend expose instruction PCs but not decoded lengths, so retain
     // the MICRO-1 model's four-byte instruction granularity.
-    if (l1i->ubs) {
+    if (l1i != nullptr && l1i->ubs) {
       const auto offset = instr->ip.slice_lower(champsim::data::bits{LOG2_BLOCK_SIZE}).to<uint32_t>();
       const auto bytes_in_line = std::min<uint32_t>(4, BLOCK_SIZE - offset);
       const auto instruction_mask = ((uint64_t{1} << bytes_in_line) - 1) << offset;
@@ -391,6 +474,8 @@ long O3_CPU::decode_instruction()
              ooo_model_instr::program_order);
   DECODE_BUFFER.erase(decode_buffer_begin, decode_buffer_end);
   DIB_HIT_BUFFER.erase(dib_hit_buffer_begin, dib_hit_buffer_end);
+  if (wrong_path_active && fetch_resume_time != champsim::chrono::clock::time_point::max())
+    recover_wrong_path();
 
   return progress;
 }
@@ -403,7 +488,7 @@ long O3_CPU::dispatch_instruction()
 
   // dispatch DISPATCH_WIDTH instructions into the ROB
   while (available_dispatch_bandwidth.has_remaining() && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().ready_time <= current_time
-         && std::size(ROB) != ROB_SIZE
+         && !DISPATCH_BUFFER.front().wrong_path && std::size(ROB) != ROB_SIZE
          && ((std::size_t)std::count_if(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
              >= std::size(DISPATCH_BUFFER.front().source_memory))
          && ((std::size(DISPATCH_BUFFER.front().destination_memory) + std::size(SQ)) <= SQ_SIZE)) {
@@ -633,6 +718,7 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
   instr.completed = true;
 
   if (instr.branch_mispredicted) {
+    recover_wrong_path();
     fetch_resume_time = current_time + BRANCH_MISPREDICT_PENALTY;
   }
 }

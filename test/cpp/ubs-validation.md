@@ -1,5 +1,51 @@
 # UBS small-scale validation — 2026-10-29
 
+## Partial-miss residency with concurrent refills
+
+Partial-miss acceptance no longer invalidates resident fragments. Covered
+requests hit during an outstanding refill, while uncovered requests merge and
+wait for the returning data. Existing refill handling snapshots and removes
+surviving fragments immediately before installing the predictor victim and
+new predictor line. Per-MSHR coverage snapshots still survive intervening normal
+replacement; fragments are not pinned.
+
+The regression exercises 2- and 8-entry MSHR configurations, two independent
+partial misses, covered hits with both misses outstanding (including a full
+2-entry MSHR), same-line uncovered merging, and younger-before-older refill
+completion. It checks that pending requests do not complete prematurely, refill
+leaves no duplicate fragments, and both lines retain their byte coverage. The
+existing snapshot regression also forces an intervening eviction before a
+second merged request. Focused frontend/FDIP/UBS/prefetch-buffer regression:
+**40 cases / 2,440 assertions passed**.
+
+## Shared instruction-prefetch buffer — 2026-10-29
+
+All L1 instruction-cache organizations now default to a 32-entry fully
+associative FIFO prefetch buffer. Unused prefetch fills stay outside the cache
+and UBS predictor. A demand miss that hits the buffer consumes and promotes the
+line through normal cache insertion; subsequent accesses use the cache.
+Prefetch probes do not refresh FIFO order. Demand/prefetch MSHR merges retain
+direct demand insertion. UBS prefetch partial misses leave existing fragments
+intact until demand promotion, which preserves their useful-byte masks.
+
+`L1I.prefetch_buffer_size` overrides the entry count; zero restores direct
+prefetch insertion. Data-cache defaults remain unchanged. The default buffer
+uses 2 KiB of data and 2.357 KiB including modeled tags, module metadata, valid
+bits, FIFO pointers and occupancy. The separate `Prefetcher <name> prefetch
+buffer STORAGE` report charges this to the prefetcher budget and does not add it
+to I-cache capacity or the L1I + BTB storage plot.
+
+Validation: a freshly compiled runner containing existing cache/prefetch tests
+400–432 and the UBS tests passed **68 cases / 2,139 assertions**. New tests cover
+both conventional and UBS promotion, persistent residency after buffer overflow,
+FIFO probe behavior, unused eviction accounting, invalidation, demand merging
+into an inflight prefetch, zero-sized fallback, and UBS fragment preservation.
+Configuration-generation and storage-DSE Python tests ran **80 tests**, with
+**79 passing and one skipped**. No workload IPC claim is made by these checks.
+The focused runner compiled the simulator sources (excluding main and generated
+environment), test helpers, LRU and no-prefetcher modules in an isolated `/tmp`
+build. Existing experiment binaries must be rebuilt before using this behavior.
+
 ## Historical LRU2BOUND4 restoration
 
 The working tree now restores the historical global fitting-empty-slot search,

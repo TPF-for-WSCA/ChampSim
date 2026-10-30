@@ -2,6 +2,9 @@
   "executable_name": "fdip_icache/fdip_icache_16k",
   "block_size": 64,
   "L1I": {
+    "mshr_size": 8,
+    "max_tag_check": 2,
+    "max_fill": 2,
     "sets": 32,
     "ways": 8,
     "prefetcher": "fdip",

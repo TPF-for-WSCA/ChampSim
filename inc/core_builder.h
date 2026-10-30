@@ -64,6 +64,8 @@ struct core_builder_base {
 
   unsigned m_dib_hit_latency{};
 
+  bool m_wrong_path{};
+  std::size_t m_wrong_path_history_size{65536};
   unsigned m_mispredict_penalty{};
   unsigned m_decode_latency{};
   unsigned m_dispatch_latency{};
@@ -276,6 +278,8 @@ public:
    */
   self_type& data_queues(champsim::channel* data_queues_);
 
+  self_type& wrong_path(bool value);
+  self_type& wrong_path_history_size(std::size_t value);
   self_type& btb_sets(std::size_t value);
   self_type& btb_ways(std::size_t value);
   self_type& l2_btb_latency(unsigned value);
@@ -547,6 +551,8 @@ auto champsim::core_builder<B, T>::data_queues(champsim::channel* data_queues_) 
     return *this;                                                                                                             \
   }
 
+CHAMPSIM_CORE_BUILDER_SETTER(wrong_path, bool)
+CHAMPSIM_CORE_BUILDER_SETTER(wrong_path_history_size, std::size_t)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_sets, std::size_t)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_ways, std::size_t)
 CHAMPSIM_CORE_BUILDER_SETTER(l2_btb_latency, unsigned)

@@ -27,8 +27,14 @@ max_parallel=${ARRAY_MAX_CONCURRENT:-32}
 
 trace_groups=(spec server client)
 
+submit_only=false
+if [[ ${1:-} == --submit ]]; then
+  submit_only=true
+  shift
+fi
+
 if (( $# != 1 )); then
-  echo "Usage: $0 <binary-directory>" >&2
+  echo "Usage: $0 [--submit] <binary-directory>" >&2
   exit 2
 fi
 
@@ -81,8 +87,8 @@ total_simulations=$((${#binaries[@]} * ${#traces[@]}))
 
 # Outside an array allocation, this script acts as the submission frontend.
 # Each array element below re-enters the script with SLURM_ARRAY_TASK_ID set.
-if [[ -z ${SLURM_ARRAY_TASK_ID:-} ]]; then
-  if [[ -n ${SLURM_JOB_ID:-} ]]; then
+if [[ ${submit_only} == true || -z ${SLURM_ARRAY_TASK_ID:-} ]]; then
+  if [[ ${submit_only} == false && -n ${SLURM_JOB_ID:-} ]]; then
     echo "Run this script directly (not through sbatch); it submits its own array job." >&2
     exit 2
   fi
