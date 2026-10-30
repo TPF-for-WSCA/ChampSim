@@ -2,6 +2,7 @@
   "executable_name": "litebtb_smoke/xbtbx",
   "ooo_cpu": [
     {
+      "branch_predictor": "tage_sc_l",
       "btb": "xbtbx",
       "btb_sets": 512,
       "btb_ways": 9,
@@ -31,6 +32,19 @@
     "ways": 8,
     "prefetcher": "fdip",
     "prefetch_activate": "LOAD,PREFETCH",
-    "virtual_prefetch": true
+    "virtual_prefetch": true,
+    "replacement": "srrip"
+  },
+  "L1D": {
+    "prefetcher": "berti",
+    "virtual_prefetch": true,
+    "prefetch_activate": "LOAD,RFO"
+  },
+  "L2C": {
+    "prefetcher": "pythia",
+    "prefetch_activate": "LOAD,RFO,PREFETCH"
+  },
+  "LLC": {
+    "replacement": "drrip"
   }
 }

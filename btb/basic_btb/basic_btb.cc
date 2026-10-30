@@ -44,12 +44,9 @@ void basic_btb::update_btb(champsim::address ip, champsim::address branch_target
   if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL)
     ras.push(ip);
 
-  // updates for indirect branches
-  if ((branch_type == BRANCH_INDIRECT) || (branch_type == BRANCH_INDIRECT_CALL))
-    indirect.update_target(ip, branch_target);
-
-  if (branch_type == BRANCH_CONDITIONAL)
-    indirect.update_direction(taken);
+  // Train indirect targets with the preceding history, then advance history
+  // for every real branch. Prediction-only wrong-path fetches do not train.
+  indirect.update(ip, branch_target, taken, branch_type);
 
   if (branch_type == BRANCH_RETURN)
     ras.calibrate_call_size(branch_target);
@@ -65,8 +62,9 @@ void basic_btb::initialize_btb()
       {"Direct BTB tags", count * (64 - 2 - champsim::storage_bits(direct.sets))},
       {"Direct BTB valid bits", count}, {"Direct BTB branch types", count * 2},
       {"Direct BTB replacement (LRU ranks)", count * champsim::storage_bits(direct.ways)},
-      {"Indirect target table", indirect_predictor::size * 64},
-      {"Conditional history", champsim::storage_bits(indirect_predictor::size)},
+      {"ITTAGE base targets/valid", ittage::base_storage_bits},
+      {"ITTAGE tagged targets/tags/confidence/useful/valid", ittage::tagged_storage_bits},
+      {"ITTAGE history/folds/cursor/chooser/aging", ittage::history_storage_bits},
       {"Return address stack", return_stack::max_size * 64},
       {"Return stack pointer", champsim::storage_bits(return_stack::max_size + 1)},
       {"Call-size trackers", return_stack::num_call_size_trackers * 64}});

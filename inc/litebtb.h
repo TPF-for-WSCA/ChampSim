@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "address.h"
+#include "ittage.h"
 #include "modules.h"
 
 enum class litebtb_hash { identity, half_xor, full_xor, geometric, pearson, rabin, sha3, zobrist };
@@ -43,6 +44,7 @@ class litebtb_predictor : public champsim::modules::btb
   std::vector<entry> entries;
   std::vector<entry> l1_entries;
   std::deque<uint64_t> ras;
+  ittage indirect{};
   uint64_t access_count{};
 
   [[nodiscard]] uint64_t permute(uint64_t value) const;

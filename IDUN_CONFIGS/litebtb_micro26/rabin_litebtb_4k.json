@@ -1,17 +1,48 @@
 {
   "executable_name": "litebtb_micro26/rabin_litebtb_4k",
-  "ooo_cpu": [{
-    "btb": "rabin_xbtbx",
-    "btb_sets": 512,
-    "btb_ways": 9,
-    "btb_clipped_tag": true,
-    "btb_target_sizes": [0, 4, 5, 7, 9, 11, 19, 25, 64],
-    "btb_tag_size": 12,
-    "btb_tag_regions": 0,
-    "btb_tag_region_size": 0,
-    "btb_tag_region_ways": 0,
-    "btb_perfect_mapping": false,
-    "btb_invalidate_entry": false,
-    "btb_invalidate_region": false
-  }]
+  "ooo_cpu": [
+    {
+      "branch_predictor": "tage_sc_l",
+      "btb": "rabin_xbtbx",
+      "btb_sets": 512,
+      "btb_ways": 9,
+      "btb_clipped_tag": true,
+      "btb_target_sizes": [
+        0,
+        4,
+        5,
+        7,
+        9,
+        11,
+        19,
+        25,
+        64
+      ],
+      "btb_tag_size": 12,
+      "btb_tag_regions": 0,
+      "btb_tag_region_size": 0,
+      "btb_tag_region_ways": 0,
+      "btb_perfect_mapping": false,
+      "btb_invalidate_entry": false,
+      "btb_invalidate_region": false
+    }
+  ],
+  "L1I": {
+    "replacement": "srrip",
+    "prefetcher": "fdip",
+    "prefetch_activate": "LOAD,PREFETCH",
+    "virtual_prefetch": true
+  },
+  "L1D": {
+    "prefetcher": "berti",
+    "virtual_prefetch": true,
+    "prefetch_activate": "LOAD,RFO"
+  },
+  "L2C": {
+    "prefetcher": "pythia",
+    "prefetch_activate": "LOAD,RFO,PREFETCH"
+  },
+  "LLC": {
+    "replacement": "drrip"
+  }
 }

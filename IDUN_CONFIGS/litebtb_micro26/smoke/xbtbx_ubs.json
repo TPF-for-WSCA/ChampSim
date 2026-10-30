@@ -2,6 +2,7 @@
   "executable_name": "litebtb_smoke/xbtbx_ubs",
   "ooo_cpu": [
     {
+      "branch_predictor": "tage_sc_l",
       "btb": "xbtbx",
       "btb_sets": 512,
       "btb_ways": 9,
@@ -50,6 +51,19 @@
       64,
       64
     ],
-    "ubs_candidate_ways": 4
+    "ubs_candidate_ways": 4,
+    "replacement": "srrip"
+  },
+  "L1D": {
+    "prefetcher": "berti",
+    "virtual_prefetch": true,
+    "prefetch_activate": "LOAD,RFO"
+  },
+  "L2C": {
+    "prefetcher": "pythia",
+    "prefetch_activate": "LOAD,RFO,PREFETCH"
+  },
+  "LLC": {
+    "replacement": "drrip"
   }
 }

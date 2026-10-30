@@ -19,7 +19,7 @@ def configurations():
             for btb in BTB_KENTRIES:
                 name = f"{design.lower()}_i{icache}k_b{btb}k"
                 cache = {"sets": icache * 1024 // (8 * 64), "ways": 8,
-                         "ubs": ubs, "prefetcher": "fdip", "replacement": "lru",
+                         "ubs": ubs, "prefetcher": "fdip", "replacement": "srrip",
                          "prefetch_activate": "LOAD,PREFETCH", "virtual_prefetch": True}
                 if ubs:
                     cache.pop("ways")
@@ -32,7 +32,11 @@ def configurations():
                                btb_perfect_mapping=False, btb_invalidate_entry=False,
                                btb_invalidate_region=False)
                 yield name, {"executable_name": f"storage_dse/{name}",
-                             "block_size": 64, "ooo_cpu": [cpu], "L1I": cache}
+                             "block_size": 64, "ooo_cpu": [cpu], "L1I": cache,
+                             "L1D": {"prefetcher": "berti", "virtual_prefetch": True,
+                                     "prefetch_activate": "LOAD,RFO"},
+                             "L2C": {"prefetcher": "pythia", "prefetch_activate": "LOAD,RFO,PREFETCH"},
+                             "LLC": {"replacement": "drrip"}}
 
 
 if __name__ == "__main__":

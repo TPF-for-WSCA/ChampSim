@@ -1,4 +1,9 @@
 {
+  "ooo_cpu": [
+    {
+      "branch_predictor": "tage_sc_l"
+    }
+  ],
   "executable_name": "fdip_icache/fdip_icache_ubs_4k",
   "block_size": 64,
   "L1I": {
@@ -7,10 +12,40 @@
     "max_fill": 2,
     "sets": 8,
     "ubs": true,
-    "ubs_way_sizes": [4, 4, 8, 8, 8, 12, 12, 16, 24, 32, 36, 36, 52, 64, 64, 64],
+    "ubs_way_sizes": [
+      4,
+      4,
+      8,
+      8,
+      8,
+      12,
+      12,
+      16,
+      24,
+      32,
+      36,
+      36,
+      52,
+      64,
+      64,
+      64
+    ],
     "ubs_candidate_ways": 4,
     "prefetcher": "fdip",
     "prefetch_activate": "LOAD,PREFETCH",
-    "virtual_prefetch": true
+    "virtual_prefetch": true,
+    "replacement": "srrip"
+  },
+  "L1D": {
+    "prefetcher": "berti",
+    "virtual_prefetch": true,
+    "prefetch_activate": "LOAD,RFO"
+  },
+  "L2C": {
+    "prefetcher": "pythia",
+    "prefetch_activate": "LOAD,RFO,PREFETCH"
+  },
+  "LLC": {
+    "replacement": "drrip"
   }
 }

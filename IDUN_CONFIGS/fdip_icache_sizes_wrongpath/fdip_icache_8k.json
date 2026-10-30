@@ -1,7 +1,12 @@
 {
   "executable_name": "fdip_icache_wrongpath/fdip_icache_8k",
   "block_size": 64,
-  "ooo_cpu": [{"wrong_path": true}],
+  "ooo_cpu": [
+    {
+      "branch_predictor": "tage_sc_l",
+      "wrong_path": true
+    }
+  ],
   "L1I": {
     "mshr_size": 8,
     "max_tag_check": 2,
@@ -10,6 +15,19 @@
     "ways": 8,
     "prefetcher": "fdip",
     "prefetch_activate": "LOAD,PREFETCH",
-    "virtual_prefetch": true
+    "virtual_prefetch": true,
+    "replacement": "srrip"
+  },
+  "L1D": {
+    "prefetcher": "berti",
+    "virtual_prefetch": true,
+    "prefetch_activate": "LOAD,RFO"
+  },
+  "L2C": {
+    "prefetcher": "pythia",
+    "prefetch_activate": "LOAD,RFO,PREFETCH"
+  },
+  "LLC": {
+    "replacement": "drrip"
   }
 }

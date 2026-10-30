@@ -3,14 +3,14 @@
 
 #include "address.h"
 #include "direct_predictor.h"
-#include "indirect_predictor.h"
+#include "ittage.h"
 #include "modules.h"
 #include "return_stack.h"
 
 class basic_btb : champsim::modules::btb
 {
   return_stack ras{};
-  indirect_predictor indirect{};
+  ittage indirect{};
   direct_predictor direct{};
 
 public:

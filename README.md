@@ -159,6 +159,15 @@ $ bin/champsim --warmup-instructions 200000000 --simulation-instructions 5000000
 The number of warmup and simulation instructions given will be the number of instructions retired. Note that the statistics printed at the end of the simulation include only the simulation phase.
 
 # Add your own branch predictor, data prefetchers, and replacement policy
+
+The default branch predictor and all `IDUN_CONFIGS` experiments use Jimenez's
+64 KiB TAGE-SC-L (`tage_sc_l`). See [the module notes](branch/tage_sc_l/README.md)
+for its upstream source, storage budget, and history-update behavior. Reconfigure
+and rebuild existing binaries to pick up this selection.
+
+All BTB variants use [shared ITTAGE indirect target prediction](docs/ittage.md)
+for indirect jumps and calls. Its 63.457 KiB modeled storage is included in each
+BTB's storage report.
 **Copy an empty template**
 ```
 $ mkdir prefetcher/mypref

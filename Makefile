@@ -159,7 +159,9 @@ define obj_recipe
 endef
 
 # All .d files should be preprocessed only
-DEPFLAGS = -MM -MT $@ -MT $(@:.d=.o)
+# Dummy header rules let an incremental build recover after a header is removed
+# or renamed. The compiler still diagnoses genuinely missing includes.
+DEPFLAGS = -MM -MP -MT $@ -MT $(@:.d=.o)
 define dep_recipe
 	$(CXX) $(attach_options) $(DEPFLAGS) $(CPPFLAGS) -MF $@ $(filter %.cc, $^)
 endef

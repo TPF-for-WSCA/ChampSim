@@ -1,4 +1,9 @@
 {
+  "ooo_cpu": [
+    {
+      "branch_predictor": "tage_sc_l"
+    }
+  ],
   "executable_name": "fdip_icache/fdip_icache_64k",
   "block_size": 64,
   "L1I": {
@@ -9,6 +14,19 @@
     "ways": 8,
     "prefetcher": "fdip",
     "prefetch_activate": "LOAD,PREFETCH",
-    "virtual_prefetch": true
+    "virtual_prefetch": true,
+    "replacement": "srrip"
+  },
+  "L1D": {
+    "prefetcher": "berti",
+    "virtual_prefetch": true,
+    "prefetch_activate": "LOAD,RFO"
+  },
+  "L2C": {
+    "prefetcher": "pythia",
+    "prefetch_activate": "LOAD,RFO,PREFETCH"
+  },
+  "LLC": {
+    "replacement": "drrip"
   }
 }

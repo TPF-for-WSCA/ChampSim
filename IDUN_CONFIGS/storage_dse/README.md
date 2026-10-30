@@ -13,7 +13,9 @@ sizes **8, 16, 32, 64 KiB** × BTB capacities **2K, 4K, 8K, 16K, 32K entries**
 
 All designs use FDIP, 64-byte lines, and LRU replacement. Other core/memory
 settings use the same ChampSim defaults. Baseline BTB allocation now honors
-`btb_sets` and `btb_ways`; its indirect table and return predictor remain fixed.
+`btb_sets` and `btb_ways`; every BTB variant uses the same fixed-size
+[ITTAGE indirect predictor](../../docs/ittage.md), included in its reported
+storage, while the return predictors retain their existing sizes.
 LiteBTB uses target widths `[0,4,5,7,9,11,19,64]` and 13-bit clipped tags
 (except its full-target bypass way). The artifact's 25-bit way is omitted
 so eight ways give exact power-of-two entry counts. This is the current

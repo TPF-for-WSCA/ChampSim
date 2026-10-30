@@ -963,6 +963,14 @@ bool CACHE::prefetch_line(champsim::address pf_addr, bool fill_this_level, uint3
   return true;
 }
 
+bool CACHE::prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata, champsim::address ip)
+{
+  if (!prefetch_line(pf_addr, fill_this_level, prefetch_metadata))
+    return false;
+  internal_PQ.back().ip = ip;
+  return true;
+}
+
 // LCOV_EXCL_START exclude deprecated function
 bool CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata)
 {

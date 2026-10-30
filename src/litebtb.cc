@@ -347,13 +347,16 @@ std::pair<champsim::address, bool> litebtb_predictor::btb_prediction(champsim::a
     const uint64_t target = ras.empty() ? 0 : ras.back() + 4;
     return {champsim::address{target}, true};
   }
+  if (hit->type == branch_info::indirect)
+    return indirect.prediction(address);
   return {champsim::address{decompress(*hit)}, hit->type != branch_info::conditional};
 }
 
-void litebtb_predictor::update_btb(champsim::address ip_address, champsim::address target_address, bool, uint8_t branch_type)
+void litebtb_predictor::update_btb(champsim::address ip_address, champsim::address target_address, bool taken, uint8_t branch_type)
 {
   const uint64_t ip = ip_address.to<uint64_t>();
   const uint64_t target = target_address.to<uint64_t>();
+  indirect.update(ip_address, target_address, taken, branch_type);
   if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL) {
     ras.push_back(ip);
     if (ras.size() > RAS_SIZE)
@@ -389,5 +392,8 @@ void litebtb_predictor::initialize_btb()
       {"L1 BTB targets", l1_count * 64},
       {"L1 BTB tags", l1_count * (64 - 2 - champsim::storage_bits(L1_SETS))},
       {"L1 BTB valid/type/LRU metadata", l1_count * (1 + 2 + champsim::storage_bits(L1_WAYS))},
+      {"ITTAGE base targets/valid", ittage::base_storage_bits},
+      {"ITTAGE tagged targets/tags/confidence/useful/valid", ittage::tagged_storage_bits},
+      {"ITTAGE history/folds/cursor/chooser/aging", ittage::history_storage_bits},
       {"Return address stack", RAS_SIZE * 64}, {"Return stack pointer", champsim::storage_bits(RAS_SIZE + 1)}});
 }

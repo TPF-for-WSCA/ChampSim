@@ -3,6 +3,7 @@
   "block_size": 64,
   "ooo_cpu": [
     {
+      "branch_predictor": "tage_sc_l",
       "btb": "xbtbx",
       "btb_sets": 2048,
       "btb_ways": 8,
@@ -28,7 +29,7 @@
     "sets": 64,
     "ubs": true,
     "prefetcher": "fdip",
-    "replacement": "lru",
+    "replacement": "srrip",
     "prefetch_activate": "LOAD,PREFETCH",
     "virtual_prefetch": true,
     "ubs_way_sizes": [
@@ -50,5 +51,17 @@
       64
     ],
     "ubs_candidate_ways": 4
+  },
+  "L1D": {
+    "prefetcher": "berti",
+    "virtual_prefetch": true,
+    "prefetch_activate": "LOAD,RFO"
+  },
+  "L2C": {
+    "prefetcher": "pythia",
+    "prefetch_activate": "LOAD,RFO,PREFETCH"
+  },
+  "LLC": {
+    "replacement": "drrip"
   }
 }

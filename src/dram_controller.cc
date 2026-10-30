@@ -23,6 +23,7 @@
 
 #include "deadlock.h"
 #include "instruction.h"
+#include "prefetch_bandwidth.h"
 #include "util/bits.h" // for lg2, bitmask
 #include "util/span.h"
 #include "util/units.h"
@@ -367,6 +368,9 @@ long DRAM_CHANNEL::service_packet(DRAM_CHANNEL::queue_type::iterator pkt)
 
 void MEMORY_CONTROLLER::initialize()
 {
+  champsim::prefetch_bandwidth::read_enqueue_bytes = 0;
+  champsim::prefetch_bandwidth::peak_bytes_per_picosecond =
+      static_cast<double>(channels.size() * channel_width.count()) / static_cast<double>(data_bus_period.count());
   using namespace champsim::data::data_literals;
   using namespace std::literals::chrono_literals;
   auto sz = this->size();
@@ -520,6 +524,8 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
 
   if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [this](const auto& pkt) { return pkt.has_value(); });
       rq_it != std::end(channel.RQ)) {
+    if (!warmup)
+      champsim::prefetch_bandwidth::read_enqueue_bytes += BLOCK_SIZE;
     *rq_it = DRAM_CHANNEL::request_type{packet};
     rq_it->value().forward_checked = false;
     rq_it->value().scheduled = false;

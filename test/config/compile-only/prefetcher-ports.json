@@ -1,0 +1,9 @@
+{
+  "executable_name": "champsim-berti-pythia",
+  "block_size": 64,
+  "page_size": 4096,
+  "L1I": {"prefetcher": "fdip", "replacement": "srrip"},
+  "L1D": {"prefetcher": "berti", "virtual_prefetch": true, "prefetch_activate": "LOAD,RFO"},
+  "L2C": {"prefetcher": "pythia", "prefetch_activate": "LOAD,RFO,PREFETCH"},
+  "LLC": {"replacement": "drrip"}
+}
