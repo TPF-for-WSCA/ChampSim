@@ -205,8 +205,12 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types.increment(arch_instr.branch);
+  prediction_oracle = &arch_instr;
   auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip, arch_instr.branch);
+  prediction_oracle = nullptr;
   arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch) || always_taken;
+  if (IDEAL_CBP && (arch_instr.branch == BRANCH_CONDITIONAL || arch_instr.branch == BRANCH_OTHER))
+    arch_instr.branch_prediction = arch_instr.branch_taken;
   if (!arch_instr.branch_prediction) {
     predicted_branch_target = champsim::address{};
   }
@@ -294,30 +298,42 @@ long O3_CPU::fetch_instruction()
 {
   long progress{0};
 
+  // Unaligned PCs in the translated IPC1 traces are dependency-only dummy
+  // instructions. Keep them in the backend, but bypass instruction fetching
+  // as in the historical frontend. They still pass through normal decode.
+  for (auto& instr : IFETCH_BUFFER) {
+    if (instr.dib_checked && !instr.fetch_issued && instr.ip.to<uint64_t>() % 4 != 0) {
+      instr.fetch_issued = true;
+      instr.fetch_completed = true;
+      instr.ready_time = current_time;
+      ++progress;
+    }
+  }
+
   // Fetch a single cache line
   auto fetch_ready = [](const ooo_model_instr& x) {
     return x.dib_checked && !x.fetch_issued;
-  };
-
-  // Find the chunk of instructions in the block
-  auto no_match_ip = [](const auto& lhs, const auto& rhs) {
-    return champsim::block_number{lhs.ip} != champsim::block_number{rhs.ip};
   };
 
   champsim::bandwidth fetch_bw{FETCH_WIDTH};
   auto l1i_req_begin = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), fetch_ready);
   for (champsim::bandwidth l1i_bw{L1I_BANDWIDTH}; fetch_bw.has_remaining() && l1i_bw.has_remaining() && l1i_req_begin != std::end(IFETCH_BUFFER);
        l1i_bw.consume()) {
-    auto [window_begin, window_end] = champsim::get_span(l1i_req_begin, std::end(IFETCH_BUFFER), fetch_bw);
-    auto l1i_req_end = std::adjacent_find(window_begin, window_end, no_match_ip);
-    if (l1i_req_end != window_end) {
-      l1i_req_end = std::next(l1i_req_end); // adjacent_find returns the first of the non-equal elements
+    auto l1i_req_end = l1i_req_begin;
+    auto packet_bw = fetch_bw;
+    while (l1i_req_end != std::end(IFETCH_BUFFER) && packet_bw.has_remaining()
+           && champsim::block_number{l1i_req_end->ip} == champsim::block_number{l1i_req_begin->ip}) {
+      if (l1i_req_end->ip.to<uint64_t>() % 4 == 0)
+        packet_bw.consume();
+      ++l1i_req_end;
     }
 
     // Issue to L1I
     auto success = do_fetch_instruction(l1i_req_begin, l1i_req_end);
     if (success) {
       for (auto instr = l1i_req_begin; instr != l1i_req_end; ++instr) {
+        if (instr->ip.to<uint64_t>() % 4 != 0)
+          continue;
         instr->fetch_issued = true;
         fetch_bw.consume();
       }
@@ -332,12 +348,18 @@ long O3_CPU::fetch_instruction()
 
 bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, std::deque<ooo_model_instr>::iterator end)
 {
+  begin = std::find_if(begin, end, [](const auto& instr) { return instr.ip.template to<uint64_t>() % 4 == 0; });
+  if (begin == end)
+    return true;
+
   CacheBus::request_type fetch_packet;
   fetch_packet.v_address = begin->ip;
   fetch_packet.instr_id = begin->instr_id;
   fetch_packet.ip = begin->ip;
 
   for (auto instr = begin; instr != end; ++instr) {
+    if (instr->ip.to<uint64_t>() % 4 != 0)
+      continue; // Dummy instructions add neither fetch dependencies nor UBS bytes.
     fetch_packet.instr_depend_on_me.push_back(instr->instr_id);
 
     // UBS tracks useful instruction bytes in its predictor. The traces used by

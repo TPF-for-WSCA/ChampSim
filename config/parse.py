@@ -231,6 +231,7 @@ class NormalizedConfiguration:
         # Default core elements
         core_from_config = util.subdict(config_file,
             (
+                'ideal_cbp', 'ideal_ibp', 'ideal_btb',
                 'frequency', 'ifetch_buffer_size', 'decode_buffer_size', 'dispatch_buffer_size', 'register_file_size', 'rob_size', 'lq_size',
                 'sq_size', 'fetch_width', 'decode_width', 'dispatch_width', 'execute_width', 'lq_width', 'sq_width',
                 'retire_width', 'mispredict_penalty', 'scheduler_size', 'decode_latency', 'dispatch_latency',
@@ -366,6 +367,14 @@ class NormalizedConfiguration:
             name: {**cache, **({'ubs_way_sizes': ubs_way_sizes[name]} if name in ubs_way_sizes else {})}
             for name, cache in caches.items()
         }
+        itlb_names = {cpu['ITLB'] for cpu in cores}
+        invalid_translation = [cache['name'] for cache in caches.values()
+                               if cache.get('ideal_translation', False) and cache['name'] not in itlb_names]
+        if invalid_translation:
+            raise ValueError(f'Ideal translation is supported only for instruction TLBs: {", ".join(invalid_translation)}')
+        invalid_ideal = [cache['name'] for cache in caches.values() if cache.get('ideal', False) and not cache.get('_is_instruction_cache', False)]
+        if invalid_ideal:
+            raise ValueError(f'Ideal cache is supported only for instruction caches: {", ".join(invalid_ideal)}')
         invalid_ubs = [cache['name'] for cache in caches.values() if cache.get('ubs', False) and not cache.get('_is_instruction_cache', False)]
         if invalid_ubs:
             raise ValueError(

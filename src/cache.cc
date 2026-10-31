@@ -16,6 +16,7 @@
 
 #include "cache.h"
 #include "storage.h"
+#include "vmem.h"
 
 #include <algorithm>
 #include <cassert>
@@ -40,7 +41,8 @@ CACHE::CACHE(CACHE&& other)
 
       cpu(other.cpu), NAME(std::move(other.NAME)), NUM_SET(other.NUM_SET), NUM_WAY(other.NUM_WAY), MSHR_SIZE(other.MSHR_SIZE), PQ_SIZE(other.PQ_SIZE),
       PREFETCH_BUFFER_SIZE(other.PREFETCH_BUFFER_SIZE),
-      HIT_LATENCY(other.HIT_LATENCY), FILL_LATENCY(other.FILL_LATENCY), OFFSET_BITS(other.OFFSET_BITS), ubs(other.ubs),
+      HIT_LATENCY(other.HIT_LATENCY), FILL_LATENCY(other.FILL_LATENCY), OFFSET_BITS(other.OFFSET_BITS), ideal(other.ideal),
+      ideal_translation_vmem(other.ideal_translation_vmem), ubs(other.ubs),
       UBS_WAY_SIZES(std::move(other.UBS_WAY_SIZES)), UBS_CANDIDATE_WAYS(other.UBS_CANDIDATE_WAYS), block(std::move(other.block)),
       prefetch_buffer(std::move(other.prefetch_buffer)), ubs_predictor(std::move(other.ubs_predictor)), ubs_access_counter(other.ubs_access_counter),
       MAX_TAG(other.MAX_TAG), MAX_FILL(other.MAX_FILL),
@@ -78,6 +80,8 @@ auto CACHE::operator=(CACHE&& other) -> CACHE&
   this->HIT_LATENCY = other.HIT_LATENCY;
   this->FILL_LATENCY = other.FILL_LATENCY;
   this->OFFSET_BITS = other.OFFSET_BITS;
+  this->ideal = other.ideal;
+  this->ideal_translation_vmem = other.ideal_translation_vmem;
   this->ubs = other.ubs;
   this->UBS_WAY_SIZES = std::move(other.UBS_WAY_SIZES);
   this->UBS_CANDIDATE_WAYS = other.UBS_CANDIDATE_WAYS;
@@ -218,7 +222,14 @@ uint64_t CACHE::install_ubs_subblock(const ubs_predictor_entry& victim, uint32_t
   // Empty fitting slots anywhere in the set take precedence over replacement.
   auto way = std::find_if_not(candidate_begin, set_end, [](const auto& entry) { return entry.valid; });
   if (way == set_end) {
-    way = std::max_element(candidate_begin, candidate_end, [](const auto& lhs, const auto& rhs) { return lhs.last_used < rhs.last_used; });
+    const auto selected = repl_module_pimpl->impl_find_victim_in_range(get_set_index(victim.block.address), static_cast<long>(first_way),
+                                                                      static_cast<long>(last_way));
+    if (selected) {
+      assert(*selected >= static_cast<long>(first_way) && *selected < static_cast<long>(last_way));
+      way = std::next(set_begin, *selected);
+    } else {
+      way = std::max_element(candidate_begin, candidate_end, [](const auto& lhs, const auto& rhs) { return lhs.last_used < rhs.last_used; });
+    }
   }
 
   const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way));
@@ -240,9 +251,12 @@ uint64_t CACHE::install_ubs_subblock(const ubs_predictor_entry& victim, uint32_t
   // subset, which starts at the selected slot (not the victim-search window).
   const auto insertion_rank = NUM_WAY > 1 ? NUM_WAY - 2 : 0;
   const auto update_end = std::next(set_begin, static_cast<set_type::difference_type>(std::min<std::size_t>(NUM_WAY, way_idx + UBS_CANDIDATE_WAYS)));
-  for (auto entry = way; entry != update_end; ++entry)
-    if (entry->last_used > 0 && entry->last_used <= insertion_rank && entry->last_used <= NUM_WAY)
-      ++entry->last_used;
+  const bool bounded_policy = repl_module_pimpl->impl_supports_bounded_victims();
+  if (!bounded_policy) {
+    for (auto entry = way; entry != update_end; ++entry)
+      if (entry->last_used > 0 && entry->last_used <= insertion_rank && entry->last_used <= NUM_WAY)
+        ++entry->last_used;
+  }
 
   *way = victim.block;
   way->valid = true;
@@ -252,6 +266,9 @@ uint64_t CACHE::install_ubs_subblock(const ubs_predictor_entry& victim, uint32_t
   way->size = static_cast<uint8_t>(capacity);
   way->last_used = insertion_rank;
   way->pf_metadata = metadata;
+  if (bounded_policy)
+    impl_replacement_cache_fill(cpu, get_set_index(victim.block.address), static_cast<long>(way_idx), module_address(*way), {}, evicting_address,
+                                access_type::LOAD);
 
   return get_ubs_block_mask(*way);
 }
@@ -293,6 +310,8 @@ champsim::address CACHE::module_address(const T& element) const
 
 bool CACHE::is_instruction_present(champsim::address virtual_pc) const
 {
+  if (ideal)
+    return true;
   // FDIP predicts virtual PCs; resident lines carry both virtual and physical
   // addresses. Scan virtual tags so physically indexed sets and page mappings
   // cannot turn a physical-tag comparison into a false hit.
@@ -524,6 +543,19 @@ bool CACHE::try_hit(tag_lookup_type& handle_pkt)
 {
   cpu = handle_pkt.cpu;
 
+  if (ideal || ideal_translation_vmem != nullptr) {
+    // Use the shared VM mapping, just as the PTW does, but omit walk/fault
+    // latency. An ideal ITLB still consumes its normal lookup bandwidth/time.
+    const auto data = ideal_translation_vmem != nullptr
+                          ? champsim::address{ideal_translation_vmem->va_to_pa(handle_pkt.cpu, champsim::page_number{handle_pkt.v_address}).first}
+                          : handle_pkt.data;
+    sim_stats.hits.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
+    response_type response{handle_pkt.address, handle_pkt.v_address, data, handle_pkt.pf_metadata, handle_pkt.instr_depend_on_me};
+    for (auto* ret : handle_pkt.to_return)
+      ret->push_back(response);
+    return true;
+  }
+
   if (ubs) {
     const auto requested = get_requested_bytes(handle_pkt);
     handle_pkt.requested_bytes = requested;
@@ -559,11 +591,16 @@ bool CACHE::try_hit(tag_lookup_type& handle_pkt)
       if (hit) {
         for (auto way = set_begin; way != set_end; ++way) {
           if (way->valid && matches_address(handle_pkt.address)(*way) && (get_ubs_block_mask(*way) & requested) != 0) {
-            const auto hit_rank = way->last_used;
-            for (auto entry = set_begin; entry != set_end; ++entry)
-              if (entry->last_used < NUM_WAY && entry->last_used <= hit_rank)
-                ++entry->last_used;
-            way->last_used = 0;
+            if (repl_module_pimpl->impl_supports_bounded_victims()) {
+              impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), std::distance(set_begin, way), module_address(*way),
+                                            handle_pkt.ip, {}, handle_pkt.type, true);
+            } else {
+              const auto hit_rank = way->last_used;
+              for (auto entry = set_begin; entry != set_end; ++entry)
+                if (entry->last_used < NUM_WAY && entry->last_used <= hit_rank)
+                  ++entry->last_used;
+              way->last_used = 0;
+            }
             if (way->prefetch && !handle_pkt.prefetch_from_this)
               way->prefetch = false;
           }
@@ -1223,11 +1260,11 @@ void CACHE::initialize()
   const uint64_t count = uint64_t{NUM_SET} * NUM_WAY;
   const uint64_t tags = count * tag_bits;
   const uint64_t status = count * 3; // valid, dirty, prefetch
-  // UBS replaces subblocks with its own LRU ranks; other caches use
-  // the configured replacement module's model, rather than assuming LRU.
+  // UBS uses legacy LRU ranks unless the module supports bounded selection.
   const auto policy_bits = repl_module_pimpl->impl_replacement_storage_bits();
-  const uint64_t replacement = ubs ? count * champsim::storage_bits(NUM_WAY) : policy_bits.value_or(0);
-  const auto report_name = NAME + ((!ubs && !policy_bits) ? " [partial: replacement storage unavailable]" : "");
+  const bool legacy_ubs = ubs && !repl_module_pimpl->impl_supports_bounded_victims();
+  const uint64_t replacement = legacy_ubs ? count * champsim::storage_bits(NUM_WAY) : policy_bits.value_or(0);
+  const auto report_name = NAME + ((!legacy_ubs && !policy_bits) ? " [partial: replacement storage unavailable]" : "");
   if (ubs) {
     champsim::print_storage(report_name + " UBS", {
         {"Cache data", data}, {"Cache tags", tags}, {"Cache valid/dirty/prefetch", status},

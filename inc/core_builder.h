@@ -64,6 +64,9 @@ struct core_builder_base {
 
   unsigned m_dib_hit_latency{};
 
+  bool m_ideal_cbp{};
+  bool m_ideal_ibp{};
+  bool m_ideal_btb{};
   bool m_wrong_path{};
   std::size_t m_wrong_path_history_size{65536};
   unsigned m_mispredict_penalty{};
@@ -278,6 +281,9 @@ public:
    */
   self_type& data_queues(champsim::channel* data_queues_);
 
+  self_type& ideal_cbp(bool value);
+  self_type& ideal_ibp(bool value);
+  self_type& ideal_btb(bool value);
   self_type& wrong_path(bool value);
   self_type& wrong_path_history_size(std::size_t value);
   self_type& btb_sets(std::size_t value);
@@ -551,6 +557,9 @@ auto champsim::core_builder<B, T>::data_queues(champsim::channel* data_queues_) 
     return *this;                                                                                                             \
   }
 
+CHAMPSIM_CORE_BUILDER_SETTER(ideal_cbp, bool)
+CHAMPSIM_CORE_BUILDER_SETTER(ideal_ibp, bool)
+CHAMPSIM_CORE_BUILDER_SETTER(ideal_btb, bool)
 CHAMPSIM_CORE_BUILDER_SETTER(wrong_path, bool)
 CHAMPSIM_CORE_BUILDER_SETTER(wrong_path_history_size, std::size_t)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_sets, std::size_t)

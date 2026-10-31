@@ -18,6 +18,7 @@ struct srrip_set_helper {
   explicit srrip_set_helper(long ways);
 
   long victim();
+  long victim(long first, long last);
   void update(long way, bool hit);
 };
 
@@ -35,6 +36,11 @@ struct srrip : public champsim::modules::replacement {
       count += set.rrpv_values.size();
     return count * champsim::storage_bits(srrip_set_helper::maxRRPV + 1);
   }
+
+  bool supports_bounded_victims() const { return true; }
+  std::optional<long> find_victim_in_range(long set, long first, long last);
+  void replacement_cache_fill(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
+                              champsim::address victim_addr, access_type type);
 
   // void initialize_replacement() {}
   long find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const champsim::cache_block* current_set, champsim::address ip,

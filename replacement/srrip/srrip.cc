@@ -20,26 +20,41 @@ long srrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, co
   return sets.at(static_cast<std::size_t>(set)).victim();
 }
 
-// called on every cache hit and cache fill
+// Miss lookups can have way == NUM_WAY; insertion is handled by the fill hook.
 void srrip::update_replacement_state(uint32_t triggering_cpu, long set, long way, champsim::address full_addr, champsim::address ip,
                                      champsim::address victim_addr, access_type type, uint8_t hit)
 {
-  sets.at(static_cast<std::size_t>(set)).update(way, hit);
+  if (hit)
+    sets.at(static_cast<std::size_t>(set)).update(way, true);
+}
+
+std::optional<long> srrip::find_victim_in_range(long set, long first, long last)
+{
+  return sets.at(static_cast<std::size_t>(set)).victim(first, last);
+}
+
+void srrip::replacement_cache_fill(uint32_t, long set, long way, champsim::address, champsim::address, champsim::address, access_type)
+{
+  // Use an explicit fill hook: miss lookups have no selected victim yet, and
+  // the legacy update-only adapter does not deliver insertion updates here.
+  sets.at(static_cast<std::size_t>(set)).update(way, false);
 }
 
 srrip_set_helper::srrip_set_helper(long ways) : rrpv_values(static_cast<std::size_t>(ways), maxRRPV) {}
 
 auto srrip_set_helper::get_rrpv(long way) -> rrpv_type& { return rrpv_values.at(static_cast<std::size_t>(way)); }
 
-long srrip_set_helper::victim()
+long srrip_set_helper::victim() { return victim(0, static_cast<long>(rrpv_values.size())); }
+
+long srrip_set_helper::victim(long first, long last)
 {
-  // Find the maximum RRPV
-  auto victim = std::max_element(std::begin(rrpv_values), std::end(rrpv_values));
-
-  // If the maximum element has RRPV less than the maximum, increment everything to the maximum
-  std::transform(std::cbegin(rrpv_values), std::cend(rrpv_values), std::begin(rrpv_values), [diff = maxRRPV - *victim](auto x) { return x + diff; });
-
-  // Return the way index
+  assert(first >= 0 && first < last && static_cast<std::size_t>(last) <= rrpv_values.size());
+  auto begin = std::next(std::begin(rrpv_values), first);
+  auto end = std::next(std::begin(rrpv_values), last);
+  auto victim = std::max_element(begin, end);
+  // Age only eligible ways. Unrelated size classes retain their RRPVs.
+  const auto diff = maxRRPV - *victim;
+  std::transform(begin, end, begin, [diff](auto x) { return x + diff; });
   return std::distance(std::begin(rrpv_values), victim);
 }
 

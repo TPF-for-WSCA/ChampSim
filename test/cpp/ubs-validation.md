@@ -1,5 +1,37 @@
 # UBS small-scale validation — 2026-10-29
 
+## Dummy PCs and SRRIP validation — 2026-10-31
+
+Restored the historical translated-IPC1 convention: PCs not divisible by four
+are dependency-only dummy instructions. Fetch marks them complete without an
+I-cache request, I-cache fetch bandwidth, return dependency, or useful-byte mask.
+Their instruction IDs and source/destination registers remain intact, and they
+continue through normal decode/backend processing. Request grouping excludes
+dummies from its instruction budget. Fetch test fixtures now use aligned PCs
+when representing real instructions.
+
+The working-tree bounded SRRIP implementation is connected to both size-sweep
+configurations. A Python regression parses every JSON in both sweep directories
+and verifies generated `.replacement<class srrip>()`, plus UBS enablement and
+geometry where selected. UBS runtime regressions verify bounded aging, RRPV-2
+insertion, RRPV-0 promotion of covering fragments, and fitting-invalid-way
+selection outside the victim window. Conventional regressions verify insertion
+into both empty and replaced ways. The explicit SRRIP fill hook prevents the
+legacy update-only adapter from suppressing insertion updates; miss lookups do
+not index a nonexistent victim.
+
+A fresh isolated C++ build with libstdc++ assertions enabled passed **35 cases /
+2,398 assertions**, covering tests 150, 151, 409, 410, 442, 443 and 444. Python
+configuration/instantiation tests passed **144 tests with one additional skip**.
+Fresh conventional and UBS binaries generated from the wrong-path 4 KiB JSONs
+both completed a server_004 smoke run with 10,000 warmup and 50,000 ROI
+instructions. The UBS runtime storage report charges 256 replacement bits for
+128 fragments (two-bit SRRIP), and the binary contains the bounded-victim and
+explicit SRRIP fill hooks. Smoke artifacts are in
+`/tmp/champsim-dummy-pc-repair/`; this run is too short for an IPC comparison.
+Existing experimental binaries must be reconfigured and rebuilt before reruns.
+These tests establish functional behavior, not full-workload IPC equivalence.
+
 ## Partial-miss residency with concurrent refills
 
 Partial-miss acceptance no longer invalidates resident fragments. Covered

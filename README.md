@@ -72,14 +72,26 @@ surviving fragments into the full-line predictor. MSHRs retain a byte-coverage
 snapshot if normal replacement evicts a fragment before the refill arrives;
 fragments are not pinned against normal replacement.
 
-UBS currently supports instruction caches with 64-byte lines. It uses its
-internal replacement policy rather than the configured replacement module;
-data-cache writebacks are not supported. The way geometry can be changed with
+UBS supports instruction caches with 64-byte lines; data-cache writebacks are
+not supported. With `"replacement": "srrip"`, victim selection uses SRRIP only
+within the existing local size-transition window. Aging affects only eligible
+ways, inserted fragments start at RRPV 2, and hits promote the fragments that
+cover the requested bytes to RRPV 0. Empty fitting ways anywhere in the set still
+take precedence. The full-line predictor is separate from this replacement state.
+`"replacement": "lru"` retains historical LRU2 insertion and bounded victim
+selection. Other policies without bounded-victim support also retain this
+historical UBS behavior. Storage reporting uses two replacement bits per fragment
+for SRRIP. The way geometry can be changed with
 `ubs_way_sizes` and `ubs_candidate_ways`. See
 [`IDUN_CONFIGS/fdip_icache_sizes`](IDUN_CONFIGS/fdip_icache_sizes/README.md) for
 paired conventional/UBS capacity sweeps and
 [`Creating-a-configuration-file.rst`](docs/src/Creating-a-configuration-file.rst#uneven-block-size-instruction-cache)
 for the complete constraints and statistics.
+
+The frontend retains the translated IPC1 trace convention: PCs not divisible
+by four represent dependency-only dummy instructions. These records remain in
+the backend and pass through normal decode, but bypass I-cache fetching and
+contribute no UBS useful bytes or I-cache fetch bandwidth.
 
 ## LiteBTB
 

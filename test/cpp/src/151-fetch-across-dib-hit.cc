@@ -27,7 +27,7 @@ SCENARIO("Blocks that hit the DIB are removed from fetch candidacy")
     mock_L1I.addresses.clear();
     WHEN("The core encounters that instruction surrounded by two instructions of the same block (BAB)")
     {
-      auto test_instr_first = champsim::test::instruction_with_ip(champsim::address{0xbeefbeef});
+      auto test_instr_first = champsim::test::instruction_with_ip(champsim::address{0xbeefbeec});
       auto test_instr_second = champsim::test::instruction_with_ip(champsim::address{0xbeefbee0});
 
       uut.IFETCH_BUFFER.push_back(test_instr_first);

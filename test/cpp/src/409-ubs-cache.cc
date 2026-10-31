@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "../../../replacement/srrip/srrip.h"
 #include "cache.h"
 #include "defaults.hpp"
 #include "instr.h"
@@ -247,6 +248,7 @@ auto probe_builder(bool uneven)
   return builder;
 }
 
+template <typename Replacement = lru>
 struct ubs_probe {
   do_nothing_MRC lower;
   to_rq_MRP upper;
@@ -264,7 +266,8 @@ struct ubs_probe {
                   .hit_latency(1)
                   .fill_latency(1)
                   .ubs_way_sizes(sweep_layout)
-                  .ubs_candidate_ways(candidates)),
+                  .ubs_candidate_ways(candidates)
+                  .replacement<Replacement>()),
         elements{{&lower, &cache, &upper}}
   {
     for (auto* element : elements) {
@@ -387,14 +390,59 @@ TEST_CASE("UBS frontend forwards the union of instruction bytes to the cache cha
 {
   ubs_probe probe;
   O3_CPU core{champsim::core_builder{}.fetch_queues(&probe.upper.queues).l1i(&probe.cache)};
-  for (const auto offset : {0u, 8u, 62u}) {
+  for (const auto offset : {0u, 2u, 8u, 60u, 62u}) {
     auto instruction = champsim::test::instruction_with_ip(0x10000 + offset);
     core.IFETCH_BUFFER.push_back(instruction);
   }
   REQUIRE(core.do_fetch_instruction(core.IFETCH_BUFFER.begin(), core.IFETCH_BUFFER.end()));
   REQUIRE(probe.upper.queues.RQ.size() == 1);
-  REQUIRE(probe.upper.queues.RQ.front().requested_bytes == (0xfull | (uint64_t{0xf} << 8) | (uint64_t{3} << 62)));
+  REQUIRE(probe.upper.queues.RQ.front().requested_bytes == (0xfull | (uint64_t{0xf} << 8) | (uint64_t{0xf} << 60)));
   REQUIRE(probe.upper.queues.RQ.front().instr_depend_on_me.size() == 3);
+}
+
+TEST_CASE("Dependency-only dummy PCs bypass fetching without changing backend instructions", "[dummy-pc]")
+{
+  const bool uneven = GENERATE(false, true);
+  const bool only_dummies = GENERATE(false, true);
+  ubs_probe probe{uneven};
+  O3_CPU core{champsim::core_builder{champsim::defaults::default_core}.fetch_queues(&probe.upper.queues).l1i(&probe.cache)
+                  .fetch_width(champsim::bandwidth::maximum_type{2}).l1i_bandwidth(champsim::bandwidth::maximum_type{1})};
+  for (auto offset : {2u, 0u, 6u, 4u, 10u}) {
+    if (only_dummies && offset % 4 == 0)
+      continue;
+    auto instr = champsim::test::instruction_with_ip(0x10000 + offset);
+    instr.instr_id = offset + 1;
+    instr.dib_checked = true;
+    instr.source_registers = {1};
+    instr.destination_registers = {2};
+    core.IFETCH_BUFFER.push_back(instr);
+  }
+  const auto before = core.IFETCH_BUFFER;
+  core.fetch_instruction();
+  REQUIRE(core.IFETCH_BUFFER.size() == before.size());
+  for (std::size_t i = 0; i < before.size(); ++i) {
+    const auto& instr = core.IFETCH_BUFFER.at(i);
+    REQUIRE(instr.instr_id == before.at(i).instr_id);
+    REQUIRE(instr.source_registers == before.at(i).source_registers);
+    REQUIRE(instr.destination_registers == before.at(i).destination_registers);
+    REQUIRE(instr.fetch_issued);
+    if (instr.ip.to<uint64_t>() % 4 != 0) {
+      REQUIRE(instr.fetch_completed);
+      REQUIRE_FALSE(instr.decoded); // Dummy instructions still use normal decode/backend stages.
+      REQUIRE(instr.ready_time == core.current_time);
+    } else {
+      REQUIRE_FALSE(instr.fetch_completed);
+    }
+  }
+  REQUIRE(probe.upper.queues.RQ.size() == (only_dummies ? 0 : 1));
+  if (!only_dummies) {
+    const auto& request = probe.upper.queues.RQ.front();
+    REQUIRE(request.v_address == champsim::address{0x10000});
+    REQUIRE(request.instr_depend_on_me == std::vector<uint64_t>{before.at(1).instr_id, before.at(3).instr_id});
+    REQUIRE(request.requested_bytes == (uneven ? 0xff : 0));
+  }
+  core.fetch_instruction();
+  REQUIRE(probe.upper.queues.RQ.size() == (only_dummies ? 0 : 1));
 }
 
 TEST_CASE("UBS partial misses transfer all resident bytes through merged MSHRs back to the predictor")
@@ -534,4 +582,114 @@ TEST_CASE("UBS resident fragments serve hits while independent partial refills a
   REQUIRE(returned(7));
   REQUIRE(returned(8));
   REQUIRE(lower.packet_count() == 2);
+}
+
+namespace
+{
+std::map<CACHE*, srrip*> observed_ubs_srrip;
+struct ubs_srrip_observer : srrip {
+  using srrip::srrip;
+  void initialize_replacement() { observed_ubs_srrip[intern_] = this; }
+};
+}
+
+TEST_CASE("UBS SRRIP ages only the local size window and inserts at RRPV two", "[ubs-srrip]")
+{
+  const auto size = GENERATE(4u, 8u, 12u, 16u, 24u, 32u, 36u, 52u, 64u);
+  ubs_probe<ubs_srrip_observer> probe;
+  const auto first = static_cast<std::size_t>(std::find_if(sweep_layout.begin(), sweep_layout.end(),
+      [size](auto capacity) { return capacity >= size; }) - sweep_layout.begin());
+  const std::map<unsigned, unsigned> ends{{4,9},{8,10},{12,11},{16,13},{24,14},{32,16},{36,16},{52,16},{64,16}};
+  const auto end = ends.at(size);
+  for (uint64_t line = 0; line <= 16 - first; ++line)
+    probe.access(line, low_bytes(size));
+  auto& rrpv = observed_ubs_srrip.at(&probe.cache)->sets.at(0).rrpv_values;
+  std::fill(rrpv.begin(), rrpv.end(), 3);
+  std::fill(rrpv.begin() + first, rrpv.begin() + end, 1);
+  rrpv.at(first) = 2;
+  const auto before = probe.cache.block;
+  // Global SRRIP would prefer a way outside the local window at RRPV three.
+  probe.access(100, low_bytes(size));
+  for (std::size_t way = 0; way < 16; ++way) {
+    if (way == first) {
+      REQUIRE(probe.cache.block.at(way).address != before.at(way).address);
+      REQUIRE(rrpv.at(way) == 2);
+    } else {
+      REQUIRE(probe.cache.block.at(way).address == before.at(way).address);
+      REQUIRE(rrpv.at(way) == (way >= first && way < end ? 2 : 3));
+    }
+  }
+  const auto installed = probe.cache.block.at(first).address;
+  const auto lower_before = probe.lower.packet_count();
+  REQUIRE(probe.upper.issue(make_request(installed, low_bytes(size), probe.id++)));
+  run_cycles(probe.elements, 20);
+  REQUIRE(probe.lower.packet_count() == lower_before);
+  REQUIRE(rrpv.at(first) == 0);
+}
+
+TEST_CASE("UBS SRRIP retains empty fitting ways beyond its victim window", "[ubs-srrip]")
+{
+  ubs_probe<ubs_srrip_observer> probe;
+  for (uint64_t line = 0; line <= 16; ++line) probe.access(line, 0xf);
+  auto& rrpv = observed_ubs_srrip.at(&probe.cache)->sets.at(0).rrpv_values;
+  std::fill(rrpv.begin(), rrpv.end(), 0);
+  probe.cache.block.at(15).valid = false;
+  const auto before = probe.cache.block;
+  probe.access(100, 0xf);
+  REQUIRE(probe.cache.block.at(15).valid);
+  REQUIRE(rrpv.at(15) == 2);
+  for (std::size_t way = 0; way < 15; ++way) {
+    REQUIRE(probe.cache.block.at(way).address == before.at(way).address);
+    REQUIRE(rrpv.at(way) == 0);
+  }
+}
+
+TEST_CASE("UBS SRRIP promotes only fragments covering the requested bytes", "[ubs-srrip]")
+{
+  ubs_probe<ubs_srrip_observer> probe;
+  auto& rrpv = observed_ubs_srrip.at(&probe.cache)->sets.at(0).rrpv_values;
+  std::fill(rrpv.begin(), rrpv.end(), 2);
+  for (std::size_t way = 0; way < 3; ++way) {
+    auto& entry = probe.cache.block.at(way);
+    entry.valid = true;
+    entry.address = entry.v_address = champsim::address{0x10000};
+    entry.offset = static_cast<uint8_t>(way == 2 ? 16 : 4 * way);
+    entry.size = static_cast<uint8_t>(sweep_layout.at(way));
+  }
+  probe.access(0, 0xff);
+  REQUIRE(rrpv.at(0) == 0);
+  REQUIRE(rrpv.at(1) == 0);
+  for (std::size_t way = 2; way < 16; ++way) REQUIRE(rrpv.at(way) == 2);
+  REQUIRE(probe.lower.packet_count() == 0);
+}
+
+TEST_CASE("Conventional SRRIP uses fill insertion and ignores invalid miss way indices", "[ubs-srrip]")
+{
+  ubs_probe<ubs_srrip_observer> probe{false};
+  auto& rrpv = observed_ubs_srrip.at(&probe.cache)->sets.at(0).rrpv_values;
+  probe.access(0, 0xf);
+  REQUIRE(rrpv.at(0) == 2);
+  probe.access(0, 0xf);
+  REQUIRE(rrpv.at(0) == 0);
+  probe.access(1, 0xf);
+  REQUIRE(rrpv.at(1) == 2);
+  REQUIRE(rrpv.at(0) == 0);
+}
+
+TEST_CASE("Conventional SRRIP resets replaced ways to the insertion RRPV", "[ubs-srrip]")
+{
+  ubs_probe<ubs_srrip_observer> probe{false};
+  auto& rrpv = observed_ubs_srrip.at(&probe.cache)->sets.at(0).rrpv_values;
+  for (uint64_t line = 0; line < 8; ++line)
+    probe.access(line, 0xf);
+  REQUIRE(rrpv == std::vector<int>(8, 2));
+  probe.access(0, 0xf);
+  REQUIRE(rrpv.at(0) == 0);
+  probe.access(8, 0xf);
+  REQUIRE(probe.cache.block.at(0).address == champsim::address{0x10000});
+  REQUIRE(probe.cache.block.at(1).address == champsim::address{0x10200});
+  REQUIRE(rrpv.at(0) == 1);
+  REQUIRE(rrpv.at(1) == 2);
+  for (std::size_t way = 2; way < 8; ++way)
+    REQUIRE(rrpv.at(way) == 3);
 }

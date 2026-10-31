@@ -155,6 +155,11 @@ struct prefetcher : public bound_to<CACHE> {
 };
 
 struct replacement : public bound_to<CACHE> {
+  // Optional UBS victim selection over physical way indices [first, last).
+  // Policies without this interface retain UBS's historical bounded LRU.
+  bool supports_bounded_victims() const { return false; }
+  std::optional<long> find_victim_in_range(long, long, long) { return std::nullopt; }
+
   // Optional packed hardware-state model. Custom policies can override it.
   std::optional<uint64_t> storage_bits() const { return std::nullopt; }
 

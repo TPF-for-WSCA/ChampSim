@@ -23,3 +23,11 @@ TEST_CASE("SRRIP matches the performance in the published work")
   REQUIRE(victim_b3 == 2);
   uut.update(victim_b3, false); // b3
 }
+
+TEST_CASE("SRRIP restricted victims preserve unrelated ways", "[ubs-srrip]")
+{
+  srrip_set_helper policy{6};
+  policy.rrpv_values = {3, 0, 1, 2, 1, 3};
+  REQUIRE(policy.victim(1, 5) == 3);
+  REQUIRE(policy.rrpv_values == std::vector<int>{3, 1, 2, 3, 2, 3});
+}

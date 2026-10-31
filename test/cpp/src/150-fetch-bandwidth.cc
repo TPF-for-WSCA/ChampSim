@@ -9,7 +9,7 @@ SCENARIO("The fetch bandwidth limits the number of packets issued each cycle")
   auto bandwidth = GENERATE(as<long>{}, 1, 2, 3, 4, 5);
   GIVEN("An instruction buffer with many different instructions")
   {
-    constexpr std::array<uint64_t, 6> addrs{{0xdeadbeef, 0xbeefdead, 0xcafebabe, 0xbabecafe, 0xfeeddeaf, 0xdeaffeed}};
+    constexpr std::array<uint64_t, 6> addrs{{0xdeadbeec, 0xbeefdeac, 0xcafebabc, 0xbabecafc, 0xfeeddeac, 0xdeaffeec}};
 
     do_nothing_MRC mock_L1I;
     do_nothing_MRC mock_L1D;

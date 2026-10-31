@@ -25,15 +25,25 @@ std::pair<champsim::address, bool> basic_btb::btb_prediction(champsim::address i
   // use BTB for all other branches + direct calls
   auto btb_entry = direct.check_hit(ip);
 
+  const auto* oracle = intern_ ? intern_->prediction_oracle : nullptr;
+  if (oracle && oracle->is_branch && intern_->IDEAL_BTB) {
+    using info = direct_predictor::branch_info;
+    const auto type = (oracle->branch == BRANCH_CONDITIONAL || oracle->branch == BRANCH_OTHER) ? info::CONDITIONAL
+                    : oracle->branch == BRANCH_RETURN ? info::RETURN
+                    : (oracle->branch == BRANCH_INDIRECT || oracle->branch == BRANCH_INDIRECT_CALL) ? info::INDIRECT
+                    : info::ALWAYS_TAKEN;
+    btb_entry = direct_predictor::btb_entry_t{ip, oracle->branch_target, type};
+  }
+
   // no prediction for this IP
   if (!btb_entry.has_value())
     return {champsim::address{}, false};
 
   if (btb_entry->type == direct_predictor::branch_info::RETURN)
-    return ras.prediction();
+    return oracle && intern_->IDEAL_BTB ? std::pair{oracle->branch_target, true} : ras.prediction();
 
   if (btb_entry->type == direct_predictor::branch_info::INDIRECT)
-    return indirect.prediction(ip);
+    return oracle && intern_->IDEAL_IBP ? std::pair{oracle->branch_target, true} : indirect.prediction(ip);
 
   return {btb_entry->target, btb_entry->type != direct_predictor::branch_info::CONDITIONAL};
 }

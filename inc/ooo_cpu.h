@@ -149,6 +149,9 @@ public:
 
   RegisterAllocator reg_allocator{REGISTER_FILE_SIZE};
 
+  const bool IDEAL_CBP, IDEAL_IBP, IDEAL_BTB;
+  // Valid only during correct-path prediction; never exposes future trace data to replay.
+  const ooo_model_instr* prediction_oracle = nullptr;
   // TI-WP frontend replay. History contains only instructions consumed on the correct path.
   const bool WRONG_PATH;
   const std::size_t WRONG_PATH_HISTORY_SIZE;
@@ -283,7 +286,8 @@ public:
         BTB_PERFECT_MAPPING(b.m_btb_perfect_mapping), BTB_INVALIDATE_ENTRY(b.m_btb_invalidate_entry), BTB_INVALIDATE_REGION(b.m_btb_invalidate_region),
         BTB_TAG_SIZE(b.m_btb_tag_size), BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_FILTER_BTB_LIMIT(b.m_btb_filter_btb_limit),
         BTB_TAG_REGION_WAYS(b.m_btb_tag_region_ways), BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), BTB_INDEX_TAG_HASH(b.m_btb_index_tag_hash),
-        WRONG_PATH(b.m_wrong_path), WRONG_PATH_HISTORY_SIZE(b.m_wrong_path_history_size), IN_QUEUE_SIZE(2 * champsim::to_underlying(b.m_fetch_width)),
+        IDEAL_CBP(b.m_ideal_cbp), IDEAL_IBP(b.m_ideal_ibp), IDEAL_BTB(b.m_ideal_btb), WRONG_PATH(b.m_wrong_path), WRONG_PATH_HISTORY_SIZE(b.m_wrong_path_history_size),
+        IN_QUEUE_SIZE(2 * champsim::to_underlying(b.m_fetch_width)),
         L1I_bus(b.m_cpu, b.m_fetch_queues),
         L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), branch_module_pimpl(std::make_unique<branch_module_model<Bs...>>(this)),
         btb_module_pimpl(std::make_unique<btb_module_model<Ts...>>(this))

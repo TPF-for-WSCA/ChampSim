@@ -23,10 +23,13 @@ Each UBS configuration specifies its uneven layout with `ubs_way_sizes`. Change
 that array to experiment with another layout; every entry is a way capacity in
 bytes. The entries must be positive, sorted from smallest to largest, and the last
 entry must be 64. The number of array entries determines the number of UBS ways.
-The default `ubs_candidate_ways: 4` selects historical `LRU2BOUND4` behavior:
-all fitting empty ways are eligible, replacement is bounded by size transitions,
-and sub-blocks insert near LRU rather than MRU. Existing binaries must be rebuilt
-to use this behavior.
+The default `ubs_candidate_ways: 4` bounds replacement by size transitions,
+including the first way of the class that reaches the bound. All fitting empty
+ways remain eligible before replacement, even beyond this local victim window.
+With `"replacement": "srrip"` (selected by these configs), SRRIP selects and ages
+only ways inside that window, inserts at RRPV 2, and promotes hit fragments to
+RRPV 0. With `"replacement": "lru"`, historical `LRU2BOUND4` insertion and rank
+updates remain available. Existing binaries must be rebuilt to apply the policy.
 The pre-existing conventional 256 KiB point remains available as an additional
 unpaired reference.
 

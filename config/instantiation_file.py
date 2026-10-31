@@ -28,6 +28,9 @@ vmem_fmtstr = 'champsim::data::bytes{{{pte_page_size}}}, {num_levels}, champsim:
 queue_fmtstr = '{rq_size}, {pq_size}, {wq_size}, champsim::data::bits{{{_offset_bits}}}, {_queue_check_full_addr:b}'
 
 core_builder_parts = {
+    'ideal_cbp': '.ideal_cbp({ideal_cbp:b})',
+    'ideal_ibp': '.ideal_ibp({ideal_ibp:b})',
+    'ideal_btb': '.ideal_btb({ideal_btb:b})',
     'wrong_path': '.wrong_path({wrong_path:b})',
     'wrong_path_history_size': '.wrong_path_history_size({wrong_path_history_size})',
     'ifetch_buffer_size': '.ifetch_buffer_size({ifetch_buffer_size})',
@@ -109,6 +112,8 @@ cache_builder_parts = {
     '_prefetcher_data': '.prefetcher<{^prefetcher_string}>()',
     'lower_translate': '.lower_translate(&{^lower_translate_queues})',
     'lower_level': '.lower_level(&{^lower_level_queues})',
+    'ideal': '.ideal({ideal:b})',
+    'ideal_translation': '.ideal_translation({ideal_translation:b}, &vmem)',
     'ubs_way_sizes': '.ubs_way_sizes({{{^ubs_way_sizes_string}}})',
     'ubs_candidate_ways': '.ubs_candidate_ways({ubs_candidate_ways})',
     'frequency': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'

@@ -194,6 +194,8 @@ public:
   champsim::chrono::clock::duration HIT_LATENCY;
   champsim::chrono::clock::duration FILL_LATENCY;
   champsim::data::bits OFFSET_BITS;
+  bool ideal;
+  VirtualMemory* ideal_translation_vmem;
   bool ubs;
   std::vector<uint32_t> UBS_WAY_SIZES;
   uint32_t UBS_CANDIDATE_WAYS;
@@ -288,6 +290,8 @@ public:
     virtual void bind(CACHE* cache) = 0;
 
     virtual void impl_initialize_replacement() = 0;
+    virtual bool impl_supports_bounded_victims() const = 0;
+    virtual std::optional<long> impl_find_victim_in_range(long set, long first, long last) = 0;
     virtual std::optional<uint64_t> impl_replacement_storage_bits() const = 0;
     virtual long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip,
                                   champsim::address full_addr, access_type type) = 0;
@@ -330,6 +334,8 @@ public:
     }
 
     void impl_initialize_replacement() final;
+    bool impl_supports_bounded_victims() const final;
+    std::optional<long> impl_find_victim_in_range(long set, long first, long last) final;
     std::optional<uint64_t> impl_replacement_storage_bits() const final;
     [[nodiscard]] long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip,
                                         champsim::address full_addr, access_type type) final;
@@ -368,7 +374,8 @@ public:
       : champsim::operable(b.m_clock_period), upper_levels(b.m_uls), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name), NUM_SET(b.get_num_sets()),
         NUM_WAY(b.m_ubs ? static_cast<uint32_t>(std::size(b.m_ubs_way_sizes)) : b.get_num_ways()), MSHR_SIZE(b.get_num_mshrs()), PQ_SIZE(b.m_pq_size),
         PREFETCH_BUFFER_SIZE(b.m_prefetch_buffer_size),
-        HIT_LATENCY(b.get_hit_latency() * b.m_clock_period), FILL_LATENCY(b.get_fill_latency() * b.m_clock_period), OFFSET_BITS(b.m_offset_bits), ubs(b.m_ubs),
+        HIT_LATENCY(b.get_hit_latency() * b.m_clock_period), FILL_LATENCY(b.get_fill_latency() * b.m_clock_period), OFFSET_BITS(b.m_offset_bits), ideal(b.m_ideal),
+        ideal_translation_vmem(b.m_ideal_translation_vmem), ubs(b.m_ubs),
         UBS_WAY_SIZES(b.m_ubs_way_sizes), UBS_CANDIDATE_WAYS(b.m_ubs_candidate_ways), MAX_TAG(b.get_tag_bandwidth()), MAX_FILL(b.get_fill_bandwidth()),
         prefetch_as_load(b.m_pref_load), match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),
         pref_module_pimpl(std::make_unique<prefetcher_module_model<Ps...>>(this)), repl_module_pimpl(std::make_unique<replacement_module_model<Rs...>>(this))
@@ -479,6 +486,23 @@ void CACHE::prefetcher_module_model<Ps...>::impl_prefetcher_branch_operate(champ
   };
 
   std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
+}
+
+template <typename... Rs>
+bool CACHE::replacement_module_model<Rs...>::impl_supports_bounded_victims() const
+{
+  // A single policy owns the state for bounded UBS replacement.
+  return sizeof...(Rs) == 1 && std::apply([](const auto&... r) { return (... && r.supports_bounded_victims()); }, intern_);
+}
+
+template <typename... Rs>
+std::optional<long> CACHE::replacement_module_model<Rs...>::impl_find_victim_in_range(long set, long first, long last)
+{
+  if (!impl_supports_bounded_victims())
+    return std::nullopt;
+  if constexpr (sizeof...(Rs) == 1)
+    return std::get<0>(intern_).find_victim_in_range(set, first, last);
+  return std::nullopt;
 }
 
 template <typename... Rs>

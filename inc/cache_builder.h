@@ -32,6 +32,7 @@
 #include "util/to_underlying.h"
 
 class CACHE;
+class VirtualMemory;
 namespace champsim
 {
 class channel;
@@ -61,6 +62,8 @@ struct cache_builder_base {
   bool m_wq_full_addr{};
   bool m_va_pref{};
   bool m_data_cache{};
+  bool m_ideal{};
+  VirtualMemory* m_ideal_translation_vmem = nullptr;
   bool m_ubs{};
   std::vector<uint32_t> m_ubs_way_sizes{4, 4, 8, 8, 8, 12, 12, 16, 24, 32, 36, 36, 52, 64, 64, 64};
   uint32_t m_ubs_candidate_ways{4};
@@ -223,6 +226,16 @@ public:
   self_type& set_data_cache();
 
   /** Enable the Uneven Block Size (UBS, formerly VCL) L1 instruction-cache organization. */
+  self_type& ideal_translation(bool value, VirtualMemory* vmem)
+  {
+    m_ideal_translation_vmem = value ? vmem : nullptr;
+    return *this;
+  }
+  self_type& ideal(bool value)
+  {
+    m_ideal = value;
+    return *this;
+  }
   self_type& set_ubs();
 
   /** Use the conventional fixed-block cache organization. */
