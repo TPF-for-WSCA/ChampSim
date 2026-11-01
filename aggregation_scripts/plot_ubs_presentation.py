@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Presentation copy of the relative IPC plot, excluding 2 and 256 KiB groups."""
+"""Presentation copy of IPC or MPKI plot CSVs, excluding 2 and 256 KiB groups."""
 import argparse
 import csv
 from pathlib import Path
@@ -29,13 +29,18 @@ def main():
         rows = presentation_rows(csv.DictReader(stream))
     if not rows:
         parser.error('no plot values remain after filtering')
+    metrics = {row['metric'] for row in rows if row.get('metric')}
+    if len(metrics) > 1:
+        parser.error('input contains multiple metrics')
+    metric = next(iter(metrics), 'Harmonic mean speedup vs 16 KiB baseline (%)')
+    relative = '%' in metric
     categories = [c for c in ('overall', 'client', 'server', 'spec') if any(r['category'] == c for r in rows)]
     configs = sorted({r['configuration'] for r in rows}, key=configuration_key)
     summary = {name: {} for name in configs}
     values = {}
     for row in rows:
         config, category = row['configuration'], row['category']
-        value = float(row['value'])
+        value = float(row['value']) if row['value'] else None
         summary[config][category] = dict(mean=value, count=int(row['trace_count']))
         variant = 'UBS' if '_ubs_' in config else 'Conventional'
         key = (float(row['storage_kib']), category, variant)
@@ -54,8 +59,8 @@ def main():
             writer.writerow([f'{storage:g} KiB'] + [values.get((storage, c, v), '') for c, v in series])
     for suffix in ('.pdf', '.png', '.svg'):
         plot(summary, configs, categories, args.output.with_suffix(suffix),
-             'Instruction-cache performance', 'Harmonic mean speedup vs 16 KiB baseline (%)',
-             reference_line=0.0, center_on_reference=True)
+             'Instruction-cache performance', metric,
+             reference_line=0.0 if relative else None, center_on_reference=relative)
     print(f'Figures: {args.output}.[pdf,png,svg]')
     print(f'Excel chart data: {excel_path}')
     print(f'Exact long-form data: {args.output.with_name(args.output.name + "_plot.csv")}')

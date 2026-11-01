@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot geometric mean per-trace ROI IPC speedup over the SOTA baseline."""
+"""Plot ROI IPC speedup over baseline, plus L1I MPKI and MPKI reduction."""
 import argparse
 import itertools
 import json
@@ -192,6 +192,9 @@ def main():
         write_csv(args.output.with_suffix('.csv'), summary)
         write_csv(args.output.with_name(args.output.name + '_per_trace.csv'), individual)
         plot(summary, args.output)
+        from plot_mpki import experiment_mpki
+        experiment_mpki(args.results, individual, {row['configuration']: 'baseline' for row in summary},
+                        args.output, {row['configuration']: row['label'] for row in summary})
         groups = summarize_groups(summary, individual)
         write_csv(args.output.with_name(args.output.name + '_by_group.csv'), groups)
         diagnostics = group_diagnostics(args.results, summary)

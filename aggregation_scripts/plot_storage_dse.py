@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot ROI performance against measured L1I + BTB storage, sorted by storage."""
+"""Plot ROI performance against measured storage, plus L1I MPKI and MPKI reduction."""
 import argparse
 import csv
 import json
@@ -134,6 +134,12 @@ def main():
         write_csv(args.output.with_suffix(".csv"), summary)
         write_csv(args.output.with_name(args.output.name + "_per_trace.csv"), traces)
         plot(summary, args.output, args.title)
+        from plot_mpki import experiment_mpki
+        # Match both nominal I-cache capacity and BTB entry count.
+        baselines = {row['configuration']: re.sub(r'^(ubs|litebtb|combined)_', 'baseline_', row['configuration'])
+                     for row in summary}
+        experiment_mpki(args.results, traces, baselines, args.output,
+                        {row['configuration']: row['configuration'] for row in summary})
     except (ValueError, OSError, KeyError, ImportError) as error:
         parser.exit(1, f"{error}\n")
     print(f"Wrote {len(summary)} storage-sorted points to {args.output}.[csv,png,pdf]")

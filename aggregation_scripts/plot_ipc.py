@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot ROI IPC and unknown wrong-path instruction shares for ChampSim results."""
+"""Plot ROI IPC, L1I load MPKI, and unknown wrong-path instruction shares."""
 
 import argparse
 import csv
@@ -334,6 +334,7 @@ def plot(
             details["mean"]
             for configuration in configurations
             for details in summary[configuration].values()
+            if details["mean"] is not None
         ]
         extent = max((abs(value - reference_line) for value in values), default=0.0)
         extent = max(1.0, extent * 1.1)
@@ -410,6 +411,11 @@ def parse_args():
             "using 100 * pooled unknown / pooled fetched wrong-path ROI counts. "
             "Missing counters or no wrong-path instructions are shown as N/A. "
             "Also writes a per-workload wrong-path plot for each 16 KiB configuration."
+            " Also writes _mpki and _mpki_reduction figures and CSVs. MPKI uses L1I LOAD misses "
+            "per 1,000 retired instructions; reductions compare arithmetic means on paired traces. "
+            "Cache-size sweeps use the same-capacity conventional configuration; "
+            "other configurations use --baseline. Missing counters, missing comparison variants, "
+            "or zero baseline MPKI are N/A."
         )
     )
     parser.add_argument("results_dir", type=Path, help="Result root produced by idun_runner.sh")
@@ -487,6 +493,19 @@ def main():
         value_name=f"ipc_percent_deviation_from_{baseline}",
     )
     plot(summary, configurations, categories, output_path, args.title, "Harmonic mean ROI IPC")
+    from plot_mpki import write_mpki_outputs
+    mpki_baselines = {}
+    for configuration in configurations:
+        candidates = [name for name in configurations
+                      if configuration_storage(name) == configuration_storage(configuration)
+                      and not re.search(r"(?:^|[_-])ubs(?:$|[_-])", name, re.IGNORECASE)]
+        if configuration_storage(configuration) is not None:
+            mpki_baselines[configuration] = candidates[0] if len(candidates) == 1 else None
+        else:
+            mpki_baselines[configuration] = baseline
+        for entry in records[configuration].values():
+            entry['core'] = args.core
+    write_mpki_outputs(records, configurations, selected_traces, mpki_baselines, output_path)
     wrong_path_output = suffixed_path(output_path, "_wrong_path_unknown")
     plot(
         summarize_wrong_path(records, configurations, selected_traces, categories),

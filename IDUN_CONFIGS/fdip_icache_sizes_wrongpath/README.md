@@ -45,6 +45,10 @@ The result directory can then be passed to
 configuration as its default relative-performance baseline when both cache
 organizations are present.
 
+The script also writes absolute L1I LOAD MPKI and MPKI-reduction plots with
+exact CSV data. MPKI reduction compares UBS to the conventional cache at the
+same capacity. See [plotting metrics and outputs](../../aggregation_scripts/README.md).
+
 Every figure also gets an exact plot-data CSV: for example,
 `ipc_comparison.pdf` produces `ipc_comparison_plot.csv`, and
 `ipc_comparison_relative.pdf` produces `ipc_comparison_relative_plot.csv`.
