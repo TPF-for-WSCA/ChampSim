@@ -33,6 +33,11 @@
 
 long O3_CPU::operate()
 {
+  if (!warmup) {
+    sim_stats.fetch_recovery_cycles += current_time < fetch_resume_time;
+    sim_stats.frontend_empty_cycles += IFETCH_BUFFER.empty() && DECODE_BUFFER.empty() && DIB_HIT_BUFFER.empty();
+    sim_stats.rob_empty_cycles += ROB.empty();
+  }
   long progress{0};
   progress += retire_rob();                    // retire
   progress += complete_inflight_instruction(); // finalize execution
@@ -57,6 +62,88 @@ void O3_CPU::initialize()
   // BRANCH PREDICTOR & BTB
   impl_initialize_branch_predictor();
   impl_initialize_btb();
+  fmt::print("CPU {} frontend: recovery={} cycles, FDIP={} FTQ={} entries, fetch block={} bytes, instruction slot={} bytes\n",
+             cpu, BRANCH_MISPREDICT_PENALTY / clock_period, uses_fdip(), FDIP_FTQ_SIZE, FDIP_FETCH_BYTES, INSTRUCTION_BYTES);
+}
+
+bool O3_CPU::uses_fdip() const { return l1i && l1i->uses_prediction_flow(); }
+
+void O3_CPU::redirect_fdip(champsim::address ip)
+{
+  fetch_target_queue.clear();
+  current_fetch_prediction.reset();
+  prediction_pc = ip;
+  prediction_started = true;
+  if (l1i)
+    l1i->prediction_redirect();
+  ++sim_stats.fdip_redirects;
+}
+
+void O3_CPU::advance_fdip()
+{
+  if (!uses_fdip())
+    return;
+  if (prediction_recovery_wait) {
+    if (current_time < fetch_resume_time)
+      return;
+    prediction_recovery_wait = false;
+  }
+  if (!prediction_started) {
+    if (input_queue.empty())
+      return;
+    // The initial architectural PC is the only trace input to the walker.
+    prediction_pc = champsim::address{input_queue.front().ip.to<uint64_t>() & ~uint64_t{3}};
+    prediction_started = true;
+  }
+  if (fetch_target_queue.size() >= FDIP_FTQ_SIZE) {
+    ++sim_stats.fdip_ftq_full_cycles;
+    return;
+  }
+  const auto end = (prediction_pc.to<uint64_t>() / FDIP_FETCH_BYTES + 1) * FDIP_FETCH_BYTES;
+  l1i->prediction_operate(prediction_pc);
+  ++sim_stats.fdip_fetch_blocks;
+  fetch_block block;
+  do {
+    const auto ip = prediction_pc;
+    // No trace outcome, instruction-history lookup, or ideal dynamic oracle.
+    prediction_btb_hit.reset();
+    auto [target, always_taken] = impl_btb_prediction(ip, NOT_BRANCH);
+    const bool direction = impl_predict_branch(ip, target, always_taken, NOT_BRANCH) || always_taken;
+    block.predictions[block.size++] = {ip, target, always_taken, direction, prediction_btb_hit.value_or(target != champsim::address{} || always_taken)};
+    ++sim_stats.fdip_predictions;
+    const bool taken = direction && target != champsim::address{};
+    prediction_pc = taken ? target : ip + INSTRUCTION_BYTES;
+    if (taken)
+      break;
+  } while (prediction_pc.to<uint64_t>() < end);
+  fetch_target_queue.push_back(std::move(block));
+}
+
+std::optional<O3_CPU::fetch_prediction> O3_CPU::consume_prediction(champsim::address ip)
+{
+  if (fetch_target_queue.empty())
+    return std::nullopt;
+  auto& block = fetch_target_queue.front();
+  if (block.front().ip != ip)
+    return std::nullopt;
+  auto prediction = block.front();
+  if (++block.next == block.size)
+    fetch_target_queue.pop_front();
+  return prediction;
+}
+
+void O3_CPU::finish_branch_recovery(const ooo_model_instr& instr)
+{
+  fetch_resume_time = current_time + BRANCH_MISPREDICT_PENALTY;
+  if (branch_recovery_start) {
+    sim_stats.branch_redirect_cycles += (fetch_resume_time - *branch_recovery_start) / clock_period;
+    ++sim_stats.branch_redirects;
+    branch_recovery_start.reset();
+  }
+  if (uses_fdip()) {
+    redirect_fdip(instr.branch_taken ? instr.branch_target : instr.ip + INSTRUCTION_BYTES);
+    prediction_recovery_wait = true;
+  }
 }
 
 void O3_CPU::begin_phase()
@@ -88,7 +175,7 @@ void O3_CPU::end_phase(unsigned finished_cpu)
 
 void O3_CPU::remember_instruction(const ooo_model_instr& instr)
 {
-  if (WRONG_PATH_HISTORY_SIZE == 0)
+  if (WRONG_PATH_HISTORY_SIZE == 0 || instr.ip.to<uint64_t>() % INSTRUCTION_BYTES != 0)
     return;
   if (previous_trace_instruction && (!previous_trace_instruction->is_branch || !previous_trace_instruction->branch_taken)) {
     auto prev = wrong_path_history.find(previous_trace_instruction->ip);
@@ -113,23 +200,32 @@ void O3_CPU::initialize_wrong_path(champsim::bandwidth& bandwidth)
 {
   while (wrong_path_active && bandwidth.has_remaining() && wrong_path_next != champsim::address{}) {
     auto entry = wrong_path_history.find(wrong_path_next);
-    if (entry == wrong_path_history.end()) {
-      ++sim_stats.wrong_path_unknown;
-      wrong_path_next = {};
-      break;
+    const bool unknown = entry == wrong_path_history.end();
+    auto instr = unknown ? ooo_model_instr{static_cast<uint8_t>(cpu), input_instr{}} : entry->second.instruction;
+    instr.ip = wrong_path_next;
+    std::optional<fetch_prediction> prediction;
+    if (uses_fdip()) {
+      prediction = consume_prediction(instr.ip);
+      if (!prediction)
+        break;
     }
-    auto instr = entry->second.instruction;
+    sim_stats.wrong_path_unknown += unknown;
+    instr.branch_mispredicted = false;
     instr.wrong_path = true;
     instr.instr_id = wrong_path_id++;
     instr.ready_time = current_time;
-    wrong_path_next = entry->second.fallthrough;
+    // Sequential prediction, not the successor observed in the historical
+    // trace (which may include interrupts or other discontinuities).
+    wrong_path_next = instr.ip + INSTRUCTION_BYTES;
     bool taken = false;
-    if (instr.is_branch) {
-      auto [target, always_taken] = impl_btb_prediction(instr.ip, instr.branch);
-      taken = impl_predict_branch(instr.ip, target, always_taken, instr.branch) || always_taken;
+    if (prediction || instr.is_branch) {
+      auto [target, always_taken] = prediction ? std::pair{prediction->target, prediction->always_taken} : impl_btb_prediction(instr.ip, instr.branch);
+      taken = prediction ? prediction->direction : (impl_predict_branch(instr.ip, target, always_taken, instr.branch) || always_taken);
+      taken = taken && target != champsim::address{};
       if (taken)
         wrong_path_next = target;
-      l1i->impl_prefetcher_branch_operate(instr.ip, instr.branch, taken ? target : champsim::address{});
+      if (l1i && !uses_fdip())
+        l1i->impl_prefetcher_branch_operate(instr.ip, instr.branch, taken ? target : champsim::address{});
     }
     // No outcome training or data-side activity for inferred wrong-path instructions.
     IFETCH_BUFFER.push_back(std::move(instr));
@@ -155,11 +251,24 @@ void O3_CPU::recover_wrong_path()
 
 void O3_CPU::initialize_instruction()
 {
+  advance_fdip();
   champsim::bandwidth instrs_to_read_this_cycle{
       std::min(FETCH_WIDTH, champsim::bandwidth::maximum_type{static_cast<long>(IFETCH_BUFFER_SIZE - std::size(IFETCH_BUFFER))})};
 
   bool stop_fetch = false;
   while (current_time >= fetch_resume_time && instrs_to_read_this_cycle.has_remaining() && !stop_fetch && !std::empty(input_queue)) {
+    if (uses_fdip() && input_queue.front().ip.to<uint64_t>() % INSTRUCTION_BYTES == 0) {
+      current_fetch_prediction = consume_prediction(input_queue.front().ip);
+      if (!current_fetch_prediction) {
+        // Interrupts/discontinuities absent from the trace's branch encoding.
+        // Do not silently follow the trace while a predicted queue is in use.
+        if (!fetch_target_queue.empty()) {
+          ++sim_stats.fdip_discontinuities;
+          redirect_fdip(input_queue.front().ip);
+        }
+        break;
+      }
+    }
     instrs_to_read_this_cycle.consume();
 
     if (WRONG_PATH)
@@ -203,12 +312,26 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
 {
   bool stop_fetch = false;
 
+  // Unaligned PCs encode dependency-only dummy records in these traces.
+  // They have no instruction-fetch or predictor presence.
+  if (arch_instr.ip.to<uint64_t>() % INSTRUCTION_BYTES != 0) {
+    current_fetch_prediction.reset();
+    return false;
+  }
+
   // handle branch prediction for all instructions as at this point we do not know if the instruction is a branch
   sim_stats.total_branch_types.increment(arch_instr.branch);
-  prediction_oracle = &arch_instr;
-  auto [predicted_branch_target, always_taken] = impl_btb_prediction(arch_instr.ip, arch_instr.branch);
-  prediction_oracle = nullptr;
-  arch_instr.branch_prediction = impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch) || always_taken;
+  auto prediction = std::exchange(current_fetch_prediction, std::nullopt);
+  auto [predicted_branch_target, always_taken] = prediction ? std::pair{prediction->target, prediction->always_taken}
+                                                         : std::pair{champsim::address{}, false};
+  if (!prediction || IDEAL_BTB || IDEAL_IBP) {
+    prediction_btb_hit.reset();
+    prediction_oracle = &arch_instr;
+    std::tie(predicted_branch_target, always_taken) = impl_btb_prediction(arch_instr.ip, arch_instr.branch);
+    prediction_oracle = nullptr;
+  }
+  arch_instr.branch_prediction = prediction ? (prediction->direction || always_taken)
+                                           : (impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch) || always_taken);
   if (IDEAL_CBP && (arch_instr.branch == BRANCH_CONDITIONAL || arch_instr.branch == BRANCH_OTHER))
     arch_instr.branch_prediction = arch_instr.branch_taken;
   if (!arch_instr.branch_prediction) {
@@ -216,6 +339,11 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   }
 
   if (arch_instr.is_branch) {
+    const bool btb_hit = prediction && !IDEAL_BTB && !IDEAL_IBP ? prediction->btb_hit
+                         : prediction_btb_hit.value_or(predicted_branch_target != champsim::address{} || always_taken);
+    sim_stats.branch_btb_accesses.increment(arch_instr.branch);
+    if (!btb_hit)
+      sim_stats.branch_btb_misses.increment(arch_instr.branch);
     if constexpr (champsim::debug_print) {
       fmt::print("[BRANCH] instr_id: {} ip: {} taken: {}\n", arch_instr.instr_id, arch_instr.ip, arch_instr.branch_taken);
     }
@@ -228,22 +356,37 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
             && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
       sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
       sim_stats.branch_type_misses.increment(arch_instr.branch);
+      sim_stats.branch_direction_misses += (arch_instr.branch == BRANCH_CONDITIONAL || arch_instr.branch == BRANCH_OTHER)
+                                           && arch_instr.branch_taken != arch_instr.branch_prediction;
+      sim_stats.branch_target_misses += arch_instr.branch_taken && predicted_branch_target != arch_instr.branch_target;
       if (!warmup) {
+        branch_recovery_start = current_time;
         fetch_resume_time = champsim::chrono::clock::time_point::max();
         stop_fetch = true;
         arch_instr.branch_mispredicted = true;
         if (WRONG_PATH) {
           wrong_path_active = true;
-          const auto entry = wrong_path_history.find(arch_instr.ip);
-          wrong_path_next = arch_instr.branch_prediction ? predicted_branch_target
-                            : (entry != wrong_path_history.end() ? entry->second.fallthrough : champsim::address{});
+          wrong_path_next = arch_instr.branch_prediction && predicted_branch_target != champsim::address{} ? predicted_branch_target
+                                                                                                        : arch_instr.ip + INSTRUCTION_BYTES;
         }
       }
     } else {
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
     }
 
+    // Dynamic ideal oracles apply only to the instruction being consumed.
+    // Correct any stale lookahead path here; never read future trace outcomes.
+    if (prediction && (warmup || !arch_instr.branch_mispredicted)) {
+      const bool predicted_taken = prediction->direction && prediction->target != champsim::address{};
+      if (predicted_taken != arch_instr.branch_taken || (predicted_taken && prediction->target != arch_instr.branch_target))
+        redirect_fdip(arch_instr.branch_taken ? arch_instr.branch_target : arch_instr.ip + INSTRUCTION_BYTES);
+    }
+
     impl_update_btb(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch);
+    // Lookahead may have overwritten predictors' single-lookup scratch state.
+    // Refresh it for this branch before applying the existing outcome update.
+    if (prediction)
+      (void)impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch);
     impl_last_branch_result(arch_instr.ip, arch_instr.branch_target, arch_instr.branch_taken, arch_instr.branch);
   }
 
@@ -472,7 +615,7 @@ long O3_CPU::decode_instruction()
         // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
         db_entry.branch_mispredicted = 0;
         // pay misprediction penalty
-        this->fetch_resume_time = this->current_time + BRANCH_MISPREDICT_PENALTY;
+        this->finish_branch_recovery(db_entry);
       }
     }
     // Add to dispatch
@@ -740,8 +883,8 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
   instr.completed = true;
 
   if (instr.branch_mispredicted) {
+    finish_branch_recovery(instr);
     recover_wrong_path();
-    fetch_resume_time = current_time + BRANCH_MISPREDICT_PENALTY;
   }
 }
 

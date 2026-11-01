@@ -8,7 +8,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'aggregation_scripts'))
-from plot_ideal_frontend import collect, configurations
+from plot_ideal_frontend import collect, configurations, group_diagnostics, summarize_groups
 
 spec = importlib.util.spec_from_file_location('ideal_generate', ROOT / 'IDUN_CONFIGS/ideal_frontend/generate.py')
 generator = importlib.util.module_from_spec(spec)
@@ -33,12 +33,15 @@ class IdealFrontendTests(unittest.TestCase):
             cpu = config['ooo_cpu'][0]
             self.assertEqual(cpu['branch_predictor'], 'tage_sc_l')
             self.assertEqual(cpu['btb'], 'basic_btb')
-            self.assertEqual(cpu['btb_sets'] * cpu['btb_ways'], 8192)
+            self.assertEqual(cpu['btb_sets'] * cpu['btb_ways'], 4096)
             self.assertEqual(config['L1I']['sets'] * config['L1I']['ways'] * config['block_size'], 32768)
             for key in ('L1D', 'L2C', 'LLC'):
                 self.assertEqual(config[key], base[key])
             committed = json.loads((ROOT / f'IDUN_CONFIGS/ideal_frontend/{name}.json').read_text())
             self.assertEqual(config, committed)
+        baseline['ooo_cpu'][0]['btb_sets'] = base['ooo_cpu'][0]['btb_sets']
+        self.assertEqual(baseline['ooo_cpu'][0].pop('mispredict_penalty'), 2)
+        self.assertEqual(baseline['ooo_cpu'][0].pop('fdip_ftq_size'), 24)
         baseline['executable_name'] = base['executable_name']
         baseline['L1I'].pop('ideal')
         self.assertEqual(baseline.pop('ITLB'), {'ideal_translation': False})
@@ -71,6 +74,40 @@ class IdealFrontendTests(unittest.TestCase):
             summary, individual = collect(root, True)
             self.assertAlmostEqual(summary[1]['speedup'], math.sqrt(2 * 0.5))
             self.assertEqual(len(individual), 4)
+
+    def test_groups_are_normalized_and_averaged_separately(self):
+        summary = [dict(configuration='baseline', label='Baseline'), dict(configuration='ideal_btb', label='BTB')]
+        rows = [dict(configuration=name, group=group, speedup=ratio)
+                for name, group, ratio in [('baseline', 'server', 1), ('baseline', 'server', 1),
+                                           ('baseline', 'client', 1), ('ideal_btb', 'server', 2),
+                                           ('ideal_btb', 'server', 8), ('ideal_btb', 'client', 0.5)]]
+        groups = {(row['group'], row['configuration']): row for row in summarize_groups(summary, rows)}
+        self.assertEqual(groups['server', 'ideal_btb']['speedup'], 4)
+        self.assertEqual(groups['server', 'ideal_btb']['trace_count'], 2)
+        self.assertEqual(groups['client', 'ideal_btb']['speedup'], 0.5)
+
+    def test_unknown_wrong_path_share_pools_counts_and_handles_undefined(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for trace, fetched, unknown in [('spec_a', 10, 10), ('spec_b', 90, 0)]:
+                self.fixture(root, 'baseline', trace, 100)
+                path = root / 'baseline/spec' / (trace + '.json')
+                data = json.loads(path.read_text())
+                data[0]['roi']['cores'][0].update(wrong_path_fetched=fetched, wrong_path_unknown=unknown)
+                path.write_text(json.dumps(data))
+            summary = [dict(configuration='baseline')]
+            row, = group_diagnostics(root, summary)
+            self.assertEqual(row['wrong_path_unknown_percent'], 10)
+            self.assertEqual(row['wrong_path_fetched'], 100)
+            for fetched in (0, None):
+                for path in (root / 'baseline').rglob('*.json'):
+                    data = json.loads(path.read_text())
+                    core = data[0]['roi']['cores'][0]
+                    core.update(wrong_path_fetched=0, wrong_path_unknown=0)
+                    if fetched is None:
+                        del core['wrong_path_fetched']
+                    path.write_text(json.dumps(data))
+                self.assertIsNone(group_diagnostics(root, summary)[0]['wrong_path_unknown_percent'])
 
     def test_rejects_missing_unbalanced_duplicate_and_incomplete(self):
         with tempfile.TemporaryDirectory() as tmp:

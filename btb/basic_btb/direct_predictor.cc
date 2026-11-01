@@ -19,13 +19,15 @@ void direct_predictor::update(champsim::address ip, champsim::address branch_tar
     type = branch_info::CONDITIONAL;
 
   auto opt_entry = BTB.check_hit({ip, branch_target, type});
+  const bool is_call = branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL;
   if (opt_entry.has_value()) {
     opt_entry->type = type;
+    opt_entry->is_call = is_call;
     if (branch_target != champsim::address{})
       opt_entry->target = branch_target;
   }
 
   if (branch_target != champsim::address{}) {
-    BTB.fill(opt_entry.value_or(btb_entry_t{ip, branch_target, type}));
+    BTB.fill(opt_entry.value_or(btb_entry_t{ip, branch_target, type, is_call}));
   }
 }

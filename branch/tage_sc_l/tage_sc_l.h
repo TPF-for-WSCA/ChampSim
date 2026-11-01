@@ -2,6 +2,7 @@
 #define BRANCH_TAGE_SC_L_H
 
 #include <memory>
+#include <optional>
 
 #include "modules.h"
 
@@ -10,6 +11,8 @@ class tage_sc_l : public champsim::modules::branch_predictor
 {
   struct state;
   std::unique_ptr<state> predictor;
+  std::optional<champsim::address> prediction_ip;
+  bool prediction_result = false;
 
 public:
   explicit tage_sc_l(O3_CPU* cpu);

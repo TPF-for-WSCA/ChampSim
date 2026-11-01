@@ -66,6 +66,14 @@ std::vector<std::string> champsim::plain_printer::format(O3_CPU::stats_type stat
                                 ::print_ratio(std::kilo::num * stats.branch_type_misses.value_or(idx, 0), stats.instrs())));
   }
 
+  if (stats.fdip_fetch_blocks || stats.branch_redirects) {
+    lines.push_back(fmt::format("{} FDIP blocks: {} predictions: {} FTQ full cycles: {} redirects: {} discontinuities: {}", stats.name,
+                                stats.fdip_fetch_blocks, stats.fdip_predictions, stats.fdip_ftq_full_cycles, stats.fdip_redirects, stats.fdip_discontinuities));
+    lines.push_back(fmt::format("{} Recovery stall cycles: {} redirects: {} total miss-to-redirect cycles: {} frontend empty cycles: {} ROB empty cycles: {}",
+                                stats.name, stats.fetch_recovery_cycles, stats.branch_redirects, stats.branch_redirect_cycles,
+                                stats.frontend_empty_cycles, stats.rob_empty_cycles));
+  }
+
   return lines;
 }
 

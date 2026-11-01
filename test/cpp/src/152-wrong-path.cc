@@ -35,22 +35,22 @@ TEST_CASE("TI-WP follows the local BTB without consuming the correct-path trace"
   REQUIRE(cpu.IFETCH_BUFFER.size() == 1);
   cpu.initialize_instruction();
   REQUIRE(cpu.input_queue.size() == 1);
-  REQUIRE(cpu.IFETCH_BUFFER.size() == 3);
+  REQUIRE(cpu.IFETCH_BUFFER.size() == 7);
   REQUIRE(cpu.IFETCH_BUFFER[1].ip == known.ip);
   REQUIRE(cpu.IFETCH_BUFFER[2].ip == next.ip);
   REQUIRE(cpu.IFETCH_BUFFER[1].wrong_path);
   REQUIRE(cpu.IFETCH_BUFFER[1].instr_id != known.instr_id);
-  REQUIRE(cpu.sim_stats.wrong_path_fetched == 2);
+  REQUIRE(cpu.sim_stats.wrong_path_fetched == 6);
 
   // Already-issued fetches may finish after squash, but their IDs are never reused.
   cpu.do_complete_execution(cpu.IFETCH_BUFFER.front());
   REQUIRE_FALSE(cpu.wrong_path_active);
   REQUIRE(cpu.IFETCH_BUFFER.size() == 1);
-  REQUIRE(cpu.sim_stats.wrong_path_squashed == 2);
+  REQUIRE(cpu.sim_stats.wrong_path_squashed == 6);
   REQUIRE(cpu.input_queue.front().ip == champsim::address{0x104});
 }
 
-TEST_CASE("TI-WP stops at unknown PCs and enforces frontend capacity", "[wrong-path]")
+TEST_CASE("TI-WP substitutes NOPs at unknown PCs and enforces frontend capacity", "[wrong-path]")
 {
   O3_CPU cpu{champsim::core_builder{}.wrong_path(true).ifetch_buffer_size(2).fetch_width(champsim::bandwidth::maximum_type{4})};
   cpu.remember_instruction(champsim::test::instruction_with_ip(0x200));
@@ -66,8 +66,11 @@ TEST_CASE("TI-WP stops at unknown PCs and enforces frontend capacity", "[wrong-p
   cpu.wrong_path_active = true;
   cpu.wrong_path_next = champsim::address{0x999};
   cpu.initialize_instruction();
-  REQUIRE(cpu.IFETCH_BUFFER.empty());
-  REQUIRE(cpu.sim_stats.wrong_path_unknown == 1);
+  REQUIRE(cpu.IFETCH_BUFFER.size() == 2);
+  REQUIRE(cpu.IFETCH_BUFFER.front().ip == champsim::address{0x999});
+  REQUIRE(cpu.IFETCH_BUFFER.front().source_memory.empty());
+  REQUIRE(cpu.IFETCH_BUFFER.back().ip == champsim::address{0x99d});
+  REQUIRE(cpu.sim_stats.wrong_path_unknown == 2);
 }
 
 TEST_CASE("TI-WP history is bounded and never infers a taken branch's fallthrough", "[wrong-path]")
@@ -175,7 +178,7 @@ TEST_CASE("Replayed branches follow local predictions instead of recorded outcom
   REQUIRE(cpu.IFETCH_BUFFER.size() == 1); // taken prediction ends the fetch group
   REQUIRE(cpu.wrong_path_next == champsim::address{0x200});
   cpu.initialize_instruction();
-  REQUIRE(cpu.IFETCH_BUFFER.size() == 2);
-  REQUIRE(cpu.IFETCH_BUFFER.back().ip == champsim::address{0x200});
+  REQUIRE(cpu.IFETCH_BUFFER.size() == 7);
+  REQUIRE(cpu.IFETCH_BUFFER[1].ip == champsim::address{0x200});
   REQUIRE(cpu.sim_stats.total_branch_types.value_or(BRANCH_CONDITIONAL, 0) == 0);
 }

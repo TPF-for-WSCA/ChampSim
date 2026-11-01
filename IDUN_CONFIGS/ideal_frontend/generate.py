@@ -15,6 +15,7 @@ def configurations(wrong_path=True):
         config['executable_name'] = 'ideal_frontend/' + name
         config['ooo_cpu'][0].update({f'ideal_{key}': value for key, value in zip(('cbp', 'ibp', 'btb'), bits[1:])})
         config['ooo_cpu'][0]['wrong_path'] = wrong_path
+        config['ooo_cpu'][0].update(btb_sets=512, btb_ways=8, mispredict_penalty=2, fdip_ftq_size=24)
         config['L1I']['ideal'] = bits[0]
         config['ITLB'] = {'ideal_translation': bits[4]}
         yield name, config

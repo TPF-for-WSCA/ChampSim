@@ -6,12 +6,17 @@
 #include "ittage.h"
 #include "modules.h"
 #include "return_stack.h"
+#include <map>
 
 class basic_btb : champsim::modules::btb
 {
   return_stack ras{};
+  return_stack speculative_ras{};
+  std::pair<uint64_t, long long> speculative_block{~uint64_t{0}, -1};
   ittage indirect{};
   direct_predictor direct{};
+  // Unlimited static BTB for ideal lookahead; populated only by observed branches.
+  std::map<champsim::address, direct_predictor::btb_entry_t> ideal_entries;
 
 public:
   explicit basic_btb(O3_CPU* cpu);

@@ -20,7 +20,7 @@ SCENARIO("A late-added instruction does not miss the IFB")
 
     std::array<champsim::operable*, 3> elements{{&uut, &mock_L1I, &mock_L1D}};
 
-    uut.IFETCH_BUFFER.push_back(champsim::test::instruction_with_ip(0xdeadbeef));
+    uut.IFETCH_BUFFER.push_back(champsim::test::instruction_with_ip(0xdeadbeec));
     for (auto& instr : uut.IFETCH_BUFFER) {
       instr.ready_time = champsim::chrono::clock::time_point{};
       instr.dib_checked = true;
@@ -35,14 +35,14 @@ SCENARIO("A late-added instruction does not miss the IFB")
     THEN("The instruction issues a fetch")
     {
       REQUIRE(mock_L1I.packet_count() == 1);
-      REQUIRE(uut.IFETCH_BUFFER.front().ip == champsim::address{0xdeadbeef});
+      REQUIRE(uut.IFETCH_BUFFER.front().ip == champsim::address{0xdeadbeec});
     }
 
     WHEN("A new instruction is added, and the first request returns")
     {
-      mock_L1I.release(champsim::address{0xdeadbeef});
+      mock_L1I.release(champsim::address{0xdeadbeec});
 
-      uut.IFETCH_BUFFER.push_back(champsim::test::instruction_with_ip(0xdeadbeee)); // same cache line as first instruction
+      uut.IFETCH_BUFFER.push_back(champsim::test::instruction_with_ip(0xdeadbee8)); // same cache line as first instruction
 
       for (int i = 0; i < 3; ++i) {
         for (auto op : elements)
@@ -52,7 +52,7 @@ SCENARIO("A late-added instruction does not miss the IFB")
       THEN("The IFETCH_BUFFER still has one member")
       {
         REQUIRE(std::size(uut.IFETCH_BUFFER) == 1);
-        REQUIRE(uut.IFETCH_BUFFER.front().ip == champsim::address{0xdeadbeee});
+        REQUIRE(uut.IFETCH_BUFFER.front().ip == champsim::address{0xdeadbee8});
       }
     }
   }

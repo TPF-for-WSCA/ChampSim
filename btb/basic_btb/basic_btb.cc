@@ -25,25 +25,64 @@ std::pair<champsim::address, bool> basic_btb::btb_prediction(champsim::address i
   // use BTB for all other branches + direct calls
   auto btb_entry = direct.check_hit(ip);
 
+  if (intern_) {
+    ++intern_->sim_stats.btb_lookups;
+    intern_->sim_stats.btb_hits += btb_entry.has_value();
+    if (intern_->IDEAL_BTB) {
+      auto found = ideal_entries.find(ip);
+      if (found != ideal_entries.end())
+        btb_entry = found->second;
+    }
+  }
+
   const auto* oracle = intern_ ? intern_->prediction_oracle : nullptr;
+  const bool lookahead = intern_ && intern_->uses_fdip() && !oracle;
+  if (lookahead) {
+    const auto block_id = std::pair{intern_->sim_stats.fdip_fetch_blocks, intern_->sim_stats.begin_instrs};
+    if (block_id != speculative_block) {
+      // An empty FTQ on the correct path means either recovery or lookahead
+      // has caught up with demand. The architectural RAS is current there.
+      if (intern_->fetch_target_queue.empty() && !intern_->wrong_path_active)
+        speculative_ras = ras;
+      speculative_block = block_id;
+    }
+  }
   if (oracle && oracle->is_branch && intern_->IDEAL_BTB) {
     using info = direct_predictor::branch_info;
     const auto type = (oracle->branch == BRANCH_CONDITIONAL || oracle->branch == BRANCH_OTHER) ? info::CONDITIONAL
                     : oracle->branch == BRANCH_RETURN ? info::RETURN
                     : (oracle->branch == BRANCH_INDIRECT || oracle->branch == BRANCH_INDIRECT_CALL) ? info::INDIRECT
                     : info::ALWAYS_TAKEN;
-    btb_entry = direct_predictor::btb_entry_t{ip, oracle->branch_target, type};
+    btb_entry = direct_predictor::btb_entry_t{ip, oracle->branch_target, type,
+                                           oracle->branch == BRANCH_DIRECT_CALL || oracle->branch == BRANCH_INDIRECT_CALL};
   }
+
+  if (intern_)
+    intern_->prediction_btb_hit = btb_entry.has_value();
 
   // no prediction for this IP
   if (!btb_entry.has_value())
     return {champsim::address{}, false};
 
-  if (btb_entry->type == direct_predictor::branch_info::RETURN)
-    return oracle && intern_->IDEAL_BTB ? std::pair{oracle->branch_target, true} : ras.prediction();
+  if (btb_entry->type == direct_predictor::branch_info::RETURN) {
+    if (oracle && intern_->IDEAL_BTB)
+      return {oracle->branch_target, true};
+    auto& stack = lookahead ? speculative_ras : ras;
+    auto prediction = stack.prediction();
+    if (lookahead && !stack.stack.empty())
+      stack.stack.pop_back();
+    return prediction;
+  }
 
-  if (btb_entry->type == direct_predictor::branch_info::INDIRECT)
-    return oracle && intern_->IDEAL_IBP ? std::pair{oracle->branch_target, true} : indirect.prediction(ip);
+  if (btb_entry->type == direct_predictor::branch_info::INDIRECT) {
+    auto prediction = oracle && intern_->IDEAL_IBP ? std::pair{oracle->branch_target, true} : indirect.prediction(ip);
+    if (lookahead && btb_entry->is_call && prediction.first != champsim::address{})
+      speculative_ras.push(ip);
+    return prediction;
+  }
+
+  if (lookahead && btb_entry->is_call)
+    speculative_ras.push(ip);
 
   return {btb_entry->target, btb_entry->type != direct_predictor::branch_info::CONDITIONAL};
 }
@@ -62,6 +101,14 @@ void basic_btb::update_btb(champsim::address ip, champsim::address branch_target
     ras.calibrate_call_size(branch_target);
 
   direct.update(ip, branch_target, branch_type);
+  if (intern_ && intern_->IDEAL_BTB && branch_target != champsim::address{}) {
+    using info = direct_predictor::branch_info;
+    const auto type = (branch_type == BRANCH_CONDITIONAL || branch_type == BRANCH_OTHER) ? info::CONDITIONAL
+                    : branch_type == BRANCH_RETURN ? info::RETURN
+                    : (branch_type == BRANCH_INDIRECT || branch_type == BRANCH_INDIRECT_CALL) ? info::INDIRECT
+                    : info::ALWAYS_TAKEN;
+    ideal_entries[ip] = {ip, branch_target, type, branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL};
+  }
 }
 
 void basic_btb::initialize_btb()
@@ -70,12 +117,13 @@ void basic_btb::initialize_btb()
   champsim::print_storage("CPU " + std::to_string(intern_ ? intern_->cpu : 0) + " basic_btb", {
       {"Direct BTB targets", count * 64},
       {"Direct BTB tags", count * (64 - 2 - champsim::storage_bits(direct.sets))},
-      {"Direct BTB valid bits", count}, {"Direct BTB branch types", count * 2},
+      {"Direct BTB valid bits", count}, {"Direct BTB branch types/call flags", count * 3},
       {"Direct BTB replacement (LRU ranks)", count * champsim::storage_bits(direct.ways)},
       {"ITTAGE base targets/valid", ittage::base_storage_bits},
       {"ITTAGE tagged targets/tags/confidence/useful/valid", ittage::tagged_storage_bits},
       {"ITTAGE history/folds/cursor/chooser/aging", ittage::history_storage_bits},
       {"Return address stack", return_stack::max_size * 64},
+      {"Speculative return stack checkpoint", intern_ && intern_->uses_fdip() ? return_stack::max_size * 64 : 0},
       {"Return stack pointer", champsim::storage_bits(return_stack::max_size + 1)},
       {"Call-size trackers", return_stack::num_call_size_trackers * 64}});
 }

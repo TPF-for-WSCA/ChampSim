@@ -28,6 +28,7 @@ vmem_fmtstr = 'champsim::data::bytes{{{pte_page_size}}}, {num_levels}, champsim:
 queue_fmtstr = '{rq_size}, {pq_size}, {wq_size}, champsim::data::bits{{{_offset_bits}}}, {_queue_check_full_addr:b}'
 
 core_builder_parts = {
+    'fdip_ftq_size': '.fdip_ftq_size({fdip_ftq_size})',
     'ideal_cbp': '.ideal_cbp({ideal_cbp:b})',
     'ideal_ibp': '.ideal_ibp({ideal_ibp:b})',
     'ideal_btb': '.ideal_btb({ideal_btb:b})',

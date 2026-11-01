@@ -12,8 +12,25 @@ cpu_stats operator-(cpu_stats lhs, cpu_stats rhs)
   lhs.wrong_path_squashed -= rhs.wrong_path_squashed;
   lhs.wrong_path_unknown -= rhs.wrong_path_unknown;
 
+  lhs.fdip_fetch_blocks -= rhs.fdip_fetch_blocks;
+  lhs.fdip_predictions -= rhs.fdip_predictions;
+  lhs.fdip_ftq_full_cycles -= rhs.fdip_ftq_full_cycles;
+  lhs.fdip_redirects -= rhs.fdip_redirects;
+  lhs.fdip_discontinuities -= rhs.fdip_discontinuities;
+  lhs.btb_lookups -= rhs.btb_lookups;
+  lhs.btb_hits -= rhs.btb_hits;
+  lhs.branch_direction_misses -= rhs.branch_direction_misses;
+  lhs.branch_target_misses -= rhs.branch_target_misses;
+  lhs.branch_redirects -= rhs.branch_redirects;
+  lhs.branch_redirect_cycles -= rhs.branch_redirect_cycles;
+  lhs.fetch_recovery_cycles -= rhs.fetch_recovery_cycles;
+  lhs.frontend_empty_cycles -= rhs.frontend_empty_cycles;
+  lhs.rob_empty_cycles -= rhs.rob_empty_cycles;
+
   lhs.total_branch_types -= rhs.total_branch_types;
   lhs.branch_type_misses -= rhs.branch_type_misses;
+  lhs.branch_btb_accesses -= rhs.branch_btb_accesses;
+  lhs.branch_btb_misses -= rhs.branch_btb_misses;
 
   return lhs;
 }

@@ -5,12 +5,14 @@
     {
       "branch_predictor": "tage_sc_l",
       "btb": "basic_btb",
-      "btb_sets": 1024,
+      "btb_sets": 512,
       "btb_ways": 8,
       "ideal_cbp": false,
       "ideal_ibp": true,
       "ideal_btb": false,
-      "wrong_path": true
+      "wrong_path": true,
+      "mispredict_penalty": 2,
+      "fdip_ftq_size": 24
     }
   ],
   "L1I": {

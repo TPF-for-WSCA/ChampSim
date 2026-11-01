@@ -48,7 +48,7 @@ const auto default_core =
         .sq_width(champsim::bandwidth::maximum_type{2})
         .retire_width(champsim::bandwidth::maximum_type{5})
         .dib_inorder_width(champsim::bandwidth::maximum_type{5})
-        .mispredict_penalty(1)
+        .mispredict_penalty(2)
         .schedule_width(champsim::bandwidth::maximum_type{128})
         .decode_latency(1)
         .dib_hit_latency(1)

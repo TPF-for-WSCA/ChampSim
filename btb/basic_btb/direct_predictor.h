@@ -23,6 +23,7 @@ struct direct_predictor {
     champsim::address ip_tag{};
     champsim::address target{};
     branch_info type = branch_info::ALWAYS_TAKEN;
+    bool is_call = false;
 
     auto index() const
     {

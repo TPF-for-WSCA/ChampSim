@@ -19,6 +19,8 @@ struct fdip : public champsim::modules::prefetcher {
   using prefetcher::prefetcher;
 
   void prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target);
+  void prefetcher_prediction_operate(champsim::address ip);
+  void prefetcher_redirect();
   uint32_t prefetcher_cache_operate(champsim::address addr, champsim::address ip, uint8_t cache_hit, bool useful_prefetch, access_type type,
                                     uint32_t metadata_in);
   uint32_t prefetcher_cache_fill(champsim::address addr, long set, long way, uint8_t prefetch, champsim::address evicted_addr, uint32_t metadata_in);
@@ -27,6 +29,7 @@ struct fdip : public champsim::modules::prefetcher {
 private:
   [[nodiscard]] bool was_recently_prefetched(champsim::block_number block) const;
   void remember_prefetch(champsim::block_number block);
+  void forget_prefetch(champsim::block_number block);
 };
 
 #endif

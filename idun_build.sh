@@ -64,6 +64,14 @@ fi
 
 cd "${repo_root}"
 
+# Tests share this object cache and can leave objects built with -Og or -O0.
+# Make does not track flag changes, so start each production batch from scratch.
+# Keep generated headers and reuse fresh production objects across configurations.
+echo "Clearing cached objects and dependencies before production build"
+if [[ -d .csconfig ]]; then
+  find .csconfig -type f \( -name '*.o' -o -name '*.d' \) -delete
+fi
+
 for config in "${configs[@]}"; do
   echo "Configuring $(basename -- "${config}")"
   ./config.sh "${config}"

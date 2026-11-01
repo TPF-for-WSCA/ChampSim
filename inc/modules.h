@@ -102,6 +102,13 @@ struct btb : public bound_to<O3_CPU> {
 
 struct prefetcher : public bound_to<CACHE> {
   explicit prefetcher(CACHE* cache) : bound_to<CACHE>(cache) {}
+  template <typename T>
+  static auto prediction_flow_impl(int) -> decltype(std::declval<T>().prefetcher_prediction_operate(champsim::address{}),
+                                                  std::declval<T>().prefetcher_redirect(), std::true_type{});
+  template <typename>
+  static auto prediction_flow_impl(long) -> std::false_type;
+  template <typename T>
+  constexpr static bool has_prediction_flow = decltype(prediction_flow_impl<T>(0))::value;
   bool prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
   [[deprecated]] bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata) const;
 

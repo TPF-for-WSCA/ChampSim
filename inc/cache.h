@@ -282,6 +282,9 @@ public:
     virtual void impl_prefetcher_cycle_operate() = 0;
     virtual void impl_prefetcher_final_stats() = 0;
     virtual void impl_prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target) = 0;
+    virtual bool uses_prediction_flow() const = 0;
+    virtual void prediction_operate(champsim::address ip) = 0;
+    virtual void prediction_redirect() = 0;
   };
 
   struct replacement_module_concept {
@@ -319,6 +322,23 @@ public:
     void impl_prefetcher_cycle_operate() final;
     void impl_prefetcher_final_stats() final;
     void impl_prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target) final;
+    bool uses_prediction_flow() const final { return (false || ... || champsim::modules::prefetcher::has_prediction_flow<Ps>); }
+    void prediction_operate(champsim::address ip) final
+    {
+      [[maybe_unused]] auto process_one = [ip](auto& p) {
+        if constexpr (champsim::modules::prefetcher::has_prediction_flow<std::decay_t<decltype(p)>>)
+          p.prefetcher_prediction_operate(ip);
+      };
+      std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
+    }
+    void prediction_redirect() final
+    {
+      [[maybe_unused]] auto process_one = [](auto& p) {
+        if constexpr (champsim::modules::prefetcher::has_prediction_flow<std::decay_t<decltype(p)>>)
+          p.prefetcher_redirect();
+      };
+      std::apply([&](auto&... p) { (..., process_one(p)); }, intern_);
+    }
   };
 
   template <typename... Rs>
@@ -358,6 +378,9 @@ public:
   void impl_prefetcher_cycle_operate() const;
   void impl_prefetcher_final_stats() const;
   void impl_prefetcher_branch_operate(champsim::address ip, uint8_t branch_type, champsim::address branch_target) const;
+  bool uses_prediction_flow() const { return pref_module_pimpl->uses_prediction_flow(); }
+  void prediction_operate(champsim::address ip) { pref_module_pimpl->prediction_operate(ip); }
+  void prediction_redirect() { pref_module_pimpl->prediction_redirect(); }
 
   void impl_initialize_replacement() const;
   [[nodiscard]] long impl_find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, const BLOCK* current_set, champsim::address ip,

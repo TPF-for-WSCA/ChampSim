@@ -61,6 +61,18 @@ TEST_CASE("Ideal BTB preserves indirect prediction errors", "[ideal-frontend]")
   REQUIRE(btb.btb_prediction(instr.ip).first == instr.branch_target);
 }
 
+TEST_CASE("Ideal BTB lookahead retains learned branches beyond finite BTB capacity without a dynamic oracle", "[ideal-frontend][fdip-flow]")
+{
+  O3_CPU cpu{champsim::core_builder{}.ideal_btb(true).btb_sets(1).btb_ways(1)};
+  basic_btb btb{&cpu};
+  btb.update_btb(champsim::address{0x100}, champsim::address{0x300}, true, BRANCH_DIRECT_JUMP);
+  btb.update_btb(champsim::address{0x200}, champsim::address{0x400}, true, BRANCH_DIRECT_JUMP);
+  REQUIRE(cpu.prediction_oracle == nullptr);
+  REQUIRE(btb.btb_prediction(champsim::address{0x100}).first == champsim::address{0x300});
+  REQUIRE(btb.btb_prediction(champsim::address{0x200}).first == champsim::address{0x400});
+  REQUIRE(btb.btb_prediction(champsim::address{0x500}).first == champsim::address{});
+}
+
 TEST_CASE("Ideal I-cache returns cold and conflicting lines without lower requests", "[ideal-frontend]")
 {
   do_nothing_MRC lower;

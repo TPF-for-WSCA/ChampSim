@@ -28,18 +28,34 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
   auto total_mispredictions = std::ceil(
       std::accumulate(std::begin(types), std::end(types), 0LL, [btm = stats.branch_type_misses](auto acc, auto next) { return acc + btm.value_or(next, 0); }));
 
-  std::map<std::string, std::size_t> mpki{};
+  std::map<std::string, std::size_t> mpki{}, btb_accesses{}, btb_misses{};
   for (auto type : types) {
     mpki.emplace(branch_type_names.at(champsim::to_underlying(type)), stats.branch_type_misses.value_or(type, 0));
+    btb_accesses.emplace(branch_type_names.at(champsim::to_underlying(type)), stats.branch_btb_accesses.value_or(type, 0));
+    btb_misses.emplace(branch_type_names.at(champsim::to_underlying(type)), stats.branch_btb_misses.value_or(type, 0));
   }
 
-  j = nlohmann::json{{"wrong_path_fetched", stats.wrong_path_fetched},
+  j = nlohmann::json{{"fdip_fetch_blocks", stats.fdip_fetch_blocks},
+                     {"fdip_predictions", stats.fdip_predictions},
+                     {"fdip_ftq_full_cycles", stats.fdip_ftq_full_cycles},
+                     {"fdip_redirects", stats.fdip_redirects},
+                     {"fdip_discontinuities", stats.fdip_discontinuities},
+                     {"btb_lookups", stats.btb_lookups},
+                     {"btb_hits", stats.btb_hits},
+                     {"branch_direction_misses", stats.branch_direction_misses},
+                     {"branch_target_misses", stats.branch_target_misses},
+                     {"branch_redirects", stats.branch_redirects},
+                     {"branch_redirect_cycles", stats.branch_redirect_cycles},
+                     {"fetch_recovery_cycles", stats.fetch_recovery_cycles},
+                     {"frontend_empty_cycles", stats.frontend_empty_cycles},
+                     {"rob_empty_cycles", stats.rob_empty_cycles},
+                     {"wrong_path_fetched", stats.wrong_path_fetched},
                      {"wrong_path_squashed", stats.wrong_path_squashed},
                      {"wrong_path_unknown", stats.wrong_path_unknown},
                      {"instructions", stats.instrs()},
                      {"cycles", stats.cycles()},
                      {"Avg ROB occupancy at mispredict", std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions)},
-                     {"mispredict", mpki}};
+                     {"mispredict", mpki}, {"btb accesses", btb_accesses}, {"btb misses", btb_misses}};
 }
 
 void to_json(nlohmann::json& j, const CACHE::stats_type& stats)

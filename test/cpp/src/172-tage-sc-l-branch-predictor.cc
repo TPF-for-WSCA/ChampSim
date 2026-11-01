@@ -64,3 +64,20 @@ TEST_CASE("TAGE-SC-L retains trained state when moved", "[tage_sc_l]")
   assigned = std::move(moved);
   REQUIRE(assigned.predict_branch(ip));
 }
+
+TEST_CASE("TAGE-SC-L cached lookups match refreshed lookups across updates", "[tage_sc_l]")
+{
+  tage_sc_l cached{nullptr};
+  tage_sc_l refreshed{nullptr};
+  const champsim::address ip{0x400100}, other{0x500200}, target{0x400080};
+  for (unsigned i = 0; i < 4096; ++i) {
+    for (unsigned repeat = 0; repeat < 3; ++repeat) {
+      // Force the reference to rebuild scratch rather than reuse this PC.
+      refreshed.predict_branch(other);
+      REQUIRE(cached.predict_branch(ip) == refreshed.predict_branch(ip));
+    }
+    const auto type = i % 5 == 0 ? BRANCH_DIRECT_CALL : BRANCH_CONDITIONAL;
+    cached.last_branch_result(ip, target, i % 7 != 0, type);
+    refreshed.last_branch_result(ip, target, i % 7 != 0, type);
+  }
+}

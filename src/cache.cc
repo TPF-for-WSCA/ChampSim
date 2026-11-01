@@ -991,8 +991,12 @@ bool CACHE::prefetch_line(champsim::address pf_addr, bool fill_this_level, uint3
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : champsim::address{};
   pf_packet.is_translated = !virtual_prefetch;
-  if (ubs)
-    pf_packet.requested_bytes = uint64_t{1} << pf_addr.slice_lower(OFFSET_BITS).to<uint32_t>();
+  if (ubs) {
+    // Match the instruction-coverage probe and demand fetch granularity.
+    const auto offset = pf_addr.slice_lower(OFFSET_BITS).to<unsigned>();
+    const auto bytes = std::min(4u, 64u - offset);
+    pf_packet.requested_bytes = ((uint64_t{1} << bytes) - 1) << offset;
+  }
 
   internal_PQ.emplace_back(pf_packet, true, !fill_this_level);
   ++sim_stats.pf_issued;

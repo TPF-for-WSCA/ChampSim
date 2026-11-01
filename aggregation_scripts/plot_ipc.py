@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Plot ROI IPC for the configurations in a ChampSim result directory."""
+"""Plot ROI IPC and unknown wrong-path instruction shares for ChampSim results."""
 
 import argparse
 import csv
 import json
+import math
 import os
 import re
 import statistics
@@ -99,6 +100,39 @@ def infer_configuration(results_root, result_path, trace):
     return result_path.stem
 
 
+def load_wrong_path_counts(path, core_index):
+    """Pool ROI counts across phases, retaining unavailable counters as None."""
+    with path.open(encoding="utf-8") as stream:
+        phases = json.load(stream)
+    if isinstance(phases, dict):
+        phases = [phases]
+    cores = [phase["roi"]["cores"][core_index] for phase in phases]
+    return {
+        key: sum(core[key] for core in cores) if all(key in core for core in cores) else None
+        for key in ("wrong_path_unknown", "wrong_path_fetched")
+    }
+
+
+def summarize_wrong_path(records, configurations, selected_traces, categories):
+    """Use pooled instruction counts, rather than averaging trace percentages."""
+    summary = defaultdict(dict)
+    for configuration in configurations:
+        for category in categories:
+            entries = [entry for trace, entry in records[configuration].items()
+                       if trace in selected_traces and (category == "overall" or entry["group"] == category)]
+            if not entries:
+                continue
+            available = all(entry.get(key) is not None for entry in entries
+                            for key in ("wrong_path_unknown", "wrong_path_fetched"))
+            fetched = sum(entry["wrong_path_fetched"] for entry in entries) if available else None
+            unknown = sum(entry["wrong_path_unknown"] for entry in entries) if available else None
+            summary[configuration][category] = {
+                "mean": 100 * unknown / fetched if fetched else None,
+                "count": len(entries),
+            }
+    return summary
+
+
 def collect_results(results_root, core_index):
     records = defaultdict(dict)
     errors = []
@@ -109,7 +143,8 @@ def collect_results(results_root, core_index):
             configuration = infer_configuration(results_root, path, trace)
             if trace in records[configuration]:
                 raise ValueError(f"duplicate result for {configuration}/{trace}")
-            records[configuration][trace] = {"group": group, "ipc": ipc, "path": path}
+            records[configuration][trace] = {"group": group, "ipc": ipc, "path": path,
+                                             **load_wrong_path_counts(path, core_index)}
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
             errors.append(f"{path}: {error}")
 
@@ -233,6 +268,7 @@ def plot(
     ylabel,
     reference_line=None,
     center_on_reference=False,
+    percentage=False,
 ):
     cache_dir = Path(tempfile.gettempdir()) / f"champsim-matplotlib-{os.getuid()}"
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -276,6 +312,9 @@ def plot(
                 offset += (variant_index - (len(members) - 1) / 2) * bar_width
                 is_ubs = bool(re.search(r"(?:^|[_-])ubs(?:$|[_-])", configuration, re.IGNORECASE))
                 value = summary[configuration].get(category, {}).get("mean", float("nan"))
+                if value is None:
+                    axis.text(group_index + offset, 1, "N/A", rotation=90, ha="center", va="bottom", fontsize=6)
+                    value = float("nan")
                 axis.bar(
                     group_index + offset, value, width=bar_width,
                     color=colors[category_index % len(colors)],
@@ -301,6 +340,8 @@ def plot(
         axis.set_ylim(reference_line - extent, reference_line + extent)
     else:
         axis.set_ylim(bottom=0)
+    if percentage:
+        axis.set_ylim(0, 100)
     axis.grid(axis="y", linestyle=":", alpha=0.55)
     handles = [Patch(facecolor=colors[index % len(colors)], label=category) for index, category in enumerate(categories)]
     handles.extend([
@@ -316,6 +357,45 @@ def plot(
     plt.close(figure)
 
 
+def plot_wrong_path_workloads(records, configuration, selected_traces, output_path):
+    """Plot each workload's ROI unknown/fetched share for one configuration."""
+    import matplotlib.pyplot as plt
+
+    traces = sorted(set(records[configuration]) & selected_traces, key=natural_key)
+    rows = []
+    for trace in traces:
+        entry = records[configuration][trace]
+        unknown, fetched = entry.get("wrong_path_unknown"), entry.get("wrong_path_fetched")
+        value = 100 * unknown / fetched if unknown is not None and fetched else None
+        rows.append((trace, entry, value))
+
+    figure, axis = plt.subplots(figsize=(10, max(4, 0.25 * len(rows) + 1.5)), constrained_layout=True)
+    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    groups = sorted({entry["group"] for _, entry, _ in rows}, key=natural_key)
+    group_colors = {group: colors[index % len(colors)] for index, group in enumerate(groups)}
+    for index, (trace, entry, value) in enumerate(rows):
+        if value is None:
+            axis.text(1, index, "N/A", va="center", fontsize=8)
+        else:
+            axis.barh(index, value, color=group_colors[entry["group"]])
+    axis.set_yticks(range(len(traces)), traces, fontsize=8)
+    axis.invert_yaxis()
+    largest_share = max((value for _, _, value in rows if value is not None), default=0)
+    axis.set_xlim(0, max(10, 10 * math.ceil(largest_share / 10)))
+    axis.set_xlabel("Unknown / fetched wrong-path instructions (%)")
+    axis.set_title(f"{configuration} · per workload (ROI counts)\nN/A: unavailable counters or no fetched wrong-path instructions")
+    axis.grid(axis="x", linestyle=":", alpha=0.55)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output_path, dpi=200)
+    plt.close(figure)
+    with output_path.with_name(output_path.stem + "_plot.csv").open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["configuration", "trace_group", "trace", "wrong_path_unknown", "wrong_path_fetched", "unknown_percent", "source"])
+        for trace, entry, value in rows:
+            writer.writerow([configuration, entry["group"], trace, entry.get("wrong_path_unknown"),
+                             entry.get("wrong_path_fetched"), value, entry["path"]])
+
+
 def suffixed_path(path, suffix):
     return path.with_name(f"{path.stem}{suffix}{path.suffix}")
 
@@ -325,7 +405,11 @@ def parse_args():
         description=(
             "Plot mean ROI IPC for every binary configuration in a result directory. "
             "Configurations are ordered by nominal cache capacity; UBS and conventional sizes pair directly. "
-            "By default, only traces present for every configuration are compared."
+            "By default, only traces present for every configuration are compared. "
+            "Also writes <output stem>_wrong_path_unknown<suffix> and its plot CSV, "
+            "using 100 * pooled unknown / pooled fetched wrong-path ROI counts. "
+            "Missing counters or no wrong-path instructions are shown as N/A. "
+            "Also writes a per-workload wrong-path plot for each 16 KiB configuration."
         )
     )
     parser.add_argument("results_dir", type=Path, help="Result root produced by idun_runner.sh")
@@ -403,6 +487,19 @@ def main():
         value_name=f"ipc_percent_deviation_from_{baseline}",
     )
     plot(summary, configurations, categories, output_path, args.title, "Harmonic mean ROI IPC")
+    wrong_path_output = suffixed_path(output_path, "_wrong_path_unknown")
+    plot(
+        summarize_wrong_path(records, configurations, selected_traces, categories),
+        configurations, categories, wrong_path_output,
+        "Wrong-path instructions missing from replay history (pooled ROI counts; N/A if undefined)",
+        "Unknown / fetched wrong-path instructions (%)",
+        percentage=True,
+    )
+    for configuration in configurations:
+        if configuration_storage(configuration) == 16:
+            workload_output = suffixed_path(output_path, f"_wrong_path_unknown_{configuration}_per_workload")
+            plot_wrong_path_workloads(records, configuration, set(records[configuration]), workload_output)
+            print(f"Per-workload wrong-path plot: {workload_output}")
     plot(
         relative_summary,
         configurations,
@@ -426,6 +523,8 @@ def main():
         print(f"  {configuration}: {details}")
     print(f"Plot: {output_path}")
     print(f"CSV:  {csv_path}")
+    print(f"Wrong-path unknown plot: {wrong_path_output}")
+    print(f"Exact wrong-path plot CSV: {wrong_path_output.with_name(wrong_path_output.stem + '_plot.csv')}")
     print(f"Exact plot CSV: {output_path.with_name(output_path.stem + '_plot.csv')}")
     print(f"Relative baseline: {baseline}")
     print(f"Relative plot: {relative_output_path}")

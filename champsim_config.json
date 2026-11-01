@@ -21,7 +21,7 @@
       "lq_width": 2,
       "sq_width": 2,
       "retire_width": 5,
-      "mispredict_penalty": 1,
+      "mispredict_penalty": 2,
       "scheduler_size": 128,
       "decode_latency": 1,
       "dispatch_latency": 1,

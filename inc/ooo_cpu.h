@@ -152,6 +152,8 @@ public:
   const bool IDEAL_CBP, IDEAL_IBP, IDEAL_BTB;
   // Valid only during correct-path prediction; never exposes future trace data to replay.
   const ooo_model_instr* prediction_oracle = nullptr;
+  // Optional exact hit observation supplied by BTBs supporting it (basic_btb).
+  std::optional<bool> prediction_btb_hit;
   // TI-WP frontend replay. History contains only instructions consumed on the correct path.
   const bool WRONG_PATH;
   const std::size_t WRONG_PATH_HISTORY_SIZE;
@@ -165,6 +167,33 @@ public:
   bool wrong_path_active = false;
   champsim::address wrong_path_next{};
   uint64_t wrong_path_id = uint64_t{1} << 63;
+  // A prediction-only address generator, independent of the trace reader.
+  // Translated IPC1 real instructions occupy four-byte slots. Dependency-only
+  // dummy records do not consume predictions. Each FTQ entry covers at most
+  // 32 bytes (eight slots) and ends at a predicted taken branch.
+  static constexpr uint64_t FDIP_FETCH_BYTES = 32, INSTRUCTION_BYTES = 4;
+  const std::size_t FDIP_FTQ_SIZE;
+  struct fetch_prediction {
+    champsim::address ip{}, target{};
+    bool always_taken = false, direction = false;
+    bool btb_hit = false;
+  };
+  struct fetch_block {
+    std::array<fetch_prediction, FDIP_FETCH_BYTES / INSTRUCTION_BYTES> predictions{};
+    std::size_t size = 0, next = 0;
+
+    const fetch_prediction& front() const { return predictions[next]; }
+  };
+  std::deque<fetch_block> fetch_target_queue;
+  std::optional<fetch_prediction> current_fetch_prediction;
+  champsim::address prediction_pc{};
+  bool prediction_started = false, prediction_recovery_wait = false;
+  std::optional<champsim::chrono::clock::time_point> branch_recovery_start;
+  bool uses_fdip() const;
+  void advance_fdip();
+  void redirect_fdip(champsim::address ip);
+  std::optional<fetch_prediction> consume_prediction(champsim::address ip);
+  void finish_branch_recovery(const ooo_model_instr& instr);
   void remember_instruction(const ooo_model_instr& instr);
   void initialize_wrong_path(champsim::bandwidth& bandwidth);
   void recover_wrong_path();
@@ -287,11 +316,14 @@ public:
         BTB_TAG_SIZE(b.m_btb_tag_size), BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_FILTER_BTB_LIMIT(b.m_btb_filter_btb_limit),
         BTB_TAG_REGION_WAYS(b.m_btb_tag_region_ways), BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), BTB_INDEX_TAG_HASH(b.m_btb_index_tag_hash),
         IDEAL_CBP(b.m_ideal_cbp), IDEAL_IBP(b.m_ideal_ibp), IDEAL_BTB(b.m_ideal_btb), WRONG_PATH(b.m_wrong_path), WRONG_PATH_HISTORY_SIZE(b.m_wrong_path_history_size),
+        FDIP_FTQ_SIZE(b.m_fdip_ftq_size),
         IN_QUEUE_SIZE(2 * champsim::to_underlying(b.m_fetch_width)),
         L1I_bus(b.m_cpu, b.m_fetch_queues),
         L1D_bus(b.m_cpu, b.m_data_queues), l1i(b.m_l1i), branch_module_pimpl(std::make_unique<branch_module_model<Bs...>>(this)),
         btb_module_pimpl(std::make_unique<btb_module_model<Ts...>>(this))
   {
+    if (FDIP_FTQ_SIZE == 0)
+      throw std::invalid_argument("FDIP FTQ size must be nonzero");
   }
 };
 
