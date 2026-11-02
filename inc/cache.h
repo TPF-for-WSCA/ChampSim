@@ -109,6 +109,7 @@ public:
     access_type type;
     bool prefetch_from_this;
     bool partial_miss = false;
+    // Demand coverage only: a merged prefetch's probe mask is not useful data.
     uint64_t requested_bytes = 0;
     // Union of resident-byte snapshots from merged misses; restored into the
     // predictor's useful-byte mask on fill, alongside the newly requested bytes.
@@ -185,6 +186,7 @@ public:
 
   // Side-effect-free virtual-PC probe for instruction prefetchers, including UBS byte coverage.
   [[nodiscard]] bool is_instruction_present(champsim::address virtual_pc) const;
+  [[nodiscard]] bool is_instruction_request_pending(champsim::address virtual_pc) const;
 
   uint32_t cpu = 0;
   std::string NAME;
@@ -257,8 +259,9 @@ public:
 
   long invalidate_entry(champsim::address inval_addr);
   bool prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
-  // Preserve the issuing PC for downstream PC-based prefetchers.
-  bool prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata, champsim::address ip);
+  // Preserve the issuing PC and optional byte coverage for downstream consumers.
+  bool prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata, champsim::address ip,
+                     uint64_t requested_bytes = 0);
 
   [[deprecated]] bool prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefetch_metadata);
 

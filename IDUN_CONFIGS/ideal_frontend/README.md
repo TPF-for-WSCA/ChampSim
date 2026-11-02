@@ -39,7 +39,9 @@ disables it uniformly for an alternative study.
   factor is independent of the always-hit I-cache. Configure it with
   `"ITLB": {"ideal_translation": true}`; it is restricted to instruction TLBs.
 - **CBP:** use the trace direction for conditional branches (and the trace's
-  fallback `BRANCH_OTHER` class). BTB misses/target errors remain. The real
+  fallback `BRANCH_OTHER` class). Branch presence and targets still come from
+  the BTB. A missing BTB entry counts as a branch misprediction even when the
+  branch is not taken; taken branches with incorrect targets also miss. The real
   TAGE-SC-L still receives its normal updates.
 - **BTB:** supply branch presence, type, and direct targets from the current
   trace instruction, including first encounters; return targets are also exact.
@@ -89,10 +91,13 @@ walker; it never reads future trace instructions/outcomes. An unexpected trace
 discontinuity forces resynchronization and is counted separately. These counters
 should be checked before interpreting results.
 
-Previously observed wrong-path instructions are replayed without data execution.
+Previously observed wrong-path instructions supply branch identity for replay.
+Replayed instructions occupy frontend buffers, the ROB, and scheduler/execution
+bandwidth as backend NOPs. Recorded register operands, data addresses, and dynamic
+pipeline state are discarded; wrong-path instructions never retire.
 Unseen PCs become four-byte NOPs, still issuing instruction fetch/translation
 traffic and following saved BTB/direction predictions. Unknown-NOP counts are
-reported. Replay is not full speculative backend execution. The ideal CBP/IBP
+reported. Replay does not model speculative register dataflow or data-cache accesses. The ideal CBP/IBP
 oracles apply only to the current demand instruction; they do not supply future
 wrong-path outcomes. Consequently the fully ideal variant is not a bound on
 perfect future FDIP control-flow prediction.

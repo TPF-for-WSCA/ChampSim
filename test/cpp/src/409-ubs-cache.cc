@@ -386,12 +386,47 @@ TEST_CASE("UBS merged misses and predictor hits retain all requested byte region
   REQUIRE(probe.lower.packet_count() == 2);
 }
 
-TEST_CASE("UBS frontend forwards the union of instruction bytes to the cache channel")
+TEST_CASE("UBS merged prefetch probes do not inflate demand useful-byte coverage", "[ubs-prefetch-coverage]")
 {
-  ubs_probe probe;
-  O3_CPU core{champsim::core_builder{}.fetch_queues(&probe.upper.queues).l1i(&probe.cache)};
+  const bool prefetch_first = GENERATE(false, true);
+  const auto offset = GENERATE(0u, 60u);
+  ubs_probe probe{true, 4, 8, 100};
+  const auto demanded = uint64_t{0xf} << offset;
+  auto demand = make_request(champsim::address{0x10000 + offset}, demanded, probe.id++);
+  auto prefetch = make_request(champsim::address{0x10000}, low_bytes(32), probe.id++);
+  prefetch.type = access_type::PREFETCH;
+  REQUIRE(probe.upper.issue(prefetch_first ? prefetch : demand));
+  run_cycles(probe.elements, 10);
+  REQUIRE(probe.upper.issue(prefetch_first ? demand : prefetch));
+  run_cycles(probe.elements, 10);
+  REQUIRE(probe.lower.packet_count() == 1);
+  REQUIRE(probe.cache.MSHR.size() == 1);
+  REQUIRE(probe.cache.MSHR.front().type == access_type::LOAD);
+  REQUIRE(probe.cache.MSHR.front().requested_bytes == demanded);
+  run_cycles(probe.elements, 140);
+  REQUIRE(probe.cache.MSHR.empty());
+
+  probe.issue(1, 0xf);
+  run_cycles(probe.elements, 140); // Drain the demand line into sub-block storage.
+  const auto& fragment = probe.cache.block.at(0);
+  REQUIRE(fragment.valid);
+  REQUIRE(fragment.address.slice_upper(champsim::data::bits{6}) == champsim::address{0x10000}.slice_upper(champsim::data::bits{6}));
+  REQUIRE(fragment.size == 4);
+  REQUIRE(fragment.offset == offset);
+  REQUIRE(std::count_if(probe.cache.block.begin(), probe.cache.block.end(), [](const auto& block) { return block.valid; }) == 1);
+  probe.access(0, demanded);
+  REQUIRE(probe.lower.packet_count() == 2);
+}
+
+TEST_CASE("Frontend forwards identical instruction byte coverage to either cache", "[icache-parity]")
+{
+  const bool uneven = GENERATE(false, true);
+  const bool wrong_path = GENERATE(false, true);
+  ubs_probe probe{uneven};
+  O3_CPU core{champsim::core_builder{}.fetch_queues(&probe.upper.queues).l1i(&probe.cache).wrong_path(wrong_path)};
   for (const auto offset : {0u, 2u, 8u, 60u, 62u}) {
     auto instruction = champsim::test::instruction_with_ip(0x10000 + offset);
+    instruction.wrong_path = wrong_path;
     core.IFETCH_BUFFER.push_back(instruction);
   }
   REQUIRE(core.do_fetch_instruction(core.IFETCH_BUFFER.begin(), core.IFETCH_BUFFER.end()));
@@ -439,7 +474,7 @@ TEST_CASE("Dependency-only dummy PCs bypass fetching without changing backend in
     const auto& request = probe.upper.queues.RQ.front();
     REQUIRE(request.v_address == champsim::address{0x10000});
     REQUIRE(request.instr_depend_on_me == std::vector<uint64_t>{before.at(1).instr_id, before.at(3).instr_id});
-    REQUIRE(request.requested_bytes == (uneven ? 0xff : 0));
+    REQUIRE(request.requested_bytes == 0xff);
   }
   core.fetch_instruction();
   REQUIRE(probe.upper.queues.RQ.size() == (only_dummies ? 0 : 1));

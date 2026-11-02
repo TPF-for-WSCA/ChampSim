@@ -56,6 +56,13 @@ A branch predictor module may implement three functions.
 
    This function is called when a prediction is needed.
 
+   Predictions are also requested for nonbranches, FDIP lookahead, and wrong-path
+   replay. These lookups may repeat a PC and need not receive an outcome callback.
+   The built-in direction predictors advance history and train only in
+   ``last_branch_result``. A module using lookup scratch must reconstruct the
+   resolving branch's context before training; the latest lookup may belong to
+   another instruction.
+
    :param ip: The instruction pointer of the branch
    :param predicted_target: The predicted target of the branch.
        This is passed directly from the branch target predictor module and may be incorrect.
@@ -77,6 +84,10 @@ A branch predictor module may implement three functions.
 .. cpp:function:: void last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type)
 
    This function is called when a branch is resolved. The parameters are the same as in the previous hook, except that the last three are guaranteed to be correct.
+
+   The current core supplies correct-path outcomes at fetch. Inferred wrong-path
+   instructions never call this hook. Training must use the history preceding
+   this outcome, then advance history with the actual result.
 
 -----------------------------------
 Branch Target Buffers

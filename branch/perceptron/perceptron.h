@@ -3,7 +3,6 @@
 
 #include <array>
 #include <bitset>
-#include <deque>
 
 #include "modules.h"
 #include "msl/fwcounter.h"
@@ -27,23 +26,10 @@ struct perceptron : champsim::modules::branch_predictor {
   static constexpr std::size_t PERCEPTRON_BITS = 8;     // number of bits per weight
   static constexpr std::size_t NUM_PERCEPTRONS = 163;
 
-  static constexpr std::size_t NUM_UPDATE_ENTRIES = 100; // size of buffer for keeping 'perceptron_state' for update
-
-  /* 'perceptron_state' - stores the branch prediction and keeps information
-   * such as output and history needed for updating the perceptron predictor
-   */
-  struct perceptron_state {
-    champsim::address ip{};
-    bool prediction = false;                     // prediction: 1 for taken, 0 for not taken
-    long long int output = 0;                    // perceptron output
-    std::bitset<PERCEPTRON_HISTORY> history = 0; // value of the history register yielding this prediction
-  };
-
   std::array<internal_perceptron<PERCEPTRON_HISTORY, PERCEPTRON_BITS>, NUM_PERCEPTRONS> perceptrons; // table of perceptrons
-  std::deque<perceptron_state> perceptron_state_buf;                                                 // state for updating perceptron predictor
-  std::bitset<PERCEPTRON_HISTORY> spec_global_history;                                               // speculative global history - updated by predictor
-  std::bitset<PERCEPTRON_HISTORY> global_history;                                                    // real global history - updated when the predictor is
-                                                                                                     // updated
+  // ChampSim trains at fetch. Prediction-only lookups (including FDIP and
+  // wrong-path replay) must not advance history or retain pending updates.
+  std::bitset<PERCEPTRON_HISTORY> global_history;
 
   using branch_predictor::branch_predictor;
 

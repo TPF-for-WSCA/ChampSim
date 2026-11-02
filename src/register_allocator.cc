@@ -21,6 +21,8 @@ PHYSICAL_REGISTER_ID RegisterAllocator::rename_dest_register(int16_t reg, champs
   free_registers.pop();
   frontend_RAT[reg] = phys_reg;
   physical_register_file.at(phys_reg) = {(uint16_t)reg, producer_id, false, true}; // arch_reg_index, valid, busy
+  if (speculation_checkpoint)
+    speculative_registers.push_back(phys_reg);
 
   return phys_reg;
 }
@@ -35,7 +37,10 @@ PHYSICAL_REGISTER_ID RegisterAllocator::rename_src_register(int16_t reg)
     phys = free_registers.front();
     free_registers.pop();
     frontend_RAT[reg] = phys;
-    backend_RAT[reg] = phys;                                          // we assume this register's last write has been committed
+    if (speculation_checkpoint)
+      speculative_registers.push_back(phys);
+    else
+      backend_RAT[reg] = phys; // An unseen correct-path source has a committed initial value.
     physical_register_file.at(phys) = {(uint16_t)reg, 0, true, true}; // arch_reg_index, producing_inst_id, valid, busy
   }
 
@@ -83,8 +88,25 @@ int RegisterAllocator::count_reg_dependencies(const ooo_model_instr& instr) cons
 void RegisterAllocator::reset_frontend_RAT()
 {
   std::copy(std::begin(backend_RAT), std::end(backend_RAT), std::begin(frontend_RAT));
-  // once wrong path is implemented:
-  // find registers allocated by wrong-path instructions and free them
+}
+
+void RegisterAllocator::begin_speculation()
+{
+  if (!speculation_checkpoint)
+    speculation_checkpoint = frontend_RAT;
+}
+
+void RegisterAllocator::squash_speculation()
+{
+  if (!speculation_checkpoint)
+    return;
+  // Preserve older, still-unretired producers rather than resetting to the
+  // committed RAT. Source-only allocations made by replay must be freed too.
+  frontend_RAT = *speculation_checkpoint;
+  for (auto reg : speculative_registers)
+    free_register(reg);
+  speculative_registers.clear();
+  speculation_checkpoint.reset();
 }
 
 void RegisterAllocator::print_deadlock()

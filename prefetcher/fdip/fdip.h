@@ -27,6 +27,7 @@ struct fdip : public champsim::modules::prefetcher {
   void prefetcher_cycle_operate();
 
 private:
+  bool prefetch_target(champsim::address target, uint32_t metadata);
   [[nodiscard]] bool was_recently_prefetched(champsim::block_number block) const;
   void remember_prefetch(champsim::block_number block);
   void forget_prefetch(champsim::block_number block);

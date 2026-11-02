@@ -1,21 +1,28 @@
 #include <catch.hpp>
 
+#include "../../../prefetcher/fdip/fdip.h"
 #include "cache.h"
 #include "defaults.hpp"
 #include "instr.h"
+#include "mocks.hpp"
 #include "ooo_cpu.h"
 
 namespace
 {
 struct replay_btb : champsim::modules::btb {
   using btb::btb;
-  std::pair<champsim::address, bool> btb_prediction(champsim::address, uint8_t) { return {champsim::address{0x200}, true}; }
+  std::pair<champsim::address, bool> btb_prediction(champsim::address, uint8_t branch)
+  {
+    return branch == NOT_BRANCH ? std::pair{champsim::address{}, false} : std::pair{champsim::address{0x200}, true};
+  }
 };
 }
 
 TEST_CASE("TI-WP follows the local BTB without consuming the correct-path trace", "[wrong-path]")
 {
-  CACHE l1i{champsim::cache_builder{champsim::defaults::default_l1i}};
+  const bool uneven = GENERATE(false, true);
+  auto builder = champsim::cache_builder{champsim::defaults::default_l1i};
+  CACHE l1i{uneven ? builder.set_ubs() : builder.reset_ubs()};
   O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.wrong_path(true).l1i(&l1i).btb<replay_btb>()};
   cpu.warmup = false;
   auto known = champsim::test::instruction_with_ip(0x200);
@@ -50,7 +57,7 @@ TEST_CASE("TI-WP follows the local BTB without consuming the correct-path trace"
   REQUIRE(cpu.input_queue.front().ip == champsim::address{0x104});
 }
 
-TEST_CASE("TI-WP substitutes NOPs at unknown PCs and enforces frontend capacity", "[wrong-path]")
+TEST_CASE("TI-WP infers data operations at unknown PCs and enforces frontend capacity", "[wrong-path]")
 {
   O3_CPU cpu{champsim::core_builder{}.wrong_path(true).ifetch_buffer_size(2).fetch_width(champsim::bandwidth::maximum_type{4})};
   cpu.remember_instruction(champsim::test::instruction_with_ip(0x200));
@@ -68,9 +75,13 @@ TEST_CASE("TI-WP substitutes NOPs at unknown PCs and enforces frontend capacity"
   cpu.initialize_instruction();
   REQUIRE(cpu.IFETCH_BUFFER.size() == 2);
   REQUIRE(cpu.IFETCH_BUFFER.front().ip == champsim::address{0x999});
-  REQUIRE(cpu.IFETCH_BUFFER.front().source_memory.empty());
+  REQUIRE(cpu.IFETCH_BUFFER.front().source_memory == std::vector{champsim::address{0x1000}});
+  REQUIRE(cpu.IFETCH_BUFFER.front().destination_registers == std::vector{RegisterAllocator::INFERRED_LOAD_REGISTER});
   REQUIRE(cpu.IFETCH_BUFFER.back().ip == champsim::address{0x99d});
   REQUIRE(cpu.sim_stats.wrong_path_unknown == 2);
+  REQUIRE(cpu.IFETCH_BUFFER.back().source_registers == cpu.IFETCH_BUFFER.front().destination_registers);
+  REQUIRE(cpu.sim_stats.wrong_path_inferred_loads == 1);
+  REQUIRE(cpu.sim_stats.wrong_path_inferred_arithmetic == 1);
 }
 
 TEST_CASE("TI-WP history is bounded and never infers a taken branch's fallthrough", "[wrong-path]")
@@ -87,19 +98,126 @@ TEST_CASE("TI-WP history is bounded and never infers a taken branch's fallthroug
   REQUIRE(cpu.wrong_path_history.count(branch.ip) == 0);
 }
 
-TEST_CASE("TI-WP cannot dispatch data operations or retire", "[wrong-path]")
+TEST_CASE("TI-WP keeps data operands in the backend without retirement", "[wrong-path]")
 {
   O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.wrong_path(true)};
   auto instr = champsim::test::instruction_with_ip(0x200);
   instr.wrong_path = true;
   instr.source_memory.push_back(champsim::address{0x1000});
   instr.destination_memory.push_back(champsim::address{0x2000});
+  instr.source_registers.push_back(1);
+  instr.destination_registers.push_back(2);
   cpu.DISPATCH_BUFFER.push_back(instr);
-  REQUIRE(cpu.dispatch_instruction() == 0);
+  const auto free_registers = cpu.reg_allocator.count_free_registers();
+  REQUIRE(cpu.dispatch_instruction() == 1);
+  REQUIRE(cpu.ROB.size() == 1);
+  REQUIRE(cpu.ROB.front().source_memory == instr.source_memory);
+  REQUIRE(cpu.ROB.front().destination_memory == instr.destination_memory);
+  REQUIRE(cpu.ROB.front().source_registers == instr.source_registers);
+  REQUIRE(cpu.ROB.front().destination_registers == instr.destination_registers);
+  REQUIRE(cpu.SQ.size() == 1);
+  REQUIRE(std::count_if(cpu.LQ.begin(), cpu.LQ.end(), [](const auto& entry) { return entry.has_value(); }) == 1);
+  cpu.ROB.front().ready_time = cpu.current_time;
+  cpu.ROB.front().completed_mem_ops = cpu.ROB.front().num_mem_ops();
+  REQUIRE(cpu.schedule_instruction() == 1);
+  REQUIRE(cpu.execute_instruction() == 1);
+  cpu.ROB.front().ready_time = cpu.current_time;
+  REQUIRE(cpu.complete_inflight_instruction() == 1);
+  REQUIRE(cpu.ROB.front().completed);
+  REQUIRE(cpu.retire_rob() == 0);
+  REQUIRE(cpu.num_retired == 0);
+  REQUIRE(cpu.reg_allocator.count_free_registers() == free_registers - 2);
+  cpu.wrong_path_active = true;
+  cpu.recover_wrong_path();
   REQUIRE(cpu.ROB.empty());
   REQUIRE(cpu.SQ.empty());
-  REQUIRE(cpu.num_retired == 0);
+  REQUIRE(std::none_of(cpu.LQ.begin(), cpu.LQ.end(), [](const auto& entry) { return entry.has_value(); }));
+  REQUIRE(cpu.reg_allocator.count_free_registers() == free_registers);
+  REQUIRE(cpu.sim_stats.wrong_path_squashed == 1);
   REQUIRE_FALSE(O3_CPU{champsim::core_builder{}}.WRONG_PATH);
+}
+
+TEST_CASE("TI-WP fills ROB capacity instead of stopping at the dispatch buffer", "[wrong-path]")
+{
+  champsim::channel fetch;
+  do_nothing_MRC data;
+  O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.wrong_path(true).rob_size(128).dispatch_buffer_size(4)
+                 .decode_latency(0).dispatch_latency(0).schedule_latency(0).execute_latency(0).fetch_queues(&fetch).data_queues(&data.queues)};
+  cpu.warmup = false;
+  auto branch = champsim::test::instruction_with_ip(0x100);
+  branch.instr_id = 1;
+  branch.branch_mispredicted = true;
+  branch.scheduled = true;
+  branch.ready_time = champsim::chrono::clock::time_point::max();
+  cpu.ROB.push_back(branch);
+  cpu.fetch_resume_time = champsim::chrono::clock::time_point::max();
+  cpu.wrong_path_active = true;
+  cpu.wrong_path_next = champsim::address{0x200};
+  for (unsigned cycle = 0; cycle < 100; ++cycle) {
+    cpu.initialize_instruction();
+    for (auto& instr : cpu.IFETCH_BUFFER)
+      instr.fetch_completed = true;
+    cpu.promote_to_decode();
+    cpu.decode_instruction();
+    cpu.dispatch_instruction();
+    cpu.schedule_instruction();
+    cpu.execute_instruction();
+    cpu.current_time += cpu.clock_period;
+    cpu.operate_lsq();
+    data._operate();
+    cpu.handle_memory_return();
+    cpu.complete_inflight_instruction();
+    REQUIRE(cpu.retire_rob() == 0);
+  }
+  REQUIRE(cpu.ROB.size() == cpu.ROB_SIZE);
+  REQUIRE(cpu.sim_stats.wrong_path_fetched > 32);
+  REQUIRE(cpu.ROB.front().instr_id == branch.instr_id);
+  REQUIRE(cpu.ROB.back().completed);
+  // Completing the older branch squashes the younger backend operations. Completion
+  // iteration must remain valid while the ROB tail is erased.
+  cpu.ROB.front().executed = true;
+  cpu.ROB.front().ready_time = cpu.current_time;
+  REQUIRE(cpu.complete_inflight_instruction() == 1);
+  REQUIRE(cpu.ROB.size() == 1);
+  REQUIRE(cpu.ROB.front().completed);
+  REQUIRE(cpu.sim_stats.wrong_path_squashed == cpu.sim_stats.wrong_path_fetched);
+  REQUIRE(cpu.retire_rob() == 1);
+  REQUIRE(cpu.num_retired == 1);
+}
+
+TEST_CASE("TI-WP replay preserves logical operands but refreshes addresses and pipeline state", "[wrong-path]")
+{
+  O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.wrong_path(true)};
+  auto known = champsim::test::instruction_with_ip(0x200);
+  known.is_branch = true;
+  known.branch = BRANCH_CONDITIONAL;
+  known.source_registers.push_back(1);
+  known.destination_registers.push_back(2);
+  known.source_memory.push_back(champsim::address{0x1000});
+  known.destination_memory.push_back(champsim::address{0x2000});
+  known.completed = true;
+  known.executed = true;
+  known.scheduled = true;
+  known.fetch_issued = true;
+  known.fetch_completed = true;
+  known.decoded = true;
+  cpu.remember_instruction(known);
+  cpu.wrong_path_active = true;
+  cpu.wrong_path_next = known.ip;
+  cpu.initialize_instruction();
+  const auto& replay = cpu.IFETCH_BUFFER.front();
+  REQUIRE(replay.is_branch);
+  REQUIRE(replay.branch == known.branch);
+  REQUIRE(replay.source_registers == known.source_registers);
+  REQUIRE(replay.destination_registers == known.destination_registers);
+  REQUIRE(replay.source_memory == std::vector{champsim::address{0x1000}});
+  REQUIRE(replay.destination_memory == std::vector{champsim::address{0x1040}});
+  REQUIRE_FALSE(replay.completed);
+  REQUIRE_FALSE(replay.executed);
+  REQUIRE_FALSE(replay.scheduled);
+  REQUIRE_FALSE(replay.fetch_issued);
+  REQUIRE_FALSE(replay.fetch_completed);
+  REQUIRE_FALSE(replay.decoded);
 }
 
 TEST_CASE("TI-WP decode recovery squashes all frontend buffers", "[wrong-path]")
@@ -128,9 +246,95 @@ TEST_CASE("TI-WP decode recovery squashes all frontend buffers", "[wrong-path]")
   REQUIRE(cpu.fetch_resume_time != champsim::chrono::clock::time_point::max());
 }
 
+TEST_CASE("DIB hits resolve decoded branch target errors before execution", "[wrong-path][dib]")
+{
+  const auto type = GENERATE(BRANCH_DIRECT_JUMP, BRANCH_DIRECT_CALL, BRANCH_CONDITIONAL);
+  const bool dib_hit = GENERATE(false, true);
+  const bool replay = GENERATE(false, true);
+  CACHE l1i{champsim::cache_builder{champsim::defaults::default_l1i}.prefetcher<fdip>()};
+  O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.l1i(&l1i).wrong_path(replay)
+                 .decode_latency(0).dib_hit_latency(0).dispatch_latency(0)};
+  cpu.warmup = false;
+  auto branch = champsim::test::instruction_with_ip(0x100);
+  branch.instr_id = 1;
+  branch.is_branch = true;
+  branch.branch = type;
+  branch.branch_taken = true;
+  branch.branch_prediction = true; // Direction is right; the target was wrong.
+  branch.branch_target = champsim::address{0x400};
+  branch.branch_mispredicted = true;
+  branch.fetch_completed = true;
+  if (dib_hit)
+    cpu.DIB.fill(branch.ip);
+  cpu.do_check_dib(branch);
+  REQUIRE(branch.decoded == dib_hit);
+  cpu.IFETCH_BUFFER.push_back(branch);
+  REQUIRE(cpu.promote_to_decode() == 1);
+  REQUIRE(cpu.DIB_HIT_BUFFER.size() == (dib_hit ? 1 : 0));
+  REQUIRE(cpu.DECODE_BUFFER.size() == (dib_hit ? 0 : 1));
+  cpu.branch_recovery_start = cpu.current_time;
+  cpu.fetch_resume_time = champsim::chrono::clock::time_point::max();
+  cpu.wrong_path_active = replay;
+  if (replay) {
+    auto wrong = champsim::test::instruction_with_ip(0x200);
+    wrong.wrong_path = true;
+    wrong.instr_id = uint64_t{1} << 63;
+    cpu.IFETCH_BUFFER.push_back(wrong);
+  }
+
+  REQUIRE(cpu.decode_instruction() == 1);
+  REQUIRE(cpu.fetch_resume_time == cpu.current_time + cpu.BRANCH_MISPREDICT_PENALTY);
+  REQUIRE(cpu.sim_stats.branch_redirects == 1);
+  REQUIRE(cpu.sim_stats.fdip_redirects == 1);
+  REQUIRE(cpu.prediction_pc == branch.branch_target);
+  REQUIRE(cpu.prediction_recovery_wait);
+  REQUIRE_FALSE(cpu.branch_recovery_start.has_value());
+  REQUIRE_FALSE(cpu.wrong_path_active);
+  REQUIRE(cpu.IFETCH_BUFFER.empty());
+  REQUIRE(cpu.sim_stats.wrong_path_squashed == (replay ? 1 : 0));
+  REQUIRE(cpu.DISPATCH_BUFFER.size() == 1);
+  REQUIRE_FALSE(cpu.DISPATCH_BUFFER.front().branch_mispredicted);
+  REQUIRE_FALSE(cpu.DISPATCH_BUFFER.front().executed);
+  REQUIRE(cpu.dispatch_instruction() == 1);
+  cpu.do_complete_execution(cpu.ROB.front());
+  REQUIRE(cpu.sim_stats.branch_redirects == 1);
+  REQUIRE(cpu.sim_stats.fdip_redirects == 1);
+  REQUIRE(cpu.fetch_resume_time == cpu.current_time + cpu.BRANCH_MISPREDICT_PENALTY);
+}
+
+TEST_CASE("DIB hits retain execute-stage recovery for direction errors", "[wrong-path][dib]")
+{
+  O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.wrong_path(true).dib_hit_latency(0).dispatch_latency(0)};
+  cpu.warmup = false;
+  auto branch = champsim::test::instruction_with_ip(0x100);
+  branch.branch = BRANCH_CONDITIONAL;
+  branch.branch_taken = true;
+  branch.branch_prediction = false;
+  branch.branch_mispredicted = true;
+  branch.instr_id = 1;
+  cpu.DIB.fill(branch.ip);
+  cpu.do_check_dib(branch);
+  cpu.IFETCH_BUFFER.push_back(branch);
+  REQUIRE(cpu.promote_to_decode() == 1);
+  cpu.fetch_resume_time = champsim::chrono::clock::time_point::max();
+  cpu.branch_recovery_start = cpu.current_time;
+  cpu.wrong_path_active = true;
+  REQUIRE(cpu.decode_instruction() == 1);
+  REQUIRE(cpu.fetch_resume_time == champsim::chrono::clock::time_point::max());
+  REQUIRE(cpu.sim_stats.branch_redirects == 0);
+  REQUIRE(cpu.wrong_path_active);
+  REQUIRE(cpu.DISPATCH_BUFFER.front().branch_mispredicted);
+  REQUIRE(cpu.dispatch_instruction() == 1);
+  cpu.do_complete_execution(cpu.ROB.front());
+  REQUIRE(cpu.sim_stats.branch_redirects == 1);
+  REQUIRE_FALSE(cpu.wrong_path_active);
+}
+
 TEST_CASE("Disabling TI-WP retains stall-on-misprediction behavior", "[wrong-path]")
 {
-  CACHE l1i{champsim::cache_builder{champsim::defaults::default_l1i}};
+  const bool uneven = GENERATE(false, true);
+  auto builder = champsim::cache_builder{champsim::defaults::default_l1i};
+  CACHE l1i{uneven ? builder.set_ubs() : builder.reset_ubs()};
   O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.wrong_path(false).l1i(&l1i).btb<replay_btb>()};
   cpu.warmup = false;
   auto branch = champsim::test::instruction_with_ip(0x100);

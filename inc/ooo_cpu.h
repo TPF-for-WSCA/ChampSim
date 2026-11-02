@@ -71,6 +71,7 @@ struct LSQ_ENTRY : champsim::program_ordered<LSQ_ENTRY> {
 
   std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
   bool fetch_issued = false;
+  bool wrong_path = false;
 
   uint64_t producer_id = std::numeric_limits<uint64_t>::max();
   std::vector<std::reference_wrapper<std::optional<LSQ_ENTRY>>> lq_depend_on_me{};
@@ -154,7 +155,8 @@ public:
   const ooo_model_instr* prediction_oracle = nullptr;
   // Optional exact hit observation supplied by BTBs supporting it (basic_btb).
   std::optional<bool> prediction_btb_hit;
-  // TI-WP frontend replay. History contains only instructions consumed on the correct path.
+  // TI-WP replay with inferred dataflow and speculative backend execution.
+  // History contains only instructions consumed on the correct path.
   const bool WRONG_PATH;
   const std::size_t WRONG_PATH_HISTORY_SIZE;
   struct replay_entry {
@@ -167,6 +169,10 @@ public:
   bool wrong_path_active = false;
   champsim::address wrong_path_next{};
   uint64_t wrong_path_id = uint64_t{1} << 63;
+  static constexpr uint64_t WRONG_PATH_ADDRESS_OFFSET = 64;
+  std::optional<champsim::address> last_data_address, wrong_path_data_address;
+  bool wrong_path_block_start = true;
+  std::vector<PHYSICAL_REGISTER_ID> wrong_path_last_load_registers, wrong_path_last_writer_registers;
   // A prediction-only address generator, independent of the trace reader.
   // Translated IPC1 real instructions occupy four-byte slots. Dependency-only
   // dummy records do not consume predictions. Each FTQ entry covers at most
@@ -196,6 +202,7 @@ public:
   void finish_branch_recovery(const ooo_model_instr& instr);
   void remember_instruction(const ooo_model_instr& instr);
   void initialize_wrong_path(champsim::bandwidth& bandwidth);
+  champsim::address next_wrong_path_data_address();
   void recover_wrong_path();
 
   // branch

@@ -23,7 +23,8 @@ basic_btb::basic_btb(O3_CPU* cpu)
 std::pair<champsim::address, bool> basic_btb::btb_prediction(champsim::address ip)
 {
   // use BTB for all other branches + direct calls
-  auto btb_entry = direct.check_hit(ip);
+  // Replay and FDIP lookups during branch recovery must not promote BTB entries.
+  auto btb_entry = direct.check_hit(ip, !intern_ || (!intern_->wrong_path_active && !intern_->branch_recovery_start.has_value()));
 
   if (intern_) {
     ++intern_->sim_stats.btb_lookups;
@@ -40,9 +41,9 @@ std::pair<champsim::address, bool> basic_btb::btb_prediction(champsim::address i
   if (lookahead) {
     const auto block_id = std::pair{intern_->sim_stats.fdip_fetch_blocks, intern_->sim_stats.begin_instrs};
     if (block_id != speculative_block) {
-      // An empty FTQ on the correct path means either recovery or lookahead
-      // has caught up with demand. The architectural RAS is current there.
-      if (intern_->fetch_target_queue.empty() && !intern_->wrong_path_active)
+      // An empty FTQ is a checkpoint only outside unresolved recovery. The
+      // predictor also walks wrong paths when replay is disabled.
+      if (intern_->fetch_target_queue.empty() && !intern_->wrong_path_active && !intern_->branch_recovery_start.has_value())
         speculative_ras = ras;
       speculative_block = block_id;
     }

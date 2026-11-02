@@ -2,9 +2,9 @@
 
 #include "instruction.h"
 
-auto direct_predictor::check_hit(champsim::address ip) -> std::optional<btb_entry_t>
+auto direct_predictor::check_hit(champsim::address ip, bool update_lru) -> std::optional<btb_entry_t>
 {
-  return BTB.check_hit({ip, champsim::address{}, branch_info::ALWAYS_TAKEN});
+  return BTB.check_hit({ip, champsim::address{}, branch_info::ALWAYS_TAKEN}, update_lru);
 }
 
 void direct_predictor::update(champsim::address ip, champsim::address branch_target, uint8_t branch_type)

@@ -11,6 +11,13 @@ cpu_stats operator-(cpu_stats lhs, cpu_stats rhs)
   lhs.wrong_path_fetched -= rhs.wrong_path_fetched;
   lhs.wrong_path_squashed -= rhs.wrong_path_squashed;
   lhs.wrong_path_unknown -= rhs.wrong_path_unknown;
+  lhs.wrong_path_inferred_loads -= rhs.wrong_path_inferred_loads;
+  lhs.wrong_path_inferred_arithmetic -= rhs.wrong_path_inferred_arithmetic;
+  lhs.wrong_path_inferred_stores -= rhs.wrong_path_inferred_stores;
+  lhs.wrong_path_dispatched -= rhs.wrong_path_dispatched;
+  lhs.wrong_path_executed -= rhs.wrong_path_executed;
+  lhs.wrong_path_loads_issued -= rhs.wrong_path_loads_issued;
+  lhs.wrong_path_stores_executed -= rhs.wrong_path_stores_executed;
 
   lhs.fdip_fetch_blocks -= rhs.fdip_fetch_blocks;
   lhs.fdip_predictions -= rhs.fdip_predictions;

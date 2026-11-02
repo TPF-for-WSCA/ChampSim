@@ -196,12 +196,32 @@ void O3_CPU::remember_instruction(const ooo_model_instr& instr)
   previous_trace_instruction = instr;
 }
 
+champsim::address O3_CPU::next_wrong_path_data_address()
+{
+  // Prefer a recently issued data access; the deterministic cold-start fallback
+  // is needed only if replay precedes every data access, including warmup.
+  const auto previous = wrong_path_data_address.value_or(last_data_address.value_or(champsim::address{0x1000 - WRONG_PATH_ADDRESS_OFFSET}));
+  wrong_path_data_address = previous + WRONG_PATH_ADDRESS_OFFSET;
+  return *wrong_path_data_address;
+}
+
 void O3_CPU::initialize_wrong_path(champsim::bandwidth& bandwidth)
 {
   while (wrong_path_active && bandwidth.has_remaining() && wrong_path_next != champsim::address{}) {
     auto entry = wrong_path_history.find(wrong_path_next);
     const bool unknown = entry == wrong_path_history.end();
-    auto instr = unknown ? ooo_model_instr{static_cast<uint8_t>(cpu), input_instr{}} : entry->second.instruction;
+    // Reconstruct a fresh dynamic instruction. History supplies logical operands
+    // and operation identity, never renamed registers or completed pipeline state.
+    ooo_model_instr instr{static_cast<uint8_t>(cpu), input_instr{}};
+    if (!unknown) {
+      instr.is_branch = entry->second.instruction.is_branch;
+      instr.branch = entry->second.instruction.branch;
+      instr.asid = entry->second.instruction.asid;
+      instr.source_registers = entry->second.instruction.source_registers;
+      instr.destination_registers = entry->second.instruction.destination_registers;
+      instr.source_memory.resize(entry->second.instruction.source_memory.size());
+      instr.destination_memory.resize(entry->second.instruction.destination_memory.size());
+    }
     instr.ip = wrong_path_next;
     std::optional<fetch_prediction> prediction;
     if (uses_fdip()) {
@@ -209,7 +229,6 @@ void O3_CPU::initialize_wrong_path(champsim::bandwidth& bandwidth)
       if (!prediction)
         break;
     }
-    sim_stats.wrong_path_unknown += unknown;
     instr.branch_mispredicted = false;
     instr.wrong_path = true;
     instr.instr_id = wrong_path_id++;
@@ -217,17 +236,46 @@ void O3_CPU::initialize_wrong_path(champsim::bandwidth& bandwidth)
     // Sequential prediction, not the successor observed in the historical
     // trace (which may include interrupts or other discontinuities).
     wrong_path_next = instr.ip + INSTRUCTION_BYTES;
-    bool taken = false;
-    if (prediction || instr.is_branch) {
-      auto [target, always_taken] = prediction ? std::pair{prediction->target, prediction->always_taken} : impl_btb_prediction(instr.ip, instr.branch);
-      taken = prediction ? prediction->direction : (impl_predict_branch(instr.ip, target, always_taken, instr.branch) || always_taken);
-      taken = taken && target != champsim::address{};
-      if (taken)
-        wrong_path_next = target;
-      if (l1i && !uses_fdip())
-        l1i->impl_prefetcher_branch_operate(instr.ip, instr.branch, taken ? target : champsim::address{});
+    prediction_btb_hit.reset();
+    const auto [target, always_taken] = prediction ? std::pair{prediction->target, prediction->always_taken} : impl_btb_prediction(instr.ip, instr.branch);
+    const bool block_end = instr.is_branch || (prediction ? prediction->btb_hit : prediction_btb_hit.value_or(target != champsim::address{} || always_taken));
+    const bool direction = prediction ? prediction->direction : (impl_predict_branch(instr.ip, target, always_taken, instr.branch) || always_taken);
+    const bool taken = direction && target != champsim::address{};
+    if (taken)
+      wrong_path_next = target;
+    if (unknown) {
+      ++sim_stats.wrong_path_unknown;
+      // A singleton block ends with a store; otherwise the first slot is a load.
+      if (block_end) {
+        instr.destination_memory.resize(1);
+        instr.source_registers = wrong_path_last_writer_registers;
+        ++sim_stats.wrong_path_inferred_stores;
+      } else if (wrong_path_block_start) {
+        instr.source_memory.resize(1);
+        instr.destination_registers = {RegisterAllocator::INFERRED_LOAD_REGISTER};
+        ++sim_stats.wrong_path_inferred_loads;
+      } else {
+        instr.source_registers = wrong_path_last_load_registers;
+        instr.destination_registers = {RegisterAllocator::INFERRED_ALU_REGISTER};
+        ++sim_stats.wrong_path_inferred_arithmetic;
+      }
+      if (block_end) {
+        instr.is_branch = true;
+        instr.branch = BRANCH_OTHER;
+      }
     }
-    // No outcome training or data-side activity for inferred wrong-path instructions.
+    for (auto& address : instr.source_memory)
+      address = next_wrong_path_data_address();
+    for (auto& address : instr.destination_memory)
+      address = next_wrong_path_data_address();
+    if (!instr.source_memory.empty() && !instr.destination_registers.empty())
+      wrong_path_last_load_registers = instr.destination_registers;
+    if (!instr.destination_registers.empty())
+      wrong_path_last_writer_registers = instr.destination_registers;
+    wrong_path_block_start = block_end;
+    if (l1i && !uses_fdip() && block_end)
+      l1i->impl_prefetcher_branch_operate(instr.ip, instr.branch, taken ? target : champsim::address{});
+    // Replay executes speculatively but does not train outcomes or retire.
     IFETCH_BUFFER.push_back(std::move(instr));
     ++sim_stats.wrong_path_fetched;
     bandwidth.consume();
@@ -240,13 +288,30 @@ void O3_CPU::recover_wrong_path()
 {
   if (!wrong_path_active)
     return;
-  for (auto* buffer : {&IFETCH_BUFFER, &DECODE_BUFFER, &DIB_HIT_BUFFER, &DISPATCH_BUFFER}) {
+  // Remove forwarding references before releasing their reusable LQ slots.
+  for (auto& store : SQ) {
+    auto& dependents = store.lq_depend_on_me;
+    dependents.erase(std::remove_if(dependents.begin(), dependents.end(), [](const auto& ref) {
+      const auto& load = ref.get();
+      return load && load->wrong_path;
+    }), dependents.end());
+  }
+  for (auto& load : LQ)
+    if (load && load->wrong_path)
+      load.reset();
+  SQ.erase(std::remove_if(SQ.begin(), SQ.end(), [](const auto& store) { return store.wrong_path; }), SQ.end());
+  reg_allocator.squash_speculation();
+  for (auto* buffer : {&IFETCH_BUFFER, &DECODE_BUFFER, &DIB_HIT_BUFFER, &DISPATCH_BUFFER, &ROB}) {
     auto end = std::remove_if(buffer->begin(), buffer->end(), [](const auto& instr) { return instr.wrong_path; });
     sim_stats.wrong_path_squashed += std::distance(end, buffer->end());
     buffer->erase(end, buffer->end());
   }
   wrong_path_active = false;
   wrong_path_next = {};
+  wrong_path_block_start = true;
+  wrong_path_data_address.reset();
+  wrong_path_last_load_registers.clear();
+  wrong_path_last_writer_registers.clear();
 }
 
 void O3_CPU::initialize_instruction()
@@ -330,6 +395,9 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     std::tie(predicted_branch_target, always_taken) = impl_btb_prediction(arch_instr.ip, arch_instr.branch);
     prediction_oracle = nullptr;
   }
+  // Branch presence is independent of direction, including a not-taken prediction.
+  const bool btb_hit = prediction && !IDEAL_BTB && !IDEAL_IBP ? prediction->btb_hit
+                       : prediction_btb_hit.value_or(predicted_branch_target != champsim::address{} || always_taken);
   arch_instr.branch_prediction = prediction ? (prediction->direction || always_taken)
                                            : (impl_predict_branch(arch_instr.ip, predicted_branch_target, always_taken, arch_instr.branch) || always_taken);
   if (IDEAL_CBP && (arch_instr.branch == BRANCH_CONDITIONAL || arch_instr.branch == BRANCH_OTHER))
@@ -339,8 +407,6 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
   }
 
   if (arch_instr.is_branch) {
-    const bool btb_hit = prediction && !IDEAL_BTB && !IDEAL_IBP ? prediction->btb_hit
-                         : prediction_btb_hit.value_or(predicted_branch_target != champsim::address{} || always_taken);
     sim_stats.branch_btb_accesses.increment(arch_instr.branch);
     if (!btb_hit)
       sim_stats.branch_btb_misses.increment(arch_instr.branch);
@@ -351,7 +417,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
     // call code prefetcher every time the branch predictor is used
     l1i->impl_prefetcher_branch_operate(arch_instr.ip, arch_instr.branch, predicted_branch_target);
 
-    if (predicted_branch_target != arch_instr.branch_target
+    if (!btb_hit || predicted_branch_target != arch_instr.branch_target
         || (((arch_instr.branch == BRANCH_CONDITIONAL) || (arch_instr.branch == BRANCH_OTHER))
             && arch_instr.branch_taken != arch_instr.branch_prediction)) { // conditional branches are re-evaluated at decode when the target is computed
       sim_stats.total_rob_occupancy_at_branch_mispredict += std::size(ROB);
@@ -505,15 +571,13 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
       continue; // Dummy instructions add neither fetch dependencies nor UBS bytes.
     fetch_packet.instr_depend_on_me.push_back(instr->instr_id);
 
-    // UBS tracks useful instruction bytes in its predictor. The traces used by
-    // this frontend expose instruction PCs but not decoded lengths, so retain
-    // the MICRO-1 model's four-byte instruction granularity.
-    if (l1i != nullptr && l1i->ubs) {
-      const auto offset = instr->ip.slice_lower(champsim::data::bits{LOG2_BLOCK_SIZE}).to<uint32_t>();
-      const auto bytes_in_line = std::min<uint32_t>(4, BLOCK_SIZE - offset);
-      const auto instruction_mask = ((uint64_t{1} << bytes_in_line) - 1) << offset;
-      fetch_packet.requested_bytes |= instruction_mask;
-    }
+    // Describe the same fetch to every cache organization. UBS consumes this
+    // coverage to train useful bytes; conventional caches serve the full line.
+    // Traces expose PCs but not decoded lengths, so use four-byte instructions.
+    const auto offset = instr->ip.slice_lower(champsim::data::bits{LOG2_BLOCK_SIZE}).to<uint32_t>();
+    const auto bytes_in_line = std::min<uint32_t>(4, BLOCK_SIZE - offset);
+    const auto instruction_mask = ((uint64_t{1} << bytes_in_line) - 1) << offset;
+    fetch_packet.requested_bytes |= instruction_mask;
   }
 
   if constexpr (champsim::debug_print) {
@@ -603,10 +667,9 @@ long O3_CPU::decode_instruction()
     available_decode_bandwidth.consume();
   }
 
-  // decode instructions have not decoded, merge instructions with dib_hit_buffer then send to dispatch_buffer
-  auto do_decode = [&, this](auto& db_entry) {
-    this->do_dib_update(db_entry);
-
+  // Both decoded-cache hits and freshly decoded instructions can resolve
+  // static targets before dispatch. Direction errors still await execution.
+  auto prepare_dispatch = [this](auto& db_entry) {
     // Resume fetch
     if (db_entry.branch_mispredicted) {
       // These branches detect the misprediction at decode
@@ -620,18 +683,20 @@ long O3_CPU::decode_instruction()
     }
     // Add to dispatch
     db_entry.ready_time = this->current_time + (this->warmup ? champsim::chrono::clock::duration{} : this->DISPATCH_LATENCY);
+  };
+
+  // decode instructions have not decoded, merge instructions with dib_hit_buffer then send to dispatch_buffer
+  auto do_decode = [&, this](auto& db_entry) {
+    this->do_dib_update(db_entry);
+    prepare_dispatch(db_entry);
 
     if constexpr (champsim::debug_print) {
       fmt::print("[DECODE] do_decode instr_id: {} time: {}\n", db_entry.instr_id, this->current_time.time_since_epoch() / this->clock_period);
     }
   };
 
-  auto do_dib_hit = [&, this](auto& dib_entry) {
-    dib_entry.ready_time = this->current_time + (this->warmup ? champsim::chrono::clock::duration{} : this->DISPATCH_LATENCY);
-  };
-
   std::for_each(decode_buffer_begin, decode_buffer_end, do_decode);
-  std::for_each(dib_hit_buffer_begin, dib_hit_buffer_end, do_dib_hit);
+  std::for_each(dib_hit_buffer_begin, dib_hit_buffer_end, prepare_dispatch);
 
   long progress{std::distance(dib_hit_buffer_begin, dib_hit_buffer_end) + std::distance(decode_buffer_begin, decode_buffer_end)};
 
@@ -653,13 +718,14 @@ long O3_CPU::dispatch_instruction()
 
   // dispatch DISPATCH_WIDTH instructions into the ROB
   while (available_dispatch_bandwidth.has_remaining() && !std::empty(DISPATCH_BUFFER) && DISPATCH_BUFFER.front().ready_time <= current_time
-         && !DISPATCH_BUFFER.front().wrong_path && std::size(ROB) != ROB_SIZE
-         && ((std::size_t)std::count_if(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return !lq_entry.has_value(); })
-             >= std::size(DISPATCH_BUFFER.front().source_memory))
-         && ((std::size(DISPATCH_BUFFER.front().destination_memory) + std::size(SQ)) <= SQ_SIZE)) {
+         && std::size(ROB) != ROB_SIZE
+         && (static_cast<std::size_t>(std::count_if(std::begin(LQ), std::end(LQ), [](const auto& entry) { return !entry.has_value(); }))
+             >= DISPATCH_BUFFER.front().source_memory.size())
+         && (DISPATCH_BUFFER.front().destination_memory.size() + SQ.size() <= SQ_SIZE)) {
     ROB.push_back(std::move(DISPATCH_BUFFER.front()));
     DISPATCH_BUFFER.pop_front();
     do_memory_scheduling(ROB.back());
+    sim_stats.wrong_path_dispatched += ROB.back().wrong_path;
 
     available_dispatch_bandwidth.consume();
     ROB.back().ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : SCHEDULING_LATENCY);
@@ -673,13 +739,15 @@ long O3_CPU::schedule_instruction()
   champsim::bandwidth search_bw{SCHEDULER_SIZE};
   int progress{0};
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && search_bw.has_remaining(); ++rob_it) {
-    // if there aren't enough physical registers available for the next instruction, stop scheduling
-    unsigned long sources_to_allocate = std::count_if(rob_it->source_registers.begin(), rob_it->source_registers.end(),
-                                                      [&alloc = std::as_const(reg_allocator)](auto srcreg) { return !alloc.isAllocated(srcreg); });
-    if (reg_allocator.count_free_registers() < (sources_to_allocate + rob_it->destination_registers.size())) {
+    // Renaming must stay in program order, including across the replay checkpoint.
+    if (!rob_it->scheduled && rob_it->ready_time > current_time)
       break;
-    }
     if (!rob_it->scheduled && rob_it->ready_time <= current_time) {
+      // Scheduled operands are physical IDs, not logical RAT indices.
+      unsigned long sources_to_allocate = std::count_if(rob_it->source_registers.begin(), rob_it->source_registers.end(),
+                                                        [&alloc = std::as_const(reg_allocator)](auto srcreg) { return !alloc.isAllocated(srcreg); });
+      if (reg_allocator.count_free_registers() < (sources_to_allocate + rob_it->destination_registers.size()))
+        break;
       do_scheduling(*rob_it);
       ++progress;
     }
@@ -694,6 +762,8 @@ long O3_CPU::schedule_instruction()
 
 void O3_CPU::do_scheduling(ooo_model_instr& instr)
 {
+  if (instr.wrong_path)
+    reg_allocator.begin_speculation();
   // Mark register dependencies
   for (auto& src_reg : instr.source_registers) {
     // rename source register
@@ -728,6 +798,7 @@ long O3_CPU::execute_instruction()
 void O3_CPU::do_execution(ooo_model_instr& instr)
 {
   instr.executed = true;
+  sim_stats.wrong_path_executed += instr.wrong_path;
   instr.ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
 
   // Mark LQ entries as ready to translate
@@ -756,6 +827,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
     auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return lq_entry.has_value(); });
     assert(q_entry != std::end(LQ));
     q_entry->emplace(smem, instr.instr_id, instr.ip, instr.asid); // add it to the load queue
+    (*q_entry)->wrong_path = instr.wrong_path;
 
     // Check for forwarding
     auto sq_it = std::max_element(std::begin(SQ), std::end(SQ), [smem](const auto& lhs, const auto& rhs) {
@@ -780,6 +852,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
   // store
   for (auto& dmem : instr.destination_memory) {
     SQ.emplace_back(dmem, instr.instr_id, instr.ip, instr.asid); // add it to the store queue
+    SQ.back().wrong_path = instr.wrong_path;
   }
 
   if constexpr (champsim::debug_print) {
@@ -794,7 +867,7 @@ long O3_CPU::operate_lsq()
 
   const auto complete_id = std::empty(ROB) ? std::numeric_limits<uint64_t>::max() : ROB.front().instr_id;
   auto do_complete = [time = current_time, finished = LSQ_ENTRY::precedes(complete_id), this](const auto& x) {
-    return finished(x) && x.ready_time <= time && this->do_complete_store(x);
+    return !x.wrong_path && finished(x) && x.ready_time <= time && this->do_complete_store(x);
   };
 
   auto unfetched_begin = std::partition_point(std::begin(SQ), std::end(SQ), [](const auto& x) { return x.fetch_issued; });
@@ -829,6 +902,7 @@ long O3_CPU::operate_lsq()
 
 void O3_CPU::do_finish_store(const LSQ_ENTRY& sq_entry)
 {
+  sim_stats.wrong_path_stores_executed += sq_entry.wrong_path;
   if constexpr (champsim::debug_print) {
     fmt::print("[SQ] {} instr_id: {} vaddr: {}\n", __func__, sq_entry.instr_id, sq_entry.virtual_address);
   }
@@ -856,7 +930,10 @@ bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
     fmt::print("[SQ] {} instr_id: {} vaddr: {}\n", __func__, data_packet.instr_id, data_packet.v_address);
   }
 
-  return L1D_bus.issue_write(data_packet);
+  const auto success = L1D_bus.issue_write(data_packet);
+  if (success)
+    last_data_address = sq_entry.virtual_address;
+  return success;
 }
 
 bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
@@ -870,7 +947,12 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
     fmt::print("[LQ] {} instr_id: {} vaddr: {}\n", __func__, data_packet.instr_id, data_packet.v_address);
   }
 
-  return L1D_bus.issue_read(data_packet);
+  const auto success = L1D_bus.issue_read(data_packet);
+  if (success) {
+    last_data_address = lq_entry.virtual_address;
+    sim_stats.wrong_path_loads_issued += lq_entry.wrong_path;
+  }
+  return success;
 }
 
 void O3_CPU::do_complete_execution(ooo_model_instr& instr)
@@ -892,9 +974,12 @@ long O3_CPU::complete_inflight_instruction()
 {
   // update ROB entries with completed executions
   champsim::bandwidth complete_bw{EXEC_WIDTH};
-  for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && complete_bw.has_remaining(); ++rob_it) {
-    if (rob_it->executed && !rob_it->completed && (rob_it->ready_time <= current_time) && rob_it->completed_mem_ops == rob_it->num_mem_ops()) {
-      do_complete_execution(*rob_it);
+  // Resolving a branch can squash the ROB tail. Recheck its size rather than
+  // retaining an iterator across recovery.
+  for (std::size_t index = 0; index < ROB.size() && complete_bw.has_remaining(); ++index) {
+    auto& instr = ROB[index];
+    if (instr.executed && !instr.completed && instr.ready_time <= current_time && instr.completed_mem_ops == instr.num_mem_ops()) {
+      do_complete_execution(instr);
       complete_bw.consume();
     }
   }
@@ -951,7 +1036,8 @@ long O3_CPU::handle_memory_return()
 long O3_CPU::retire_rob()
 {
   auto [retire_begin, retire_end] =
-      champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), champsim::bandwidth{RETIRE_WIDTH}, [](const auto& x) { return x.completed; });
+      champsim::get_span_p(std::cbegin(ROB), std::cend(ROB), champsim::bandwidth{RETIRE_WIDTH},
+                           [](const auto& x) { return x.completed && !x.wrong_path; });
   assert(std::distance(retire_begin, retire_end) >= 0); // end succeeds begin
   if constexpr (champsim::debug_print) {
     std::for_each(retire_begin, retire_end, [cycle = current_time.time_since_epoch() / clock_period](const auto& x) {

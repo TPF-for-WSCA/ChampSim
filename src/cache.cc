@@ -116,7 +116,10 @@ CACHE::tag_lookup_type::tag_lookup_type(const request_type& req, bool local_pref
 
 CACHE::fill_type::fill_type(const tag_lookup_type& req, champsim::chrono::clock::time_point _time_enqueued)
     : address(req.address), v_address(req.v_address), ip(req.ip), instr_id(req.instr_id), cpu(req.cpu), type(req.type),
-      prefetch_from_this(req.prefetch_from_this), partial_miss(req.partial_miss), requested_bytes(req.requested_bytes),
+      prefetch_from_this(req.prefetch_from_this), partial_miss(req.partial_miss),
+      // A prefetch's byte mask controls its cache probe, not which bytes demand
+      // has used. Keep that speculative coverage out of a merged UBS fill.
+      requested_bytes(req.type == access_type::PREFETCH ? 0 : req.requested_bytes),
       ubs_preserved_bytes(req.ubs_preserved_bytes), time_enqueued(_time_enqueued), instr_depend_on_me(req.instr_depend_on_me), to_return(req.to_return)
 {
 }
@@ -306,6 +309,22 @@ champsim::address CACHE::module_address(const T& element) const
 {
   auto address = virtual_prefetch ? element.v_address : element.address;
   return champsim::address{address.slice_upper(match_offset_bits ? champsim::data::bits{} : OFFSET_BITS)};
+}
+
+bool CACHE::is_instruction_request_pending(champsim::address virtual_pc) const
+{
+  const auto matches = [this, virtual_pc](const auto& entry) {
+    const auto pc = virtual_prefetch ? entry.v_address : entry.address;
+    return pc.slice_upper(OFFSET_BITS) == virtual_pc.slice_upper(OFFSET_BITS);
+  };
+  const auto pending = [&](const auto& queue) { return std::any_of(queue.begin(), queue.end(), matches); };
+  // A prefetch can merge with demand, so include both request types throughout
+  // translation, lookup and refill rather than trusting the original type.
+  if (pending(internal_PQ) || pending(inflight_tag_check) || pending(translation_stash) || pending(MSHR) || pending(inflight_fills))
+    return true;
+  return std::any_of(upper_levels.begin(), upper_levels.end(), [&](const auto* channel) {
+    return pending(channel->RQ) || pending(channel->PQ) || pending(channel->WQ);
+  });
 }
 
 bool CACHE::is_instruction_present(champsim::address virtual_pc) const
@@ -1004,11 +1023,13 @@ bool CACHE::prefetch_line(champsim::address pf_addr, bool fill_this_level, uint3
   return true;
 }
 
-bool CACHE::prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata, champsim::address ip)
+bool CACHE::prefetch_line(champsim::address pf_addr, bool fill_this_level, uint32_t prefetch_metadata, champsim::address ip, uint64_t requested_bytes)
 {
   if (!prefetch_line(pf_addr, fill_this_level, prefetch_metadata))
     return false;
   internal_PQ.back().ip = ip;
+  if (requested_bytes != 0)
+    internal_PQ.back().requested_bytes = requested_bytes;
   return true;
 }
 

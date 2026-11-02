@@ -238,31 +238,53 @@ ChampSim correct-path traces and the usual simulation arguments. Set
 replacement; zero disables history recording. History is populated during
 warmup and retained into simulation.
 
-This implements frontend-only trace-inferred replay, as distinguished from
-execution-driven wrong-path traces in
-[Correct Wrong Path Simulation](https://webs.um.es/aros/papers/pdfs/cpepi-ispass26.pdf).
-On a correct-path misprediction, trace consumption pauses while the frontend
-follows its local direction predictor and BTB through previously seen instruction
-PCs. Sequential successors are learned only from observed non-taken transitions;
-no fixed instruction length, future trace lookahead, or stale branch outcome is
-used to choose the replay path. Unknown PCs, targets, or fall-throughs stop replay
-until branch recovery. Replay is enabled in detailed simulation; warmup retains
-its existing fast behavior.
+This implements trace-inferred speculative replay. On a correct-path
+misprediction, trace consumption pauses while replay follows the local direction
+predictor and BTB. The translated IPC1 instruction slot is four bytes; sequential
+replay advances by that amount, and predicted taken branches redirect it. FDIP
+supplies predictions from its independent fetch-target queue when enabled.
+Replay never reads future correct-path trace instructions or trains branch
+outcomes. It runs in detailed simulation; warmup retains its fast behavior.
 
-Replayed instructions use fetch bandwidth, I-cache/ITLB requests, DIB lookups,
-decode bandwidth, and frontend buffer space. Wrong-path branch predictions notify
-the instruction prefetcher. They wait at dispatch and never enter the ROB,
-allocate registers, issue data accesses, train branch outcomes, or retire.
-Decode/execute recovery discards all replay entries and applies the existing
-misprediction penalty. Already-issued instruction requests and prefetches remain
-in flight, preserving their cache effects. This models frontend effects only;
-it does not model wrong-path data execution or predictor-history rollback.
-The existing `fdip` prefetcher remains branch-callback driven, rather than a new
-decoupled FTQ implementation.
+Previously observed PCs retain their logical register operands and load/store
+operation counts, with fresh pipeline state. Unknown PCs are inferred as follows:
+
+- At replay entry or the start of a predicted basic block, generate a load that
+  writes a synthetic logical register and starts a dependency chain.
+- Inside the block, generate arithmetic operations that read the latest load's
+  destination registers and write a synthetic arithmetic register.
+- At a predicted branch, generate a store that reads the latest register writer.
+  Both taken targets and not-taken fallthroughs start the next block. A
+  single-instruction block uses the store rule.
+
+Memory addresses are inferred for both known and unknown replay PCs. The first
+address is the most recently issued data access plus 64 bytes; subsequent replay
+memory operands advance by another 64 bytes. Before any data request has issued,
+the first inferred address is `0x1000`. Recovery resets the inferred address
+sequence and register-chain state. Inferred logical registers are separate from
+the trace's 256 register IDs but allocate from the same physical register pool.
+
+Replay uses the ordinary fetch, decode, dispatch, ROB, rename, scheduling,
+execution, and load/store queue resources, including their capacity limits.
+Loads issue through the normal data-cache/translation path and gate dependent
+arithmetic operations on their memory responses. Stores execute and can forward
+to younger loads; they remain in the store queue until squashed and never commit
+data-cache writes. Replay instructions never retire. Branch recovery removes
+their frontend, ROB, and LSQ entries, releases their physical registers, and
+restores the rename mappings of older correct-path instructions, including
+producers that have not retired. Already-issued instruction/data reads and
+prefetches remain in flight and retain their cache effects. This is a timing and
+dependency heuristic, rather than functional execution of reconstructed values.
 
 Text and JSON CPU statistics report `wrong_path_fetched`, `wrong_path_squashed`,
-and `wrong_path_unknown` (attempts to replay an unrecorded PC). These counters
-reset at phase boundaries; instruction and IPC counts remain correct-path only.
+and `wrong_path_unknown` (replayed PCs absent from history). The additional
+`wrong_path_inferred_loads`, `wrong_path_inferred_arithmetic`, and
+`wrong_path_inferred_stores` counters report generated unknown operations.
+`wrong_path_dispatched`, `wrong_path_executed`, `wrong_path_loads_issued`, and
+`wrong_path_stores_executed` show their progress through the backend (including
+known replay PCs). These counters reset at phase boundaries; instruction and IPC
+counts remain correct-path only. Rebuild binaries and rerun experiments to
+measure the dataflow model; existing result files describe the earlier model.
 
 The FDIP size sweeps pin L1I miss concurrency to 8 MSHRs and tag/fill bandwidth
 to 2 per cycle for both conventional and UBS caches. Frontend instruction fetches

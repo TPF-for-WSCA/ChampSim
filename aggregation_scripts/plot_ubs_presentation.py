@@ -32,7 +32,7 @@ def main():
     metrics = {row['metric'] for row in rows if row.get('metric')}
     if len(metrics) > 1:
         parser.error('input contains multiple metrics')
-    metric = next(iter(metrics), 'Harmonic mean speedup vs 16 KiB baseline (%)')
+    metric = next(iter(metrics), 'Harmonic mean speedup vs baseline (%)')
     relative = '%' in metric
     categories = [c for c in ('overall', 'client', 'server', 'spec') if any(r['category'] == c for r in rows)]
     configs = sorted({r['configuration'] for r in rows}, key=configuration_key)
@@ -53,7 +53,7 @@ def main():
     excel_path = args.output.with_name(args.output.name + '_excel.csv')
     series = [(category, variant) for category in categories for variant in ('Conventional', 'UBS')]
     with excel_path.open('w', encoding='utf-8-sig', newline='') as stream:
-        writer = csv.writer(stream)
+        writer = csv.writer(stream, lineterminator='\n')
         writer.writerow(['Nominal capacity (KiB)'] + [f'{c.title()} - {v}' for c, v in series])
         for storage in sorted({float(r['storage_kib']) for r in rows}):
             writer.writerow([f'{storage:g} KiB'] + [values.get((storage, c, v), '') for c, v in series])

@@ -125,7 +125,7 @@ private:
   }
 
 public:
-  std::optional<value_type> check_hit(const value_type& elem)
+  std::optional<value_type> check_hit(const value_type& elem, bool update_lru = true)
   {
     auto [set_begin, set_end] = get_set_span(elem);
     auto hit = std::find_if(set_begin, set_end, match_func(elem));
@@ -134,7 +134,8 @@ public:
       return std::nullopt;
     }
 
-    hit->last_used = ++access_count;
+    if (update_lru)
+      hit->last_used = ++access_count;
     return hit->data;
   }
 

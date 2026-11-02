@@ -1,6 +1,7 @@
 #include <catch.hpp>
 
 #include "../../../btb/basic_btb/basic_btb.h"
+#include "../../../prefetcher/fdip/fdip.h"
 #include "cache.h"
 #include "defaults.hpp"
 #include "dram_controller.h"
@@ -11,21 +12,28 @@
 
 TEST_CASE("Ideal BPU predicts cold branches of every type", "[ideal-frontend]")
 {
+  const bool wrong_path = GENERATE(false, true);
+  const bool use_fdip = GENERATE(false, true);
   for (auto type : {BRANCH_DIRECT_JUMP, BRANCH_INDIRECT, BRANCH_CONDITIONAL, BRANCH_DIRECT_CALL, BRANCH_INDIRECT_CALL, BRANCH_RETURN, BRANCH_OTHER}) {
     for (bool taken : {false, true}) {
       if (!taken && type != BRANCH_CONDITIONAL && type != BRANCH_OTHER)
         continue;
       CACHE l1i{champsim::cache_builder{champsim::defaults::default_l1i}};
-      O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.l1i(&l1i).btb<basic_btb>().ideal_cbp(true).ideal_ibp(true).ideal_btb(true)};
+      CACHE fdip_l1i{champsim::cache_builder{champsim::defaults::default_l1i}.prefetcher<fdip>()};
+      O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.l1i(use_fdip ? &fdip_l1i : &l1i).btb<basic_btb>()
+                     .ideal_cbp(true).ideal_ibp(true).ideal_btb(true).wrong_path(wrong_path)};
       cpu.warmup = false;
       auto instr = champsim::test::instruction_with_ip(0x100);
       instr.is_branch = true;
       instr.branch = type;
       instr.branch_taken = taken;
       instr.branch_target = champsim::address{taken ? 0x200u : 0u};
-      cpu.do_predict_branch(instr);
-      REQUIRE_FALSE(instr.branch_mispredicted);
-      REQUIRE(instr.branch_prediction == taken);
+      cpu.input_queue.push_back(instr);
+      cpu.initialize_instruction();
+      REQUIRE(cpu.input_queue.empty());
+      REQUIRE_FALSE(cpu.IFETCH_BUFFER.front().branch_mispredicted);
+      REQUIRE(cpu.IFETCH_BUFFER.front().branch_prediction == taken);
+      REQUIRE_FALSE(cpu.wrong_path_active);
       REQUIRE(cpu.prediction_oracle == nullptr);
     }
   }
@@ -105,19 +113,64 @@ TEST_CASE("Ideal I-cache returns cold and conflicting lines without lower reques
   REQUIRE(cache.is_instruction_present(champsim::address{0xdeadbeef}));
 }
 
-TEST_CASE("Ideal CBP leaves cold target misses intact", "[ideal-frontend]")
+TEST_CASE("Missing BTB branch presence is a misprediction even when not taken", "[ideal-frontend]")
 {
+  const bool ideal_cbp = GENERATE(false, true);
+  const bool taken = GENERATE(false, true);
+  const auto type = GENERATE(BRANCH_CONDITIONAL, BRANCH_OTHER);
+  const bool use_fdip = GENERATE(false, true);
+  const bool wrong_path = GENERATE(false, true);
   CACHE l1i{champsim::cache_builder{champsim::defaults::default_l1i}};
-  O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.l1i(&l1i).btb<basic_btb>().ideal_cbp(true)};
+  CACHE fdip_l1i{champsim::cache_builder{champsim::defaults::default_l1i}.prefetcher<fdip>()};
+  O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.l1i(use_fdip ? &fdip_l1i : &l1i).btb<basic_btb>()
+                 .ideal_cbp(ideal_cbp).wrong_path(wrong_path)};
   cpu.warmup = false;
   auto instr = champsim::test::instruction_with_ip(0x100);
   instr.is_branch = true;
-  instr.branch = BRANCH_CONDITIONAL;
-  instr.branch_taken = true;
-  instr.branch_target = champsim::address{0x200};
-  cpu.do_predict_branch(instr);
-  REQUIRE(instr.branch_prediction);
-  REQUIRE(instr.branch_mispredicted);
+  instr.branch = type;
+  instr.branch_taken = taken;
+  instr.branch_target = champsim::address{taken ? 0x200u : 0u};
+  cpu.input_queue.push_back(instr);
+  cpu.initialize_instruction();
+  REQUIRE(cpu.input_queue.empty());
+  REQUIRE(cpu.IFETCH_BUFFER.front().branch_mispredicted);
+  REQUIRE(cpu.sim_stats.branch_btb_accesses.value_or(type, 0) == 1);
+  REQUIRE(cpu.sim_stats.branch_btb_misses.value_or(type, 0) == 1);
+  REQUIRE(cpu.sim_stats.branch_type_misses.value_or(type, 0) == 1);
+  REQUIRE(cpu.sim_stats.branch_target_misses == static_cast<unsigned>(taken));
+  REQUIRE(cpu.wrong_path_active == wrong_path);
+  REQUIRE(cpu.fetch_resume_time == champsim::chrono::clock::time_point::max());
+  if (ideal_cbp) {
+    REQUIRE(cpu.IFETCH_BUFFER.front().branch_prediction == taken);
+    REQUIRE(cpu.sim_stats.branch_direction_misses == 0);
+  }
+}
+
+TEST_CASE("Ideal CBP corrects direction while preserving learned BTB targets", "[ideal-frontend]")
+{
+  const bool taken = GENERATE(false, true);
+  const bool correct_target = GENERATE(false, true);
+  const auto type = GENERATE(BRANCH_CONDITIONAL, BRANCH_OTHER);
+  const bool use_fdip = GENERATE(false, true);
+  CACHE l1i{champsim::cache_builder{champsim::defaults::default_l1i}};
+  CACHE fdip_l1i{champsim::cache_builder{champsim::defaults::default_l1i}.prefetcher<fdip>()};
+  O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.l1i(use_fdip ? &fdip_l1i : &l1i).btb<basic_btb>().ideal_cbp(true)};
+  cpu.warmup = false;
+  auto instr = champsim::test::instruction_with_ip(0x100);
+  instr.is_branch = true;
+  instr.branch = type;
+  instr.branch_taken = taken;
+  instr.branch_target = champsim::address{taken ? 0x200u : 0u};
+  cpu.impl_update_btb(instr.ip, champsim::address{correct_target ? 0x200u : 0x300u}, true, type);
+  cpu.input_queue.push_back(instr);
+  cpu.initialize_instruction();
+  const bool target_miss = taken && !correct_target;
+  REQUIRE(cpu.IFETCH_BUFFER.front().branch_prediction == taken);
+  REQUIRE(cpu.IFETCH_BUFFER.front().branch_mispredicted == target_miss);
+  REQUIRE(cpu.sim_stats.branch_btb_misses.value_or(type, 0) == 0);
+  REQUIRE(cpu.sim_stats.branch_type_misses.value_or(type, 0) == static_cast<unsigned>(target_miss));
+  REQUIRE(cpu.sim_stats.branch_target_misses == static_cast<unsigned>(target_miss));
+  REQUIRE(cpu.sim_stats.branch_direction_misses == 0);
 }
 
 TEST_CASE("Ideal ITLB returns shared VM mappings without page walks", "[ideal-frontend][ideal-itlb]")

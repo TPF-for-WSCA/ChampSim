@@ -87,7 +87,7 @@ def plot_horizontal(summary, configurations, categories, output, labels, ylabel)
     write_plot_csv(summary, configurations, categories, suffixed_path(output, '_plot').with_suffix('.csv'), ylabel)
 
 
-def write_mpki_outputs(records, configurations, selected_traces, baselines, output, *, labels=None):
+def write_mpki_outputs(records, configurations, selected_traces, baselines, output, *, labels=None, title=None):
     """Write absolute/reduction figures and exact aggregate/per-trace CSVs.
 
     Call after the caller's existing plot has initialized Matplotlib.
@@ -102,7 +102,7 @@ def write_mpki_outputs(records, configurations, selected_traces, baselines, outp
         destination.parent.mkdir(parents=True, exist_ok=True)
         if labels is None:
             plot(summary, configurations, categories, destination,
-                 'L1I load misses · equal weight per trace · N/A if unavailable or undefined', metric,
+                 title or 'L1I load misses · equal weight per trace · N/A if unavailable or undefined', metric,
                  reference_line=0 if suffix.endswith('reduction') else None,
                  center_on_reference=suffix.endswith('reduction'))
         else:

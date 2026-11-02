@@ -66,6 +66,9 @@ bool hashed_perceptron::predict_branch(champsim::address pc)
 
 void hashed_perceptron::last_branch_result(champsim::address pc, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
+  // FDIP or wrong-path lookups may have replaced last_result. Rebuild the
+  // indices and sum using this branch and the history preceding its outcome.
+  (void)predict_branch(pc);
   for (auto& hist : ghist_words) {
     hist.push_back(taken);
   }

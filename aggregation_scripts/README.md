@@ -4,6 +4,13 @@
 produce L1I MPKI plots alongside their existing IPC plots. Their commands and
 trace-selection rules are unchanged.
 
+Relative IPC graphs automatically use the smallest conventional cache present in
+the result set (for example, 4 KiB when the sweep contains 4–256 KiB points).
+UBS configurations do not determine the reference size. The chosen baseline is
+used for every workload category, figure label, and relative CSV export.
+`--baseline <configuration>` selects an explicit IPC reference instead. Missing
+conventional capacities or ambiguous smallest baselines require this override.
+
 For output `graphs.png` (or an output prefix `graphs`), the extra files are:
 
 - `graphs_mpki.png`: arithmetic mean L1I LOAD MPKI, overall and by workload group.
@@ -34,7 +41,11 @@ reduction means still use matched pairs.
 Comparison configurations:
 
 - Cache-size sweeps: the unique conventional cache at the same nominal capacity.
-  Conventional bars therefore show zero reduction. For configuration names
+  Conventional bars therefore show zero reduction. When there is a unique
+  smallest conventional configuration, an additional
+  `graphs_conventional_vs_<size>k_mpki_reduction.png` compares conventional cache
+  sizes against that baseline, with matching MPKI figures and CSV exports.
+  This comparison is independent of the IPC `--baseline` override. For configuration names
   without a capacity, the generic script uses its selected IPC `--baseline`.
 - Storage DSE: `baseline_i<size>k_b<entries>k`, matching both nominal I-cache
   capacity and BTB entry count.

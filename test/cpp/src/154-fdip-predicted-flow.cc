@@ -23,8 +23,11 @@ struct flow_btb : champsim::modules::btb {
 
 TEST_CASE("FDIP walks predicted targets without consuming future trace or instruction history", "[fdip-flow]")
 {
-  CACHE cache{champsim::cache_builder{champsim::defaults::default_l1i}.prefetcher<fdip>()};
-  O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.l1i(&cache).btb<flow_btb>()};
+  const bool uneven = GENERATE(false, true);
+  const bool wrong_path = GENERATE(false, true);
+  auto builder = champsim::cache_builder{champsim::defaults::default_l1i}.prefetcher<fdip>();
+  CACHE cache{uneven ? builder.set_ubs() : builder.reset_ubs()};
+  O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.l1i(&cache).btb<flow_btb>().wrong_path(wrong_path)};
   cpu.input_queue.push_back(champsim::test::instruction_with_ip(0x100));
   cpu.input_queue.push_back(champsim::test::instruction_with_ip(0x300));
   cpu.advance_fdip();
@@ -82,7 +85,9 @@ TEST_CASE("Dependency-only trace records neither consume predictions nor become 
 
 TEST_CASE("Unseen wrong-path NOPs follow BTB flow and recovery redirects after the configured delay", "[fdip-flow][wrong-path]")
 {
-  CACHE cache{champsim::cache_builder{champsim::defaults::default_l1i}.prefetcher<fdip>()};
+  const bool uneven = GENERATE(false, true);
+  auto builder = champsim::cache_builder{champsim::defaults::default_l1i}.prefetcher<fdip>();
+  CACHE cache{uneven ? builder.set_ubs() : builder.reset_ubs()};
   O3_CPU cpu{champsim::core_builder{champsim::defaults::default_core}.l1i(&cache).btb<flow_btb>().wrong_path(true).mispredict_penalty(2)};
   cpu.warmup = false;
   auto branch = champsim::test::instruction_with_ip(0x100);

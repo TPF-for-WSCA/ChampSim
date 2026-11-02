@@ -18,8 +18,15 @@ struct physical_register {
 
 class RegisterAllocator
 {
+public:
+  // Trace registers occupy [0, 255]. Inference has a separate logical namespace.
+  static constexpr PHYSICAL_REGISTER_ID INFERRED_LOAD_REGISTER = 256, INFERRED_ALU_REGISTER = 257;
+
 private:
-  std::array<PHYSICAL_REGISTER_ID, std::numeric_limits<uint8_t>::max() + 1> frontend_RAT, backend_RAT;
+  using rename_table = std::array<PHYSICAL_REGISTER_ID, INFERRED_ALU_REGISTER + 1>;
+  rename_table frontend_RAT, backend_RAT;
+  std::optional<rename_table> speculation_checkpoint;
+  std::vector<PHYSICAL_REGISTER_ID> speculative_registers;
   std::queue<PHYSICAL_REGISTER_ID> free_registers;
   std::vector<physical_register> physical_register_file;
 
@@ -35,6 +42,8 @@ public:
   unsigned long count_free_registers() const;
   int count_reg_dependencies(const ooo_model_instr& instr) const;
   void reset_frontend_RAT();
+  void begin_speculation();
+  void squash_speculation();
   void print_deadlock();
 };
 #endif

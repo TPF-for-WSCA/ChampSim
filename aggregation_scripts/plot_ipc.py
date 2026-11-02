@@ -15,9 +15,6 @@ from pathlib import Path
 
 
 TRACE_SUFFIX = ".champsimtrace.xz"
-DEFAULT_BASELINE_SIZE = "16k"
-
-
 def natural_key(value):
     """Sort names containing numbers in human order (8k, 16k, 32k, ...)."""
     return tuple(int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", value))
@@ -191,22 +188,22 @@ def summarize(records, configurations, selected_traces, relative=False):
 
 
 def select_default_baseline(configurations):
-    """Return the configuration whose name identifies it as the 16 KiB variant."""
-    size_pattern = re.compile(rf"(?:^|[_-]){DEFAULT_BASELINE_SIZE}(?:$|[_-])", re.IGNORECASE)
-    matches = [configuration for configuration in configurations if size_pattern.search(configuration)]
-    baseline_matches = [
+    """Return the unique smallest conventional cache in this result set."""
+    conventional = [
         configuration
-        for configuration in matches
+        for configuration in configurations
         if not re.search(r"(?:^|[_-])ubs(?:$|[_-])", configuration, re.IGNORECASE)
+        and configuration_storage(configuration) is not None
     ]
-    if len(baseline_matches) == 1:
-        return baseline_matches[0]
-    if len(matches) != 1:
-        available = ", ".join(configurations)
-        if matches:
-            raise ValueError(f"multiple 16k baseline configurations found: {', '.join(matches)}")
+    if not conventional:
         raise ValueError(
-            f"no 16k baseline configuration found; use --baseline to select one from: {available}"
+            f"no conventional baseline with a capacity found; use --baseline to select one from: {', '.join(configurations)}"
+        )
+    smallest = min(configuration_storage(configuration) for configuration in conventional)
+    matches = [configuration for configuration in conventional if configuration_storage(configuration) == smallest]
+    if len(matches) != 1:
+        raise ValueError(
+            f"multiple smallest ({smallest} KiB) baseline configurations found: {', '.join(matches)}; use --baseline to select one"
         )
     return matches[0]
 
@@ -235,7 +232,7 @@ def deviation_from_baseline(records, configurations, selected_traces, baseline):
 def write_csv(records, configurations, selected_traces, output_path, value_name="ipc"):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.writer(stream)
+        writer = csv.writer(stream, lineterminator="\n")
         writer.writerow(["configuration", "trace_group", "trace", value_name, "source"])
         for configuration in configurations:
             for trace in sorted(selected_traces, key=natural_key):
@@ -249,7 +246,7 @@ def write_plot_csv(summary, configurations, categories, output_path, value_name)
     """Export the aggregated bar heights, preserving Python float precision."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.writer(stream)
+        writer = csv.writer(stream, lineterminator="\n")
         writer.writerow(["configuration", "category", "storage_kib", "metric", "value", "trace_count"])
         for configuration in sorted(configurations, key=configuration_key):
             for category in categories:
@@ -345,10 +342,10 @@ def plot(
         axis.set_ylim(0, 100)
     axis.grid(axis="y", linestyle=":", alpha=0.55)
     handles = [Patch(facecolor=colors[index % len(colors)], label=category) for index, category in enumerate(categories)]
-    handles.extend([
-        Patch(facecolor="white", edgecolor="black", label="Conventional"),
-        Patch(facecolor="white", edgecolor="black", hatch="///", label="UBS"),
-    ])
+    if any(not re.search(r"(?:^|[_-])ubs(?:$|[_-])", c, re.IGNORECASE) for c in configurations):
+        handles.append(Patch(facecolor="white", edgecolor="black", label="Conventional"))
+    if any(re.search(r"(?:^|[_-])ubs(?:$|[_-])", c, re.IGNORECASE) for c in configurations):
+        handles.append(Patch(facecolor="white", edgecolor="black", hatch="///", label="UBS"))
     axis.legend(handles=handles, ncols=min(4, len(handles)))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -390,7 +387,7 @@ def plot_wrong_path_workloads(records, configuration, selected_traces, output_pa
     figure.savefig(output_path, dpi=200)
     plt.close(figure)
     with output_path.with_name(output_path.stem + "_plot.csv").open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.writer(stream)
+        writer = csv.writer(stream, lineterminator="\n")
         writer.writerow(["configuration", "trace_group", "trace", "wrong_path_unknown", "wrong_path_fetched", "unknown_percent", "source"])
         for trace, entry, value in rows:
             writer.writerow([configuration, entry["group"], trace, entry.get("wrong_path_unknown"),
@@ -433,7 +430,7 @@ def parse_args():
     )
     parser.add_argument(
         "--baseline",
-        help="Configuration used as the relative baseline (default: the 16k configuration)",
+        help="Configuration used as the relative baseline (default: the smallest conventional cache present)",
     )
     parser.add_argument("--core", type=int, default=0, help="Core index to plot (default: 0)")
     parser.add_argument("--title", default="ChampSim IPC comparison", help="Plot title")
@@ -506,6 +503,21 @@ def main():
         for entry in records[configuration].values():
             entry['core'] = args.core
     write_mpki_outputs(records, configurations, selected_traces, mpki_baselines, output_path)
+    conventional = [name for name in configurations
+                    if configuration_storage(name) is not None
+                    and not re.search(r"(?:^|[_-])ubs(?:$|[_-])", name, re.IGNORECASE)]
+    try:
+        conventional_baseline = select_default_baseline(conventional)
+    except ValueError:
+        conventional_baseline = None
+    if conventional_baseline is not None:
+        baseline_size = configuration_storage(conventional_baseline)
+        write_mpki_outputs(
+            records, conventional, selected_traces,
+            {name: conventional_baseline for name in conventional},
+            suffixed_path(output_path, f"_conventional_vs_{baseline_size}k"),
+            title=f"Conventional cache vs {baseline_size} KiB baseline · equal weight per trace",
+        )
     wrong_path_output = suffixed_path(output_path, "_wrong_path_unknown")
     plot(
         summarize_wrong_path(records, configurations, selected_traces, categories),

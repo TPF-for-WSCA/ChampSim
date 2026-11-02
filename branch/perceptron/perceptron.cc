@@ -44,45 +44,25 @@ bool perceptron::predict_branch(champsim::address ip)
 {
   // hash the address to get an index into the table of perceptrons
   const auto index = ip.to<uint64_t>() % NUM_PERCEPTRONS;
-  const auto output = perceptrons[index].predict(spec_global_history);
-
-  bool prediction = (output >= 0);
-
-  // record the various values needed to update the predictor
-  perceptron_state_buf.push_back({ip, prediction, output, spec_global_history});
-  if (std::size(perceptron_state_buf) > NUM_UPDATE_ENTRIES)
-    perceptron_state_buf.pop_front();
-
-  // update the speculative global history register
-  spec_global_history <<= 1;
-  spec_global_history.set(0, prediction);
-  return prediction;
+  return perceptrons[index].predict(global_history) >= 0;
 }
 
 void perceptron::last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
-  auto state = std::find_if(std::begin(perceptron_state_buf), std::end(perceptron_state_buf), [ip](auto x) { return x.ip == ip; });
-  if (state == std::end(perceptron_state_buf))
-    return; // Skip update because state was lost
-
-  auto [_ip, prediction, output, history] = *state;
-  perceptron_state_buf.erase(state);
-
-  // update the real global history shift register
-  global_history <<= 1;
-  global_history.set(0, taken);
-
-  // if this branch was mispredicted, restore the speculative history to the
-  // last known real history
-  if (prediction != taken)
-    spec_global_history = global_history;
+  // Recompute from the real history: intervening lookups have no outcomes and
+  // must neither supply training context nor evict a real branch's update.
+  const auto index = ip.to<uint64_t>() % NUM_PERCEPTRONS;
+  const auto output = perceptrons[index].predict(global_history);
+  const bool prediction = output >= 0;
 
   // if the output of the perceptron predictor is outside of the range
   // [-THETA,THETA] *and* the prediction was correct, then we don't need to
   // adjust the weights
   const auto THETA = std::lround(1.93 * PERCEPTRON_HISTORY + 14); // threshold for training
   if ((output <= THETA && output >= -THETA) || (prediction != taken)) {
-    const auto index = ip.to<uint64_t>() % NUM_PERCEPTRONS;
-    perceptrons[index].update(taken, history);
+    perceptrons[index].update(taken, global_history);
   }
+
+  global_history <<= 1;
+  global_history.set(0, taken);
 }

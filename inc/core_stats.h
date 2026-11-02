@@ -14,6 +14,8 @@ struct cpu_stats {
   long long end_instrs = 0;
   long long end_cycles = 0;
   uint64_t wrong_path_fetched = 0, wrong_path_squashed = 0, wrong_path_unknown = 0;
+  uint64_t wrong_path_inferred_loads = 0, wrong_path_inferred_arithmetic = 0, wrong_path_inferred_stores = 0;
+  uint64_t wrong_path_dispatched = 0, wrong_path_executed = 0, wrong_path_loads_issued = 0, wrong_path_stores_executed = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
   uint64_t fdip_fetch_blocks = 0, fdip_predictions = 0, fdip_ftq_full_cycles = 0, fdip_redirects = 0, fdip_discontinuities = 0;
   uint64_t btb_lookups = 0, btb_hits = 0;

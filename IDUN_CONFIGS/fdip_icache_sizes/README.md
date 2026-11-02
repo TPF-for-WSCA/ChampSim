@@ -41,9 +41,9 @@ Build and run every JSON configuration in this directory with:
 ```
 
 The result directory can then be passed to
-`aggregation_scripts/plot_ipc.py`. The script uses the conventional 16 KiB
-configuration as its default relative-performance baseline when both cache
-organizations are present.
+`aggregation_scripts/plot_ipc.py`. The script uses the smallest conventional
+cache present as its default relative-performance baseline (4 KiB for this
+complete sweep). `--baseline` selects an explicit reference instead.
 
 The script also writes absolute L1I LOAD MPKI and MPKI-reduction plots with
 exact CSV data. MPKI reduction compares UBS to the conventional cache at the

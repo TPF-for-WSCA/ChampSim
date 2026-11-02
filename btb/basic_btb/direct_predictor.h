@@ -44,7 +44,7 @@ struct direct_predictor {
     if (ways == 0)
       throw std::invalid_argument("Basic BTB ways must be nonzero");
   }
-  std::optional<btb_entry_t> check_hit(champsim::address ip);
+  std::optional<btb_entry_t> check_hit(champsim::address ip, bool update_lru = true);
   void update(champsim::address ip, champsim::address branch_target, uint8_t branch_type);
 };
 

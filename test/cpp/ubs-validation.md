@@ -1,5 +1,191 @@
 # UBS small-scale validation — 2026-10-29
 
+## Speculative replay dataflow — 2026-11-02
+
+This supersedes the backend-NOP model described below. Replayed instructions now
+retain their logical operands and execute through the ROB, physical register
+file, scheduler, execution/completion stages, and load/store queues. Unknown PCs
+use the user-selected basic-block heuristic: a load at entry, arithmetic reading
+the latest load inside the block, and a store reading the latest register writer
+at the predicted branch. Not-taken branches also start new blocks; a singleton
+block uses the store rule. Addresses start at the most recently issued data
+access plus 64 bytes and advance by 64 for subsequent replay memory operands.
+The first address is `0x1000` if no prior data access exists.
+
+Loads issue normal data-cache/translation reads and consumers wait for their
+responses. Stores allocate SQ entries, execute, and forward to younger loads,
+but never commit data-cache writes. All replay remains non-retiring. Recovery
+cleans forwarding references before releasing LQ slots, removes speculative SQ
+and ROB entries, and rolls back register allocation. A checkpoint at the first
+replayed rename preserves older in-flight producers; source-only speculative
+allocations are reclaimed as well. The two inferred logical registers do not
+alias any trace register and share the normal physical-register capacity.
+
+Backend verification also exposed an existing scheduler defect: it rechecked
+already-scheduled, physically renamed operands as logical register IDs and
+charged their destination registers again. This could stop scanning under
+register pressure, even when the next instruction needed no new registers.
+Allocation checks now apply only to unscheduled instructions, and renaming
+cannot pass an older unready instruction. This correction applies with replay
+disabled too; old and new performance results require matching baseline reruns.
+
+The fresh assertion-enabled runner in `/tmp/champsim-wrongpath-data-20261102/`
+covers frontend/FDIP/replay, branch predictors, ideal frontend, register renaming,
+ROB/load scheduling, cache tests 400–432, UBS, and SRRIP. The new dataflow tests
+cover taken/not-taken boundaries with and without FDIP, load-to-ALU-to-store
+readiness, actual data requests, queue capacity, recovery with older producers,
+256 repeated register exhaustion/recovery cycles, forwarding-slot reuse, late
+memory responses, logical/physical ID separation, and register-free consumers
+under register pressure. The full Python suite passed 264 tests with one skip.
+
+Final C++ result: **152 cases / 27,273 assertions passed**. The new
+register-pressure regression fails against the old scheduler (zero instructions
+renamed when one register-free consumer should rename), then passes with the
+correction. The Python result is **263 passed / one skipped**.
+
+Six fresh production configurations (conventional/UBS with replay disabled,
+enabled, and enabled with zero history) completed `server_004` with 100K warmup
+and 250K measured instructions. The normal conventional replay run dispatched
+596,728 instructions, executed 114,332, issued 21,368 loads, and executed 4,028
+stores. UBS dispatched 589,523, executed 113,274, issued 21,144 loads, and
+executed 3,908 stores. Both zero-history variants also generated and executed
+inferred loads, arithmetic and stores. Disabled runs report zero replay counters.
+Artifacts and build logs are in `/tmp/champsim-wrongpath-data-smoke-20261102/`.
+Production binaries under `bin/` and existing results were not overwritten.
+
+Same-build original-core and old-scheduler-only controls reproduce identical
+replay-disabled counters, isolating the baseline change to the scheduler fix.
+For this short `server_004` window, conventional 4 KiB increases from 949,260 to
+949,330 cycles, while UBS 4 KiB increases from 949,172 to 953,237 cycles. These
+are early-window functional controls, not replacements for the 50M-warmup/50M-ROI
+performance runs. Changing backend scheduling can affect cache and prefetch
+timing even when the corrected rule permits more scheduling progress.
+
+## DIB branch-target recovery — 2026-11-01
+
+Decoded-instruction-buffer hits previously skipped the recovery check applied
+to freshly decoded instructions. Direct jumps, direct calls and conditional
+branches with correct direction but incorrect targets therefore waited for
+execution only when they hit the DIB. Both paths now run the same target-error
+recovery before dispatch; conditional direction errors still await execution.
+The existing deferred squash removes replay after the decode-buffer iteration,
+and clearing the branch's misprediction flag prevents a second redirect at
+execution. DIB remains enabled and recovery delays are unchanged.
+
+The regression checks all three branch classes with DIB hit/miss and replay
+enabled/disabled, including FDIP redirection and replay squash. All six DIB-hit
+combinations fail before the fix. A separate check retains execution-stage
+recovery for direction errors. The two new cases pass 261 assertions; the
+isolated runner in `/tmp/champsim-wrongpath-nop/` passes 128 cases / 25,797
+assertions after this change.
+
+## Wrong-path backend capacity — 2026-11-01
+
+Wrong-path replay previously stopped at dispatch. Its 32-entry dispatch buffer
+could fill while the older mispredicted branch waited on execution, even though
+the 352-entry ROB had spare capacity. Replay now enters the ROB as backend NOPs,
+consuming normal dispatch, scheduler, execution, completion and ROB resources.
+Known branch identity still directs replay predictions, but recorded registers,
+memory addresses and pipeline state are discarded: they describe a different
+dynamic execution. Dispatch enforces the no-data-operands invariant again.
+Recovery squashes replay from both frontend buffers and the ROB, and retirement
+explicitly excludes wrong-path instructions. Completion walks the ROB by index
+so branch recovery may safely remove its younger tail.
+
+This remains an approximation without speculative data execution or register
+dependencies. Unknown PCs are NOPs, and no unavailable addresses are invented.
+FDIP already follows predicted control flow with `wrong_path=false`, so that
+configuration still incurs wrong-path instruction prefetch traffic; the option
+adds instruction demand fetches and replay occupancy. A small difference between
+the two policies is not by itself evidence of missing wrong-path prefetching.
+
+New regressions fill a 128-entry ROB behind a pending branch with a four-entry
+dispatch buffer, complete and squash replay without retiring it, verify empty
+data queues and unchanged physical-register availability, and discard stale
+historical pipeline state. The capacity test fails against the prior core
+(one ROB entry versus the required 128), establishing that it detects the
+dispatch-only cap. The isolated assertion-enabled runner in
+`/tmp/champsim-wrongpath-nop/` passes 121 cases / 25,500 assertions, including
+22 wrong-path cases / 22,022 assertions. Full workload effects require reruns;
+these checks establish resource accounting and recovery invariants.
+
+## Demand coverage through prefetch merges — 2026-11-01
+
+Prefetch probe masks previously flowed into the fill's `requested_bytes` union
+when a demand and prefetch merged. UBS then treated predicted but unused bytes
+as demand-accessed data. For example, a 32-byte prefetch probe merging with a
+four-byte demand could allocate a 32-byte fragment instead of a four-byte
+fragment when the predictor was drained. This reduces effective capacity.
+
+Fill records now retain demand byte coverage only; tag lookups still use the
+prefetch's complete probe mask. The regression exercises both merge orders and
+demand offsets 0 and 60, verifies one lower request, the retained demand mask,
+and the eventual single four-byte fragment. The unpatched constructor fails
+all four generated combinations; the corrected case passes 64 assertions.
+Rebuilt cache and UBS-test objects linked into the isolated parity runner pass
+**107 cases / 3,562 assertions**, including **18 UBS cases / 2,018 assertions**.
+Builds and before/after logs are in `/tmp/ubs-coverage-tests/`.
+
+This fixes artificial fragment inflation; it does not force IPC to track a
+twice-sized conventional cache. The configured layout has 17 tags per set
+including the predictor, but retains only four full-line regions, compared with
+eight in the same-size conventional cache. Dense code, disjoint useful regions,
+replacement and prefetch timing can produce real slowdowns. Fresh workload
+measurements are necessary to quantify this fix.
+
+## Baseline/UBS frontend parity — 2026-11-01
+
+The two size sweeps already match outside cache organization: each has six
+baseline/UBS pairs (4–128 KiB) and an unpaired conventional 256 KiB cache.
+The wrong-path and non-wrong-path sweeps differ only in executable names and
+`ooo_cpu[0].wrong_path`. Twenty storage-DSE pairs also match outside L1I
+organization. New Python checks compare both source JSON and resolved simulator
+elements, including cores, lower caches, translations, queues and modules.
+No experiment JSON changes were necessary.
+
+The implementation previously selected different FDIP behavior using `ubs`:
+conventional caches deduplicated queued targets by line, aligned prefetch
+addresses to the line, and retained recently prefetched lines after completion;
+UBS deduplicated by instruction PC, preserved offsets and forgot completed
+requests. CPU demand fetches also carried requested-byte masks only for UBS.
+
+Both caches now use the existing UBS-compatible FDIP rules. Queued targets retain
+their instruction PCs, issued requests suppress duplicates by line, and fills
+or prefetch hits remove the recent entry so later predictions recheck residency.
+Both predicted-target and miss-triggered next-line requests explicitly carry
+four-byte coverage through the cache prefetch API. Demand fetches describe the
+same instruction-byte union with either cache, including wrong-path fetches.
+There are no cache-organization branches in FDIP or CPU fetch packet generation.
+
+UBS integration remains active inside the cache: virtual-PC presence probes
+check the union of resident fragment bytes; partial instruction coverage remains
+a miss; full-line predictor/buffer hits and useful-byte training are unchanged.
+Conventional caches still satisfy accesses with full lines. The fragment sizes,
+bounded SRRIP replacement, predictor, and effective storage remain inherent
+organization differences. In particular, the nominal capacity labels are not
+exact equal-data-byte budgets: conventional storage is 512 bytes per set, while
+UBS has 444 fragment bytes plus a 64-byte predictor per set. Both use the same
+32-entry prefetch buffer.
+
+Fresh C++ compilation with libstdc++ assertions enabled passed **106 cases /
+3,498 assertions**, covering fetch, wrong-path replay/recovery, FDIP, cache tests
+400–432 and replacement tests 442–444. New regressions compare queue contents,
+request addresses and byte masks, completion suppression, next-line requests,
+and runtime timing/resources at all six matched sizes. Existing UBS coverage
+and partial-miss regressions continue to pass. Python passed **261 tests with
+one skip**.
+
+All four 4 KiB executables were freshly configured and built from the same
+sources in `/tmp/champsim-icache-parity/experiment/`. Each completed `server_004`
+with 100,000 warmup and 1,000,000 ROI instructions. Non-wrong-path runs fetched
+zero wrong-path instructions; both enabled runs fetched and squashed wrong-path
+instructions. UBS reported partial misses in both modes, while conventional
+caches reported zero. Logs, JSON results and the isolated C++ runner are in
+`/tmp/champsim-icache-parity/`. These are functional smoke runs; different cache
+timing can naturally change dynamic fetch/prefetch counts and wrong-path length.
+Existing binaries under the repository's `bin/` were not replaced and must be
+rebuilt before collecting comparable results.
+
 ## Dummy PCs and SRRIP validation — 2026-10-31
 
 Restored the historical translated-IPC1 convention: PCs not divisible by four
