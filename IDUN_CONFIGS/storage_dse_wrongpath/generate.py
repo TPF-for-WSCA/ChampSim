@@ -24,13 +24,15 @@ def configurations():
                 if ubs:
                     cache.pop("ways")
                     cache.update(ubs_way_sizes=UBS_WAYS, ubs_candidate_ways=4)
-                cpu = {"btb": "xbtbx" if lite else "basic_btb",
+                cpu = {"branch_predictor": "tage_sc_l", "btb": "xbtbx" if lite else "basic_btb",
                        "btb_sets": btb * 1024 // 8, "btb_ways": 8}
                 if lite:
                     cpu.update(btb_target_sizes=TARGET_BITS, btb_clipped_tag=True,
-                               btb_tag_size=13, btb_tag_regions=0,
+                               btb_tag_size=13, btb_full_target_tag_size=15, btb_tag_regions=0,
                                btb_perfect_mapping=False, btb_invalidate_entry=False,
                                btb_invalidate_region=False)
+                else:
+                    cpu.update(btb_clipped_tag=True, btb_tag_size=15)
                 yield name, {"executable_name": f"storage_dse/{name}",
                              "block_size": 64, "ooo_cpu": [cpu], "L1I": cache,
                              "L1D": {"prefetcher": "berti", "virtual_prefetch": True,

@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -39,6 +40,7 @@ class litebtb_predictor : public champsim::modules::btb
   std::size_t ways;
   bool clipped_tag;
   uint8_t tag_size;
+  std::optional<uint8_t> full_target_tag_size;
   std::vector<uint8_t> target_sizes;
   std::vector<uint8_t> address_permutation;
   std::vector<entry> entries;
@@ -49,6 +51,7 @@ class litebtb_predictor : public champsim::modules::btb
 
   [[nodiscard]] uint64_t permute(uint64_t value) const;
   [[nodiscard]] std::size_t index(uint64_t ip, std::size_t table_sets) const;
+  [[nodiscard]] uint8_t tag_bits(uint8_t capacity) const;
   [[nodiscard]] uint64_t tag(uint64_t ip, uint8_t capacity) const;
   [[nodiscard]] uint64_t decompress(const entry& value) const;
   entry* find(std::vector<entry>& table, std::size_t table_sets, std::size_t table_ways, uint64_t ip, bool compressed);

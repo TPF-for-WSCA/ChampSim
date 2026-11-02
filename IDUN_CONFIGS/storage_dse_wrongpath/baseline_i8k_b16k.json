@@ -6,7 +6,9 @@
       "branch_predictor": "tage_sc_l",
       "btb": "basic_btb",
       "btb_sets": 2048,
-      "btb_ways": 8
+      "btb_ways": 8,
+      "btb_clipped_tag": true,
+      "btb_tag_size": 15
     }
   ],
   "L1I": {

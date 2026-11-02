@@ -119,12 +119,14 @@ class CpuBuilderTest(unittest.TestCase):
 
     def test_litebtb_geometry(self):
         self.get_element_diff(
-            ['.btb_sets(512)', '.btb_ways(3)', '.btb_clipped_tag(1)', '.btb_target_sizes({4, 8, 64})', '.btb_tag_size(13)'],
+            ['.btb_sets(512)', '.btb_ways(3)', '.btb_clipped_tag(1)', '.btb_target_sizes({4, 8, 64})',
+             '.btb_tag_size(13)', '.btb_full_target_tag_size(15)'],
             btb_sets=512,
             btb_ways=3,
             btb_clipped_tag=True,
             btb_target_sizes=[4, 8, 64],
-            btb_tag_size=13
+            btb_tag_size=13,
+            btb_full_target_tag_size=15
         )
 
     def test_litebtb_address_permutation(self):

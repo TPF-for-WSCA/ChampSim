@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -82,7 +83,7 @@ struct core_builder_base {
   champsim::channel* m_fetch_queues{};
   champsim::channel* m_data_queues{};
 
-  // LiteBTB (called XBTBX in the MICRO'26 artifact) configuration.
+  // Shared BTB geometry/tag settings and LiteBTB-specific options.
   std::size_t m_btb_sets{1024};
   std::size_t m_btb_ways{8};
   unsigned m_l2_btb_latency{3};
@@ -94,7 +95,9 @@ struct core_builder_base {
   bool m_btb_perfect_mapping{};
   bool m_btb_invalidate_entry{};
   bool m_btb_invalidate_region{};
-  uint8_t m_btb_tag_size{12};
+  // An omitted width preserves each module's default tag policy.
+  std::optional<uint8_t> m_btb_tag_size{};
+  std::optional<uint8_t> m_btb_full_target_tag_size{};
   std::size_t m_btb_tag_regions{};
   std::size_t m_btb_filter_btb_limit{};
   std::size_t m_btb_tag_region_ways{};
@@ -300,6 +303,7 @@ public:
   self_type& btb_invalidate_entry(bool value);
   self_type& btb_invalidate_region(bool value);
   self_type& btb_tag_size(uint8_t value);
+  self_type& btb_full_target_tag_size(uint8_t value);
   self_type& btb_tag_regions(std::size_t value);
   self_type& btb_filter_btb_limit(std::size_t value);
   self_type& btb_tag_region_ways(std::size_t value);
@@ -577,6 +581,7 @@ CHAMPSIM_CORE_BUILDER_SETTER(btb_perfect_mapping, bool)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_invalidate_entry, bool)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_invalidate_region, bool)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_tag_size, uint8_t)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_full_target_tag_size, uint8_t)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_tag_regions, std::size_t)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_filter_btb_limit, std::size_t)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_tag_region_ways, std::size_t)

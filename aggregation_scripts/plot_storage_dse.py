@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Plot ROI performance against measured storage, plus L1I MPKI and MPKI reduction."""
+"""Plot storage DSE performance, interactive comparisons, presentation layers, and L1I MPKI."""
 import argparse
 import csv
+import html
 import json
 import math
 import statistics
@@ -15,6 +16,8 @@ from plot_ipc import load_result
 
 DESIGNS = {"baseline": ("Baseline", "#0072B2", "o"), "ubs": ("UBS", "#D55E00", "s"),
            "litebtb": ("LiteBTB", "#009E73", "^"), "combined": ("Combined", "#CC79A7", "D")}
+METRICS = (("ipc", "Harmonic mean ROI IPC"), ("ipc_per_mib", "Harmonic mean ROI IPC / MiB"))
+STORAGE_LABEL = "Total L1I + BTB storage (KiB, including metadata and predictors)"
 HEADER = re.compile(r"^(.*?) STORAGE .*total=(\d+) bits", re.M)
 
 
@@ -63,12 +66,19 @@ def collect(results, configs, allow_incomplete=False):
             rows.append(dict(configuration=name, design=DESIGNS[match[1]][0],
                              nominal_icache_kib=int(match[2]), btb_entries=int(match[3]) * 1024,
                              trace=trace, group=group, l1i_bits=l1i, btb_bits=btb,
-                             total_storage_kib=total, ipc=ipc, ipc_per_kib=ipc / total))
+                             total_storage_kib=total, ipc=ipc, ipc_per_mib=ipc * 1024 / total))
         if len({(r["l1i_bits"], r["btb_bits"]) for r in rows}) != 1:
             raise ValueError(f"storage changes between traces for {name}; mixed/stale binaries")
         points.append(rows)
     if not points:
         raise ValueError("no results found")
+    if allow_incomplete:
+        max_workloads = max(len(rows) for rows in points)
+        for rows in points:
+            if len(rows) < max_workloads:
+                print(f"Skipping incomplete configuration: {rows[0]['configuration']} "
+                      f"({len(rows)}/{max_workloads} workloads)", file=sys.stderr)
+        points = [rows for rows in points if len(rows) == max_workloads]
     expected = {r["trace"] for r in points[0]}
     for rows in points:
         if {r["trace"] for r in rows} != expected:
@@ -77,8 +87,8 @@ def collect(results, configs, allow_incomplete=False):
     for rows in points:
         first = rows[0]
         ipc = statistics.harmonic_mean(r["ipc"] for r in rows)
-        summaries.append({k: v for k, v in first.items() if k not in ("trace", "group", "ipc", "ipc_per_kib")} |
-                         dict(trace_count=len(rows), ipc=ipc, ipc_per_kib=ipc / first["total_storage_kib"]))
+        summaries.append({k: v for k, v in first.items() if k not in ("trace", "group", "ipc", "ipc_per_mib")} |
+                         dict(trace_count=len(rows), ipc=ipc, ipc_per_mib=ipc * 1024 / first["total_storage_kib"]))
     order = lambda r: (r["total_storage_kib"], r["design"], r["configuration"], r.get("trace", ""))
     return sorted(summaries, key=order), sorted([r for rows in points for r in rows], key=order)
 
@@ -102,22 +112,130 @@ def plot(summary, output, title=None):
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     fig, axes = plt.subplots(1, 2, figsize=(13, 5), layout="constrained")
-    for label, color, marker in DESIGNS.values():
+    artists = {}
+    for key, (label, color, marker) in DESIGNS.items():
         rows = [r for r in summary if r["design"] == label]
         if not rows:
             continue
-        for ax, metric in zip(axes, ("ipc", "ipc_per_kib")):
-            ax.scatter([r["total_storage_kib"] for r in rows], [r[metric] for r in rows],
-                       label=label, c=color, marker=marker, s=48, alpha=0.8, edgecolors="black", linewidths=0.4)
-    for ax, ylabel in zip(axes, ("Harmonic mean ROI IPC", "Harmonic mean ROI IPC / KiB")):
-        ax.set_xlabel("Total L1I + BTB storage (KiB, including metadata and predictors)")
+        artists[key] = [ax.scatter([r["total_storage_kib"] for r in rows], [r[metric] for r in rows],
+                                  label=label, c=color, marker=marker, s=48, alpha=0.8,
+                                  edgecolors="black", linewidths=0.4)
+                        for ax, (metric, _) in zip(axes, METRICS)]
+    for ax, (_, ylabel) in zip(axes, METRICS):
+        ax.set_xlabel(STORAGE_LABEL)
         ax.set_ylabel(ylabel)
         ax.grid(alpha=0.25)
         ax.legend()
-    fig.suptitle(title or f"Instruction front-end design space · {summary[0]['trace_count']} trace(s)")
-    for suffix in (".png", ".pdf"):
-        fig.savefig(output.with_suffix(suffix), dpi=180)
-    plt.close(fig)
+    heading = fig.suptitle(title or f"Instruction front-end design space · {summary[0]['trace_count']} trace(s)")
+    try:
+        # Solve layout once, then freeze positions and limits for every export.
+        fig.canvas.draw()
+        positions = [ax.get_position().frozen() for ax in axes]
+        if hasattr(fig, "set_layout_engine"):
+            fig.set_layout_engine("none")
+        else:
+            fig.set_constrained_layout(False)
+        for ax, position in zip(axes, positions):
+            ax.set_position(position)
+            ax.set_autoscale_on(False)
+
+        def save(name, transparent=False):
+            destination = output.with_name(output.name + name)
+            for suffix in (".png", ".pdf"):
+                fig.savefig(destination.with_suffix(suffix), dpi=180, transparent=transparent)
+
+        save("")
+        for key in artists:
+            for design, collections in artists.items():
+                for collection in collections:
+                    collection.set_visible(design == key)
+            # Keep the legend's position fixed, hiding other entries in place.
+            for ax in axes:
+                legend = ax.get_legend()
+                handles = getattr(legend, "legend_handles", None)
+                if handles is None:
+                    handles = legend.legendHandles
+                for handle, text in zip(handles, legend.get_texts()):
+                    handle.set_visible(text.get_text() == DESIGNS[key][0])
+                for text in legend.get_texts():
+                    text.set_visible(text.get_text() == DESIGNS[key][0])
+            save("_" + key, transparent=True)
+            for ax in axes:
+                ax.set_axis_off()
+                ax.get_legend().set_visible(False)
+            heading.set_visible(False)
+            save("_" + key + "_layer", transparent=True)
+            for ax in axes:
+                ax.set_axis_on()
+                ax.get_legend().set_visible(True)
+            heading.set_visible(True)
+
+        for collections in artists.values():
+            for collection in collections:
+                collection.set_visible(False)
+        for ax in axes:
+            legend = ax.get_legend()
+            for child in legend.findobj():
+                child.set_visible(True)
+        save("_axes", transparent=True)
+    finally:
+        plt.close(fig)
+
+
+def interactive_figure(summary, title=None):
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.12,
+                        subplot_titles=[label for _, label in METRICS])
+    symbols = dict(baseline="circle", ubs="square", litebtb="triangle-up", combined="diamond")
+    for key, (label, color, _) in DESIGNS.items():
+        rows = [row for row in summary if row['design'] == label]
+        if not rows:
+            continue
+        customdata = [[r['configuration'], r['nominal_icache_kib'], r['btb_entries'],
+                       r['l1i_bits'] / 8192, r['btb_bits'] / 8192, r['trace_count']] for r in rows]
+        for column, (metric, ylabel) in enumerate(METRICS, 1):
+            fig.add_trace(go.Scatter(
+                x=[r['total_storage_kib'] for r in rows], y=[r[metric] for r in rows],
+                mode="markers", name=label, legendgroup=key, showlegend=column == 1,
+                meta=dict(design=key, metric=metric), customdata=customdata,
+                marker=dict(color=color, symbol=symbols[key], size=10, opacity=0.8,
+                            line=dict(color="black", width=0.5)),
+                hovertemplate=("<b>%{customdata[0]}</b><br>"
+                               "Nominal L1I: %{customdata[1]} KiB<br>BTB: %{customdata[2]} entries<br>"
+                               "L1I storage: %{customdata[3]:.3f} KiB<br>BTB storage: %{customdata[4]:.3f} KiB<br>"
+                               "Total storage: %{x:.3f} KiB<br>" + ylabel + ": %{y:.6f}<br>"
+                               "Workloads: %{customdata[5]}<extra>%{fullData.name}</extra>")), row=1, col=column)
+            fig.update_xaxes(title_text=STORAGE_LABEL, row=1, col=column)
+            fig.update_yaxes(title_text=ylabel, row=1, col=column)
+    fig.update_layout(template="plotly_white", height=650, uirevision="storage-dse",
+                      title=dict(text=html.escape(title or f"Instruction front-end design space · {summary[0]['trace_count']} trace(s)")),
+                      legend=dict(orientation="h", y=-0.25, groupclick="togglegroup"),
+                      margin=dict(l=80, r=40, t=100, b=140))
+    return fig
+
+
+def plot_interactive(summary, output, title=None):
+    fig = interactive_figure(summary, title)
+    script = Path(__file__).with_name("storage_dse_interactive.js").read_text()
+    graph = fig.to_html(full_html=False, include_plotlyjs=True, div_id="storage-dse-plot", post_script=script,
+                        config=dict(responsive=True, displaylogo=False,
+                                    toImageButtonOptions=dict(format="png", filename=output.stem)))
+    document = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
+                '<meta name="viewport" content="width=device-width,initial-scale=1">'
+                '<title>Storage DSE</title><style>'
+                'body{font:16px system-ui,sans-serif;margin:24px;color:#182433}'
+                'main{max-width:1500px;margin:auto}.controls{display:flex;flex-wrap:wrap;gap:24px;align-items:center}'
+                'label{display:flex;align-items:center;gap:8px}select{font:inherit;padding:6px}'
+                'p{color:#526174}#selection-status{font-variant-numeric:tabular-nums}'
+                '</style></head><body><main>'
+                '<p>Choose the same nominal L1I capacity and BTB entry count across all designs. '
+                'Click a legend entry to hide a design; double-click to isolate it. '
+                'Hover for storage and performance details. Drag to zoom; double-click the plot to reset.</p>'
+                + graph + '</main></body></html>')
+    fig_path = output.with_suffix(".html")
+    fig_path.write_text(document, encoding="utf-8")
 
 
 def main():
@@ -126,7 +244,8 @@ def main():
     parser.add_argument("--configs", type=Path, default=Path(__file__).resolve().parents[1] / "IDUN_CONFIGS/storage_dse")
     parser.add_argument("--output", type=Path, default=Path("storage_dse"))
     parser.add_argument("--title", help="optional figure title")
-    parser.add_argument("--allow-incomplete", action="store_true", help="skip configurations with no results (trace coverage must still match)")
+    parser.add_argument("--allow-incomplete", action="store_true",
+                        help="skip missing configurations and those with fewer workloads than the maximum (remaining trace sets must match)")
     args = parser.parse_args()
     try:
         summary, traces = collect(args.results, args.configs, args.allow_incomplete)
@@ -134,6 +253,7 @@ def main():
         write_csv(args.output.with_suffix(".csv"), summary)
         write_csv(args.output.with_name(args.output.name + "_per_trace.csv"), traces)
         plot(summary, args.output, args.title)
+        plot_interactive(summary, args.output, args.title)
         from plot_mpki import experiment_mpki
         # Match both nominal I-cache capacity and BTB entry count.
         baselines = {row['configuration']: re.sub(r'^(ubs|litebtb|combined)_', 'baseline_', row['configuration'])
@@ -142,7 +262,8 @@ def main():
                         {row['configuration']: row['configuration'] for row in summary})
     except (ValueError, OSError, KeyError, ImportError) as error:
         parser.exit(1, f"{error}\n")
-    print(f"Wrote {len(summary)} storage-sorted points to {args.output}.[csv,png,pdf]")
+    print(f"Wrote {len(summary)} storage-sorted points to {args.output}.[csv,png,pdf,html] "
+          "plus transparent per-design figures, point layers, and axes")
 
 
 if __name__ == "__main__":

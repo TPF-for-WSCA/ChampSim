@@ -5,6 +5,59 @@
 #include "cache.h"
 #include "instruction.h"
 #include "ooo_cpu.h"
+#include "storage.h"
+
+TEST_CASE("Basic BTB defaults retain full tags")
+{
+  const auto sets = GENERATE(256u, 512u, 1024u, 2048u, 4096u);
+  direct_predictor uut{sets, 8};
+  CHECK(uut.tag_bits == 62 - champsim::storage_bits(sets));
+  const champsim::address ip{0x1000};
+  uut.update(ip, champsim::address{0x2000}, BRANCH_DIRECT_JUMP);
+  const champsim::address alias{ip.to<uint64_t>() + (uint64_t{1} << (2 + champsim::storage_bits(sets) + 15))};
+  CHECK_FALSE(uut.check_hit(alias).has_value());
+}
+
+TEST_CASE("Basic BTB configured tags alias only above the index and retained tag")
+{
+  const auto sets = GENERATE(256u, 512u, 1024u, 2048u, 4096u);
+  direct_predictor uut{sets, 8, 15};
+  CHECK(uut.tag_bits == 15);
+  const auto shift = 2 + champsim::storage_bits(sets);
+  const champsim::address ip{0x1000};
+  const champsim::address target{0x2000};
+  const champsim::address alias{ip.to<uint64_t>() + (uint64_t{1} << (shift + 15))};
+  uut.update(ip, target, BRANCH_DIRECT_JUMP);
+  REQUIRE(uut.check_hit(alias).has_value());
+  CHECK(uut.check_hit(alias)->target == target);
+  CHECK_FALSE(uut.check_hit(ip + 4).has_value()); // A different set.
+  CHECK_FALSE(uut.check_hit(champsim::address{ip.to<uint64_t>() ^ (uint64_t{1} << (shift + 14))}).has_value());
+  // Training an alias updates the same hardware entry, including its type.
+  uut.update(alias, champsim::address{0x3000}, BRANCH_CONDITIONAL);
+  REQUIRE(uut.check_hit(ip).has_value());
+  CHECK(uut.check_hit(ip)->target == champsim::address{0x3000});
+  CHECK(uut.check_hit(ip)->type == direct_predictor::branch_info::CONDITIONAL);
+}
+
+TEST_CASE("Basic BTB receives configured tag clipping from the core")
+{
+  const bool clipped = GENERATE(false, true);
+  const bool explicit_tag = GENERATE(false, true);
+  auto builder = champsim::core_builder{}.btb_sets(256).btb_ways(8).btb_clipped_tag(clipped);
+  if (explicit_tag)
+    builder.btb_tag_size(15);
+  auto core = O3_CPU{builder};
+  basic_btb uut{&core};
+  uut.update_btb(champsim::address{0x1000}, champsim::address{0x2000}, true, BRANCH_DIRECT_JUMP);
+  const auto prediction = uut.btb_prediction(champsim::address{0x1000 + (uint64_t{1} << 25)});
+  CHECK(prediction.first == (clipped && explicit_tag ? champsim::address{0x2000} : champsim::address{}));
+}
+
+TEST_CASE("Basic BTB rejects invalid tag widths")
+{
+  CHECK_THROWS_AS((direct_predictor{256, 8, 0}), std::invalid_argument);
+  CHECK_THROWS_AS((direct_predictor{256, 8, 55}), std::invalid_argument);
+}
 
 TEST_CASE("Basic BTB wrong-path hits preserve the LRU victim")
 {

@@ -16,7 +16,8 @@
 #include "instruction.h"
 
 basic_btb::basic_btb(O3_CPU* cpu)
-    : btb(cpu), direct(cpu ? cpu->BTB_SETS : 1024, cpu ? cpu->BTB_WAYS : 8)
+    : btb(cpu), direct(cpu ? cpu->BTB_SETS : 1024, cpu ? cpu->BTB_WAYS : 8,
+                       cpu && cpu->BTB_CLIPPED_TAG ? cpu->BTB_TAG_SIZE : std::nullopt)
 {
 }
 
@@ -117,7 +118,7 @@ void basic_btb::initialize_btb()
   const uint64_t count = direct.sets * direct.ways;
   champsim::print_storage("CPU " + std::to_string(intern_ ? intern_->cpu : 0) + " basic_btb", {
       {"Direct BTB targets", count * 64},
-      {"Direct BTB tags", count * (64 - 2 - champsim::storage_bits(direct.sets))},
+      {"Direct BTB tags", count * direct.tag_bits},
       {"Direct BTB valid bits", count}, {"Direct BTB branch types/call flags", count * 3},
       {"Direct BTB replacement (LRU ranks)", count * champsim::storage_bits(direct.ways)},
       {"ITTAGE base targets/valid", ittage::base_storage_bits},

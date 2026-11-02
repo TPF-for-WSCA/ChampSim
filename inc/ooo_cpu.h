@@ -136,14 +136,15 @@ public:
 
   champsim::bandwidth::maximum_type L1I_BANDWIDTH, L1D_BANDWIDTH;
 
-  // Runtime parameters consumed by the LiteBTB/XBTBX module family.
+  // Runtime parameters consumed by basic_btb and the LiteBTB/XBTBX module family.
   const std::size_t BTB_SETS, BTB_WAYS;
   const unsigned L2_BTB_LATENCY;
   const bool BTB_CLIPPED_TAG, BTB_PARTIAL_TAG_RESOLUTION;
   const std::vector<uint8_t> BTB_TARGET_SIZES;
   const bool BTB_SMALL_WAY_REGIONS_ENABLED, BTB_BIG_WAY_REGIONS_ENABLED, BTB_PERFECT_MAPPING;
   const bool BTB_INVALIDATE_ENTRY, BTB_INVALIDATE_REGION;
-  const uint8_t BTB_TAG_SIZE;
+  const std::optional<uint8_t> BTB_TAG_SIZE;
+  const std::optional<uint8_t> BTB_FULL_TARGET_TAG_SIZE;
   const std::size_t BTB_TAG_REGIONS, BTB_FILTER_BTB_LIMIT, BTB_TAG_REGION_WAYS;
   const uint8_t BTB_TAG_REGION_SIZE;
   const std::vector<uint8_t> BTB_INDEX_TAG_HASH;
@@ -320,7 +321,8 @@ public:
         BTB_CLIPPED_TAG(b.m_btb_clipped_tag), BTB_PARTIAL_TAG_RESOLUTION(b.m_btb_partial_tag_resolution), BTB_TARGET_SIZES(b.m_btb_target_sizes),
         BTB_SMALL_WAY_REGIONS_ENABLED(b.m_btb_small_way_regions_enabled), BTB_BIG_WAY_REGIONS_ENABLED(b.m_btb_big_way_regions_enabled),
         BTB_PERFECT_MAPPING(b.m_btb_perfect_mapping), BTB_INVALIDATE_ENTRY(b.m_btb_invalidate_entry), BTB_INVALIDATE_REGION(b.m_btb_invalidate_region),
-        BTB_TAG_SIZE(b.m_btb_tag_size), BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_FILTER_BTB_LIMIT(b.m_btb_filter_btb_limit),
+        BTB_TAG_SIZE(b.m_btb_tag_size), BTB_FULL_TARGET_TAG_SIZE(b.m_btb_full_target_tag_size),
+        BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_FILTER_BTB_LIMIT(b.m_btb_filter_btb_limit),
         BTB_TAG_REGION_WAYS(b.m_btb_tag_region_ways), BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), BTB_INDEX_TAG_HASH(b.m_btb_index_tag_hash),
         IDEAL_CBP(b.m_ideal_cbp), IDEAL_IBP(b.m_ideal_ibp), IDEAL_BTB(b.m_ideal_btb), WRONG_PATH(b.m_wrong_path), WRONG_PATH_HISTORY_SIZE(b.m_wrong_path_history_size),
         FDIP_FTQ_SIZE(b.m_fdip_ftq_size),

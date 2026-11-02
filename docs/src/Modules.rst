@@ -95,6 +95,19 @@ Branch Target Buffers
 
 A BTB module may implement three functions.
 
+The built-in ``basic_btb`` accepts ``btb_sets`` and ``btb_ways``. Setting
+``btb_clipped_tag: true`` together with an explicit ``btb_tag_size`` clips
+its direct-BTB tags to that many PC bits above the alignment and set index.
+Both matching and the storage report use this width. Omitting ``btb_tag_size``
+or setting ``btb_clipped_tag: false`` retains full tags. LiteBTB/XBTBX keeps its
+existing policy, including its 12-bit default width and full-target bypass way.
+For LiteBTB/XBTBX, ``btb_full_target_tag_size`` overrides the tag width in
+64-bit-target ways when tag clipping is enabled. For example, ``btb_tag_size: 13``
+and ``btb_full_target_tag_size: 15`` select 13-bit tags in narrow ways and 15-bit
+tags in full-target ways. Matching and storage accounting use the same widths;
+the stored target remains 64 bits. Omitting the override preserves the original
+full-target tag policy.
+
 .. cpp:function:: void initialize_btb()
 
    This function is called when the core is initialized. You can use it to initialize elements of dynamic structures, such as ``std::vector`` or ``std::map``.

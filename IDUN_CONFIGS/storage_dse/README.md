@@ -6,8 +6,8 @@ sizes **8, 16, 32, 64 KiB** × BTB capacities **2K, 4K, 8K, 16K, 32K entries**
 
 | Design | Instruction cache | BTB |
 | --- | --- | --- |
-| Baseline | Conventional, 8 ways | basic_btb, 8 ways |
-| UBS | UBS | basic_btb, 8 ways |
+| Baseline | Conventional, 8 ways | basic_btb, 8 ways, 15-bit tags |
+| UBS | UBS | basic_btb, 8 ways, 15-bit tags |
 | LiteBTB | Conventional, 8 ways | xbtbx, 8 heterogeneous ways |
 | Combined | UBS | xbtbx, 8 heterogeneous ways |
 
@@ -16,10 +16,30 @@ settings use the same ChampSim defaults. Baseline BTB allocation now honors
 `btb_sets` and `btb_ways`; every BTB variant uses the same fixed-size
 [ITTAGE indirect predictor](../../docs/ittage.md), included in its reported
 storage, while the return predictors retain their existing sizes.
-LiteBTB uses target widths `[0,4,5,7,9,11,19,64]` and 13-bit clipped tags
-(except its full-target bypass way). The artifact's 25-bit way is omitted
-so eight ways give exact power-of-two entry counts. This is the current
-inline-tag LiteBTB port, with no separate UTB or tag-pointer table.
+Baseline and UBS explicitly set `btb_clipped_tag: true` and `btb_tag_size: 15`.
+The tag consists of the 15 PC bits immediately above the two alignment bits
+and the set-index bits. Lookup and update both use this tag, including aliases;
+the startup storage report charges 15 bits per direct-BTB entry. With no explicit
+`btb_tag_size`, `basic_btb` retains full tags; `btb_clipped_tag: false` also
+selects full tags. Other experiments keep their existing default tag policy.
+
+Before this change, these two designs used `62 - log2(sets)` tag bits: 54, 53,
+52, 51, and 50 bits at 2K, 4K, 8K, 16K, and 32K entries. The new tags save
+9.75, 19, 37, 72, and 140 KiB respectively in direct-BTB tag storage alone.
+Rebuild and rerun to measure performance and storage with the shorter tags;
+existing result files and plots still describe the previous tag policies. Use a
+separate result root for the 15-bit runs.
+
+LiteBTB and Combined use target widths `[0,4,5,7,9,11,19,64]`, with 13-bit
+clipped tags in the seven smaller ways and 15-bit tags in the full-target way.
+Their CPU configurations set `btb_tag_size: 13` and
+`btb_full_target_tag_size: 15`. The full-target way still stores a 64-bit target;
+its tag comparison and reported tag storage both use 15 bits. Leaving
+`btb_full_target_tag_size` unset preserves the module's original full-target
+tag policy for other experiments; `btb_clipped_tag: false` selects full tags in
+all ways. The artifact's 25-bit target way is omitted so eight ways give exact
+power-of-two entry counts. This is the current inline-tag LiteBTB port, with no
+separate UTB or tag-pointer table.
 
 UBS uses the existing 16-way heterogeneous profile and four candidate ways.
 Its set counts match the conventional cache at each nominal L1I size: 16,

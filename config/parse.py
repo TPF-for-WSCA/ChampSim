@@ -238,7 +238,7 @@ class NormalizedConfiguration:
                 'schedule_latency', 'execute_latency', 'branch_predictor', 'btb', 'DIB',
                 'btb_sets', 'btb_ways', 'l2_btb_latency', 'btb_clipped_tag', 'btb_partial_tag_resolution',
                 'btb_target_sizes', 'btb_small_way_regions_enabled', 'btb_big_way_regions_enabled',
-                'btb_perfect_mapping', 'btb_invalidate_entry', 'btb_invalidate_region', 'btb_tag_size',
+                'btb_perfect_mapping', 'btb_invalidate_entry', 'btb_invalidate_region', 'btb_tag_size', 'btb_full_target_tag_size',
                 'btb_tag_regions', 'btb_filter_btb_limit', 'btb_tag_region_ways', 'btb_tag_region_size',
                 'btb_index_tag_hash'
             )

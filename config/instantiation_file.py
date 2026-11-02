@@ -66,6 +66,7 @@ core_builder_parts = {
     'btb_invalidate_entry': '.btb_invalidate_entry({btb_invalidate_entry:b})',
     'btb_invalidate_region': '.btb_invalidate_region({btb_invalidate_region:b})',
     'btb_tag_size': '.btb_tag_size({btb_tag_size})',
+    'btb_full_target_tag_size': '.btb_full_target_tag_size({btb_full_target_tag_size})',
     'btb_tag_regions': '.btb_tag_regions({btb_tag_regions})',
     'btb_filter_btb_limit': '.btb_filter_btb_limit({btb_filter_btb_limit})',
     'btb_tag_region_ways': '.btb_tag_region_ways({btb_tag_region_ways})',

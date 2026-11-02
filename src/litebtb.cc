@@ -204,7 +204,8 @@ uint64_t sha3(uint64_t value)
 
 litebtb_predictor::litebtb_predictor(O3_CPU* cpu, litebtb_hash hash, bool enable_two_level)
     : btb(cpu), hash_kind(hash), two_level(enable_two_level), sets(cpu->BTB_SETS), ways(cpu->BTB_WAYS), clipped_tag(cpu->BTB_CLIPPED_TAG),
-      tag_size(cpu->BTB_TAG_SIZE), target_sizes(cpu->BTB_TARGET_SIZES), address_permutation(cpu->BTB_INDEX_TAG_HASH)
+      tag_size(cpu->BTB_TAG_SIZE.value_or(12)), full_target_tag_size(cpu->BTB_FULL_TARGET_TAG_SIZE),
+      target_sizes(cpu->BTB_TARGET_SIZES), address_permutation(cpu->BTB_INDEX_TAG_HASH)
 {
   if (sets == 0 || (sets & (sets - 1)) != 0)
     throw std::invalid_argument("LiteBTB sets must be a nonzero power of two");
@@ -212,6 +213,8 @@ litebtb_predictor::litebtb_predictor(O3_CPU* cpu, litebtb_hash hash, bool enable
     throw std::invalid_argument("LiteBTB ways must be nonzero");
   if (tag_size > 63)
     throw std::invalid_argument("LiteBTB tag size must not exceed 63 bits");
+  if (full_target_tag_size && (*full_target_tag_size == 0 || *full_target_tag_size > 62 - champsim::storage_bits(sets)))
+    throw std::invalid_argument("LiteBTB full-target tag size must be positive and no larger than the full tag");
   if (cpu->BTB_TAG_REGIONS != 0)
     throw std::invalid_argument("this LiteBTB port supports the MICRO'26 no-region configuration only");
   if (target_sizes.empty())
@@ -250,25 +253,40 @@ std::size_t litebtb_predictor::index(uint64_t ip, std::size_t table_sets) const
   return static_cast<std::size_t>(((shuffled ? permute(ip) : ip) >> 2) & (table_sets - 1));
 }
 
+uint8_t litebtb_predictor::tag_bits(uint8_t capacity) const
+{
+  const auto full_width = static_cast<uint8_t>(62 - champsim::storage_bits(sets));
+  if (!clipped_tag)
+    return full_width;
+  if (capacity == 64) {
+    if (full_target_tag_size)
+      return *full_target_tag_size;
+    if (!two_level && hash_kind != litebtb_hash::full_xor && hash_kind != litebtb_hash::geometric)
+      return full_width;
+  }
+  return tag_size;
+}
+
 uint64_t litebtb_predictor::tag(uint64_t ip, uint8_t capacity) const
 {
   const bool shuffled = two_level || hash_kind == litebtb_hash::full_xor || hash_kind == litebtb_hash::geometric;
   const unsigned set_bits = static_cast<unsigned>(std::log2(sets));
   uint64_t value = (shuffled ? permute(ip) : ip) >> (2 + set_bits);
+  const auto width = tag_bits(capacity);
   const bool full_way_bypasses_hash = !two_level && hash_kind != litebtb_hash::full_xor && hash_kind != litebtb_hash::geometric;
   if (!clipped_tag || (capacity == 64 && full_way_bypasses_hash))
-    return value;
+    return value & bit_mask(width);
   switch (hash_kind) {
-  case litebtb_hash::identity: return value & bit_mask(tag_size);
-  case litebtb_hash::half_xor: return half_xor(value, tag_size);
-  case litebtb_hash::full_xor: return full_xor(value, tag_size);
-  case litebtb_hash::geometric: return two_level ? two_level_geometric(value, tag_size) : geometric(value, tag_size);
-  case litebtb_hash::pearson: return pearson(value) & bit_mask(tag_size);
+  case litebtb_hash::identity: return value & bit_mask(width);
+  case litebtb_hash::half_xor: return half_xor(value, width);
+  case litebtb_hash::full_xor: return full_xor(value, width);
+  case litebtb_hash::geometric: return two_level ? two_level_geometric(value, width) : geometric(value, width);
+  case litebtb_hash::pearson: return pearson(value) & bit_mask(width);
   // The tagged Rabin routine reduces a 64-bit value with a degree-64 polynomial;
   // for a single 64-bit input this is the identity before clipping.
-  case litebtb_hash::rabin: return value & bit_mask(tag_size);
-  case litebtb_hash::sha3: return sha3(value) & bit_mask(tag_size);
-  case litebtb_hash::zobrist: return zobrist(value) & bit_mask(tag_size);
+  case litebtb_hash::rabin: return value & bit_mask(width);
+  case litebtb_hash::sha3: return sha3(value) & bit_mask(width);
+  case litebtb_hash::zobrist: return zobrist(value) & bit_mask(width);
   }
   return value;
 }
@@ -375,12 +393,9 @@ void litebtb_predictor::update_btb(champsim::address ip_address, champsim::addre
 void litebtb_predictor::initialize_btb()
 {
   uint64_t targets = 0, tags = 0;
-  const auto full_tag = 64 - 2 - champsim::storage_bits(sets);
-  const bool bypass = !two_level && hash_kind != litebtb_hash::full_xor && hash_kind != litebtb_hash::geometric;
   for (auto capacity : target_sizes) {
     targets += sets * capacity;
-    const auto stored_tag = (!clipped_tag || (capacity == 64 && bypass)) ? full_tag : uint64_t{tag_size};
-    tags += sets * stored_tag;
+    tags += sets * tag_bits(capacity);
   }
   const uint64_t count = sets * ways;
   const uint64_t l1_count = two_level ? L1_SETS * L1_WAYS : 0;
