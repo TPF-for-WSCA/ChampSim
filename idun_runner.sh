@@ -13,6 +13,26 @@
 
 set -euo pipefail
 
+# Only clean this array task's logs; other experiments may still be running.
+run_logs=()
+cleanup_empty_run_logs() {
+  local status=$?
+  local log
+  for log in "${run_logs[@]}"; do
+    if [[ -f ${log} && ! -s ${log} ]]; then
+      rm -f -- "${log}" || true
+    fi
+  done
+  exit "${status}"
+}
+if [[ -n ${SLURM_ARRAY_JOB_ID:-} && -n ${SLURM_ARRAY_TASK_ID:-} ]]; then
+  run_logs+=(
+    "/cluster/work/romankb/slurm-run-experiment-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.out"
+    "/cluster/work/romankb/slurm-run-experiment-${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.err"
+  )
+  trap cleanup_empty_run_logs EXIT
+fi
+
 if [[ -n ${CHAMPSIM_REPO_ROOT:-} ]]; then
   repo_root=${CHAMPSIM_REPO_ROOT}
 elif [[ -n ${SLURM_SUBMIT_DIR:-} ]]; then
@@ -123,6 +143,8 @@ trace_file=$(basename -- "${trace}")
 trace_name=${trace_file%.champsimtrace.xz}
 output_dir="${result_root}/${binary_name}/${group}"
 mkdir -p "${output_dir}"
+run_logs+=("${output_dir}/${trace_name}.log" "${output_dir}/${trace_name}.err")
+trap cleanup_empty_run_logs EXIT
 
 echo "Array task ${SLURM_ARRAY_TASK_ID}/${total_simulations}: ${binary_name} ${group}/${trace_file}"
 "${binary}" \

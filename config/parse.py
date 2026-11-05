@@ -240,7 +240,7 @@ class NormalizedConfiguration:
                 'btb_target_sizes', 'btb_small_way_regions_enabled', 'btb_big_way_regions_enabled',
                 'btb_perfect_mapping', 'btb_invalidate_entry', 'btb_invalidate_region', 'btb_tag_size', 'btb_full_target_tag_size',
                 'btb_tag_regions', 'btb_filter_btb_limit', 'btb_tag_region_ways', 'btb_tag_region_size',
-                'btb_index_tag_hash'
+                'btb_index_tag_hash', 'btb_utb_entries', 'btb_utb_ways', 'btb_utb_replacement'
             )
         )
         self.cores = [util.chain(cpu, core_from_config, {'name': f'cpu{i}'}) for i,cpu in enumerate(self.cores)]

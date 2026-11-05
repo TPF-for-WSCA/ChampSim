@@ -8,6 +8,8 @@ BTB_KENTRIES = (2, 4, 8, 16, 32)
 UBS_WAYS = [4, 4, 8, 8, 8, 12, 12, 16, 24, 32, 36, 36, 52, 64, 64, 64]
 # Eight ways permit exact power-of-two entry counts; the nine-way artifact
 # profile is reduced by omitting its 25-bit way.
+# UTB entries and associativity from LiteBTB MICRO'26, Table V.
+UTB_GEOMETRY = {2: (384, 12), 4: (640, 10), 8: (640, 10), 16: (768, 12), 32: (512, 16)}
 TARGET_BITS = [0, 4, 5, 7, 9, 11, 19, 64]
 DESIGNS = {"Baseline": (False, False), "UBS": (False, True),
            "LiteBTB": (True, False), "Combined": (True, True)}
@@ -18,19 +20,22 @@ def configurations():
         for icache in ICACHE_KIB:
             for btb in BTB_KENTRIES:
                 name = f"{design.lower()}_i{icache}k_b{btb}k"
-                cache = {"sets": icache * 1024 // (8 * 64), "ways": 8,
+                cache = {"hit_latency": 4, "fill_latency": 4, "mshr_size": 8,
+                         "max_tag_check": 2, "max_fill": 2, "sets": icache * 1024 // (8 * 64), "ways": 8,
                          "ubs": ubs, "prefetcher": "fdip", "replacement": "srrip",
                          "prefetch_activate": "LOAD,PREFETCH", "virtual_prefetch": True}
                 if ubs:
                     cache.pop("ways")
                     cache.update(ubs_way_sizes=UBS_WAYS, ubs_candidate_ways=4)
-                cpu = {"branch_predictor": "tage_sc_l", "btb": "xbtbx" if lite else "basic_btb",
+                cpu = {"branch_predictor": "tage_sc_l", "wrong_path": True, "btb": "xbtbx" if lite else "basic_btb",
                        "btb_sets": btb * 1024 // 8, "btb_ways": 8}
                 if lite:
                     cpu.update(btb_target_sizes=TARGET_BITS, btb_clipped_tag=True,
                                btb_tag_size=13, btb_full_target_tag_size=15, btb_tag_regions=0,
                                btb_perfect_mapping=False, btb_invalidate_entry=False,
-                               btb_invalidate_region=False)
+                               btb_invalidate_region=False,
+                               btb_utb_entries=UTB_GEOMETRY[btb][0], btb_utb_ways=UTB_GEOMETRY[btb][1],
+                               btb_utb_replacement="lru")
                 else:
                     cpu.update(btb_clipped_tag=True, btb_tag_size=15)
                 yield name, {"executable_name": f"storage_dse/{name}",

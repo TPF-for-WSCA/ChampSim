@@ -100,6 +100,17 @@ def write_csv(path, rows):
         writer.writerows(rows)
 
 
+def pareto_boundary(rows, metric):
+    """Minimize storage and maximize performance; collapse duplicate coordinates."""
+    boundary = []
+    best = -math.inf
+    for row in sorted(rows, key=lambda r: (r['total_storage_kib'], -r[metric])):
+        if row[metric] > best:
+            boundary.append(row)
+            best = row[metric]
+    return boundary
+
+
 def plot(summary, output, title=None):
     os.environ.setdefault("MPLCONFIGDIR", str(Path(tempfile.gettempdir()) / "champsim-storage-dse-matplotlib"))
     # Match plot_ipc's compatibility support for the cluster's Matplotlib.
@@ -121,7 +132,12 @@ def plot(summary, output, title=None):
                                   label=label, c=color, marker=marker, s=48, alpha=0.8,
                                   edgecolors="black", linewidths=0.4)
                         for ax, (metric, _) in zip(axes, METRICS)]
-    for ax, (_, ylabel) in zip(axes, METRICS):
+    boundaries = []
+    for ax, (metric, ylabel) in zip(axes, METRICS):
+        rows = pareto_boundary(summary, metric)
+        boundaries.extend(ax.plot([r['total_storage_kib'] for r in rows],
+                                  [r[metric] for r in rows], 'k--', linewidth=1.5,
+                                  label='Pareto boundary', zorder=4))
         ax.set_xlabel(STORAGE_LABEL)
         ax.set_ylabel(ylabel)
         ax.grid(alpha=0.25)
@@ -145,6 +161,8 @@ def plot(summary, output, title=None):
                 fig.savefig(destination.with_suffix(suffix), dpi=180, transparent=transparent)
 
         save("")
+        for boundary in boundaries:
+            boundary.set_visible(False)
         for key in artists:
             for design, collections in artists.items():
                 for collection in collections:
@@ -209,6 +227,16 @@ def interactive_figure(summary, title=None):
                                "Workloads: %{customdata[5]}<extra>%{fullData.name}</extra>")), row=1, col=column)
             fig.update_xaxes(title_text=STORAGE_LABEL, row=1, col=column)
             fig.update_yaxes(title_text=ylabel, row=1, col=column)
+    for column, (metric, _) in enumerate(METRICS, 1):
+        rows = pareto_boundary(summary, metric)
+        fig.add_trace(go.Scatter(
+            x=[r['total_storage_kib'] for r in rows], y=[r[metric] for r in rows],
+            mode="lines", name="Pareto boundary", legendgroup="pareto", showlegend=column == 1,
+            meta=dict(design="pareto", metric=metric),
+            customdata=[[r['configuration']] for r in rows],
+            line=dict(color="black", dash="dash", width=2),
+            hovertemplate="%{customdata[0]}<br>Storage: %{x:.3f} KiB<br>Value: %{y:.6f}<extra>Pareto boundary</extra>"
+        ), row=1, col=column)
     fig.update_layout(template="plotly_white", height=650, uirevision="storage-dse",
                       title=dict(text=html.escape(title or f"Instruction front-end design space · {summary[0]['trace_count']} trace(s)")),
                       legend=dict(orientation="h", y=-0.25, groupclick="togglegroup"),
@@ -232,7 +260,7 @@ def plot_interactive(summary, output, title=None):
                 '</style></head><body><main>'
                 '<p>Choose the same nominal L1I capacity and BTB entry count across all designs. '
                 'Click a legend entry to hide a design; double-click to isolate it. '
-                'Hover for storage and performance details. Drag to zoom; double-click the plot to reset.</p>'
+                'The dashed Pareto boundary uses all designs matching the capacity filters, including hidden designs. Hover for storage and performance details. Drag to zoom; double-click the plot to reset.</p>'
                 + graph + '</main></body></html>')
     fig_path = output.with_suffix(".html")
     fig_path.write_text(document, encoding="utf-8")

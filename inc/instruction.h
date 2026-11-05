@@ -22,10 +22,12 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <string_view>
 #include <vector>
 
 #include "address.h"
+#include "btb_prediction_token.h"
 #include "champsim.h"
 #include "chrono.h"
 #include "trace_instruction.h"
@@ -102,6 +104,7 @@ struct ooo_model_instr : champsim::program_ordered<ooo_model_instr> {
   bool is_branch = false;
   bool branch_taken = false;
   bool branch_prediction = false;
+  std::optional<champsim::btb_prediction_token> btb_token;
   bool branch_mispredicted = false; // A branch can be mispredicted even if the direction prediction is correct when the predicted target is not correct
 
   std::array<uint8_t, 2> asid = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};

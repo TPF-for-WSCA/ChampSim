@@ -107,9 +107,10 @@ void O3_CPU::advance_fdip()
     const auto ip = prediction_pc;
     // No trace outcome, instruction-history lookup, or ideal dynamic oracle.
     prediction_btb_hit.reset();
+    prediction_btb_token.reset();
     auto [target, always_taken] = impl_btb_prediction(ip, NOT_BRANCH);
     const bool direction = impl_predict_branch(ip, target, always_taken, NOT_BRANCH) || always_taken;
-    block.predictions[block.size++] = {ip, target, always_taken, direction, prediction_btb_hit.value_or(target != champsim::address{} || always_taken)};
+    block.predictions[block.size++] = {ip, target, always_taken, direction, prediction_btb_hit.value_or(target != champsim::address{} || always_taken), prediction_btb_token};
     ++sim_stats.fdip_predictions;
     const bool taken = direction && target != champsim::address{};
     prediction_pc = taken ? target : ip + INSTRUCTION_BYTES;
@@ -237,7 +238,9 @@ void O3_CPU::initialize_wrong_path(champsim::bandwidth& bandwidth)
     // trace (which may include interrupts or other discontinuities).
     wrong_path_next = instr.ip + INSTRUCTION_BYTES;
     prediction_btb_hit.reset();
+    prediction_btb_token.reset();
     const auto [target, always_taken] = prediction ? std::pair{prediction->target, prediction->always_taken} : impl_btb_prediction(instr.ip, instr.branch);
+    instr.btb_token = prediction ? prediction->btb_token : prediction_btb_token;
     const bool block_end = instr.is_branch || (prediction ? prediction->btb_hit : prediction_btb_hit.value_or(target != champsim::address{} || always_taken));
     const bool direction = prediction ? prediction->direction : (impl_predict_branch(instr.ip, target, always_taken, instr.branch) || always_taken);
     const bool taken = direction && target != champsim::address{};
@@ -391,10 +394,12 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
                                                          : std::pair{champsim::address{}, false};
   if (!prediction || IDEAL_BTB || IDEAL_IBP) {
     prediction_btb_hit.reset();
+    prediction_btb_token.reset();
     prediction_oracle = &arch_instr;
     std::tie(predicted_branch_target, always_taken) = impl_btb_prediction(arch_instr.ip, arch_instr.branch);
     prediction_oracle = nullptr;
   }
+  arch_instr.btb_token = prediction && !IDEAL_BTB && !IDEAL_IBP ? prediction->btb_token : prediction_btb_token;
   // Branch presence is independent of direction, including a not-taken prediction.
   const bool btb_hit = prediction && !IDEAL_BTB && !IDEAL_IBP ? prediction->btb_hit
                        : prediction_btb_hit.value_or(predicted_branch_target != champsim::address{} || always_taken);
@@ -670,6 +675,8 @@ long O3_CPU::decode_instruction()
   // Both decoded-cache hits and freshly decoded instructions can resolve
   // static targets before dispatch. Direction errors still await execution.
   auto prepare_dispatch = [this](auto& db_entry) {
+    if (db_entry.btb_token && db_entry.ip.template to<uint64_t>() % INSTRUCTION_BYTES == 0)
+      btb_module_pimpl->impl_btb_decode(*db_entry.btb_token, db_entry.branch);
     // Resume fetch
     if (db_entry.branch_mispredicted) {
       // These branches detect the misprediction at decode

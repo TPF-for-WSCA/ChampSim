@@ -25,6 +25,7 @@
 #include "access_type.h"
 #include "address.h"
 #include "block.h"
+#include "btb_prediction_token.h"
 #include "champsim.h"
 
 class CACHE;
@@ -73,6 +74,13 @@ struct branch_predictor : public bound_to<O3_CPU> {
 };
 
 struct btb : public bound_to<O3_CPU> {
+  template <typename T, typename... Args>
+  static auto decode_member_impl(int) -> decltype(std::declval<T>().btb_decode(std::declval<Args>()...), std::true_type{});
+  template <typename, typename...>
+  static auto decode_member_impl(long) -> std::false_type;
+  template <typename T, typename... Args>
+  constexpr static bool has_btb_decode = decltype(decode_member_impl<T, Args...>(0))::value;
+
   explicit btb(O3_CPU* cpu) : bound_to<O3_CPU>(cpu) {}
 
   template <typename T, typename... Args>

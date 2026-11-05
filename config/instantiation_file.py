@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import json
 import functools
 import operator
 import os
@@ -67,6 +68,9 @@ core_builder_parts = {
     'btb_invalidate_region': '.btb_invalidate_region({btb_invalidate_region:b})',
     'btb_tag_size': '.btb_tag_size({btb_tag_size})',
     'btb_full_target_tag_size': '.btb_full_target_tag_size({btb_full_target_tag_size})',
+    'btb_utb_entries': '.btb_utb_entries({btb_utb_entries})',
+    'btb_utb_ways': '.btb_utb_ways({btb_utb_ways})',
+    'btb_utb_replacement': '.btb_utb_replacement({^btb_utb_replacement_string})',
     'btb_tag_regions': '.btb_tag_regions({btb_tag_regions})',
     'btb_filter_btb_limit': '.btb_filter_btb_limit({btb_filter_btb_limit})',
     'btb_tag_region_ways': '.btb_tag_region_ways({btb_tag_region_ways})',
@@ -156,6 +160,7 @@ def get_cpu_builder(cpu, caches, ul_pairs):
         '^l1i_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1I"))}))',
         '^l1d_ptr': f'(*std::next(std::begin(caches), {cache_index(cpu.get("L1D"))}))'
     }
+    local_params['^btb_utb_replacement_string'] = json.dumps(cpu.get('btb_utb_replacement', 'lru'))
     local_params['^btb_target_sizes_string'] = ', '.join(str(v) for v in cpu.get('btb_target_sizes', []))
     local_params['^btb_index_tag_hash_string'] = ', '.join(str(v) for v in cpu.get('btb_index_tag_hash', []))
     if 'frequency' in cpu:

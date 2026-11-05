@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "address.h"
+#include "btb_prediction_token.h"
 #include "ittage.h"
 #include "modules.h"
 
@@ -32,6 +33,16 @@ class litebtb_predictor : public champsim::modules::btb
     uint8_t target_size{64};
     uint8_t precise_type{};
     branch_info type{branch_info::always_taken};
+    std::optional<std::size_t> utb_pointer;
+    uint64_t utb_generation{};
+    uint64_t generation{};
+  };
+
+  struct utb_entry {
+    uint64_t tag{};
+    uint64_t last_used{};
+    std::size_t references{};
+    uint64_t generation{};
   };
 
   litebtb_hash hash_kind;
@@ -45,6 +56,10 @@ class litebtb_predictor : public champsim::modules::btb
   std::vector<uint8_t> address_permutation;
   std::vector<entry> entries;
   std::vector<entry> l1_entries;
+  std::vector<utb_entry> utb;
+  std::size_t utb_ways{};
+  bool utb_reference_count{};
+  uint64_t next_generation{};
   std::deque<uint64_t> ras;
   ittage indirect{};
   uint64_t access_count{};
@@ -54,6 +69,11 @@ class litebtb_predictor : public champsim::modules::btb
   [[nodiscard]] uint8_t tag_bits(uint8_t capacity) const;
   [[nodiscard]] uint64_t tag(uint64_t ip, uint8_t capacity) const;
   [[nodiscard]] uint64_t decompress(const entry& value) const;
+  [[nodiscard]] bool uses_utb(uint8_t capacity) const;
+  [[nodiscard]] std::optional<std::size_t> find_utb(uint64_t ip, uint8_t capacity) const;
+  std::size_t allocate_utb(uint64_t ip, uint8_t capacity);
+  [[nodiscard]] bool matches(const entry& value, uint64_t ip, bool compressed, std::optional<std::size_t> pointer) const;
+  void invalidate(entry& value);
   entry* find(std::vector<entry>& table, std::size_t table_sets, std::size_t table_ways, uint64_t ip, bool compressed);
   void fill(std::vector<entry>& table, std::size_t table_sets, std::size_t table_ways, uint64_t ip, uint64_t target, uint8_t type,
             uint8_t required_bits, bool compressed);
@@ -64,6 +84,10 @@ public:
   void initialize_btb();
   std::pair<champsim::address, bool> btb_prediction(champsim::address ip);
   void update_btb(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type);
+  void btb_decode(champsim::btb_prediction_token token, uint8_t branch_type);
+
+  // Exposes replacement state for experiment diagnostics and invariant checks.
+  [[nodiscard]] std::vector<std::size_t> utb_reference_counts() const;
 };
 
 #endif

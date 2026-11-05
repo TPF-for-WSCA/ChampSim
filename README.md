@@ -103,6 +103,9 @@ targets. The port also includes the artifact's half-XOR, full-XOR, geometric,
 Pearson, Rabin, SHA-3, and Zobrist tag variants. The artifact's plain,
 half-XOR, full-XOR, and geometric two-level forms are included as well.
 
+The optional [unique tag buffer](docs/litebtb-utb.md) supports configurable LRU
+and reference-count replacement. The storage sweeps enable paper-sized UTBs.
+
 The final 4 KiB LiteBTB geometry can be selected as follows:
 
 ```json

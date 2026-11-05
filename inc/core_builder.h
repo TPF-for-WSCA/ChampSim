@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -98,6 +99,9 @@ struct core_builder_base {
   // An omitted width preserves each module's default tag policy.
   std::optional<uint8_t> m_btb_tag_size{};
   std::optional<uint8_t> m_btb_full_target_tag_size{};
+  std::size_t m_btb_utb_entries{};
+  std::size_t m_btb_utb_ways{};
+  std::string m_btb_utb_replacement{"lru"};
   std::size_t m_btb_tag_regions{};
   std::size_t m_btb_filter_btb_limit{};
   std::size_t m_btb_tag_region_ways{};
@@ -304,6 +308,9 @@ public:
   self_type& btb_invalidate_region(bool value);
   self_type& btb_tag_size(uint8_t value);
   self_type& btb_full_target_tag_size(uint8_t value);
+  self_type& btb_utb_entries(std::size_t value);
+  self_type& btb_utb_ways(std::size_t value);
+  self_type& btb_utb_replacement(std::string value);
   self_type& btb_tag_regions(std::size_t value);
   self_type& btb_filter_btb_limit(std::size_t value);
   self_type& btb_tag_region_ways(std::size_t value);
@@ -582,6 +589,9 @@ CHAMPSIM_CORE_BUILDER_SETTER(btb_invalidate_entry, bool)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_invalidate_region, bool)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_tag_size, uint8_t)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_full_target_tag_size, uint8_t)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_utb_entries, std::size_t)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_utb_ways, std::size_t)
+CHAMPSIM_CORE_BUILDER_SETTER(btb_utb_replacement, std::string)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_tag_regions, std::size_t)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_filter_btb_limit, std::size_t)
 CHAMPSIM_CORE_BUILDER_SETTER(btb_tag_region_ways, std::size_t)

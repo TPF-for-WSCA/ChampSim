@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -216,7 +217,23 @@ litebtb_predictor::litebtb_predictor(O3_CPU* cpu, litebtb_hash hash, bool enable
   if (full_target_tag_size && (*full_target_tag_size == 0 || *full_target_tag_size > 62 - champsim::storage_bits(sets)))
     throw std::invalid_argument("LiteBTB full-target tag size must be positive and no larger than the full tag");
   if (cpu->BTB_TAG_REGIONS != 0)
-    throw std::invalid_argument("this LiteBTB port supports the MICRO'26 no-region configuration only");
+    throw std::invalid_argument("LiteBTB uses btb_utb_entries/btb_utb_ways rather than legacy tag regions");
+  if (cpu->BTB_UTB_REPLACEMENT != "lru" && cpu->BTB_UTB_REPLACEMENT != "reference_count")
+    throw std::invalid_argument("LiteBTB UTB replacement must be lru or reference_count");
+  utb_reference_count = cpu->BTB_UTB_REPLACEMENT == "reference_count";
+  utb_ways = cpu->BTB_UTB_WAYS;
+  if (cpu->BTB_UTB_ENTRIES != 0) {
+    if (!clipped_tag)
+      throw std::invalid_argument("LiteBTB UTB requires clipped tags");
+    if (utb_ways == 0 || cpu->BTB_UTB_ENTRIES % utb_ways != 0)
+      throw std::invalid_argument("LiteBTB UTB entries must be divisible by nonzero UTB ways");
+    const auto utb_sets = cpu->BTB_UTB_ENTRIES / utb_ways;
+    if ((utb_sets & (utb_sets - 1)) != 0 || champsim::storage_bits(utb_sets) > tag_size)
+      throw std::invalid_argument("LiteBTB UTB sets must be a power of two fitting in the tag");
+    utb.resize(cpu->BTB_UTB_ENTRIES);
+  } else if (utb_ways != 0) {
+    throw std::invalid_argument("LiteBTB UTB ways require nonzero UTB entries");
+  }
   if (target_sizes.empty())
     target_sizes.assign(ways, 64);
   if (target_sizes.size() != ways)
@@ -297,15 +314,90 @@ uint64_t litebtb_predictor::decompress(const entry& value) const
   return (value.ip & ~mask) | (value.target & mask);
 }
 
+bool litebtb_predictor::uses_utb(uint8_t capacity) const
+{
+  // The artifact's optional full-target way retains its inline tag.
+  return !utb.empty() && capacity != 64;
+}
+
+std::optional<std::size_t> litebtb_predictor::find_utb(uint64_t ip, uint8_t capacity) const
+{
+  const auto key = tag(ip, capacity);
+  const auto utb_sets = utb.size() / utb_ways;
+  const auto first = static_cast<std::size_t>(key & (utb_sets - 1)) * utb_ways;
+  for (auto slot = first; slot < first + utb_ways; ++slot)
+    if (utb[slot].generation != 0 && utb[slot].tag == key)
+      return slot;
+  return std::nullopt;
+}
+
+std::size_t litebtb_predictor::allocate_utb(uint64_t ip, uint8_t capacity)
+{
+  if (auto hit = find_utb(ip, capacity); hit) {
+    utb[*hit].last_used = ++access_count;
+    return *hit;
+  }
+  const auto key = tag(ip, capacity);
+  const auto utb_sets = utb.size() / utb_ways;
+  const auto first = static_cast<std::size_t>(key & (utb_sets - 1)) * utb_ways;
+  auto selected = first;
+  for (auto slot = first; slot < first + utb_ways; ++slot) {
+    if (utb[slot].generation == 0) {
+      selected = slot;
+      break;
+    }
+    if ((utb_reference_count && utb[slot].references < utb[selected].references)
+        || ((!utb_reference_count || utb[slot].references == utb[selected].references) && utb[slot].last_used < utb[selected].last_used))
+      selected = slot;
+  }
+  // Stale BTB pointers survive eviction, but do not belong to the new tag's
+  // counter. The inserting BTB entry will take this count from zero to one.
+  utb[selected] = utb_entry{key, ++access_count, 0, ++next_generation};
+  return selected;
+}
+
+bool litebtb_predictor::matches(const entry& value, uint64_t ip, bool compressed, std::optional<std::size_t> pointer) const
+{
+  if (value.last_used == 0)
+    return false;
+  if (!compressed)
+    return (permute(value.ip) >> 2) == (permute(ip) >> 2);
+  if (uses_utb(value.target_size)) {
+    // Deliberately do not compare generations here: stale pointers can alias
+    // after UTB replacement, and can become useful again on tag reinsertion.
+    return pointer && pointer == value.utb_pointer;
+  }
+  return tag(value.ip, value.target_size) == tag(ip, value.target_size);
+}
+
+void litebtb_predictor::invalidate(entry& value)
+{
+  if (value.last_used != 0 && value.utb_pointer) {
+    auto& owner = utb[*value.utb_pointer];
+    if (owner.generation == value.utb_generation) {
+      assert(owner.references != 0);
+      --owner.references;
+    }
+  }
+  value.last_used = 0;
+  value.utb_pointer.reset();
+}
+
+std::vector<std::size_t> litebtb_predictor::utb_reference_counts() const
+{
+  std::vector<std::size_t> result;
+  for (const auto& value : utb)
+    result.push_back(value.references);
+  return result;
+}
+
 litebtb_predictor::entry* litebtb_predictor::find(std::vector<entry>& table, std::size_t table_sets, std::size_t table_ways, uint64_t ip,
                                                   bool compressed)
 {
   const auto first = table.begin() + static_cast<std::ptrdiff_t>(index(ip, table_sets) * table_ways);
+  const auto pointer = compressed && !utb.empty() ? find_utb(ip, 0) : std::nullopt;
   for (auto it = first; it != first + static_cast<std::ptrdiff_t>(table_ways); ++it) {
-    if (it->last_used == 0)
-      continue;
-    const bool match = compressed ? tag(it->ip, it->target_size) == tag(ip, it->target_size) : (permute(it->ip) >> 2) == (permute(ip) >> 2);
-    if (match) {
+    if (matches(*it, ip, compressed, pointer)) {
       it->last_used = ++access_count;
       return &*it;
     }
@@ -318,20 +410,19 @@ void litebtb_predictor::fill(std::vector<entry>& table, std::size_t table_sets, 
 {
   auto first = table.begin() + static_cast<std::ptrdiff_t>(index(ip, table_sets) * table_ways);
   auto last = first + static_cast<std::ptrdiff_t>(table_ways);
+  auto pointer = compressed && !utb.empty() ? find_utb(ip, 0) : std::nullopt;
   entry* selected = nullptr;
   // A target that outgrows its current way must not leave a stale, earlier
   // match behind after it is migrated to a wider way.
   if (compressed) {
     for (auto it = first; it != last; ++it)
-      if (it->last_used != 0 && it->target_size < required_bits && tag(it->ip, it->target_size) == tag(ip, it->target_size))
-        it->last_used = 0;
+      if (it->target_size < required_bits && matches(*it, ip, true, pointer))
+        invalidate(*it);
   }
   for (auto it = first; it != last; ++it) {
     if (it->target_size < required_bits)
       continue;
-    const bool match = it->last_used != 0
-                       && (compressed ? tag(it->ip, it->target_size) == tag(ip, it->target_size)
-                                      : (permute(it->ip) >> 2) == (permute(ip) >> 2));
+    const bool match = matches(*it, ip, compressed, pointer);
     if (match) {
       selected = &*it;
       break;
@@ -343,8 +434,29 @@ void litebtb_predictor::fill(std::vector<entry>& table, std::size_t table_sets, 
   }
   if (selected == nullptr)
     throw std::invalid_argument("LiteBTB has no way large enough for this target");
+  if (compressed && uses_utb(selected->target_size)) {
+    pointer = allocate_utb(ip, selected->target_size);
+    // Allocation can make a retained stale pointer match the new tag.
+    for (auto it = first; it != last; ++it) {
+      if (it->target_size < required_bits && matches(*it, ip, true, pointer))
+        invalidate(*it);
+    }
+    for (auto it = first; it != last; ++it)
+      if (it->target_size >= required_bits && matches(*it, ip, true, pointer)) {
+        selected = &*it;
+        break;
+      }
+  }
   const auto capacity = selected->target_size;
-  *selected = entry{ip, target, ++access_count, capacity, precise_type, branch_info::always_taken};
+  invalidate(*selected);
+  *selected = entry{ip, target, ++access_count, capacity, precise_type, branch_info::always_taken, std::nullopt, 0, 0};
+  selected->generation = ++next_generation;
+  if (compressed && uses_utb(capacity)) {
+    selected->utb_pointer = pointer;
+    auto& owner = utb[*selected->utb_pointer];
+    selected->utb_generation = owner.generation;
+    ++owner.references;
+  }
   if (precise_type == BRANCH_INDIRECT || precise_type == BRANCH_INDIRECT_CALL)
     selected->type = branch_info::indirect;
   else if (precise_type == BRANCH_RETURN)
@@ -355,19 +467,43 @@ void litebtb_predictor::fill(std::vector<entry>& table, std::size_t table_sets, 
 
 std::pair<champsim::address, bool> litebtb_predictor::btb_prediction(champsim::address address)
 {
+  intern_->prediction_btb_token.reset();
+  intern_->prediction_btb_hit = false;
   const uint64_t ip = address.to<uint64_t>();
   entry* hit = two_level ? find(l1_entries, L1_SETS, L1_WAYS, ip, false) : nullptr;
-  if (hit == nullptr)
+  const bool in_l1 = hit != nullptr;
+  if (hit == nullptr) {
+    if (!utb.empty())
+      if (const auto pointer = find_utb(ip, 0); pointer)
+        utb[*pointer].last_used = ++access_count;
     hit = find(entries, sets, ways, ip, true);
+  }
   if (hit == nullptr)
     return {champsim::address{}, false};
+  intern_->prediction_btb_hit = true;
+  if (!utb.empty()) {
+    const auto slot = in_l1 ? entries.size() + static_cast<std::size_t>(hit - l1_entries.data()) : static_cast<std::size_t>(hit - entries.data());
+    intern_->prediction_btb_token = champsim::btb_prediction_token{slot, hit->generation, this};
+  }
   if (hit->type == branch_info::return_branch) {
     const uint64_t target = ras.empty() ? 0 : ras.back() + 4;
     return {champsim::address{target}, true};
   }
   if (hit->type == branch_info::indirect)
     return indirect.prediction(address);
-  return {champsim::address{decompress(*hit)}, hit->type != branch_info::conditional};
+  const auto mask = bit_mask(std::min<unsigned>(64, hit->target_size + 2));
+  const auto target = hit->utb_pointer ? (ip & ~mask) | (hit->target & mask) : decompress(*hit);
+  return {champsim::address{target}, hit->type != branch_info::conditional};
+}
+
+void litebtb_predictor::btb_decode(champsim::btb_prediction_token token, uint8_t branch_type)
+{
+  if (token.owner != this || token.slot >= entries.size() + l1_entries.size())
+    return;
+  auto& value = token.slot < entries.size() ? entries[token.slot] : l1_entries[token.slot - entries.size()];
+  // A later fill may already have replaced or repaired the predicted entry.
+  if (value.last_used != 0 && value.generation == token.generation && (branch_type == NOT_BRANCH || value.precise_type != branch_type))
+    invalidate(value);
 }
 
 void litebtb_predictor::update_btb(champsim::address ip_address, champsim::address target_address, bool taken, uint8_t branch_type)
@@ -392,16 +528,25 @@ void litebtb_predictor::update_btb(champsim::address ip_address, champsim::addre
 
 void litebtb_predictor::initialize_btb()
 {
-  uint64_t targets = 0, tags = 0;
+  uint64_t targets = 0, tags = 0, pointers = 0;
   for (auto capacity : target_sizes) {
     targets += sets * capacity;
-    tags += sets * tag_bits(capacity);
+    if (uses_utb(capacity))
+      pointers += sets * champsim::storage_bits(utb.size());
+    else
+      tags += sets * tag_bits(capacity);
   }
   const uint64_t count = sets * ways;
   const uint64_t l1_count = two_level ? L1_SETS * L1_WAYS : 0;
-  champsim::print_storage("CPU " + std::to_string(intern_->cpu) + " LiteBTB hash=" + std::to_string(static_cast<int>(hash_kind)) + (two_level ? " two-level" : ""), {
-      {"UTB (not implemented; targets stored inline)", 0},
-      {"Tag pointers (not implemented; tags stored inline)", 0},
+  const uint64_t utb_tags = utb.empty() ? 0 : utb.size() * (tag_size - champsim::storage_bits(utb.size() / utb_ways));
+  champsim::print_storage("CPU " + std::to_string(intern_->cpu) + " LiteBTB hash=" + std::to_string(static_cast<int>(hash_kind))
+                             + (two_level ? " two-level" : "") + " UTB=" + std::to_string(utb.size())
+                             + " replacement=" + (utb_reference_count ? "reference_count" : "lru"), {
+      {"UTB upper tags", utb_tags},
+      {"UTB valid bits", utb.size()},
+      {"UTB LRU ranks (also break reference-count ties)", utb.size() * champsim::storage_bits(utb_ways)},
+      {"UTB reference counters", utb_reference_count ? utb.size() * champsim::storage_bits(count + 1) : 0},
+      {"Tag pointers", pointers},
       {"Targets", targets}, {"Tags", tags}, {"Valid bits", count}, {"Branch types", count * 2},
       {"Replacement (LRU ranks)", count * champsim::storage_bits(ways)},
       {"L1 BTB targets", l1_count * 64},

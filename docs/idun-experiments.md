@@ -33,3 +33,8 @@ since configuration and make outputs are shared.
 
 Run this script directly on the login node. There is no need to wait for the
 build or submit the simulation array manually.
+
+When each simulation task exits, the runner removes its empty Slurm `.out` and
+`.err` files and empty result `.log` and `.err` files. Logs with content are kept,
+including diagnostics from failed simulations. Cleanup preserves the task's exit
+status and only touches that task's logs.

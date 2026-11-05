@@ -4,6 +4,7 @@
   "ooo_cpu": [
     {
       "branch_predictor": "tage_sc_l",
+      "wrong_path": true,
       "btb": "xbtbx",
       "btb_sets": 1024,
       "btb_ways": 8,
@@ -23,10 +24,18 @@
       "btb_tag_regions": 0,
       "btb_perfect_mapping": false,
       "btb_invalidate_entry": false,
-      "btb_invalidate_region": false
+      "btb_invalidate_region": false,
+      "btb_utb_entries": 640,
+      "btb_utb_ways": 10,
+      "btb_utb_replacement": "lru"
     }
   ],
   "L1I": {
+    "hit_latency": 4,
+    "fill_latency": 4,
+    "mshr_size": 8,
+    "max_tag_check": 2,
+    "max_fill": 2,
     "sets": 32,
     "ubs": true,
     "prefetcher": "fdip",

@@ -18,7 +18,7 @@
     const icache = controls.querySelector('#icache-size');
     const btb = controls.querySelector('#btb-size');
     const status = controls.querySelector('#selection-status');
-    const metadata = original.filter(trace => trace.metric === 'ipc').flatMap(trace => trace.customdata);
+    const metadata = original.filter(trace => trace.metric === 'ipc' && trace.design !== 'pareto').flatMap(trace => trace.customdata);
     function options(select, column, unit) {
         select.add(new Option('All', 'all'));
         const sizes = [...new Set(metadata.map(row => row[column]))].sort((a, b) => a - b);
@@ -39,13 +39,31 @@
                 customdata: indices.map(i => trace.customdata[i])
             };
         });
+        original.forEach((trace, index) => {
+            if (trace.design !== 'pareto') return;
+            const points = original.flatMap((source, i) =>
+                source.design === 'pareto' || source.metric !== trace.metric ? [] :
+                selected[i].x.map((x, j) => ({x, y: selected[i].y[j], data: selected[i].customdata[j]}))
+            ).sort((a, b) => a.x - b.x || b.y - a.y);
+            let best = -Infinity;
+            const boundary = points.filter(point => {
+                if (point.y <= best) return false;
+                best = point.y;
+                return true;
+            });
+            selected[index] = {
+                x: boundary.map(point => point.x),
+                y: boundary.map(point => point.y),
+                customdata: boundary.map(point => point.data)
+            };
+        });
         // Updating data only preserves the user's legend visibility and zoom.
         const pending = Plotly.restyle(graph, {
             x: selected.map(trace => trace.x),
             y: selected.map(trace => trace.y),
             customdata: selected.map(trace => trace.customdata)
         });
-        const counts = original.filter(trace => trace.metric === 'ipc').map(trace => {
+        const counts = original.filter(trace => trace.metric === 'ipc' && trace.design !== 'pareto').map(trace => {
             const index = original.indexOf(trace);
             return `${graph.data[index].name}: ${selected[index].x.length}`;
         });

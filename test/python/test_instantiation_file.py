@@ -129,6 +129,12 @@ class CpuBuilderTest(unittest.TestCase):
             btb_full_target_tag_size=15
         )
 
+    def test_litebtb_utb_policy(self):
+        for policy in ("lru", "reference_count"):
+            self.get_element_diff(
+                ['.btb_utb_entries(640)', '.btb_utb_ways(10)', f'.btb_utb_replacement("{policy}")'],
+                btb_utb_entries=640, btb_utb_ways=10, btb_utb_replacement=policy)
+
     def test_litebtb_address_permutation(self):
         self.get_element_diff(['.btb_index_tag_hash({3, 2, 1, 0})'], btb_index_tag_hash=[3, 2, 1, 0])
 

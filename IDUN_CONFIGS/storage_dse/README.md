@@ -11,8 +11,15 @@ sizes **8, 16, 32, 64 KiB** × BTB capacities **2K, 4K, 8K, 16K, 32K entries**
 | LiteBTB | Conventional, 8 ways | xbtbx, 8 heterogeneous ways |
 | Combined | UBS | xbtbx, 8 heterogeneous ways |
 
-All designs use FDIP, 64-byte lines, and LRU replacement. Other core/memory
-settings use the same ChampSim defaults. Baseline BTB allocation now honors
+All designs match the common experimental settings in
+`../fdip_icache_sizes_wrongpath_fixed4`: wrong-path execution enabled, TAGE-SC-L,
+FDIP, 64-byte lines, SRRIP replacement, four-cycle L1I hit and fill stages,
+eight L1I MSHRs, two tag checks per cycle, and two fills per cycle. L1D uses
+Berti, L2C uses Pythia, and LLC uses DRRIP, matching that reference sweep.
+The DSE retains its cache geometry/UBS and BTB capacity, tag, and target-width
+variations; its BTB configurations therefore differ from the reference's default BTB.
+Regenerate, rebuild, and rerun to apply these settings; existing results do not
+change. Use a fresh results directory to keep the experiments separate. Baseline BTB allocation now honors
 `btb_sets` and `btb_ways`; every BTB variant uses the same fixed-size
 [ITTAGE indirect predictor](../../docs/ittage.md), included in its reported
 storage, while the return predictors retain their existing sizes.
@@ -124,3 +131,7 @@ The summary `.csv` is also the exact data source for both plot panels:
 `total_storage_kib` is the x coordinate, `ipc` is the left-panel y coordinate,
 and `ipc_per_kib` is the right-panel y coordinate. All values retain full float
 precision; PNG and PDF use the same data.
+
+LiteBTB and Combined now enable the paper-sized unique tag buffer. Set
+`btb_utb_replacement` to `"lru"` (default) or `"reference_count"` and rebuild
+to compare policies. See [UTB configuration and semantics](../../docs/litebtb-utb.md).

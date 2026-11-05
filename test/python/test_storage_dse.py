@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'aggregation_scripts'))
-from plot_storage_dse import DESIGNS, collect, interactive_figure, plot, plot_interactive, storage_from_log
+from plot_storage_dse import DESIGNS, collect, interactive_figure, plot, plot_interactive, storage_from_log, pareto_boundary
 
 spec = importlib.util.spec_from_file_location('storage_generate', ROOT / 'IDUN_CONFIGS/storage_dse/generate.py')
 generator = importlib.util.module_from_spec(spec)
@@ -30,6 +30,8 @@ class StorageDSETests(unittest.TestCase):
                 self.assertEqual(len(cpu['btb_target_sizes']), cpu['btb_ways'])
                 self.assertEqual(cpu['btb_tag_size'], 13)
                 self.assertEqual(cpu['btb_full_target_tag_size'], 15)
+                self.assertEqual((cpu['btb_utb_entries'], cpu['btb_utb_ways']), generator.UTB_GEOMETRY[kentries])
+                self.assertEqual(cpu['btb_utb_replacement'], 'lru')
             else:
                 self.assertTrue(cpu['btb_clipped_tag'])
                 self.assertEqual(cpu['btb_tag_size'], 15)
@@ -45,6 +47,9 @@ class StorageDSETests(unittest.TestCase):
                     self.assertEqual(cpu['btb_tag_size'], 15 if cpu['btb'] == 'basic_btb' else 13)
                     if cpu['btb'] == 'xbtbx':
                         self.assertEqual(cpu['btb_full_target_tag_size'], 15)
+                        size = cpu['btb_sets'] * cpu['btb_ways'] // 1024
+                        self.assertEqual((cpu['btb_utb_entries'], cpu['btb_utb_ways']), generator.UTB_GEOMETRY[size])
+                        self.assertEqual(cpu['btb_utb_replacement'], 'lru')
 
     def fixture(self, root, name, trace='a', cache=8192, btb=4096):
         config_dir = root / 'configs'
@@ -149,6 +154,13 @@ class StorageDSETests(unittest.TestCase):
 
 
 class StorageDSEPlotTests(unittest.TestCase):
+    def test_pareto_boundary_handles_ties_and_dominated_points(self):
+        points = [dict(total_storage_kib=x, ipc=y) for x, y in
+                  [(4, 3), (2, 2), (1, 1), (2, 3), (2, 3), (3, 2), (5, 4)]]
+        self.assertEqual([(r['total_storage_kib'], r['ipc']) for r in pareto_boundary(points, 'ipc')],
+                         [(1, 1), (2, 3), (5, 4)])
+        self.assertEqual(pareto_boundary([], 'ipc'), [])
+
     def summary(self):
         return [dict(configuration=f'{key}_i{size}k_b{entries // 1024}k', design=label,
                      nominal_icache_kib=size, btb_entries=entries,
@@ -191,7 +203,7 @@ class StorageDSEPlotTests(unittest.TestCase):
     def test_interactive_groups_both_metrics_and_embeds_filter_metadata(self):
         summary = self.summary()
         fig = interactive_figure(summary)
-        self.assertEqual(len(fig.data), 8)
+        self.assertEqual(len(fig.data), 10)
         for key, (label, _, _) in DESIGNS.items():
             traces = [trace for trace in fig.data if trace.legendgroup == key]
             self.assertEqual(len(traces), 2)

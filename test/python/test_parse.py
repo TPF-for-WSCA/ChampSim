@@ -194,7 +194,8 @@ class ParseNormalizedTests(unittest.TestCase):
             'btb_ways': 3,
             'btb_target_sizes': target_sizes,
             'btb_tag_size': 13,
-            'btb_full_target_tag_size': 15
+            'btb_full_target_tag_size': 15,
+            'btb_utb_entries': 640, 'btb_utb_ways': 10, 'btb_utb_replacement': 'reference_count'
         })
 
         self.assertEqual(test_config.cores[0]['btb_sets'], 512)
@@ -202,6 +203,9 @@ class ParseNormalizedTests(unittest.TestCase):
         self.assertEqual(test_config.cores[0]['btb_target_sizes'], target_sizes)
         self.assertEqual(test_config.cores[0]['btb_tag_size'], 13)
         self.assertEqual(test_config.cores[0]['btb_full_target_tag_size'], 15)
+        self.assertEqual(test_config.cores[0]['btb_utb_entries'], 640)
+        self.assertEqual(test_config.cores[0]['btb_utb_ways'], 10)
+        self.assertEqual(test_config.cores[0]['btb_utb_replacement'], 'reference_count')
 
     def test_ubs_configuration_survives_default_application(self):
         way_sizes = [4, 8, 12, 64]

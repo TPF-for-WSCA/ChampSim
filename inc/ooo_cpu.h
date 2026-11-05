@@ -145,6 +145,8 @@ public:
   const bool BTB_INVALIDATE_ENTRY, BTB_INVALIDATE_REGION;
   const std::optional<uint8_t> BTB_TAG_SIZE;
   const std::optional<uint8_t> BTB_FULL_TARGET_TAG_SIZE;
+  const std::size_t BTB_UTB_ENTRIES, BTB_UTB_WAYS;
+  const std::string BTB_UTB_REPLACEMENT;
   const std::size_t BTB_TAG_REGIONS, BTB_FILTER_BTB_LIMIT, BTB_TAG_REGION_WAYS;
   const uint8_t BTB_TAG_REGION_SIZE;
   const std::vector<uint8_t> BTB_INDEX_TAG_HASH;
@@ -156,6 +158,7 @@ public:
   const ooo_model_instr* prediction_oracle = nullptr;
   // Optional exact hit observation supplied by BTBs supporting it (basic_btb).
   std::optional<bool> prediction_btb_hit;
+  std::optional<champsim::btb_prediction_token> prediction_btb_token;
   // TI-WP replay with inferred dataflow and speculative backend execution.
   // History contains only instructions consumed on the correct path.
   const bool WRONG_PATH;
@@ -184,6 +187,7 @@ public:
     champsim::address ip{}, target{};
     bool always_taken = false, direction = false;
     bool btb_hit = false;
+    std::optional<champsim::btb_prediction_token> btb_token;
   };
   struct fetch_block {
     std::array<fetch_prediction, FDIP_FETCH_BYTES / INSTRUCTION_BYTES> predictions{};
@@ -269,6 +273,7 @@ public:
     virtual ~btb_module_concept() = default;
 
     virtual void impl_initialize_btb() = 0;
+    virtual void impl_btb_decode(champsim::btb_prediction_token token, uint8_t branch_type) = 0;
     virtual void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) = 0;
     virtual std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip, uint8_t branch_type) = 0;
   };
@@ -289,6 +294,7 @@ public:
     explicit btb_module_model(O3_CPU* cpu) : intern_(Ts{cpu}...) { (void)cpu; /* silence -Wunused-but-set-parameter when sizeof...(Ts) == 0 */ }
 
     void impl_initialize_btb() final;
+    void impl_btb_decode(champsim::btb_prediction_token token, uint8_t branch_type) final;
     void impl_update_btb(champsim::address ip, champsim::address predicted_target, bool taken, uint8_t branch_type) final;
     [[nodiscard]] std::pair<champsim::address, bool> impl_btb_prediction(champsim::address ip, uint8_t branch_type) final;
   };
@@ -322,6 +328,7 @@ public:
         BTB_SMALL_WAY_REGIONS_ENABLED(b.m_btb_small_way_regions_enabled), BTB_BIG_WAY_REGIONS_ENABLED(b.m_btb_big_way_regions_enabled),
         BTB_PERFECT_MAPPING(b.m_btb_perfect_mapping), BTB_INVALIDATE_ENTRY(b.m_btb_invalidate_entry), BTB_INVALIDATE_REGION(b.m_btb_invalidate_region),
         BTB_TAG_SIZE(b.m_btb_tag_size), BTB_FULL_TARGET_TAG_SIZE(b.m_btb_full_target_tag_size),
+        BTB_UTB_ENTRIES(b.m_btb_utb_entries), BTB_UTB_WAYS(b.m_btb_utb_ways), BTB_UTB_REPLACEMENT(b.m_btb_utb_replacement),
         BTB_TAG_REGIONS(b.m_btb_tag_regions), BTB_FILTER_BTB_LIMIT(b.m_btb_filter_btb_limit),
         BTB_TAG_REGION_WAYS(b.m_btb_tag_region_ways), BTB_TAG_REGION_SIZE(b.m_btb_tag_region_size), BTB_INDEX_TAG_HASH(b.m_btb_index_tag_hash),
         IDEAL_CBP(b.m_ideal_cbp), IDEAL_IBP(b.m_ideal_ibp), IDEAL_BTB(b.m_ideal_btb), WRONG_PATH(b.m_wrong_path), WRONG_PATH_HISTORY_SIZE(b.m_wrong_path_history_size),
@@ -402,6 +409,16 @@ void O3_CPU::btb_module_model<Ts...>::impl_initialize_btb()
       t.initialize_btb();
   };
 
+  std::apply([&](auto&... t) { (..., process_one(t)); }, intern_);
+}
+
+template <typename... Ts>
+void O3_CPU::btb_module_model<Ts...>::impl_btb_decode(champsim::btb_prediction_token token, uint8_t branch_type)
+{
+  [[maybe_unused]] auto process_one = [&](auto& t) {
+    if constexpr (champsim::modules::btb::has_btb_decode<decltype(t), champsim::btb_prediction_token, uint8_t>)
+      t.btb_decode(token, branch_type);
+  };
   std::apply([&](auto&... t) { (..., process_one(t)); }, intern_);
 }
 
