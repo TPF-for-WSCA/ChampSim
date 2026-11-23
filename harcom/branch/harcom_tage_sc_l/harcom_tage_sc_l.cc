@@ -11,23 +11,39 @@ struct access_cost {
 
 template <std::size_t Depth, std::size_t Width>
 constexpr access_cost sram_cost{hcm::sram<Depth, Width>::EREAD, hcm::sram<Depth, Width>::EWRITE};
+
+template <std::size_t Inputs, std::size_t Bits>
+constexpr double mux_cost = hcm::MUX<Inputs, Bits>[0].e + hcm::MUX<Inputs, Bits>[1].e;
+
+constexpr double xor_bit = hcm::XOR<2>.e;
+// For modulo 10 and 20, low bits are wires and the remaining bits reduce
+// modulo five. Nibble folding works because sixteen is one modulo five.
+constexpr double mod_five = hcm::ADDN<4, 16>.e + hcm::ADD<5>.e + 6 * hcm::GTE<5>.e + mux_cost<6, 3>;
+constexpr double tag_selection = 2 * mod_five + 21 * (hcm::ADD<5>.e + hcm::GTE<5>.e + hcm::SUB<5>.e)
+    + 6 * hcm::EQUAL<8>.e + 15 * hcm::EQUAL<12>.e + 2 * hcm::priority_encoder<21>.e
+    + 2 * mux_cost<21, 3> + 4 * hcm::EQUAL<3>.e + mux_cost<2, 1>;
 } // namespace
 
-harcom_tage_sc_l::harcom_tage_sc_l(O3_CPU* cpu) : tage_sc_l(cpu) { track_table_activity(); }
+harcom_tage_sc_l::harcom_tage_sc_l(O3_CPU* cpu) : tage_sc_l(cpu) { track_activity(); }
 
 champsim::energy_model_snapshot harcom_tage_sc_l::energy_snapshot() const
 {
   const auto& activity = observed_table_activity();
+  const auto& logic_events = observed_logic_activity();
   double energy = 0;
   const auto accumulate = [&](table location, access_cost cost) {
     const auto& counts = activity.at(static_cast<std::size_t>(location));
     energy += static_cast<double>(counts.reads) * cost.read + static_cast<double>(counts.writes) * cost.write;
   };
+  const auto accumulate_logic = [&](logic operation, double cost) {
+    energy += static_cast<double>(logic_events.at(static_cast<std::size_t>(operation))) * cost;
+  };
 
   accumulate(table::bimodal_prediction, sram_cost<8192, 1>);
   accumulate(table::bimodal_hysteresis, sram_cost<2048, 1>);
-  accumulate(table::short_tagged, sram_cost<1024, 12>); // 8-bit tag, direction counter and useful bit.
-  accumulate(table::long_tagged, sram_cost<1024, 16>);
+  accumulate(table::short_tagged, sram_cost<1024, 11>); // 8-bit tag and 3-bit direction counter.
+  accumulate(table::long_tagged, sram_cost<1024, 15>);
+  accumulate(table::tagged_useful, {mux_cost<1024, 1>, hcm::decoder<1024>.e + hcm::flipflops<1>::write_energy_fJ});
   accumulate(table::loop, sram_cost<8, 39>); // Four independently addressed ways.
   accumulate(table::sc_128, sram_cost<128, 6>);
   accumulate(table::sc_256, sram_cost<256, 6>);
@@ -41,8 +57,33 @@ champsim::energy_model_snapshot harcom_tage_sc_l::energy_snapshot() const
   accumulate(table::sc_imli, sram_cost<256, 10>);
   accumulate(table::alternate_chooser, sram_cost<16, 5>);
 
-  return {"HARCOM TAGE-SC-L table accesses", "5ceea8358ddbab94e5621e2536530b860cc1e5b7",
-          "SRAM access energy for parallel tagged and loop banks, statistical corrector tables and local histories. "
-          "Parallel rows are reused within a lookup. Logic, global and folded history registers, and bulk useful-bit aging are unmodeled.",
+  accumulate_logic(logic::reuse_check, hcm::EQUAL<64>.e + hcm::AND<2>.e);
+  accumulate_logic(logic::reuse_write, hcm::flipflops<66>::write_energy_fJ);
+  accumulate_logic(logic::reuse_invalidate, hcm::flipflops<1>::write_energy_fJ);
+  accumulate_logic(logic::hash_xor_bits, xor_bit);
+  accumulate_logic(logic::tagged_selection, tag_selection);
+  accumulate_logic(logic::loop_prediction, 25 * xor_bit + 4 * hcm::EQUAL<10>.e + hcm::priority_encoder<4>.e + mux_cost<4, 29>
+                                            + hcm::IMUL<4, 10>.e + hcm::GT<14>.e + hcm::INC<10>.e + hcm::EQUAL<10>.e);
+  accumulate_logic(logic::loop_training, hcm::INC<10>.e + hcm::EQUAL<10>.e + hcm::GT<10>.e + 2 * hcm::INC<4>.e);
+  accumulate_logic(logic::sc_prediction, hcm::ADDN<7, 3>.e + 8 * mux_cost<2, 9> + hcm::ADDN<10, 8>.e
+                                          + hcm::ADD<12>.e + hcm::ADDN<1, 7>.e + 4 * hcm::GTE<12>.e + mux_cost<4, 1>);
+  accumulate_logic(logic::sc_training, hcm::INC<8>.e + hcm::INC<12>.e + 2 * hcm::GTE<8>.e + 2 * hcm::GTE<12>.e
+                                        + 8 * (hcm::SUB<12>.e + hcm::ADD<12>.e) + hcm::flipflops<12>::write_energy_fJ);
+  accumulate_logic(logic::sc_group_add, hcm::ADD<9>.e);
+  accumulate_logic(logic::counter_bits, hcm::XOR<2>.e + hcm::AND<2>.e + mux_cost<2, 1>);
+  accumulate_logic(logic::allocation, hcm::priority_encoder<21>.e + hcm::ADD<11>.e + hcm::EQUAL<11>.e + hcm::flipflops<11>::write_energy_fJ);
+  accumulate_logic(logic::random_update, hcm::INC<32>.e + 2 * hcm::ADD<32>.e + 64 * xor_bit + hcm::flipflops<32>::write_energy_fJ);
+  // Fixed taps model the live history window. Two or three incoming bits
+  // are combined before one write of the history and fold registers.
+  accumulate_logic(logic::history_shift, hcm::flipflops<3000>::write_energy_fJ + hcm::flipflops<1092>::write_energy_fJ
+                                         + hcm::flipflops<27>::write_energy_fJ + 16 * xor_bit);
+  accumulate_logic(logic::history_fold, (36 * 3 * 3 + 7) * xor_bit);
+  accumulate_logic(logic::sc_history, hcm::GTE<64>.e + hcm::flipflops<40>::write_energy_fJ
+                                    + hcm::INC<8>.e + hcm::flipflops<8>::write_energy_fJ);
+  accumulate_logic(logic::useful_reset_banks, hcm::flipflops<1024>::write_energy_fJ);
+
+  return {"HARCOM TAGE-SC-L", "5ceea8358ddbab94e5621e2536530b860cc1e5b7",
+          "Parallel SRAM banks, modeled hash/selection and training logic, shift-register global and folded histories, "
+          "and resettable useful-bit planes. Datapath energy is analytical. Global wiring and clock distribution are unmodeled.",
           energy};
 }

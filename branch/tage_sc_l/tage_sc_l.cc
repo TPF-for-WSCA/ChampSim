@@ -19,16 +19,19 @@ tage_sc_l::~tage_sc_l() = default;
 tage_sc_l::tage_sc_l(tage_sc_l&&) noexcept = default;
 tage_sc_l& tage_sc_l::operator=(tage_sc_l&&) noexcept = default;
 
-void tage_sc_l::track_table_activity() { predictor->start_access_counting(); }
-const tage_sc_l::table_activity& tage_sc_l::observed_table_activity() const { return *predictor->activity; }
+void tage_sc_l::track_activity() { predictor->start_access_counting(); }
+const tage_sc_l::table_activity& tage_sc_l::observed_table_activity() const { return predictor->activity->tables; }
+const tage_sc_l::logic_activity& tage_sc_l::observed_logic_activity() const { return predictor->activity->operations; }
 
 bool tage_sc_l::predict_branch(champsim::address ip)
 {
   // Reuse both the result and training scratch only while the PC and predictor
   // state are unchanged. A different lookahead lookup replaces this cache.
+  predictor->record_logic(logic::reuse_check);
   if (prediction_ip != ip) {
     prediction_result = predictor->GetPrediction(ip.to<uint64_t>());
     prediction_ip = ip;
+    predictor->record_logic(logic::reuse_write);
   }
   return prediction_result;
 }
@@ -46,5 +49,7 @@ void tage_sc_l::last_branch_result(champsim::address ip, champsim::address targe
     predictor->TrackOtherInst(ip.to<uint64_t>(), branch_type, taken, target.to<uint64_t>());
   }
   // Both training and history-only updates invalidate the saved lookup.
+  if (prediction_ip)
+    predictor->record_logic(logic::reuse_invalidate);
   prediction_ip.reset();
 }

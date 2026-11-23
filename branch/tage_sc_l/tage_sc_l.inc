@@ -6,19 +6,29 @@
 
 struct tage_sc_l::state
 {
-  std::unique_ptr<table_activity> activity;
+  struct activity_counters {
+    table_activity tables{};
+    logic_activity operations{};
+  };
+  std::unique_ptr<activity_counters> activity;
   uint64_t short_lanes = 0, long_lanes = 0;
 
   void record_read(table location, uint64_t count = 1)
   {
     if (activity)
-      (*activity)[static_cast<std::size_t>(location)].reads += count;
+      activity->tables[static_cast<std::size_t>(location)].reads += count;
   }
 
   void record_write(table location, uint64_t count = 1)
   {
     if (activity)
-      (*activity)[static_cast<std::size_t>(location)].writes += count;
+      activity->tables[static_cast<std::size_t>(location)].writes += count;
+  }
+
+  void record_logic(logic operation, uint64_t count = 1)
+  {
+    if (activity)
+      activity->operations[static_cast<std::size_t>(operation)] += count;
   }
 
   static table corrector_table(int index_bits)
@@ -438,7 +448,7 @@ struct tage_sc_l::state
 
   void start_access_counting()
   {
-    activity = std::make_unique<table_activity>();
+    activity = std::make_unique<activity_counters>();
     short_lanes = static_cast<uint64_t>(std::count(NOSKIP + 1, NOSKIP + BORN, true));
     long_lanes = static_cast<uint64_t>(std::count(NOSKIP + BORN, NOSKIP + NHIST + 1, true));
   }
@@ -721,6 +731,7 @@ struct tage_sc_l::state
   // up-down saturating counter
   void ctrupdate(int8_t& ctr, bool taken, int nbits)
   {
+    record_logic(logic::counter_bits, static_cast<uint64_t>(nbits));
     if (taken) {
       if (ctr < ((1 << (nbits - 1)) - 1))
         ctr++;
@@ -742,6 +753,7 @@ struct tage_sc_l::state
 
   void baseupdate(bool Taken)
   {
+    record_logic(logic::counter_bits, 2);
     record_write(table::bimodal_prediction);
     record_write(table::bimodal_hysteresis);
     int inter = BIM;
@@ -758,6 +770,7 @@ struct tage_sc_l::state
   //  to allocate entries  in the loop predictor
   int MYRANDOM()
   {
+    record_logic(logic::random_update);
     Seed = static_cast<int32_t>(static_cast<uint32_t>(Seed) + 1);
     Seed ^= phist;
     Seed = static_cast<int32_t>(static_cast<uint32_t>(Seed >> 21) + (static_cast<uint32_t>(Seed) << 11));
@@ -775,9 +788,12 @@ struct tage_sc_l::state
     record_read(table::bimodal_hysteresis);
     record_read(table::short_tagged, short_lanes);
     record_read(table::long_tagged, long_lanes);
+    record_logic(logic::tagged_selection);
+    record_logic(logic::hash_xor_bits, LOGB);
     HitBank = 0;
     AltBank = 0;
     for (int i = 1; i <= NHIST; i += 2) {
+      record_logic(logic::hash_xor_bits, static_cast<uint64_t>(5 * logg[i] + 2 * TB[i]));
       GI[i] = gindex(PC, i, phist, ch_i);
       GTAG[i] = gtag(PC, i, ch_t[0], ch_t[1]);
       GTAG[i + 1] = GTAG[i];
@@ -872,6 +888,7 @@ struct tage_sc_l::state
     // Compute the SC prediction
 
     LSUM = 0;
+    record_logic(logic::sc_prediction);
     record_read(table::sc_256, 3); // Bias tables.
     record_read(table::sc_weight); // Bias weight.
     record_read(table::sc_threshold);
@@ -985,6 +1002,7 @@ struct tage_sc_l::state
 
 #ifdef IMLI
     if (brtype & 1) {
+      record_logic(logic::sc_history);
 #ifdef IMLI
       IMHIST[IMLIcount] = (IMHIST[IMLIcount] << 1) + taken;
 #endif
@@ -1023,6 +1041,8 @@ struct tage_sc_l::state
       PATH = PATH ^ (target >> 2) ^ (target >> 4);
     }
 
+    record_logic(logic::history_shift);
+    record_logic(logic::history_fold, static_cast<uint64_t>(maxt));
     for (int t = 0; t < maxt; t++) {
       bool DIR = (T & 1);
       T >>= 1;
@@ -1073,6 +1093,7 @@ struct tage_sc_l::state
     }
 
     if ((SCPRED != resolveDir) || ((abs(LSUM) < THRES))) {
+      record_logic(logic::sc_training);
       record_read(table::sc_threshold);
       record_write(table::sc_threshold);
       record_read(table::sc_256, 3); // Bias training reads and writes.
@@ -1168,6 +1189,7 @@ struct tage_sc_l::state
         ALLOC = false;
 
     if (ALLOC) {
+      record_logic(logic::allocation);
       int T = NNN;
 
       int A = 1;
@@ -1182,6 +1204,7 @@ struct tage_sc_l::state
         int i = I + 1;
         bool Done = false;
         if (NOSKIP[i]) {
+          record_read(table::tagged_useful);
           if (gtable[i][GI[i]].u == 0)
 
           {
@@ -1223,6 +1246,7 @@ struct tage_sc_l::state
         if (!Done) {
           i = (I ^ 1) + 1;
           if (NOSKIP[i]) {
+            record_read(table::tagged_useful);
             if (gtable[i][GI[i]].u == 0) {
 #ifdef OPTREMP
               if (abs(2 * gtable[i][GI[i]].ctr + 1) <= 3)
@@ -1263,6 +1287,7 @@ struct tage_sc_l::state
       if (TICK < 0)
         TICK = 0;
       if (TICK >= BORNTICK) {
+        record_logic(logic::useful_reset_banks, NBANKLOW + NBANKHIGH);
         for (int i = 1; i <= BORN; i += BORN - 1)
           for (int j = 0; j < SizeTable[i]; j++)
             gtable[i][j].u >>= 1;
@@ -1271,7 +1296,9 @@ struct tage_sc_l::state
     }
 
     // update predictions
+    const auto old_useful = activity && HitBank > 0 ? gtable[HitBank][GI[HitBank]].u : 0;
     if (HitBank > 0) {
+      record_read(table::tagged_useful);
       if (abs(2 * gtable[HitBank][GI[HitBank]].ctr + 1) == 1)
         if (LongestMatchPred != resolveDir)
 
@@ -1306,6 +1333,8 @@ struct tage_sc_l::state
         if (gtable[HitBank][GI[HitBank]].u < (1 << UWIDTH) - 1)
           gtable[HitBank][GI[HitBank]].u++;
       }
+    if (activity && HitBank > 0 && gtable[HitBank][GI[HitBank]].u != old_useful)
+      record_write(table::tagged_useful);
     // END TAGE UPDATE
 
     HistoryUpdate(PC, opType, resolveDir, branchTarget, phist, ptghist, ch_i, ch_t[0], ch_t[1]);
@@ -1323,8 +1352,11 @@ struct tage_sc_l::state
       uint64_t index = GINDEX;
 
       int8_t ctr = tab[i][index];
-      if (activity)
+      if (activity) {
         record_read(corrector_table(logs - (i >= (NBR - 2))));
+        record_logic(logic::hash_xor_bits, static_cast<uint64_t>(6 * (logs - (i >= (NBR - 2)))));
+        record_logic(logic::sc_group_add);
+      }
 
       PERCSUM += (2 * ctr + 1);
     }
@@ -1348,6 +1380,8 @@ struct tage_sc_l::state
         auto location = corrector_table(logs - (i >= (NBR - 2)));
         record_read(location);
         record_write(location);
+        record_logic(logic::hash_xor_bits, static_cast<uint64_t>(6 * (logs - (i >= (NBR - 2)))));
+        record_logic(logic::sc_group_add);
       }
     }
 #ifdef VARTHRES
@@ -1376,6 +1410,7 @@ struct tage_sc_l::state
 #define CONFLOOP 15
   bool getloop(uint64_t PC)
   {
+    record_logic(logic::loop_prediction);
     record_read(table::loop, 4);
     LHIT = -1;
 
@@ -1405,6 +1440,7 @@ struct tage_sc_l::state
   void loopupdate(uint64_t PC, bool Taken, bool ALLOC)
   {
     if (LHIT >= 0) {
+      record_logic(logic::loop_training);
       record_write(table::loop);
       int index = (LI ^ ((LIB >> LHIT) << 2)) + LHIT;
       // already a hit
@@ -1465,6 +1501,7 @@ struct tage_sc_l::state
 
       if ((MYRANDOM() & 3) == 0)
         for (int i = 0; i < 4; i++) {
+          record_logic(logic::loop_training);
           record_write(table::loop);
           int LHIT_aux = (X + i) & 3;
           int index = (LI ^ ((LIB >> LHIT_aux) << 2)) + LHIT_aux;

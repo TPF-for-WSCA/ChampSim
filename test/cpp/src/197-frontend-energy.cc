@@ -25,10 +25,12 @@ struct observed_btb : basic_btb {
 };
 
 struct observed_tage : tage_sc_l {
-  observed_tage() : tage_sc_l(nullptr) { track_table_activity(); }
+  observed_tage() : tage_sc_l(nullptr) { track_activity(); }
   using tage_sc_l::table;
+  using tage_sc_l::logic;
 
   auto accesses(table which) const { return observed_table_activity().at(static_cast<std::size_t>(which)); }
+  auto operations(logic which) const { return observed_logic_activity().at(static_cast<std::size_t>(which)); }
 };
 } // namespace
 
@@ -102,6 +104,7 @@ TEST_CASE("TAGE table accounting respects cached predictions and observes traini
 {
   observed_tage predictor;
   using table = observed_tage::table;
+  using logic = observed_tage::logic;
   const champsim::address pc{0x2000}, target{0x9000};
   const bool prediction = predictor.predict_branch(pc);
   CHECK(predictor.predict_branch(pc) == prediction);
@@ -111,9 +114,15 @@ TEST_CASE("TAGE table accounting respects cached predictions and observes traini
   CHECK(predictor.accesses(table::short_tagged).reads > 0);
   CHECK(predictor.accesses(table::long_tagged).reads > 0);
   CHECK(predictor.accesses(table::sc_256).reads >= 3); // Bias and GEHL tables.
+  CHECK(predictor.operations(logic::tagged_selection) == 1);
+  CHECK(predictor.operations(logic::reuse_check) == 2);
+  CHECK(predictor.operations(logic::reuse_write) == 1);
   predictor.last_branch_result(pc, target, !prediction, BRANCH_CONDITIONAL);
   CHECK(predictor.accesses(table::bimodal_prediction).reads == 1);
   CHECK(predictor.accesses(table::sc_local1).writes == 1);
+  CHECK(predictor.operations(logic::history_shift) == 1);
+  CHECK(predictor.operations(logic::history_fold) == 2);
+  CHECK(predictor.operations(logic::reuse_invalidate) == 1);
   (void)predictor.predict_branch(pc);
   CHECK(predictor.accesses(table::bimodal_prediction).reads == 2);
 }
