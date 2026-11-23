@@ -435,6 +435,12 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id, memory_en
     yield from cache_instantiation_body
     yield from core_instantiation_body
     yield '{'
+    harcom_btb_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'harcom', 'btb', 'harcom_basic_btb')
+    harcom_btb_name = modules.get_module_name(harcom_btb_path)
+    for index, core in enumerate(cores):
+        unmodeled_btbs = ', '.join(data['class'] for data in core.get('_btb_data', ()) if data['name'] != harcom_btb_name)
+        if unmodeled_btbs:
+            yield f'  cores.at({index}).unmodeled_btb_names = {json.dumps(unmodeled_btbs)};'
     if memory_energy_tlbs is not None:
         builtin_policies = {modules.get_module_name(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'replacement', name)): name
                             for name in ('lru', 'srrip', 'drrip')}

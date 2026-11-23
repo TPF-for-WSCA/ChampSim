@@ -210,14 +210,21 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
                  [](const DRAM_CHANNEL& chan) { return chan.roi_stats; });
 
   std::vector<std::string> coverage_gaps;
-  if (!is_warmup) {
+  const bool has_frontend_model = std::any_of(cpus.begin(), cpus.end(), [](const O3_CPU& cpu) { return cpu.frontend_energy != nullptr; });
+  if (!is_warmup && (!begin_energy.empty() || has_frontend_model || env.memory_energy)) {
     if (env.memory_energy)
       coverage_gaps = env.memory_energy->coverage_gaps();
     for (const O3_CPU& cpu : cpus) {
       if (cpu.frontend_energy != nullptr) {
         for (const auto& gap : cpu.frontend_energy->coverage_gaps())
           coverage_gaps.push_back(fmt::format("CPU {} {}", cpu.cpu, gap));
+      } else {
+        coverage_gaps.push_back(fmt::format("CPU {} DIB and FDIP core structures without a HARCOM frontend model", cpu.cpu));
+        if (cpu.IDEAL_CBP || cpu.IDEAL_IBP || cpu.IDEAL_BTB)
+          coverage_gaps.push_back(fmt::format("CPU {} ideal frontend prediction oracle", cpu.cpu));
       }
+      if (!cpu.unmodeled_btb_names.empty())
+        coverage_gaps.push_back(fmt::format("CPU {} BTB modules without HARCOM estimates ({})", cpu.cpu, cpu.unmodeled_btb_names));
     }
   }
 

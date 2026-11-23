@@ -114,6 +114,7 @@ public:
   const std::size_t DIB_SETS, DIB_WAYS, DIB_WINDOW;
   dib_type DIB;
   champsim::frontend_energy_model* frontend_energy = nullptr;
+  std::string_view unmodeled_btb_names{};
 
   void record_frontend(champsim::frontend_event event, std::size_t count = 1) const
   {
