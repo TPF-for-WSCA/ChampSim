@@ -1,5 +1,10 @@
 #include "return_stack.h"
 
+std::size_t return_stack::call_size_index(champsim::address target)
+{
+  return target.slice_lower<champsim::data::bits{champsim::msl::lg2(num_call_size_trackers)}>().to<std::size_t>();
+}
+
 std::pair<champsim::address, bool> return_stack::prediction()
 {
   if (std::empty(stack))
@@ -7,7 +12,7 @@ std::pair<champsim::address, bool> return_stack::prediction()
 
   // peek at the top of the RAS and adjust for the size of the call instr
   auto target = stack.back();
-  auto size = call_size_trackers[target.slice_lower<champsim::data::bits{champsim::msl::lg2(num_call_size_trackers)}>().to<std::size_t>()];
+  auto size = call_size_trackers[call_size_index(target)];
 
   return {target + size, true};
 }
@@ -19,7 +24,7 @@ void return_stack::push(champsim::address ip)
     stack.pop_front();
 }
 
-void return_stack::calibrate_call_size(champsim::address branch_target)
+std::optional<std::size_t> return_stack::calibrate_call_size(champsim::address branch_target)
 {
   if (!std::empty(stack)) {
     // recalibrate call-return offset if our return prediction got us close, but not exact
@@ -34,7 +39,10 @@ void return_stack::calibrate_call_size(champsim::address branch_target)
 
     auto estimated_call_instr_size = call_ip > branch_target ? champsim::uoffset(branch_target, call_ip) : champsim::uoffset(call_ip, branch_target);
     if (estimated_call_instr_size <= 10) {
-      call_size_trackers[call_ip.slice_lower<champsim::data::bits{champsim::msl::lg2(num_call_size_trackers)}>().to<std::size_t>()] = estimated_call_instr_size;
+      const auto index = call_size_index(call_ip);
+      call_size_trackers[index] = estimated_call_instr_size;
+      return index;
     }
   }
+  return std::nullopt;
 }

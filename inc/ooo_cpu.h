@@ -40,6 +40,7 @@
 #include "core_builder.h"
 #include "core_stats.h"
 #include "instruction.h"
+#include "frontend_energy.h"
 #include "modules.h"
 #include "operable.h"
 #include "register_allocator.h"
@@ -110,7 +111,15 @@ public:
     auto operator()(champsim::address val) const { return val.slice_upper(shamt); }
   };
   using dib_type = champsim::lru_table<champsim::address, dib_shift, dib_shift>;
+  const std::size_t DIB_SETS, DIB_WAYS, DIB_WINDOW;
   dib_type DIB;
+  champsim::frontend_energy_model* frontend_energy = nullptr;
+
+  void record_frontend(champsim::frontend_event event, std::size_t count = 1) const
+  {
+    if (frontend_energy != nullptr)
+      frontend_energy->record(event, count);
+  }
 
   // reorder buffer, load/store queue, register file
   std::deque<ooo_model_instr> IFETCH_BUFFER;
@@ -317,6 +326,7 @@ public:
   template <typename... Bs, typename... Ts>
   explicit O3_CPU(champsim::core_builder<champsim::core_builder_module_type_holder<Bs...>, champsim::core_builder_module_type_holder<Ts...>> b)
       : champsim::operable(b.m_clock_period), cpu(b.m_cpu),
+        DIB_SETS(b.m_dib_set), DIB_WAYS(b.m_dib_way), DIB_WINDOW(b.m_dib_window),
         DIB(b.m_dib_set, b.m_dib_way, {champsim::data::bits{champsim::lg2(b.m_dib_window)}}, {champsim::data::bits{champsim::lg2(b.m_dib_window)}}),
         LQ(b.m_lq_size), IFETCH_BUFFER_SIZE(b.m_ifetch_buffer_size), DISPATCH_BUFFER_SIZE(b.m_dispatch_buffer_size), DECODE_BUFFER_SIZE(b.m_decode_buffer_size),
         REGISTER_FILE_SIZE(b.m_register_file_size), ROB_SIZE(b.m_rob_size), SQ_SIZE(b.m_sq_size), DIB_HIT_BUFFER_SIZE(b.m_dib_hit_buffer_size),

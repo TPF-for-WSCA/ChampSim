@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "address.h"
+#include "frontend_energy.h"
 
 // ITTAGE principles: Seznec, "A 64-Kbytes ITTAGE indirect branch predictor"
 // (JWAC-2, 2011). Local full-64-bit-target organization; see docs/ittage.md.
@@ -27,6 +28,7 @@ public:
 
   [[nodiscard]] std::pair<champsim::address, bool> prediction(champsim::address ip) const;
   void update(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type);
+  void set_energy_model(champsim::frontend_energy_model* model) { energy_model = model; }
 
 private:
   struct base_entry {
@@ -59,6 +61,13 @@ private:
   std::array<uint16_t, history_lengths.size()> alternate_tag_history{};
   int8_t use_alternate = -1;
   uint8_t allocation_pressure = 0;
+  champsim::frontend_energy_model* energy_model = nullptr;
+
+  void record(champsim::frontend_event event, std::size_t count = 1) const
+  {
+    if (energy_model != nullptr)
+      energy_model->record(event, count);
+  }
 
   [[nodiscard]] lookup_result lookup(champsim::address ip) const;
   void train(champsim::address ip, champsim::address target);

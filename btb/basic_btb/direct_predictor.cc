@@ -33,7 +33,7 @@ auto direct_predictor::check_hit(champsim::address ip, bool update_lru) -> std::
   return BTB.check_hit({champsim::address{ip.to<uint64_t>() & ip_mask}, champsim::address{}, branch_info::ALWAYS_TAKEN}, update_lru);
 }
 
-void direct_predictor::update(champsim::address ip, champsim::address branch_target, uint8_t branch_type)
+bool direct_predictor::update(champsim::address ip, champsim::address branch_target, uint8_t branch_type)
 {
   // update btb entry
   auto type = branch_info::ALWAYS_TAKEN;
@@ -58,4 +58,5 @@ void direct_predictor::update(champsim::address ip, champsim::address branch_tar
   if (branch_target != champsim::address{}) {
     BTB.fill(opt_entry.value_or(btb_entry_t{key, branch_target, type, is_call}));
   }
+  return opt_entry.has_value();
 }

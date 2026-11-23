@@ -33,6 +33,7 @@ struct phase_energy_stats {
   chrono::clock::time_point end;
   long long instructions{};
   std::vector<component_energy_stats> components;
+  std::vector<std::string> coverage_gaps{};
 
   [[nodiscard]] double modeled_dynamic_energy_joules() const
   {

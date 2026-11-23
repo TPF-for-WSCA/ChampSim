@@ -50,6 +50,12 @@ std::vector<component_energy_stats> sample_component_energy(environment& env)
       components.push_back({fmt::format("CPU {} branch predictor {}", cpu.cpu, index), predictor.model, predictor.revision, predictor.assumptions,
                             cpu.clock_period, predictor.dynamic_energy_fJ * 1e-15});
     }
+    if (cpu.frontend_energy != nullptr) {
+      for (const auto& component : cpu.frontend_energy->energy_snapshots()) {
+        components.push_back({fmt::format("CPU {} {}", cpu.cpu, component.model), component.model, component.revision, component.assumptions,
+                              cpu.clock_period, component.dynamic_energy_fJ * 1e-15});
+      }
+    }
   }
   return components;
 }
@@ -198,14 +204,24 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.roi_dram_stats),
                  [](const DRAM_CHANNEL& chan) { return chan.roi_stats; });
 
-  if (!begin_energy.empty()) {
+  std::vector<std::string> coverage_gaps;
+  if (!is_warmup) {
+    for (const O3_CPU& cpu : cpus) {
+      if (cpu.frontend_energy != nullptr) {
+        for (const auto& gap : cpu.frontend_energy->coverage_gaps())
+          coverage_gaps.push_back(fmt::format("CPU {} {}", cpu.cpu, gap));
+      }
+    }
+  }
+
+  if (!begin_energy.empty() || !coverage_gaps.empty()) {
     auto components = sample_component_energy(env);
     for (std::size_t index = 0; index < components.size(); ++index)
       components[index].dynamic_energy_joules -= begin_energy[index].dynamic_energy_joules;
 
     const auto instructions = std::accumulate(stats.sim_cpu_stats.begin(), stats.sim_cpu_stats.end(), 0LL,
                                               [](long long sum, const auto& core) { return sum + core.instrs(); });
-    stats.energy = phase_energy_stats{phase_begin, global_clock.now(), instructions, std::move(components)};
+    stats.energy = phase_energy_stats{phase_begin, global_clock.now(), instructions, std::move(components), std::move(coverage_gaps)};
   }
 
   return stats;

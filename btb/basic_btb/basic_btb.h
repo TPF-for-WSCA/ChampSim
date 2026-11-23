@@ -15,8 +15,23 @@ class basic_btb : champsim::modules::btb
   std::pair<uint64_t, long long> speculative_block{~uint64_t{0}, -1};
   ittage indirect{};
   direct_predictor direct{};
+  champsim::frontend_energy_model* energy_model = nullptr;
   // Unlimited static BTB for ideal lookahead; populated only by observed branches.
   std::map<champsim::address, direct_predictor::btb_entry_t> ideal_entries;
+
+  void record(champsim::frontend_event event, std::size_t argument = 1) const
+  {
+    if (energy_model != nullptr)
+      energy_model->record(event, argument);
+  }
+
+protected:
+  [[nodiscard]] uint8_t direct_tag_bits() const { return direct.tag_bits; }
+  void set_energy_model(champsim::frontend_energy_model* model)
+  {
+    energy_model = model;
+    indirect.set_energy_model(model);
+  }
 
 public:
   explicit basic_btb(O3_CPU* cpu);

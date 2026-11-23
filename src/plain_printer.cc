@@ -229,6 +229,8 @@ std::vector<std::string> champsim::plain_printer::format(champsim::phase_stats& 
     for (const auto& component : energy->components) {
       lines.push_back(fmt::format("{} ({}): {:.6g} J dynamic", component.instance, component.model, component.dynamic_energy_joules));
     }
+    for (const auto& gap : energy->coverage_gaps)
+      lines.push_back(fmt::format("Unmodeled: {}", gap));
     const auto subtotal = energy->modeled_dynamic_energy_joules();
     const auto power = energy->average_dynamic_power_watts(subtotal);
     lines.push_back(fmt::format("Modeled dynamic energy subtotal: {:.6g} J, average dynamic power: {}", subtotal,

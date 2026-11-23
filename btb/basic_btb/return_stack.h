@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <deque>
+#include <optional>
 
 #include "address.h"
 #include "champsim.h"
@@ -25,7 +26,8 @@ struct return_stack {
 
   std::pair<champsim::address, bool> prediction();
   void push(champsim::address ip);
-  void calibrate_call_size(champsim::address branch_target);
+  static std::size_t call_size_index(champsim::address target);
+  std::optional<std::size_t> calibrate_call_size(champsim::address branch_target);
 };
 
 #endif

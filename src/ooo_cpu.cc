@@ -70,6 +70,7 @@ bool O3_CPU::uses_fdip() const { return l1i && l1i->uses_prediction_flow(); }
 
 void O3_CPU::redirect_fdip(champsim::address ip)
 {
+  record_frontend(champsim::frontend_event::ftq_redirect);
   fetch_target_queue.clear();
   current_fetch_prediction.reset();
   prediction_pc = ip;
@@ -117,6 +118,9 @@ void O3_CPU::advance_fdip()
     if (taken)
       break;
   } while (prediction_pc.to<uint64_t>() < end);
+  record_frontend(champsim::frontend_event::fdip_slot, block.size);
+  record_frontend(champsim::frontend_event::ftq_write, block.size);
+  record_frontend(champsim::frontend_event::ftq_push);
   fetch_target_queue.push_back(std::move(block));
 }
 
@@ -124,12 +128,16 @@ std::optional<O3_CPU::fetch_prediction> O3_CPU::consume_prediction(champsim::add
 {
   if (fetch_target_queue.empty())
     return std::nullopt;
+  record_frontend(champsim::frontend_event::ftq_read);
   auto& block = fetch_target_queue.front();
   if (block.front().ip != ip)
     return std::nullopt;
   auto prediction = block.front();
-  if (++block.next == block.size)
+  record_frontend(champsim::frontend_event::ftq_consume);
+  if (++block.next == block.size) {
+    record_frontend(champsim::frontend_event::ftq_pop);
     fetch_target_queue.pop_front();
+  }
   return prediction;
 }
 
@@ -489,6 +497,9 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
 {
   // Check DIB to see if we recently fetched this line
   auto dib_result = DIB.check_hit(instr.ip);
+  record_frontend(champsim::frontend_event::dib_lookup);
+  if (dib_result)
+    record_frontend(champsim::frontend_event::dib_hit);
   if (dib_result) {
     // The cache line is in the L0, so we can mark this as complete
     instr.fetch_completed = true;
@@ -717,7 +728,11 @@ long O3_CPU::decode_instruction()
   return progress;
 }
 
-void O3_CPU::do_dib_update(const ooo_model_instr& instr) { DIB.fill(instr.ip); }
+void O3_CPU::do_dib_update(const ooo_model_instr& instr)
+{
+  record_frontend(champsim::frontend_event::dib_fill);
+  DIB.fill(instr.ip);
+}
 
 long O3_CPU::dispatch_instruction()
 {

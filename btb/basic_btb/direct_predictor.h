@@ -46,7 +46,7 @@ public:
   explicit direct_predictor(std::size_t configured_sets = 1024, std::size_t configured_ways = 8,
                             std::optional<uint8_t> configured_tag_bits = std::nullopt);
   std::optional<btb_entry_t> check_hit(champsim::address ip, bool update_lru = true);
-  void update(champsim::address ip, champsim::address branch_target, uint8_t branch_type);
+  bool update(champsim::address ip, champsim::address branch_target, uint8_t branch_type);
 };
 
 #endif

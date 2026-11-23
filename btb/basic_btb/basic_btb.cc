@@ -23,10 +23,15 @@ basic_btb::basic_btb(O3_CPU* cpu)
 
 std::pair<champsim::address, bool> basic_btb::btb_prediction(champsim::address ip)
 {
+  using champsim::frontend_event;
   // use BTB for all other branches + direct calls
   // Replay and FDIP lookups during branch recovery must not promote BTB entries.
-  auto btb_entry = direct.check_hit(ip, !intern_ || (!intern_->wrong_path_active && !intern_->branch_recovery_start.has_value()));
+  const bool promotes = !intern_ || (!intern_->wrong_path_active && !intern_->branch_recovery_start.has_value());
+  auto btb_entry = direct.check_hit(ip, promotes);
 
+  record(frontend_event::btb_lookup);
+  if (btb_entry && promotes)
+    record(frontend_event::btb_promote);
   if (intern_) {
     ++intern_->sim_stats.btb_lookups;
     intern_->sim_stats.btb_hits += btb_entry.has_value();
@@ -44,8 +49,10 @@ std::pair<champsim::address, bool> basic_btb::btb_prediction(champsim::address i
     if (block_id != speculative_block) {
       // An empty FTQ is a checkpoint only outside unresolved recovery. The
       // predictor also walks wrong paths when replay is disabled.
-      if (intern_->fetch_target_queue.empty() && !intern_->wrong_path_active && !intern_->branch_recovery_start.has_value())
+      if (intern_->fetch_target_queue.empty() && !intern_->wrong_path_active && !intern_->branch_recovery_start.has_value()) {
         speculative_ras = ras;
+        record(frontend_event::ras_checkpoint, ras.stack.size());
+      }
       speculative_block = block_id;
     }
   }
@@ -71,38 +78,60 @@ std::pair<champsim::address, bool> basic_btb::btb_prediction(champsim::address i
       return {oracle->branch_target, true};
     auto& stack = lookahead ? speculative_ras : ras;
     auto prediction = stack.prediction();
-    if (lookahead && !stack.stack.empty())
-      stack.stack.pop_back();
+    if (!stack.stack.empty()) {
+      if (energy_model != nullptr)
+        record(lookahead ? frontend_event::ras_speculative_return : frontend_event::ras_return,
+               return_stack::call_size_index(stack.stack.back()));
+      if (lookahead) {
+        stack.stack.pop_back();
+        record(frontend_event::ras_pop);
+      }
+    }
     return prediction;
   }
 
   if (btb_entry->type == direct_predictor::branch_info::INDIRECT) {
     auto prediction = oracle && intern_->IDEAL_IBP ? std::pair{oracle->branch_target, true} : indirect.prediction(ip);
-    if (lookahead && btb_entry->is_call && prediction.first != champsim::address{})
+    if (lookahead && btb_entry->is_call && prediction.first != champsim::address{}) {
       speculative_ras.push(ip);
+      record(frontend_event::ras_push);
+    }
     return prediction;
   }
 
-  if (lookahead && btb_entry->is_call)
+  if (lookahead && btb_entry->is_call) {
     speculative_ras.push(ip);
+    record(frontend_event::ras_push);
+  }
 
   return {btb_entry->target, btb_entry->type != direct_predictor::branch_info::CONDITIONAL};
 }
 
 void basic_btb::update_btb(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
+  using champsim::frontend_event;
   // add something to the RAS
-  if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL)
+  if (branch_type == BRANCH_DIRECT_CALL || branch_type == BRANCH_INDIRECT_CALL) {
     ras.push(ip);
+    record(frontend_event::ras_push);
+  }
 
   // Train indirect targets with the preceding history, then advance history
   // for every real branch. Prediction-only wrong-path fetches do not train.
   indirect.update(ip, branch_target, taken, branch_type);
 
-  if (branch_type == BRANCH_RETURN)
-    ras.calibrate_call_size(branch_target);
+  if (branch_type == BRANCH_RETURN && !ras.stack.empty()) {
+    record(frontend_event::ras_calibration_pop);
+    if (const auto index = ras.calibrate_call_size(branch_target))
+      record(frontend_event::ras_calibration_write, *index);
+  }
 
-  direct.update(ip, branch_target, branch_type);
+  const bool direct_hit = direct.update(ip, branch_target, branch_type);
+  record(frontend_event::btb_lookup);
+  if (direct_hit && branch_target == champsim::address{})
+    record(frontend_event::btb_promote);
+  if (branch_target != champsim::address{})
+    record(frontend_event::btb_fill);
   if (intern_ && intern_->IDEAL_BTB && branch_target != champsim::address{}) {
     using info = direct_predictor::branch_info;
     const auto type = (branch_type == BRANCH_CONDITIONAL || branch_type == BRANCH_OTHER) ? info::CONDITIONAL
