@@ -1,5 +1,32 @@
 # Experiment plots
 
+### Replacement policy comparisons
+
+Use the dedicated script for matched policy sweeps such as the UTB experiment:
+
+```bash
+python3 aggregation_scripts/plot_replacement.py \
+  /cluster/work/romankb/results/ipc1/utb_sweep \
+  --output presentation/utb_replacement.pdf
+```
+
+It pairs names ending in `_lru` and `_reference_count` with identical prefixes
+(for example, `litebtb_i32k_b4k_utb256`). Both policies are compared against the
+fixed `litebtb_i32k_b4k` baseline. The figure shows harmonic mean ROI IPC and
+percentage speedup for each variant relative to that baseline:
+`100 * (harmonic_mean(variant IPC / baseline IPC) - 1)` across matched traces.
+Positive values mean the variant is faster.
+
+The baseline must be present in the result root. If stored separately, add
+`--baseline-results-dir <result root containing litebtb_i32k_b4k>`.
+`--baseline <configuration>` overrides the fixed reference.
+By default, all variants and the baseline use the intersection of traces across
+the whole sweep. `--pairwise` matches each variant to the baseline independently.
+Missing policy counterparts, missing baseline, invalid results, or empty trace
+intersections cause an error. The output includes the figure, per-trace
+`<output stem>.csv`, and `<output stem>_plot.csv` with plotted values and counts.
+`--baseline-policy` and `--policy` select the two policy suffixes to include.
+
 `plot_ipc.py`, `plot_storage_dse.py`, and `plot_ideal_frontend.py` automatically
 produce L1I MPKI plots alongside their existing IPC plots. Their commands and
 trace-selection rules are unchanged.
@@ -41,6 +68,9 @@ For output prefix `storage_dse`, the script writes:
 
 - `storage_dse.html`: interactive IPC and IPC/MiB scatter plots with size filters.
 - `storage_dse.png` and `.pdf`: the existing complete static figure.
+- `storage_dse_bars.png` and `.pdf`: grouped IPC and IPC/MiB bars for each
+  nominal I-cache capacity / BTB entry count, ordered Combined, Baseline,
+  LiteBTB, UBS. Missing designs in partial sweeps leave gaps.
 - `storage_dse_<design>.png` and `.pdf`: one design with transparent background,
   axes, and its legend entry (`baseline`, `ubs`, `litebtb`, or `combined`).
 - `storage_dse_<design>_layer.png` and `.pdf`: transparent points-only layers.

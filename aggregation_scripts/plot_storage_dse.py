@@ -200,6 +200,49 @@ def plot(summary, output, title=None):
         plt.close(fig)
 
 
+def plot_bars(summary, output, title=None):
+    """Compare designs at matching nominal I-cache capacities and BTB entry counts."""
+    os.environ.setdefault("MPLCONFIGDIR", str(Path(tempfile.gettempdir()) / "champsim-storage-dse-matplotlib"))
+    try:
+        import importlib_resources
+    except ModuleNotFoundError:
+        from importlib import resources
+        sys.modules["importlib_resources"] = resources
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    groups = sorted({(row['nominal_icache_kib'], row['btb_entries']) for row in summary})
+    values = {(row['design'], row['nominal_icache_kib'], row['btb_entries']): row for row in summary}
+    order = ('combined', 'baseline', 'litebtb', 'ubs')
+    width = 0.2
+    fig, axes = plt.subplots(2, 1, figsize=(max(10, len(groups) * 0.85), 9),
+                             sharex=True, layout="constrained")
+    try:
+        for ax, (metric, ylabel) in zip(axes, METRICS):
+            for index, key in enumerate(order):
+                label, color, _ = DESIGNS[key]
+                # Leave a gap for unavailable designs in partial sweeps.
+                heights = [values.get((label, *group), {}).get(metric, math.nan) for group in groups]
+                ax.bar([i + (index - 1.5) * width for i in range(len(groups))], heights,
+                       width=width, label=label, color=color)
+            ax.set_ylabel(ylabel)
+            ax.set_ylim(bottom=0)
+            ax.set_axisbelow(True)
+            ax.grid(axis='y', alpha=0.25)
+        axes[0].legend(ncol=4)
+        axes[-1].set_xticks(range(len(groups)))
+        axes[-1].set_xticklabels([f'{size} KiB / {entries // 1024}K' for size, entries in groups],
+                                 rotation=45, ha='right')
+        axes[-1].set_xlabel('Nominal I-cache capacity / BTB entries')
+        fig.suptitle(title or f"Instruction front-end design space · {summary[0]['trace_count']} trace(s)")
+        destination = output.with_name(output.name + '_bars')
+        for suffix in ('.png', '.pdf'):
+            fig.savefig(destination.with_suffix(suffix), dpi=180)
+    finally:
+        plt.close(fig)
+
+
 def interactive_figure(summary, title=None):
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -281,6 +324,7 @@ def main():
         write_csv(args.output.with_suffix(".csv"), summary)
         write_csv(args.output.with_name(args.output.name + "_per_trace.csv"), traces)
         plot(summary, args.output, args.title)
+        plot_bars(summary, args.output, args.title)
         plot_interactive(summary, args.output, args.title)
         from plot_mpki import experiment_mpki
         # Match both nominal I-cache capacity and BTB entry count.
@@ -291,7 +335,7 @@ def main():
     except (ValueError, OSError, KeyError, ImportError) as error:
         parser.exit(1, f"{error}\n")
     print(f"Wrote {len(summary)} storage-sorted points to {args.output}.[csv,png,pdf,html] "
-          "plus transparent per-design figures, point layers, and axes")
+          "plus grouped bar plots (_bars.png/.pdf), transparent per-design figures, point layers, and axes")
 
 
 if __name__ == "__main__":
