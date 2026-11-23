@@ -137,6 +137,7 @@ private:
   bool handle_write(const tag_lookup_type& handle_pkt);
   void finish_packet(const response_type& packet);
   void finish_translation(const response_type& packet);
+  void send_response(const response_type& response, const std::vector<std::deque<response_type>*>& recipients);
 
   void issue_translation(tag_lookup_type& q_entry) const;
 
@@ -220,10 +221,10 @@ public:
   using stats_type = cache_stats;
 
   stats_type sim_stats, roi_stats;
-  std::optional<champsim::memory_activity> memory_activity;
+  mutable std::optional<champsim::memory_activity> memory_activity;
   std::vector<champsim::queue_activity> ubs_fragment_accesses;
 
-  void record_memory(champsim::memory_event event, std::size_t count = 1)
+  void record_memory(champsim::memory_event event, std::size_t count = 1) const
   {
     if (memory_activity)
       memory_activity->record(event, count);

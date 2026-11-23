@@ -148,7 +148,10 @@ long PageTableWalker::operate()
 
   champsim::bandwidth fill_bw{MAX_FILL};
   auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(completed), std::cend(completed), fill_bw, is_ready);
-  std::for_each(complete_begin, complete_end, [](auto& mshr_entry) {
+  std::for_each(complete_begin, complete_end, [this](auto& mshr_entry) {
+    record_memory(champsim::memory_event::fill_stage_read);
+    record_memory(champsim::memory_event::fill_stage_release);
+    record_memory(champsim::memory_event::response_delivery, mshr_entry.to_return.size());
     for (auto ret : mshr_entry.to_return) {
       ret->emplace_back(mshr_entry.v_address, mshr_entry.v_address, *mshr_entry.data, mshr_entry.pf_metadata, mshr_entry.instr_depend_on_me);
     }
@@ -159,9 +162,11 @@ long PageTableWalker::operate()
 
   auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(finished), std::cend(finished), fill_bw, is_ready);
   std::tie(mshr_begin, mshr_end) = champsim::get_span_p(mshr_begin, mshr_end, [&next_steps, this](const auto& pkt) {
+    record_memory(champsim::memory_event::fill_stage_read);
     auto result = this->handle_fill(pkt);
     if (result.has_value()) {
       next_steps.emplace_back(*result);
+      record_memory(champsim::memory_event::fill_stage_release);
     }
     return result.has_value();
   });
@@ -234,6 +239,7 @@ void PageTableWalker::finish_packet(const response_type& packet)
   const auto matches = static_cast<std::size_t>(std::distance(MSHR.begin(), last_finished));
   record_memory(champsim::memory_event::mshr_read, matches);
   record_memory(champsim::memory_event::mshr_release, matches);
+  record_memory(champsim::memory_event::fill_stage_write, matches);
 
   std::for_each(std::begin(MSHR), last_finished, [is_last_step, finish_step, finish_last_step](auto& mshr_entry) {
     mshr_entry.data = is_last_step(mshr_entry) ? finish_last_step(mshr_entry) : finish_step(mshr_entry);

@@ -2,6 +2,7 @@
 #undef CHAMPSIM_MODULE
 #include "../bridge.h"
 #include "../../prefetcher/fdip/fdip.h"
+#include "../../replacement/drrip/drrip.h"
 #include "environment.h"
 #include "memory_energy.h"
 #include "storage.h"
@@ -80,7 +81,7 @@ class harcom_memory_model final : public memory_energy_model
 {
   std::vector<meter> meters;
   std::vector<std::string> gaps{
-      "cache and translation refill staging, request fan-out and global bank wiring",
+      "cache and translation routing, wire loads and global bank wiring",
       "translation storage outside modeled TLBs and page-walk caches"};
 
   meter& add_meter(std::string instance, std::string_view model, std::string_view assumptions, chrono::picoseconds period)
@@ -138,13 +139,45 @@ class harcom_memory_model final : public memory_energy_model
     auto& state = add_meter(cache.NAME + " replacement state", "HARCOM replacement metadata",
                             lru ? "one per-set LRU rank row" : "one per-set row of two-bit re-reference prediction values", cache.clock_period);
     const auto word = sram_row(cache.NUM_SET, cache.NUM_WAY * (lru ? storage_bits(cache.NUM_WAY) : 2));
-    state.add(activity, memory_event::replacement_victim, word.read + (lru ? 0 : word.write));
+    state.add(activity, memory_event::replacement_victim, word.read + (policy == replacement_energy_policy::srrip ? word.write : 0));
     state.add(activity, memory_event::replacement_hit, word.read + word.write);
     state.add(activity, memory_event::replacement_fill, word.read + word.write);
     if (!lru || cache.ubs)
       state.add(activity, memory_event::replacement_writeback_hit, word.read + word.write);
-    if (policy == replacement_energy_policy::drrip)
-      gaps.push_back(cache.NAME + " DRRIP policy selection and insertion counters");
+    if (policy == replacement_energy_policy::drrip) {
+      state.add(activity, memory_event::drrip_age_row, word.write + static_cast<double>(cache.NUM_WAY) * hcm::ADD<2>.e);
+      auto& selector = add_meter(cache.NAME + " DRRIP policy selection", "HARCOM DRRIP control",
+                                 "Sample-set classifier, per-core saturating policy selector, and periodic BRRIP insertion counter.", cache.clock_period);
+      const auto set_bits = storage_bits(msl::get_sample_rate(cache.NUM_SET));
+      selector.add(activity, memory_event::drrip_classify, hcm::subtract(set_bits, hcm::OUTCAP).e + 2 * match_energy(set_bits));
+      constexpr auto selector_width = drrip::PSEL_WIDTH;
+      const auto per_core = sram_row(NUM_CPUS, selector_width);
+      selector.add(activity, memory_event::drrip_selector_read, per_core.read + hcm::GTE<selector_width>.e);
+      selector.add(activity, memory_event::drrip_selector_update,
+                   per_core.read + per_core.write + hcm::INC<selector_width>.e + hcm::EQUAL<selector_width>.e);
+      constexpr auto insertion_width = champsim::lg2(drrip::BRRIP_MAX);
+      selector.add(activity, memory_event::drrip_brrip_tick,
+                   hcm::INC<insertion_width>.e + hcm::EQUAL<insertion_width>.e + hcm::flipflops<insertion_width>::write_energy_fJ);
+    }
+  }
+
+  void add_refills(const std::string& name, chrono::picoseconds period, const memory_activity& activity, std::size_t payload_bits)
+  {
+    auto& stage = add_meter(name + " refill staging and response ports", "HARCOM refill and response registers",
+                            "Register banks hold ready entries and drive one write per receiving response port. Wire and routing costs remain open.",
+                            period);
+    constexpr auto slice_bits = 32;
+    constexpr auto word_write = hcm::flipflops<slice_bits>::write_energy_fJ;
+    constexpr auto metadata_bits = 256;
+    constexpr auto response_bits = 128 + 32;
+    const auto payload_slices = static_cast<double>((payload_bits + slice_bits - 1) / slice_bits);
+    const auto staged_read = (metadata_bits + payload_slices * slice_bits) * hcm::INV.e;
+    const auto staged_write = (metadata_bits / slice_bits + payload_slices) * word_write;
+    stage.add(activity, memory_event::fill_stage_read, staged_read);
+    stage.add(activity, memory_event::fill_stage_write, staged_write);
+    stage.add(activity, memory_event::fill_stage_merge, metadata_bits * hcm::INV.e + metadata_bits / slice_bits * word_write);
+    stage.add(activity, memory_event::fill_stage_release, hcm::flipflops<1>::write_energy_fJ);
+    stage.add(activity, memory_event::response_delivery, (response_bits / slice_bits + payload_slices) * word_write);
   }
 
   void add_ubs(CACHE& cache, const memory_activity& activity, std::size_t tag_width, std::size_t line_bits)
@@ -200,6 +233,31 @@ class harcom_memory_model final : public memory_energy_model
     state.add(activity, memory_event::fdip_request_mask, 6 * (shift[0].e + shift[1].e) + hcm::GTE<6>.e);
   }
 
+  void add_fdip_directory(const CACHE& cache, const memory_activity& activity)
+  {
+    auto& directory = add_meter(cache.NAME + " FDIP address directories", "HARCOM mirrored address comparisons",
+                                "One mirrored resident key per slot and one key per live pending entry. Each searched group compares in parallel.",
+                                cache.clock_period);
+    const auto block_bits = 64 - to_underlying(cache.OFFSET_BITS);
+    const auto compare = match_energy(block_bits) + hcm::AND<2>.e + hcm::OR<2>.e;
+    directory.add(activity, memory_event::fdip_resident_compare, compare);
+    directory.add(activity, memory_event::fdip_resident_key_write,
+                  cache.ubs ? hcm::flipflops<72>::write_energy_fJ : hcm::flipflops<64>::write_energy_fJ);
+    constexpr auto shift = hcm::MUX<2, 64>;
+    directory.add(activity, memory_event::fdip_resident_mask, 6 * (shift[0].e + shift[1].e) + 64 * hcm::OR<2>.e);
+    directory.add(activity, memory_event::fdip_pending_compare, compare);
+
+    constexpr auto key_write = hcm::flipflops<64>::write_energy_fJ;
+    for (auto event : {memory_event::fdip_pipeline_key_write, memory_event::local_prefetch_write, memory_event::mshr_write,
+                       memory_event::fill_stage_write, memory_event::fill_stage_merge}) {
+      directory.add(activity, event, key_write);
+    }
+    for (const auto* input : cache.upper_levels) {
+      for (const auto& queue : *input->energy_activity)
+        directory.add(queue.writes, key_write);
+    }
+  }
+
   void add_cache(CACHE& cache, cache_energy_configuration config)
   {
     auto& activity = cache.memory_activity.emplace();
@@ -213,6 +271,7 @@ class harcom_memory_model final : public memory_energy_model
     const auto payload = config.translation ? 64 - offset_bits : uint64_t{8} << offset_bits;
     add_queues(cache.NAME, cache.clock_period, cache.upper_levels, payload);
     add_mshr(cache.NAME, cache.clock_period, activity, cache.MSHR_SIZE, 64 - offset_bits);
+    add_refills(cache.NAME, cache.clock_period, activity, payload);
     if (cache.PQ_SIZE != 0) {
       auto& local = add_meter(cache.NAME + " local prefetch queue", "HARCOM prefetch FIFO",
                               "separate local request SRAM, charged on admission and consumption", cache.clock_period);
@@ -222,10 +281,12 @@ class harcom_memory_model final : public memory_energy_model
     }
     if (config.has_unmodeled_prefetcher)
       gaps.push_back(cache.NAME + " prefetch algorithm tables and logic");
-    if (config.fdip)
+    if (config.fdip) {
       add_fdip(cache, activity);
-    if (cache.uses_prediction_flow())
-      gaps.push_back(cache.NAME + " FDIP virtual resident and pending-presence probes");
+      add_fdip_directory(cache, activity);
+    } else if (cache.uses_prediction_flow()) {
+      gaps.push_back(cache.NAME + " custom prediction-flow directory probes");
+    }
     if (cache.ideal || cache.ideal_translation_vmem != nullptr || (cache.ubs && config.translation)) {
       gaps.push_back(cache.NAME + (cache.ubs && config.translation ? " unsupported UBS translation arrays" : " idealized tag and payload arrays"));
       if (cache.PREFETCH_BUFFER_SIZE != 0)
@@ -270,6 +331,7 @@ class harcom_memory_model final : public memory_energy_model
   {
     auto& activity = walker.memory_activity.emplace();
     add_queues(walker.NAME, walker.clock_period, walker.request_channels(), 64);
+    add_refills(walker.NAME, walker.clock_period, activity, 64);
     auto& pending = add_meter(walker.NAME + " walk tracking", "HARCOM page-walk tracking",
                               "Parallel comparisons and per-entry registers scale with active walks.",
                               walker.clock_period);

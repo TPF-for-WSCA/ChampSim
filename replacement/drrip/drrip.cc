@@ -17,6 +17,8 @@ unsigned& drrip::get_rrpv(long set, long way) { return rrpv.at(static_cast<std::
 
 void drrip::update_brrip(long set, long way)
 {
+  if (intern_ != nullptr)
+    intern_->record_memory(champsim::memory_event::drrip_brrip_tick);
   get_rrpv(set, way) = maxRRPV;
 
   brrip_counter++;
@@ -52,6 +54,12 @@ void drrip::replacement_cache_fill(uint32_t triggering_cpu, long set, long way, 
     get_rrpv(set, way) = maxRRPV - 1;
     return;
   }
+  if (intern_ != nullptr && intern_->memory_activity) {
+    using champsim::memory_event;
+    intern_->record_memory(memory_event::drrip_classify);
+    const auto category = PSEL[triggering_cpu].get_sample_category(set);
+    intern_->record_memory(category < 2 ? memory_event::drrip_selector_update : memory_event::drrip_selector_read);
+  }
   if (PSEL[triggering_cpu].decide(set)) {
     update_brrip(set, way);
   } else {
@@ -70,9 +78,12 @@ long drrip::find_victim(uint32_t triggering_cpu, uint64_t instr_id, long set, co
   auto end = std::next(begin, NUM_WAY);
 
   auto victim = std::max_element(begin, end);
-  if (auto rrpv_update = maxRRPV - *victim; rrpv_update != 0)
+  if (auto rrpv_update = maxRRPV - *victim; rrpv_update != 0) {
+    if (intern_ != nullptr)
+      intern_->record_memory(champsim::memory_event::drrip_age_row);
     for (auto it = begin; it != end; ++it)
       *it += rrpv_update;
+  }
 
   assert(begin <= victim);
   assert(victim < end);

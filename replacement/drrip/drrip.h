@@ -22,7 +22,7 @@ public:
 
   long NUM_SET, NUM_WAY;
 
-  unsigned brrip_counter;
+  unsigned brrip_counter = 0;
 
   std::vector<unsigned> rrpv;
   std::vector<champsim::msl::dscounter<long, PSEL_WIDTH>> PSEL;

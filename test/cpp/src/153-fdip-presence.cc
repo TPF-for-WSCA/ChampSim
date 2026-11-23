@@ -79,6 +79,7 @@ TEST_CASE("Matched sweep caches have identical timing and external resources", "
 TEST_CASE("FDIP skips resident virtual targets but issues missing targets", "[fdip-presence]")
 {
   CACHE cache{champsim::cache_builder{champsim::defaults::default_l1i}.sets(2).ways(1).prefetch_buffer_size(0)};
+  cache.memory_activity.emplace();
   // Physical and virtual addresses intentionally differ, including the set index.
   auto& resident = cache.block[1];
   resident.valid = true;
@@ -95,11 +96,15 @@ TEST_CASE("FDIP skips resident virtual targets but issues missing targets", "[fd
   REQUIRE(predictor.recent_prefetches.front() == champsim::block_number{champsim::address{0x3000}});
   REQUIRE(cache.is_instruction_present(champsim::address{0x100c}));
   REQUIRE_FALSE(cache.is_instruction_present(champsim::address{0x2040}));
+  CHECK((*cache.memory_activity)[champsim::memory_event::fdip_resident_compare] == 8);
+  REQUIRE(cache.is_instruction_request_pending(champsim::address{0x3000}));
+  CHECK((*cache.memory_activity)[champsim::memory_event::fdip_pending_compare] == 1);
 }
 
 TEST_CASE("FDIP checks UBS target bytes instead of treating a matching tag as a full hit", "[fdip-presence]")
 {
   CACHE cache{champsim::cache_builder{champsim::defaults::default_l1i}.sets(1).set_ubs().prefetch_buffer_size(0)};
+  cache.memory_activity.emplace();
   auto& first = cache.block[0];
   first.valid = true;
   first.address = champsim::address{0x2000};
@@ -114,6 +119,7 @@ TEST_CASE("FDIP checks UBS target bytes instead of treating a matching tag as a 
   second.offset = 4;
   second.size = 4;
   REQUIRE(cache.is_instruction_present(champsim::address{0x1002}));
+  CHECK((*cache.memory_activity)[champsim::memory_event::fdip_resident_mask] == 4);
   fdip predictor{&cache};
   predictor.prefetcher_prediction_operate(champsim::address{0x1000});
   predictor.prefetcher_cycle_operate();

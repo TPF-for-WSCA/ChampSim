@@ -271,6 +271,7 @@ uint64_t CACHE::install_ubs_subblock(const ubs_predictor_entry& victim, uint32_t
   }
 
   *way = victim.block;
+  record_memory(memory_event::fdip_resident_key_write);
   way->valid = true;
   way->prefetch = false;
   way->dirty = false;
@@ -327,7 +328,10 @@ bool CACHE::is_instruction_request_pending(champsim::address virtual_pc) const
     const auto pc = virtual_prefetch ? entry.v_address : entry.address;
     return pc.slice_upper(OFFSET_BITS) == virtual_pc.slice_upper(OFFSET_BITS);
   };
-  const auto pending = [&](const auto& queue) { return std::any_of(queue.begin(), queue.end(), matches); };
+  const auto pending = [&](const auto& queue) {
+    record_memory(champsim::memory_event::fdip_pending_compare, queue.size());
+    return std::any_of(queue.begin(), queue.end(), matches);
+  };
   // A prefetch can merge with demand, so include both request types throughout
   // translation, lookup and refill rather than trusting the original type.
   if (pending(internal_PQ) || pending(inflight_tag_check) || pending(translation_stash) || pending(MSHR) || pending(inflight_fills))
@@ -339,6 +343,7 @@ bool CACHE::is_instruction_request_pending(champsim::address virtual_pc) const
 
 bool CACHE::is_instruction_present(champsim::address virtual_pc) const
 {
+  using champsim::memory_event;
   if (ideal)
     return true;
   // FDIP predicts virtual PCs; resident lines carry both virtual and physical
@@ -347,10 +352,14 @@ bool CACHE::is_instruction_present(champsim::address virtual_pc) const
   const auto matches = [this, virtual_pc](const auto& entry) {
     return entry.valid && entry.v_address.slice_upper(OFFSET_BITS) == virtual_pc.slice_upper(OFFSET_BITS);
   };
+  record_memory(memory_event::fdip_resident_compare, PREFETCH_BUFFER_SIZE);
   if (std::any_of(prefetch_buffer.begin(), prefetch_buffer.end(), matches))
     return true;
-  if (!ubs)
+  if (!ubs) {
+    record_memory(memory_event::fdip_resident_compare, block.size());
     return std::any_of(block.begin(), block.end(), matches);
+  }
+  record_memory(memory_event::fdip_resident_compare, ubs_predictor.size());
   if (std::any_of(ubs_predictor.begin(), ubs_predictor.end(), [&](const auto& entry) { return matches(entry.block); }))
     return true;
 
@@ -358,10 +367,20 @@ bool CACHE::is_instruction_present(champsim::address virtual_pc) const
   const auto bytes = std::min(4u, 64u - offset); // Same trace granularity as demand fetches.
   const auto requested = ((uint64_t{1} << bytes) - 1) << offset;
   uint64_t present = 0;
+  record_memory(memory_event::fdip_resident_compare, block.size());
   for (const auto& entry : block)
-    if (matches(entry))
+    if (matches(entry)) {
       present |= get_ubs_block_mask(entry);
+      record_memory(memory_event::fdip_resident_mask);
+    }
   return (present & requested) == requested;
+}
+
+void CACHE::send_response(const response_type& response, const std::vector<std::deque<response_type>*>& recipients)
+{
+  record_memory(champsim::memory_event::response_delivery, recipients.size());
+  for (auto* ret : recipients)
+    ret->push_back(response);
 }
 
 bool CACHE::handle_prefetch_buffer_fill(const fill_type& fill)
@@ -376,15 +395,16 @@ bool CACHE::handle_prefetch_buffer_fill(const fill_type& fill)
       ++sim_stats.pf_useless;
       prefetch_buffer.pop_front();
       record_memory(champsim::memory_event::prefetch_remove);
+      record_memory(champsim::memory_event::fdip_resident_key_write);
     }
     prefetch_buffer.push_back(fill_block(fill, metadata));
     record_memory(champsim::memory_event::prefetch_write);
+    record_memory(champsim::memory_event::fdip_resident_key_write);
   }
   ++sim_stats.pf_fill;
   sim_stats.fill.increment(std::pair{fill.type, fill.cpu});
   response_type response{fill.address, fill.v_address, fill.data_promise->data, metadata, fill.instr_depend_on_me};
-  for (auto* ret : fill.to_return)
-    ret->push_back(response);
+  send_response(response, fill.to_return);
   return true;
 }
 
@@ -408,6 +428,7 @@ bool CACHE::try_prefetch_buffer_hit(tag_lookup_type& packet)
       return false;
     prefetch_buffer.erase(found);
     record_memory(champsim::memory_event::prefetch_remove);
+    record_memory(champsim::memory_event::fdip_resident_key_write);
     ++sim_stats.pf_useful;
   }
   if (demand || !packet.to_return.empty())
@@ -416,8 +437,7 @@ bool CACHE::try_prefetch_buffer_hit(tag_lookup_type& packet)
     metadata = impl_prefetcher_cache_operate(module_address(packet), packet.ip, true, demand, packet.type, metadata);
   sim_stats.hits.increment(std::pair{packet.type, packet.cpu});
   response_type response{packet.address, packet.v_address, buffered.data, metadata, packet.instr_depend_on_me};
-  for (auto* ret : packet.to_return)
-    ret->push_back(response);
+  send_response(response, packet.to_return);
   return true;
 }
 
@@ -497,6 +517,7 @@ bool CACHE::handle_fill(const fill_type& fill, bool buffer_promotion)
     }
 
     *way = fill_block(fill, metadata_thru);
+    record_memory(memory_event::fdip_resident_key_write);
   }
 
   // COLLECT STATS
@@ -507,9 +528,7 @@ bool CACHE::handle_fill(const fill_type& fill, bool buffer_promotion)
   }
 
   response_type response{fill.address, fill.v_address, fill.data_promise->data, metadata_thru, fill.instr_depend_on_me};
-  for (auto* ret : fill.to_return) {
-    ret->push_back(response);
-  }
+  send_response(response, fill.to_return);
 
   return true;
 }
@@ -537,6 +556,7 @@ bool CACHE::handle_ubs_fill(const fill_type& fill, bool buffer_promotion)
         record_memory(memory_event::tag_write);
         preserved_bytes |= get_ubs_block_mask(*way);
         way->valid = false;
+        record_memory(memory_event::fdip_resident_key_write);
       }
     }
 
@@ -544,6 +564,7 @@ bool CACHE::handle_ubs_fill(const fill_type& fill, bool buffer_promotion)
     predictor = {};
     predictor.accessed_bytes = preserved_bytes;
     predictor.block = fill_block(fill, fill.data_promise->pf_metadata);
+    record_memory(memory_event::fdip_resident_key_write);
     predictor.block.offset = 0;
     predictor.block.size = static_cast<uint8_t>(uint32_t{1} << champsim::to_underlying(OFFSET_BITS));
     predictor.ip = fill.ip;
@@ -583,8 +604,7 @@ bool CACHE::handle_ubs_fill(const fill_type& fill, bool buffer_promotion)
   }
 
   response_type response{fill.address, fill.v_address, fill.data_promise->data, metadata, fill.instr_depend_on_me};
-  for (auto* ret : fill.to_return)
-    ret->push_back(response);
+  send_response(response, fill.to_return);
 
   return true;
 }
@@ -602,8 +622,7 @@ bool CACHE::try_hit(tag_lookup_type& handle_pkt)
                           : handle_pkt.data;
     sim_stats.hits.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
     response_type response{handle_pkt.address, handle_pkt.v_address, data, handle_pkt.pf_metadata, handle_pkt.instr_depend_on_me};
-    for (auto* ret : handle_pkt.to_return)
-      ret->push_back(response);
+    send_response(response, handle_pkt.to_return);
     return true;
   }
 
@@ -690,8 +709,7 @@ bool CACHE::try_hit(tag_lookup_type& handle_pkt)
         ++sim_stats.pf_useful;
 
       response_type response{handle_pkt.address, handle_pkt.v_address, response_data, metadata_thru, handle_pkt.instr_depend_on_me};
-      for (auto* ret : handle_pkt.to_return)
-        ret->push_back(response);
+      send_response(response, handle_pkt.to_return);
     }
 
     return hit;
@@ -734,9 +752,7 @@ bool CACHE::try_hit(tag_lookup_type& handle_pkt)
     sim_stats.hits.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
     response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
-    for (auto* ret : handle_pkt.to_return) {
-      ret->push_back(response);
-    }
+    send_response(response, handle_pkt.to_return);
 
     way->dirty |= (handle_pkt.type == access_type::WRITE);
 
@@ -801,6 +817,8 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
     record_memory(memory_event::fill_compare, inflight_fills.size());
     fill_entry = std::find_if(inflight_fills.begin(), inflight_fills.end(), matches_address(handle_pkt.address));
     fill_already_pending = fill_entry != inflight_fills.end();
+    if (fill_already_pending)
+      record_memory(memory_event::fill_stage_merge);
   } else {
     record_memory(memory_event::mshr_read);
     record_memory(memory_event::mshr_write);
@@ -861,6 +879,7 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
   fill_type to_allocate{handle_pkt, current_time};
   to_allocate.data_promise.ready_at(current_time + (warmup ? champsim::chrono::clock::duration{} : FILL_LATENCY));
   inflight_fills.push_back(to_allocate);
+  record_memory(champsim::memory_event::fill_stage_write);
 
   sim_stats.misses.increment(std::pair{handle_pkt.type, handle_pkt.cpu});
 
@@ -870,8 +889,9 @@ bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
 template <bool UpdateRequest>
 auto CACHE::initiate_tag_check(champsim::channel* ul)
 {
-  return [time = current_time + (warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY), ul](const auto& entry) {
+  return [this, time = current_time + (warmup ? champsim::chrono::clock::duration{} : HIT_LATENCY), ul](const auto& entry) {
     CACHE::tag_lookup_type retval{entry};
+    record_memory(champsim::memory_event::fdip_pipeline_key_write);
     retval.event_cycle = time;
 
     if constexpr (UpdateRequest) {
@@ -918,8 +938,12 @@ long CACHE::operate()
   champsim::bandwidth fill_bw{MAX_FILL};
   auto [fill_begin, fill_end] = champsim::get_span_p(std::cbegin(inflight_fills), std::cend(inflight_fills), fill_bw,
                                                      [time = current_time](const auto& x) { return x.data_promise.is_ready_at(time); });
-  auto complete_end = std::find_if_not(fill_begin, fill_end, [this](const auto& x) { return this->handle_fill(x); });
+  auto complete_end = std::find_if_not(fill_begin, fill_end, [this](const auto& x) {
+    record_memory(champsim::memory_event::fill_stage_read);
+    return this->handle_fill(x);
+  });
   fill_bw.consume(std::distance(fill_begin, complete_end));
+  record_memory(champsim::memory_event::fill_stage_release, static_cast<std::size_t>(std::distance(fill_begin, complete_end)));
   inflight_fills.erase(fill_begin, complete_end);
 
   // Initiate tag checks
@@ -972,6 +996,7 @@ long CACHE::operate()
   auto [last_not_missed, stash_end] = champsim::extract_if(std::begin(inflight_tag_check), std::end(inflight_tag_check), std::back_inserter(translation_stash),
                                                            [is_ready, is_translated](const auto& x) { return is_ready(x) && !is_translated(x); });
   progress += std::distance(last_not_missed, std::end(inflight_tag_check));
+  record_memory(champsim::memory_event::fdip_pipeline_key_write, static_cast<std::size_t>(std::distance(last_not_missed, inflight_tag_check.end())));
   inflight_tag_check.erase(last_not_missed, std::end(inflight_tag_check));
 
   // Perform tag checks
@@ -1046,6 +1071,7 @@ long CACHE::invalidate_entry(champsim::address inval_addr)
   const auto buffered = prefetch_buffer.size();
   prefetch_buffer.erase(std::remove_if(prefetch_buffer.begin(), prefetch_buffer.end(), matches_address(inval_addr)), prefetch_buffer.end());
   record_memory(memory_event::prefetch_remove, buffered - prefetch_buffer.size());
+  record_memory(memory_event::fdip_resident_key_write, buffered - prefetch_buffer.size());
   auto [begin, end] = get_set_span(inval_addr);
   auto inv_way = std::find_if(begin, end, [matcher = matches_address(inval_addr)](const auto& entry) { return entry.valid && matcher(entry); });
 
@@ -1056,16 +1082,19 @@ long CACHE::invalidate_entry(champsim::address inval_addr)
       if (way->valid && matches_address(inval_addr)(*way)) {
         way->valid = false;
         record_memory(memory_event::tag_write);
+        record_memory(memory_event::fdip_resident_key_write);
       }
     }
     auto& predictor = ubs_predictor.at(static_cast<std::size_t>(get_set_index(inval_addr)));
     if (predictor.block.valid && matches_address(inval_addr)(predictor.block)) {
       predictor = {};
       record_memory(memory_event::ubs_predictor_metadata_write);
+      record_memory(memory_event::fdip_resident_key_write);
     }
   } else if (inv_way != end) {
     inv_way->valid = false;
     record_memory(memory_event::tag_write);
+    record_memory(memory_event::fdip_resident_key_write);
   }
   if (!ubs && !ideal && ideal_translation_vmem == nullptr)
     record_memory(memory_event::tag_lookup);
@@ -1147,6 +1176,7 @@ void CACHE::finish_packet(const response_type& packet)
 
   std::iter_swap(mshr_entry, std::begin(MSHR));
   inflight_fills.push_back(MSHR.front());
+  record_memory(memory_event::fill_stage_write);
   MSHR.pop_front();
   record_memory(memory_event::mshr_read);
   record_memory(memory_event::mshr_release);
@@ -1161,6 +1191,8 @@ void CACHE::finish_translation(const response_type& packet)
     [[maybe_unused]] auto old_address = entry.address;
     entry.address = champsim::address{champsim::splice(p_page, champsim::page_offset{entry.v_address})}; // translated address
     entry.is_translated = true;                                                                          // This entry is now translated
+    if (!virtual_prefetch)
+      record_memory(champsim::memory_event::fdip_pipeline_key_write);
 
     if constexpr (champsim::debug_print) {
       fmt::print("[{}_TRANSLATE] finish_translation old: {} paddr: {} vaddr: {} type: {} cycle: {}\n", this->NAME, old_address, entry.address, entry.v_address,

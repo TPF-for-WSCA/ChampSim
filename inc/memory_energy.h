@@ -13,11 +13,15 @@ namespace champsim
 enum class memory_event {
   tag_lookup, victim_metadata, tag_write, data_read, data_write,
   replacement_victim, replacement_hit, replacement_writeback_hit, replacement_fill,
+  drrip_classify, drrip_selector_read, drrip_selector_update, drrip_brrip_tick, drrip_age_row,
   mshr_compare, mshr_read, mshr_write, mshr_release, fill_compare,
+  fill_stage_read, fill_stage_write, fill_stage_merge, fill_stage_release, response_delivery,
   prefetch_compare, prefetch_read, prefetch_write, prefetch_remove, local_prefetch_read, local_prefetch_write,
   ubs_predictor_lookup, ubs_predictor_read, ubs_predictor_write, ubs_predictor_metadata_write, ubs_fragment_mask, ubs_candidate_metadata,
   fdip_target_compare, fdip_target_read, fdip_target_write, fdip_target_drop, fdip_target_reset,
   fdip_recent_compare, fdip_recent_write, fdip_recent_drop, fdip_request_mask,
+  fdip_resident_compare, fdip_resident_key_write, fdip_resident_mask,
+  fdip_pending_compare, fdip_pipeline_key_write,
   walk_address, walk_complete, count
 };
 

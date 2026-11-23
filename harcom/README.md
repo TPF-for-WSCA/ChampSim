@@ -78,7 +78,7 @@ Set the top-level `"harcom_memory_energy": true` in another configuration
 to enable the same accounting alongside its existing cache, replacement,
 prefetcher, and frontend modules. The report has separate entries for cache
 and TLB tags, payloads, replacement metadata, prefetch buffers, miss tracking,
-request queues, and each configured page-walk cache.
+request queues, refill staging, response ports, and each configured page-walk cache.
 
 - Tag probes read all ways. Data SRAM reads use the selected way after a hit
   that returns data or when a dirty writeback is accepted. A fill or WRITE
@@ -93,10 +93,18 @@ request queues, and each configured page-walk cache.
 - UBS has separate estimates for the full-line predictor, variable-width
   fragment ways, and byte-mask generation. The FDIP target and recent-entry
   queues are also modeled, independently of the core FTQ.
+- FDIP address directories mirror virtual resident keys and the keys of
+  pending requests. The reference design compares each searched group in
+  parallel and combines the masks of matching UBS fragments. The report gives
+  this design its own energy line so its cost is visible alongside the cache arrays.
+- Cache and walker refill estimates charge register writes on admission,
+  reads on each ready attempt, and release on consumption. A merge into a
+  staged fill updates its metadata. Each response recipient charges a
+  sending port write. DRRIP accounts for set classification, policy-selector
+  reads and updates, periodic BRRIP insertions, and RRPV aging.
 - The report flags ideal-mode arrays, unmodeled prefetch algorithms such as
-  Berti and Pythia, FDIP virtual presence searches, unsupported replacement
-  policies, and DRRIP's policy-selection logic. Refill staging, fan-out,
-  and global bank wiring also remain open.
+  Berti and Pythia, custom prediction-flow probes, and unsupported replacement
+  policies. Routing and global bank wiring also remain open.
 
 The vendored HARCOM header is from
 [CBP-NG commit `5ceea8358ddbab94e5621e2536530b860cc1e5b7`](https://github.com/AmpereComputing/cbp-ng/tree/5ceea8358ddbab94e5621e2536530b860cc1e5b7).

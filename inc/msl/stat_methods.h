@@ -52,6 +52,7 @@ private:
 
 public:
   std::size_t get_sample_rate() const { return cat_sampler.get_sample_rate(); }
+  std::size_t get_sample_category(const T& candidate) const { return cat_sampler.get_sample_category(candidate); }
 
   bool decide(const T& candidate)
   {

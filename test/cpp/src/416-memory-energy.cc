@@ -1,5 +1,6 @@
 #include <catch.hpp>
 
+#include "../../../replacement/drrip/drrip.h"
 #include "cache.h"
 #include "defaults.hpp"
 #include "mocks.hpp"
@@ -46,6 +47,10 @@ TEST_CASE("Memory energy activity distinguishes queue admission, MSHR merges and
   CHECK(activity[memory_event::tag_lookup] == 2);
   CHECK(activity[memory_event::mshr_write] == 2); // Allocation, then merge.
   CHECK(activity[memory_event::mshr_release] == 1);
+  CHECK(activity[memory_event::fill_stage_write] == 1);
+  CHECK(activity[memory_event::fill_stage_read] == 1);
+  CHECK(activity[memory_event::fill_stage_release] == 1);
+  CHECK(activity[memory_event::response_delivery] == 1); // Same requester merged.
   CHECK(activity[memory_event::data_write] == 1); // One fill for both requests.
   CHECK(activity[memory_event::data_read] == 0);
 
@@ -68,4 +73,33 @@ TEST_CASE("Memory energy activity distinguishes queue admission, MSHR merges and
   drain();
   CHECK(activity[memory_event::data_read] == 2); // A dirty victim is read for writeback.
   CHECK(activity[memory_event::data_write] == 3);
+  CHECK(activity[memory_event::fill_stage_write] == 2);
+  CHECK(activity[memory_event::response_delivery] == 3);
+}
+
+TEST_CASE("DRRIP accounting distinguishes sampled fills, followers and writebacks")
+{
+  using champsim::memory_event;
+  CACHE cache{champsim::cache_builder{champsim::defaults::default_l1d}.sets(64).ways(2)};
+  cache.memory_activity.emplace();
+  drrip policy{&cache};
+  const auto& activity = *cache.memory_activity;
+
+  for (unsigned index = 0; index < drrip::BRRIP_MAX - 1; ++index) {
+    policy.replacement_cache_fill(0, 0, 0, {}, {}, {}, access_type::LOAD);
+    CHECK(policy.rrpv[0] == drrip::maxRRPV);
+  }
+  policy.replacement_cache_fill(0, 0, 0, {}, {}, {}, access_type::LOAD);
+  CHECK(policy.rrpv[0] == drrip::maxRRPV - 1);
+  CHECK(policy.brrip_counter == 0);
+  CHECK(activity[memory_event::drrip_brrip_tick] == drrip::BRRIP_MAX);
+  CHECK(activity[memory_event::drrip_selector_update] == drrip::BRRIP_MAX);
+
+  policy.replacement_cache_fill(0, 2, 0, {}, {}, {}, access_type::LOAD);
+  policy.replacement_cache_fill(0, 1, 0, {}, {}, {}, access_type::WRITE);
+  CHECK(activity[memory_event::drrip_classify] == drrip::BRRIP_MAX + 1);
+  CHECK(activity[memory_event::drrip_selector_read] == 1);
+  (void)policy.find_victim(0, 0, 3, nullptr, {}, {}, access_type::LOAD);
+  (void)policy.find_victim(0, 0, 3, nullptr, {}, {}, access_type::LOAD);
+  CHECK(activity[memory_event::drrip_age_row] == 1);
 }
