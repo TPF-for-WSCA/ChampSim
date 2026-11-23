@@ -6,6 +6,27 @@
 
 struct tage_sc_l::state
 {
+  std::unique_ptr<table_activity> activity;
+  uint64_t short_lanes = 0, long_lanes = 0;
+
+  void record_read(table location, uint64_t count = 1)
+  {
+    if (activity)
+      (*activity)[static_cast<std::size_t>(location)].reads += count;
+  }
+
+  void record_write(table location, uint64_t count = 1)
+  {
+    if (activity)
+      (*activity)[static_cast<std::size_t>(location)].writes += count;
+  }
+
+  static table corrector_table(int index_bits)
+  {
+    assert(index_bits >= 7 && index_bits <= 10);
+    return static_cast<table>(static_cast<int>(table::sc_128) + index_bits - 7);
+  }
+
 #define BORNTICK 1024
   // To get the predictor storage budget on stderr  uncomment the next line
   // #define PRINTSIZE
@@ -415,6 +436,18 @@ struct tage_sc_l::state
 #endif
   }
 
+  void start_access_counting()
+  {
+    activity = std::make_unique<table_activity>();
+    short_lanes = static_cast<uint64_t>(std::count(NOSKIP + 1, NOSKIP + BORN, true));
+    long_lanes = static_cast<uint64_t>(std::count(NOSKIP + BORN, NOSKIP + NHIST + 1, true));
+  }
+
+  void record_tagged_write(int bank)
+  {
+    record_write(bank < BORN ? table::short_tagged : table::long_tagged);
+  }
+
   ~state()
   {
     delete[] btable;
@@ -709,6 +742,8 @@ struct tage_sc_l::state
 
   void baseupdate(bool Taken)
   {
+    record_write(table::bimodal_prediction);
+    record_write(table::bimodal_hysteresis);
     int inter = BIM;
     if (Taken) {
       if (inter < 3)
@@ -735,6 +770,11 @@ struct tage_sc_l::state
   //  must recomputed
   void Tagepred(uint64_t PC)
   {
+    // The modeled lookup reads the active banks in parallel and reuses the rows.
+    record_read(table::bimodal_prediction);
+    record_read(table::bimodal_hysteresis);
+    record_read(table::short_tagged, short_lanes);
+    record_read(table::long_tagged, long_lanes);
     HitBank = 0;
     AltBank = 0;
     for (int i = 1; i <= NHIST; i += 2) {
@@ -800,6 +840,7 @@ struct tage_sc_l::state
       // USE_ALT_ON_NA is positive  use the alternate prediction
 
       bool Huse_alt_on_na = (use_alt_on_na[INDUSEALT] >= 0);
+      record_read(table::alternate_chooser);
       if ((!Huse_alt_on_na) || (abs(2 * gtable[HitBank][GI[HitBank]].ctr + 1) > 1))
         tage_pred = LongestMatchPred;
       else
@@ -831,6 +872,13 @@ struct tage_sc_l::state
     // Compute the SC prediction
 
     LSUM = 0;
+    record_read(table::sc_256, 3); // Bias tables.
+    record_read(table::sc_weight); // Bias weight.
+    record_read(table::sc_threshold);
+    record_read(table::sc_local1);
+    record_read(table::sc_local2);
+    record_read(table::sc_local3);
+    record_read(table::sc_imli);
 
     // integrate BIAS prediction
     int8_t ctr = Bias[INDBIAS];
@@ -958,6 +1006,10 @@ struct tage_sc_l::state
 #endif
 
     if (brtype & 1) {
+      for (auto location : {table::sc_local1, table::sc_local2, table::sc_local3, table::sc_imli}) {
+        record_read(location);
+        record_write(location);
+      }
       GHIST = (GHIST << 1) + (taken & (target < PC));
       L_shist[INDLOCAL] = (L_shist[INDLOCAL] << 1) + (taken);
       S_slhist[INDSLOCAL] = ((S_slhist[INDSLOCAL] << 1) + taken) ^ (PC & 15);
@@ -1021,6 +1073,15 @@ struct tage_sc_l::state
     }
 
     if ((SCPRED != resolveDir) || ((abs(LSUM) < THRES))) {
+      record_read(table::sc_threshold);
+      record_write(table::sc_threshold);
+      record_read(table::sc_256, 3); // Bias training reads and writes.
+      record_write(table::sc_256, 3);
+      record_read(table::sc_weight); // Bias weight.
+      record_read(table::sc_local1);
+      record_read(table::sc_local2);
+      record_read(table::sc_local3);
+      record_read(table::sc_imli);
       {
         if (SCPRED != resolveDir) {
           Pupdatethreshold[INDUPD] += 1;
@@ -1046,8 +1107,10 @@ struct tage_sc_l::state
 #ifdef VARTHRES
       {
         int XSUM = LSUM - ((WB[INDUPDS] >= 0) * ((2 * Bias[INDBIAS] + 1) + (2 * BiasSK[INDBIASSK] + 1) + (2 * BiasBank[INDBIASBANK] + 1)));
-        if ((XSUM + ((2 * Bias[INDBIAS] + 1) + (2 * BiasSK[INDBIASSK] + 1) + (2 * BiasBank[INDBIASBANK] + 1)) >= 0) != (XSUM >= 0))
+        if ((XSUM + ((2 * Bias[INDBIAS] + 1) + (2 * BiasSK[INDBIASSK] + 1) + (2 * BiasBank[INDBIASBANK] + 1)) >= 0) != (XSUM >= 0)) {
           ctrupdate(WB[INDUPDS], (((2 * Bias[INDBIAS] + 1) + (2 * BiasSK[INDBIASSK] + 1) + (2 * BiasBank[INDBIASBANK] + 1) >= 0) == resolveDir), EWIDTH);
+          record_write(table::sc_weight);
+        }
       }
 #endif
       ctrupdate(Bias[INDBIAS], resolveDir, PERCWIDTH);
@@ -1095,6 +1158,7 @@ struct tage_sc_l::state
 
         if (LongestMatchPred != alttaken) {
           ctrupdate(use_alt_on_na[INDUSEALT], (alttaken == resolveDir), ALTWIDTH);
+          record_write(table::alternate_chooser);
         }
       }
     }
@@ -1129,6 +1193,7 @@ struct tage_sc_l::state
             {
               gtable[i][GI[i]].tag = GTAG[i];
               gtable[i][GI[i]].ctr = (resolveDir) ? 0 : -1;
+              record_tagged_write(i);
               NA++;
               if (T <= 0) {
                 break;
@@ -1139,6 +1204,7 @@ struct tage_sc_l::state
             }
 #ifdef OPTREMP
             else {
+              record_tagged_write(i);
               if (gtable[i][GI[i]].ctr > 0)
                 gtable[i][GI[i]].ctr--;
               else
@@ -1165,6 +1231,7 @@ struct tage_sc_l::state
               {
                 gtable[i][GI[i]].tag = GTAG[i];
                 gtable[i][GI[i]].ctr = (resolveDir) ? 0 : -1;
+                record_tagged_write(i);
                 NA++;
                 if (T <= 0) {
                   break;
@@ -1174,6 +1241,7 @@ struct tage_sc_l::state
               }
 #ifdef OPTREMP
               else {
+                record_tagged_write(i);
                 if (gtable[i][GI[i]].ctr > 0)
                   gtable[i][GI[i]].ctr--;
                 else
@@ -1210,11 +1278,13 @@ struct tage_sc_l::state
         { // acts as a protection
           if (AltBank > 0) {
             ctrupdate(gtable[AltBank][GI[AltBank]].ctr, resolveDir, CWIDTH);
+            record_tagged_write(AltBank);
           }
           if (AltBank == 0)
             baseupdate(resolveDir);
         }
       ctrupdate(gtable[HitBank][GI[HitBank]].ctr, resolveDir, CWIDTH);
+      record_tagged_write(HitBank);
       // sign changes: no way it can have been useful
       if (abs(2 * gtable[HitBank][GI[HitBank]].ctr + 1) == 1)
         gtable[HitBank][GI[HitBank]].u = 0;
@@ -1253,10 +1323,13 @@ struct tage_sc_l::state
       uint64_t index = GINDEX;
 
       int8_t ctr = tab[i][index];
+      if (activity)
+        record_read(corrector_table(logs - (i >= (NBR - 2))));
 
       PERCSUM += (2 * ctr + 1);
     }
 #ifdef VARTHRES
+    record_read(table::sc_weight);
     PERCSUM = (1 + (W[INDUPDS] >= 0)) * PERCSUM;
 #endif
     return ((PERCSUM));
@@ -1271,12 +1344,20 @@ struct tage_sc_l::state
 
       PERCSUM += (2 * tab[i][index] + 1);
       ctrupdate(tab[i][index], taken, PERCWIDTH);
+      if (activity) {
+        auto location = corrector_table(logs - (i >= (NBR - 2)));
+        record_read(location);
+        record_write(location);
+      }
     }
 #ifdef VARTHRES
     {
+      record_read(table::sc_weight);
       int XSUM = LSUM - ((W[INDUPDS] >= 0)) * PERCSUM;
-      if ((XSUM + PERCSUM >= 0) != (XSUM >= 0))
+      if ((XSUM + PERCSUM >= 0) != (XSUM >= 0)) {
         ctrupdate(W[INDUPDS], ((PERCSUM >= 0) == taken), EWIDTH);
+        record_write(table::sc_weight);
+      }
     }
 #endif
   }
@@ -1295,6 +1376,7 @@ struct tage_sc_l::state
 #define CONFLOOP 15
   bool getloop(uint64_t PC)
   {
+    record_read(table::loop, 4);
     LHIT = -1;
 
     LI = lindex(PC);
@@ -1323,6 +1405,7 @@ struct tage_sc_l::state
   void loopupdate(uint64_t PC, bool Taken, bool ALLOC)
   {
     if (LHIT >= 0) {
+      record_write(table::loop);
       int index = (LI ^ ((LIB >> LHIT) << 2)) + LHIT;
       // already a hit
       if (LVALID) {
@@ -1382,6 +1465,7 @@ struct tage_sc_l::state
 
       if ((MYRANDOM() & 3) == 0)
         for (int i = 0; i < 4; i++) {
+          record_write(table::loop);
           int LHIT_aux = (X + i) & 3;
           int index = (LI ^ ((LIB >> LHIT_aux) << 2)) + LHIT_aux;
           if (ltable[index].age == 0) {

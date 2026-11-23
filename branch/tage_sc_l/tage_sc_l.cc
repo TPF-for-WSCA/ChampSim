@@ -1,5 +1,6 @@
 #include "tage_sc_l.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -17,6 +18,9 @@ tage_sc_l::tage_sc_l(O3_CPU* cpu) : branch_predictor(cpu), predictor(std::make_u
 tage_sc_l::~tage_sc_l() = default;
 tage_sc_l::tage_sc_l(tage_sc_l&&) noexcept = default;
 tage_sc_l& tage_sc_l::operator=(tage_sc_l&&) noexcept = default;
+
+void tage_sc_l::track_table_activity() { predictor->start_access_counting(); }
+const tage_sc_l::table_activity& tage_sc_l::observed_table_activity() const { return *predictor->activity; }
 
 bool tage_sc_l::predict_branch(champsim::address ip)
 {

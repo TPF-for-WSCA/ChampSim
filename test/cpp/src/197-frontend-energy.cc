@@ -1,6 +1,7 @@
 #include <map>
 #include <catch.hpp>
 
+#include "../../../branch/tage_sc_l/tage_sc_l.h"
 #include "../../../btb/basic_btb/basic_btb.h"
 #include "../../../prefetcher/fdip/fdip.h"
 #include "cache.h"
@@ -21,6 +22,13 @@ struct recording_model : champsim::frontend_energy_model {
 
 struct observed_btb : basic_btb {
   observed_btb(O3_CPU* cpu, recording_model& model) : basic_btb(cpu) { set_energy_model(&model); }
+};
+
+struct observed_tage : tage_sc_l {
+  observed_tage() : tage_sc_l(nullptr) { track_table_activity(); }
+  using tage_sc_l::table;
+
+  auto accesses(table which) const { return observed_table_activity().at(static_cast<std::size_t>(which)); }
 };
 } // namespace
 
@@ -88,4 +96,24 @@ TEST_CASE("Speculative returns use the sizes at the last FDIP checkpoint")
   CHECK(model.events[frontend_event::ras_checkpoint] == 2);
   CHECK(model.events[frontend_event::ras_speculative_return] == 2 * return_stack::call_size_index(call));
   CHECK(model.events[frontend_event::ras_calibration_write] == 2 * return_stack::call_size_index(call));
+}
+
+TEST_CASE("TAGE table accounting respects cached predictions and observes training")
+{
+  observed_tage predictor;
+  using table = observed_tage::table;
+  const champsim::address pc{0x2000}, target{0x9000};
+  const bool prediction = predictor.predict_branch(pc);
+  CHECK(predictor.predict_branch(pc) == prediction);
+  CHECK(predictor.accesses(table::bimodal_prediction).reads == 1);
+  CHECK(predictor.accesses(table::bimodal_hysteresis).reads == 1);
+  CHECK(predictor.accesses(table::loop).reads == 4);
+  CHECK(predictor.accesses(table::short_tagged).reads > 0);
+  CHECK(predictor.accesses(table::long_tagged).reads > 0);
+  CHECK(predictor.accesses(table::sc_256).reads >= 3); // Bias and GEHL tables.
+  predictor.last_branch_result(pc, target, !prediction, BRANCH_CONDITIONAL);
+  CHECK(predictor.accesses(table::bimodal_prediction).reads == 1);
+  CHECK(predictor.accesses(table::sc_local1).writes == 1);
+  (void)predictor.predict_branch(pc);
+  CHECK(predictor.accesses(table::bimodal_prediction).reads == 2);
 }

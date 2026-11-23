@@ -2,7 +2,7 @@
   "executable_name": "champsim-harcom-frontend",
   "ooo_cpu": [
     {
-      "branch_predictor": "tage_sc_l",
+      "branch_predictor": "harcom/branch/harcom_tage_sc_l",
       "btb": "harcom/btb/harcom_basic_btb",
       "wrong_path": true
     }

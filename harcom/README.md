@@ -42,14 +42,16 @@ make -j
 bin/champsim-harcom-frontend -w 1000000 -i 10000000 --json frontend-results.json /path/to/trace.champsimtrace.xz
 ```
 
-The sample uses the existing TAGE-SC-L direction predictor, the HARCOM-instrumented
+The sample uses HARCOM-instrumented TAGE-SC-L direction prediction, the
 basic BTB, FDIP and wrong-path replay. To use another configuration, set its
-`btb` field to `harcom/btb/harcom_basic_btb`. The instrumentation prices activity
+`btb` field to `harcom/btb/harcom_basic_btb`. Select the TAGE-SC-L energy model
+with `branch_predictor: "harcom/branch/harcom_tage_sc_l"`. The instrumentation prices activity
 with HARCOM SRAM, register and logic models. The existing ChampSim structures
 continue to determine the simulated predictions, fetch requests and timing.
 
 | Component | Modeled design |
 | --- | --- |
+| TAGE-SC-L table accesses | One SRAM access per populated parallel lookup lane, with rows reused within a lookup. Reused same-PC results skip table reads. Separate arrays cover bimodal prediction and hysteresis, tagged banks, loop ways, statistical corrector counters and local histories. |
 | DIB | 32 sets, eight ways and 16-byte windows. Each lookup reads and compares the eight tags. Promotions and fills update a per-set LRU row. |
 | FDIP FTQ and next-PC logic | A 24-block FTQ with eight prediction-slot banks and 131 bits per slot. The model charges populated slot writes, nonempty queue reads, pointer changes and redirects. Next-PC logic includes the sequential increment, branch selection and PC register. |
 | Basic BTB direct table | 512 or 1024 sets, eight ways and full tags. The model reads the ways in parallel and charges one data-row write per fill. The lookup for a training update can supply the same row-selection result to the fill. |
@@ -57,8 +59,9 @@ continue to determine the simulated predictions, fetch requests and timing.
 | Basic BTB return-address stack | A 64-entry stack per context and four-bit call-size trackers. FDIP checkpointing copies live stack entries and clears a shadow-valid bitmap. The first committed write to a call-size index after a checkpoint saves the older value in a shadow SRAM. The speculative read selects the shadow entry when marked valid. |
 
 The report lists unsupported geometry and idealized target configurations as
-coverage gaps. TAGE-SC-L direction prediction, leakage, and the rest of the chip
-are outside this subtotal. Gshare energy can be enabled independently by selecting
+coverage gaps. TAGE-SC-L indexing, arbitration, global and folded history
+registers, and useful-bit aging remain outside the table-energy estimate.
+Leakage and the rest of the chip remain outside this subtotal. Gshare energy can be enabled independently by selecting
 the HARCOM gshare direction predictor in a configuration that uses the frontend model.
 
 The vendored HARCOM header is from
