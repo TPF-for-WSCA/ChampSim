@@ -18,10 +18,12 @@
 #define ENVIRONMENT_H
 
 #include <functional>
+#include <memory>
 #include <vector>
 
 #include "cache.h"
 #include "dram_controller.h"
+#include "memory_energy.h"
 #include "ooo_cpu.h"
 #include "operable.h"
 #include "ptw.h"
@@ -29,6 +31,7 @@
 namespace champsim
 {
 struct environment {
+  std::unique_ptr<memory_energy_model> memory_energy;
   virtual std::vector<std::reference_wrapper<O3_CPU>> cpu_view() = 0;
   virtual std::vector<std::reference_wrapper<CACHE>> cache_view() = 0;
   virtual std::vector<std::reference_wrapper<PageTableWalker>> ptw_view() = 0;

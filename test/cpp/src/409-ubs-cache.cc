@@ -79,11 +79,16 @@ SCENARIO("UBS predictor evictions install useful sub-blocks and preserve partial
   const champsim::address line_b{0x1040};
   const champsim::address line_c{0x1080};
   uint64_t id = 1;
+  uut.memory_activity.emplace();
+  uut.ubs_fragment_accesses.resize(uut.UBS_WAY_SIZES.size());
 
   REQUIRE(upper.issue(make_request(line_a, 0xfull, id++)));
   run_cycles(elements, 20);
   REQUIRE(upper.issue(make_request(line_b, 0xfull, id++)));
   run_cycles(elements, 20); // evicts A from the predictor into a 4-byte UBS way
+  CHECK(uut.ubs_fragment_accesses.at(0).writes == 1);
+  CHECK(uut.ubs_fragment_accesses.at(1).writes == 0);
+  CHECK((*uut.memory_activity)[champsim::memory_event::ubs_predictor_write] == 2);
 
   ubs_prefetcher_hits[&uut].clear();
   const auto lower_requests_before_hit = lower.packet_count();
@@ -91,6 +96,8 @@ SCENARIO("UBS predictor evictions install useful sub-blocks and preserve partial
   run_cycles(elements, 10);
   REQUIRE(lower.packet_count() == lower_requests_before_hit);
   REQUIRE(ubs_prefetcher_hits.at(&uut).back());
+  CHECK(uut.ubs_fragment_accesses.at(0).reads == 1);
+  CHECK(uut.ubs_fragment_accesses.at(1).reads == 0);
 
   const auto misses_before_partial = uut.sim_stats.misses.value_or(std::pair{access_type::LOAD, 0u}, 0);
   const auto hits_before_partial = uut.sim_stats.hits.value_or(std::pair{access_type::LOAD, 0u}, 0);

@@ -21,12 +21,14 @@
 #include <cstdint>
 #include <deque>
 #include <limits>
+#include <optional>
 #include <string_view>
 #include <vector>
 
 #include "access_type.h"
 #include "address.h"
 #include "champsim.h"
+#include "memory_energy.h"
 
 namespace champsim
 {
@@ -100,6 +102,13 @@ public:
   std::deque<response_type> returned{};
 
   stats_type sim_stats{}, roi_stats{};
+  std::optional<std::array<queue_activity, 3>> energy_activity;
+
+  void record_reads(request_queue queue, std::size_t count)
+  {
+    if (energy_activity)
+      (*energy_activity)[static_cast<std::size_t>(queue)].reads += count;
+  }
 
   channel() = default;
   channel(std::size_t rq_size, std::size_t pq_size, std::size_t wq_size, champsim::data::bits offset_bits, bool match_offset);

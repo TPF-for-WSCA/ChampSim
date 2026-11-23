@@ -1,0 +1,12 @@
+{
+  "executable_name": "champsim-harcom-memory",
+  "harcom_memory_energy": true,
+  "L1I": {
+    "prefetcher": "fdip",
+    "replacement": "srrip"
+  },
+  "L1D": {
+    "prefetcher": "berti",
+    "virtual_prefetch": true
+  }
+}

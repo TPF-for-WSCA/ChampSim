@@ -41,7 +41,10 @@ PageTableWalker::PageTableWalker(champsim::ptw_builder b)
   std::sort(std::begin(local_pscl_dims), std::end(local_pscl_dims), std::greater{});
 
   for (auto [level, sets, ways] : local_pscl_dims) {
-    pscl.emplace_back(sets, ways, pscl_indexer{b.m_vmem->shamt(level)}, pscl_indexer{b.m_vmem->shamt(level)});
+    const auto shift = b.m_vmem->shamt(level);
+    pscl.emplace_back(sets, ways, pscl_indexer{shift}, pscl_indexer{shift});
+    walk_cache_geometries.push_back({level, sets, ways, static_cast<unsigned>(champsim::to_underlying(shift))});
+    walk_cache_accesses.emplace_back();
   }
 }
 
@@ -57,7 +60,15 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
 {
   pscl_entry walk_init = {handle_pkt.v_address, CR3_addr, std::size(pscl)};
   std::vector<std::optional<pscl_entry>> pscl_hits;
-  std::transform(std::begin(pscl), std::end(pscl), std::back_inserter(pscl_hits), [walk_init](auto& x) { return x.check_hit(walk_init); });
+  for (std::size_t index = 0; index < pscl.size(); ++index) {
+    auto hit = pscl[index].check_hit(walk_init);
+    if (memory_activity) {
+      auto& activity = walk_cache_accesses[index];
+      ++activity.lookups;
+      activity.hits += hit.has_value();
+    }
+    pscl_hits.push_back(std::move(hit));
+  }
   walk_init =
       std::accumulate(std::begin(pscl_hits), std::end(pscl_hits), std::optional<pscl_entry>(walk_init), [](auto x, auto& y) { return y.value_or(*x); }).value();
 
@@ -91,6 +102,8 @@ auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<m
 
   const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
   pscl.at(pscl_idx).fill({fill_mshr.v_address, *fill_mshr.data, fill_mshr.translation_level});
+  if (memory_activity)
+    ++walk_cache_accesses[pscl_idx].fills;
 
   mshr_type fwd_mshr = fill_mshr;
   fwd_mshr.address = *fill_mshr.data;
@@ -101,6 +114,7 @@ auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<m
 
 auto PageTableWalker::step_translation(const mshr_type& source) -> std::optional<mshr_type>
 {
+  record_memory(champsim::memory_event::walk_address);
   request_type packet;
   packet.address = source.address;
   packet.v_address = source.v_address;
@@ -140,6 +154,7 @@ long PageTableWalker::operate()
     }
   });
   fill_bw.consume(std::distance(complete_begin, complete_end));
+  record_memory(champsim::memory_event::walk_complete, static_cast<std::size_t>(std::distance(complete_begin, complete_end)));
   completed.erase(complete_begin, complete_end);
 
   auto [mshr_begin, mshr_end] = champsim::get_span_p(std::cbegin(finished), std::cend(finished), fill_bw, is_ready);
@@ -163,10 +178,12 @@ long PageTableWalker::operate()
       return result.has_value();
     });
     tag_bw.consume(std::distance(rq_begin, rq_end));
+    ul->record_reads(champsim::request_queue::read, static_cast<std::size_t>(std::distance(rq_begin, rq_end)));
     ul->RQ.erase(rq_begin, rq_end);
   }
 
   MSHR.insert(std::cend(MSHR), std::begin(next_steps), std::end(next_steps));
+  record_memory(champsim::memory_event::mshr_write, next_steps.size());
   progress += fill_bw.amount_consumed() + tag_bw.amount_consumed();
 
   if constexpr (champsim::debug_print) {
@@ -212,7 +229,11 @@ void PageTableWalker::finish_packet(const response_type& packet)
   auto is_last_step = [](auto x) {
     return x.translation_level <= 0;
   };
+  record_memory(champsim::memory_event::mshr_compare, MSHR.size());
   auto last_finished = std::partition(std::begin(MSHR), std::end(MSHR), matches_addr);
+  const auto matches = static_cast<std::size_t>(std::distance(MSHR.begin(), last_finished));
+  record_memory(champsim::memory_event::mshr_read, matches);
+  record_memory(champsim::memory_event::mshr_release, matches);
 
   std::for_each(std::begin(MSHR), last_finished, [is_last_step, finish_step, finish_last_step](auto& mshr_entry) {
     mshr_entry.data = is_last_step(mshr_entry) ? finish_last_step(mshr_entry) : finish_step(mshr_entry);

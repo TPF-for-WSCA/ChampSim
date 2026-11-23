@@ -7,6 +7,7 @@
 
 #include "access_type.h"
 #include "address.h"
+#include "memory_energy.h"
 #include "modules.h"
 
 struct fdip : public champsim::modules::prefetcher {
@@ -27,6 +28,7 @@ struct fdip : public champsim::modules::prefetcher {
   void prefetcher_cycle_operate();
 
 private:
+  void record_energy(champsim::memory_event event, std::size_t count = 1) const;
   bool prefetch_target(champsim::address target, uint32_t metadata);
   [[nodiscard]] bool was_recently_prefetched(champsim::block_number block) const;
   void remember_prefetch(champsim::block_number block);

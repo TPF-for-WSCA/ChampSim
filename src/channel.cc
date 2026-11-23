@@ -57,6 +57,8 @@ bool champsim::channel::add_rq(const request_type& packet)
 
   if (result) {
     sim_stats.RQ_TO_CACHE++;
+    if (energy_activity)
+      (*energy_activity)[static_cast<std::size_t>(request_queue::read)].writes++;
   } else {
     sim_stats.RQ_FULL++;
   }
@@ -77,6 +79,8 @@ bool champsim::channel::add_wq(const request_type& packet)
 
   if (result) {
     sim_stats.WQ_TO_CACHE++;
+    if (energy_activity)
+      (*energy_activity)[static_cast<std::size_t>(request_queue::write)].writes++;
   } else {
     sim_stats.WQ_FULL++;
   }
@@ -97,6 +101,8 @@ bool champsim::channel::add_pq(const request_type& packet)
   auto result = do_add_queue(PQ, PQ_SIZE, fwd_pkt);
   if (result) {
     sim_stats.PQ_TO_CACHE++;
+    if (energy_activity)
+      (*energy_activity)[static_cast<std::size_t>(request_queue::prefetch)].writes++;
   } else {
     sim_stats.PQ_FULL++;
   }

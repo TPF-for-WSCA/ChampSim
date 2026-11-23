@@ -44,6 +44,7 @@
 #include "champsim.h"
 #include "channel.h"
 #include "chrono.h"
+#include "memory_energy.h"
 #include "modules.h"
 #include "operable.h"
 #include "util/to_underlying.h" // for to_underlying
@@ -219,6 +220,22 @@ public:
   using stats_type = cache_stats;
 
   stats_type sim_stats, roi_stats;
+  std::optional<champsim::memory_activity> memory_activity;
+  std::vector<champsim::queue_activity> ubs_fragment_accesses;
+
+  void record_memory(champsim::memory_event event, std::size_t count = 1)
+  {
+    if (memory_activity)
+      memory_activity->record(event, count);
+  }
+
+  void record_ubs_payload(std::size_t way, bool write)
+  {
+    if (!ubs_fragment_accesses.empty()) {
+      auto& access = ubs_fragment_accesses[way];
+      ++(write ? access.writes : access.reads);
+    }
+  }
 
   std::deque<fill_type> MSHR;
   std::deque<fill_type> inflight_fills;

@@ -299,7 +299,7 @@ class NormalizedConfiguration:
             print('P: vmem', list(self.vmem.keys()))
 
         self.root = util.subdict(config_file,
-            ('block_size', 'page_size', 'heartbeat_frequency')
+            ('block_size', 'page_size', 'heartbeat_frequency', 'harcom_memory_energy')
         )
 
     def merge(self, rhs):
@@ -390,7 +390,7 @@ class NormalizedConfiguration:
                 **module_parse(mod_name, prefetcher_context)
             }
 
-        tlb_path = itertools.chain(*(util.iter_system(caches, name) for name in itertools.chain(*path_root_names[2:])))
+        tlb_path = tuple(itertools.chain(*(util.iter_system(caches, name) for name in itertools.chain(*path_root_names[2:]))))
         data_path = itertools.chain(*(util.iter_system(caches, name) for name in itertools.chain(*path_root_names[:2])))
         caches = util.combine_named(
             # Set prefetcher_activate
@@ -467,6 +467,15 @@ class NormalizedConfiguration:
             'btb': util.combine_named(*(c['_btb_data'] for c in cores), btb_context.find_all())
         }
 
+        memory_energy_enabled = root_config.get('harcom_memory_energy', False)
+        if not isinstance(memory_energy_enabled, bool):
+            raise ValueError('harcom_memory_energy must be a boolean')
+        if memory_energy_enabled:
+            elements['memory_energy_tlbs'] = tuple(sorted({cache['name'] for cache in tlb_path}))
+            model_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'harcom', 'memory')
+            model = modules.ModuleSearchContext(()).data_from_path(model_dir)
+            module_info['memory_energy'] = {model['name']: model}
+
         config_extern = {
             **util.subdict(root_config, ('block_size', 'page_size', 'heartbeat_frequency')),
             'num_cores': len(cores)
@@ -519,5 +528,6 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
             *(c['_branch_predictor_data'] for c in elements['cores']),
             *(c['_btb_data'] for c in elements['cores'])
         ))]
+        modules_to_compile.extend(module_info.get('memory_energy', ()))
 
     return executable_name(*configs), elements, modules_to_compile, module_info, config_file

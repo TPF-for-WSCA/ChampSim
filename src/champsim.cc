@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <chrono>
 #include <numeric>
+#include <iterator>
 #include <vector>
 #include <fmt/chrono.h>
 #include <fmt/core.h>
@@ -56,6 +57,10 @@ std::vector<component_energy_stats> sample_component_energy(environment& env)
                               cpu.clock_period, component.dynamic_energy_fJ * 1e-15});
       }
     }
+  }
+  if (env.memory_energy) {
+    auto memory = env.memory_energy->energy_snapshots();
+    components.insert(components.end(), std::make_move_iterator(memory.begin()), std::make_move_iterator(memory.end()));
   }
   return components;
 }
@@ -206,6 +211,8 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
 
   std::vector<std::string> coverage_gaps;
   if (!is_warmup) {
+    if (env.memory_energy)
+      coverage_gaps = env.memory_energy->coverage_gaps();
     for (const O3_CPU& cpu : cpus) {
       if (cpu.frontend_energy != nullptr) {
         for (const auto& gap : cpu.frontend_energy->coverage_gaps())
@@ -217,7 +224,7 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   if (!begin_energy.empty() || !coverage_gaps.empty()) {
     auto components = sample_component_energy(env);
     for (std::size_t index = 0; index < components.size(); ++index)
-      components[index].dynamic_energy_joules -= begin_energy[index].dynamic_energy_joules;
+      components[index].dynamic_energy_joules -= begin_energy.at(index).dynamic_energy_joules;
 
     const auto instructions = std::accumulate(stats.sim_cpu_stats.begin(), stats.sim_cpu_stats.end(), 0LL,
                                               [](long long sum, const auto& core) { return sum + core.instrs(); });

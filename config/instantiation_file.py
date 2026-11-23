@@ -22,6 +22,7 @@ import multiprocessing as mp
 
 from . import util
 from . import cxx
+from . import modules
 
 pmem_fmtstr = 'champsim::chrono::picoseconds{{{clock_period_dbus}}}, champsim::chrono::picoseconds{{{clock_period_mc}}}, std::size_t{{{_tRP}}}, std::size_t{{{_tRCD}}}, std::size_t{{{_tCAS}}}, std::size_t{{{_tRAS}}}, champsim::chrono::microseconds{{{_refresh_period}}}, {{{_ulptr}}}, {rq_size}, {wq_size}, {channels}, champsim::data::bytes{{{channel_width}}}, {_bank_rows}, {_bank_columns}, {ranks}, {bankgroups}, {banks}, {_refreshes_per_period}'
 vmem_fmtstr = 'champsim::data::bytes{{{pte_page_size}}}, {num_levels}, champsim::chrono::picoseconds{{{clock_period}*{minor_fault_penalty}}}, {dram_name}, {_randomization}'
@@ -355,7 +356,7 @@ def decorate_queues(caches, ptws, pmem):
 def get_queue_info(ul_pairs, decoration):
     return [decoration.get(ll) for ll,_ in ul_pairs]
 
-def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
+def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id, memory_energy_tlbs=None):
     '''
     Generate the lines for a C++ file that instantiates a configuration.
     '''
@@ -434,6 +435,21 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id):
     yield from cache_instantiation_body
     yield from core_instantiation_body
     yield '{'
+    if memory_energy_tlbs is not None:
+        builtin_policies = {modules.get_module_name(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'replacement', name)): name
+                            for name in ('lru', 'srrip', 'drrip')}
+        no_prefetcher = modules.get_module_name(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'prefetcher', 'no'))
+        fdip_prefetcher = modules.get_module_name(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'prefetcher', 'fdip'))
+        yield '  champsim::configure_harcom_memory(*this, {'
+        for cache in caches:
+            policies = cache['_replacement_data']
+            policy = builtin_policies.get(policies[0]['name'], 'unmanaged') if len(policies) == 1 else 'unmanaged'
+            translation = str(cache['name'] in memory_energy_tlbs).lower()
+            prefetchers = {p['name'] for p in cache['_prefetcher_data']}
+            fdip = str(fdip_prefetcher in prefetchers).lower()
+            has_unmodeled = str(bool(prefetchers - {no_prefetcher, fdip_prefetcher})).lower()
+            yield f'    {{{translation}, champsim::replacement_energy_policy::{policy}, {fdip}, {has_unmodeled}}},'
+        yield '  });'
     yield '}'
     yield ''
 
