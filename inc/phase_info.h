@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -26,6 +27,7 @@
 #include "cache_stats.h"
 #include "core_stats.h"
 #include "dram_stats.h"
+#include "energy_stats.h"
 
 namespace champsim
 {
@@ -44,6 +46,7 @@ struct phase_stats {
   std::vector<O3_CPU::stats_type> roi_cpu_stats, sim_cpu_stats;
   std::vector<CACHE::stats_type> roi_cache_stats, sim_cache_stats;
   std::vector<DRAM_CHANNEL::stats_type> roi_dram_stats, sim_dram_stats;
+  std::optional<phase_energy_stats> energy;
 };
 
 } // namespace champsim

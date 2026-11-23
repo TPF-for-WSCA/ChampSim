@@ -288,7 +288,7 @@ $(DEP_ROOT)/test/%.d: $$(test_nonmain_prereqs) | $(generated_files) $$(dir $$@)
 	$(dep_recipe)
 
 # Connect module objects to their sources
-base_module_prereqs = $(call get_module_src_dir,$(@D))/$(basename $(@F)).cc $(call maybe_legacy_file,$(call get_module_src_dir,$@),$(if $(filter-out %/legacy_bridge,$(basename $@)),legacy.options,function_patch.options)) module.options $(base_options)
+base_module_prereqs = $(call get_module_src_dir,$(@D))/$(basename $(@F)).cc $(wildcard $(call get_module_src_dir,$(@D))/compile.options) $(call maybe_legacy_file,$(call get_module_src_dir,$@),$(if $(filter-out %/legacy_bridge,$(basename $@)),legacy.options,function_patch.options)) module.options $(base_options)
 $(OBJ_ROOT)/modules/%.o: $$(base_module_prereqs) | $(@:$(OBJ_ROOT)/%.o=$(DEP_ROOT)/%.d) $$(dir $$@)
 	$(obj_recipe)
 $(DEP_ROOT)/modules/%.d: $$(base_module_prereqs) | $(generated_files) $$(dir $$@)
@@ -368,7 +368,7 @@ pytest:
 	PYTHONPATH=$(PYTHONPATH):$(ROOT_DIR) python3 -m unittest discover -v --start-directory='test/python'
 
 ifeq (,$(filter clean compile_commands compile_commands_clean configclean experiment run pytest maketest, $(MAKECMDGOALS)))
--include $(patsubst $(OBJ_ROOT)/%.o,$(DEP_ROOT)/%.d,$(foreach build_id,TEST $(build_ids),$(call get_base_objs,$(build_id))) $(test_base_objs) $(base_module_objs))
+-include $(patsubst $(OBJ_ROOT)/%.o,$(DEP_ROOT)/%.d,$(foreach build_id,TEST $(build_ids),$(call get_base_objs,$(build_id))) $(test_base_objs) $(base_module_objs) $(nonbase_module_objs))
 endif
 
 ifeq (maketest,$(findstring maketest,$(MAKECMDGOALS)))

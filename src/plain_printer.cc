@@ -223,6 +223,18 @@ std::vector<std::string> champsim::plain_printer::format(champsim::phase_stats& 
     std::move(std::begin(sublines), std::end(sublines), std::back_inserter(lines));
   }
 
+  if (const auto& energy = stats.energy) {
+    lines.emplace_back("Modeled energy for the simulation phase");
+    lines.push_back(fmt::format("Simulated interval [{}, {}) ps", energy->begin.time_since_epoch().count(), energy->end.time_since_epoch().count()));
+    for (const auto& component : energy->components) {
+      lines.push_back(fmt::format("{} ({}): {:.6g} J dynamic", component.instance, component.model, component.dynamic_energy_joules));
+    }
+    const auto subtotal = energy->modeled_dynamic_energy_joules();
+    const auto power = energy->average_dynamic_power_watts(subtotal);
+    lines.push_back(fmt::format("Modeled dynamic energy subtotal: {:.6g} J, average dynamic power: {}", subtotal,
+                                power ? fmt::format("{:.6g} W", *power) : "-"));
+  }
+
   return lines;
 }
 

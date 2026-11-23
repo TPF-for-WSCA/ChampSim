@@ -267,6 +267,7 @@ public:
     virtual void impl_initialize_branch_predictor() = 0;
     virtual void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) = 0;
     virtual bool impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) = 0;
+    [[nodiscard]] virtual std::vector<champsim::energy_model_snapshot> energy_snapshots() const = 0;
   };
 
   struct btb_module_concept {
@@ -286,6 +287,7 @@ public:
     void impl_initialize_branch_predictor() final;
     void impl_last_branch_result(champsim::address ip, champsim::address target, bool taken, uint8_t branch_type) final;
     [[nodiscard]] bool impl_predict_branch(champsim::address ip, champsim::address predicted_target, bool always_taken, uint8_t branch_type) final;
+    [[nodiscard]] std::vector<champsim::energy_model_snapshot> energy_snapshots() const final;
   };
 
   template <typename... Ts>
@@ -342,6 +344,19 @@ public:
       throw std::invalid_argument("FDIP FTQ size must be nonzero");
   }
 };
+
+template <typename... Bs>
+std::vector<champsim::energy_model_snapshot> O3_CPU::branch_module_model<Bs...>::energy_snapshots() const
+{
+  std::vector<champsim::energy_model_snapshot> snapshots;
+  [[maybe_unused]] auto add_snapshot = [&](const auto& predictor) {
+    using predictor_type = std::decay_t<decltype(predictor)>;
+    if constexpr (champsim::modules::branch_predictor::has_energy_snapshot<predictor_type>)
+      snapshots.push_back(predictor.energy_snapshot());
+  };
+  std::apply([&](const auto&... predictors) { (add_snapshot(predictors), ...); }, intern_);
+  return snapshots;
+}
 
 template <typename... Bs>
 void O3_CPU::branch_module_model<Bs...>::impl_initialize_branch_predictor()

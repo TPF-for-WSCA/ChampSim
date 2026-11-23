@@ -27,6 +27,7 @@
 #include "block.h"
 #include "btb_prediction_token.h"
 #include "champsim.h"
+#include "energy_stats.h"
 
 class CACHE;
 class O3_CPU;
@@ -71,6 +72,15 @@ struct branch_predictor : public bound_to<O3_CPU> {
 
   template <typename T, typename... Args>
   constexpr static bool has_predict_branch = decltype(predict_branch_member_impl<T, Args...>(0))::value;
+
+  template <typename T>
+  static auto energy_snapshot_member_impl(int)
+      -> decltype(static_cast<energy_model_snapshot>(std::declval<const T&>().energy_snapshot()), std::true_type{});
+  template <typename>
+  static auto energy_snapshot_member_impl(long) -> std::false_type;
+
+  template <typename T>
+  constexpr static bool has_energy_snapshot = decltype(energy_snapshot_member_impl<T>(0))::value;
 };
 
 struct btb : public bound_to<O3_CPU> {

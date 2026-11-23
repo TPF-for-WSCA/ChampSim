@@ -1,0 +1,8 @@
+{
+  "executable_name": "champsim-harcom-gshare",
+  "ooo_cpu": [
+    {
+      "branch_predictor": "harcom/branch/harcom_gshare"
+    }
+  ]
+}

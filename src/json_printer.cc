@@ -135,6 +135,36 @@ void to_json(nlohmann::json& j, const champsim::phase_stats stats)
   std::map<std::string, nlohmann::json> statsmap{{"name", stats.name}, {"traces", stats.trace_names}};
   statsmap.emplace("roi", roi_stats);
   statsmap.emplace("sim", sim_stats);
+  if (const auto& energy = stats.energy) {
+    auto encode_optional = [](std::optional<double> value) {
+      return value ? nlohmann::json(*value) : nlohmann::json(nullptr);
+    };
+
+    auto components = nlohmann::json::array();
+    for (const auto& component : energy->components) {
+      components.push_back({{"instance", component.instance},
+                            {"model", component.model},
+                            {"model_revision", component.revision},
+                            {"assumptions", component.assumptions},
+                            {"clock_period_ps", component.clock_period.count()},
+                            {"dynamic_energy_joules", component.dynamic_energy_joules},
+                            {"average_dynamic_power_watts", encode_optional(energy->average_dynamic_power_watts(component.dynamic_energy_joules))}});
+    }
+
+    const auto subtotal = energy->modeled_dynamic_energy_joules();
+    statsmap.emplace("energy", nlohmann::json{
+        {"coverage", "partial"},
+        {"unmodeled", {"branch predictors absent from components", "other frontend structures", "core backend",
+                       "cache and translation", "on-chip interconnect", "DRAM controller and DRAM", "leakage"}},
+        {"begin_ps", energy->begin.time_since_epoch().count()},
+        {"end_ps", energy->end.time_since_epoch().count()},
+        {"retired_instructions", energy->instructions},
+        {"modeled_dynamic_energy_joules", subtotal},
+        {"modeled_average_dynamic_power_watts", encode_optional(energy->average_dynamic_power_watts(subtotal))},
+        {"modeled_dynamic_energy_per_instruction_joules",
+         encode_optional(energy->instructions > 0 ? std::optional{subtotal / static_cast<double>(energy->instructions)} : std::nullopt)},
+        {"components", std::move(components)}});
+  }
   j = statsmap;
 }
 } // namespace champsim

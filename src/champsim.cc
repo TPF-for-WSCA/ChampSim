@@ -38,6 +38,23 @@ std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chr
 
 namespace champsim
 {
+namespace
+{
+std::vector<component_energy_stats> sample_component_energy(environment& env)
+{
+  std::vector<component_energy_stats> components;
+  for (const O3_CPU& cpu : env.cpu_view()) {
+    const auto predictors = cpu.branch_module_pimpl->energy_snapshots();
+    for (std::size_t index = 0; index < predictors.size(); ++index) {
+      const auto& predictor = predictors[index];
+      components.push_back({fmt::format("CPU {} branch predictor {}", cpu.cpu, index), predictor.model, predictor.revision, predictor.assumptions,
+                            cpu.clock_period, predictor.dynamic_energy_fJ * 1e-15});
+    }
+  }
+  return components;
+}
+} // namespace
+
 long do_cycle(environment& env, std::vector<tracereader>& traces, std::vector<std::size_t> trace_index, champsim::chrono::clock& global_clock)
 {
   auto operables = env.operable_view();
@@ -71,6 +88,9 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
     op.warmup = is_warmup;
     op.begin_phase();
   }
+
+  const auto phase_begin = global_clock.now();
+  const auto begin_energy = is_warmup ? std::vector<component_energy_stats>{} : sample_component_energy(env);
 
   const auto time_quantum = std::accumulate(std::cbegin(operables), std::cend(operables), champsim::chrono::clock::duration::max(),
                                             [](const auto acc, const operable& y) { return std::min(acc, y.clock_period); });
@@ -177,6 +197,16 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
                  [](const DRAM_CHANNEL& chan) { return chan.sim_stats; });
   std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.roi_dram_stats),
                  [](const DRAM_CHANNEL& chan) { return chan.roi_stats; });
+
+  if (!begin_energy.empty()) {
+    auto components = sample_component_energy(env);
+    for (std::size_t index = 0; index < components.size(); ++index)
+      components[index].dynamic_energy_joules -= begin_energy[index].dynamic_energy_joules;
+
+    const auto instructions = std::accumulate(stats.sim_cpu_stats.begin(), stats.sim_cpu_stats.end(), 0LL,
+                                              [](long long sum, const auto& core) { return sum + core.instrs(); });
+    stats.energy = phase_energy_stats{phase_begin, global_clock.now(), instructions, std::move(components)};
+  }
 
   return stats;
 }
