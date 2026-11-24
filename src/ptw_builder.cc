@@ -16,6 +16,8 @@
 
 #include "ptw_builder.h"
 
+#include <stdexcept>
+
 #include <cmath>
 #include <utility>
 
@@ -46,6 +48,14 @@ auto champsim::ptw_builder::add_pscl(uint8_t lvl, uint32_t set, uint32_t way) ->
 auto champsim::ptw_builder::mshr_size(uint32_t mshr_size_) -> ptw_builder&
 {
   m_mshr_size = mshr_size_;
+  return *this;
+}
+
+auto champsim::ptw_builder::refill_queue_size(uint32_t entries) -> ptw_builder&
+{
+  if (entries == 0)
+    throw std::invalid_argument("refill_queue_size must be positive");
+  m_refill_queue_size = entries;
   return *this;
 }
 

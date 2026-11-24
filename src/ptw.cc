@@ -32,7 +32,7 @@
 PageTableWalker::PageTableWalker(champsim::ptw_builder b)
     : champsim::operable(b.m_clock_period), upper_levels(b.m_uls), lower_level(b.m_ll), NAME(b.m_name),
       MSHR_SIZE(b.m_mshr_size.value_or(std::lround(b.m_mshr_factor * std::floor(std::size(upper_levels))))),
-      MAX_READ(b.m_max_tag_check.value_or(champsim::bandwidth::maximum_type{b.scaled_by_ul_size(b.m_bandwidth_factor)})),
+      REFILL_QUEUE_SIZE(b.m_refill_queue_size), MAX_READ(b.m_max_tag_check.value_or(champsim::bandwidth::maximum_type{b.scaled_by_ul_size(b.m_bandwidth_factor)})),
       MAX_FILL(b.m_max_fill.value_or(champsim::bandwidth::maximum_type{b.scaled_by_ul_size(b.m_bandwidth_factor)})),
       HIT_LATENCY(b.m_clock_period * b.m_latency), vmem(b.m_vmem), CR3_addr(b.m_vmem->get_pte_pa(b.m_cpu, champsim::page_number{}, b.m_vmem->pt_levels).first)
 {
@@ -140,10 +140,19 @@ long PageTableWalker::operate()
   auto is_ready = [time = current_time](const auto& pkt) {
     return pkt.data.is_ready_at(time);
   };
-  std::for_each(std::cbegin(lower_level->returned), std::cend(lower_level->returned), [this](const auto& pkt) { this->finish_packet(pkt); });
-  progress += std::distance(std::cbegin(lower_level->returned), std::cend(lower_level->returned));
-  lower_level->record_responses(lower_level->returned.size());
-  lower_level->returned.clear();
+  auto& returned = lower_level->returned;
+  std::size_t admitted = 0;
+  while (!returned.empty()) {
+    const auto walks_before = MSHR.size();
+    if (!finish_packet(returned.front())) {
+      progress += static_cast<long>(walks_before - MSHR.size());
+      break;
+    }
+    returned.pop_front();
+    ++admitted;
+  }
+  progress += static_cast<long>(admitted);
+  lower_level->record_responses(admitted);
 
   std::vector<mshr_type> next_steps{};
 
@@ -203,7 +212,7 @@ long PageTableWalker::operate()
   return progress;
 }
 
-void PageTableWalker::finish_packet(const response_type& packet)
+bool PageTableWalker::finish_packet(const response_type& packet)
 {
   auto finish_step = [this](auto mshr_entry) {
     auto [ppage, penalty] = this->vmem->get_pte_pa(mshr_entry.cpu, champsim::page_number{mshr_entry.v_address}, mshr_entry.translation_level);
@@ -235,9 +244,14 @@ void PageTableWalker::finish_packet(const response_type& packet)
   auto is_last_step = [](auto x) {
     return x.translation_level <= 0;
   };
-  record_memory(champsim::memory_event::mshr_compare, MSHR.size());
-  auto last_finished = std::partition(std::begin(MSHR), std::end(MSHR), matches_addr);
-  const auto matches = static_cast<std::size_t>(std::distance(MSHR.begin(), last_finished));
+  if (pending_return_matches == 0) {
+    record_memory(champsim::memory_event::mshr_compare, MSHR.size());
+    const auto match_end = std::partition(MSHR.begin(), MSHR.end(), matches_addr);
+    pending_return_matches = static_cast<std::size_t>(std::distance(MSHR.begin(), match_end));
+  }
+  const auto available = REFILL_QUEUE_SIZE ? *REFILL_QUEUE_SIZE - finished.size() - completed.size() : pending_return_matches;
+  const auto matches = std::min(pending_return_matches, available);
+  const auto last_finished = std::next(MSHR.begin(), static_cast<std::ptrdiff_t>(matches));
   record_memory(champsim::memory_event::mshr_read, matches);
   record_memory(champsim::memory_event::mshr_release, matches);
   record_memory(champsim::memory_event::fill_stage_write, matches);
@@ -248,6 +262,8 @@ void PageTableWalker::finish_packet(const response_type& packet)
 
   std::partition_copy(std::begin(MSHR), last_finished, std::back_inserter(completed), std::back_inserter(finished), is_last_step);
   MSHR.erase(std::begin(MSHR), last_finished);
+  pending_return_matches -= matches;
+  return pending_return_matches == 0;
 }
 
 void PageTableWalker::begin_phase()

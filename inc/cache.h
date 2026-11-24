@@ -193,6 +193,7 @@ public:
   uint32_t cpu = 0;
   std::string NAME;
   uint32_t NUM_SET, NUM_WAY, MSHR_SIZE;
+  std::optional<uint32_t> REFILL_QUEUE_SIZE;
   std::size_t PQ_SIZE;
   std::size_t PREFETCH_BUFFER_SIZE;
   champsim::chrono::clock::duration HIT_LATENCY;
@@ -416,7 +417,8 @@ public:
   template <typename... Ps, typename... Rs>
   explicit CACHE(champsim::cache_builder<champsim::cache_builder_module_type_holder<Ps...>, champsim::cache_builder_module_type_holder<Rs...>> b)
       : champsim::operable(b.m_clock_period), upper_levels(b.m_uls), lower_level(b.m_ll), lower_translate(b.m_lt), NAME(b.m_name), NUM_SET(b.get_num_sets()),
-        NUM_WAY(b.m_ubs ? static_cast<uint32_t>(std::size(b.m_ubs_way_sizes)) : b.get_num_ways()), MSHR_SIZE(b.get_num_mshrs()), PQ_SIZE(b.m_pq_size),
+        NUM_WAY(b.m_ubs ? static_cast<uint32_t>(std::size(b.m_ubs_way_sizes)) : b.get_num_ways()), MSHR_SIZE(b.get_num_mshrs()),
+        REFILL_QUEUE_SIZE(b.m_refill_queue_size), PQ_SIZE(b.m_pq_size),
         PREFETCH_BUFFER_SIZE(b.m_prefetch_buffer_size),
         HIT_LATENCY(b.get_hit_latency() * b.m_clock_period), FILL_LATENCY(b.get_fill_latency() * b.m_clock_period), OFFSET_BITS(b.m_offset_bits), ideal(b.m_ideal),
         ideal_translation_vmem(b.m_ideal_translation_vmem), ubs(b.m_ubs),

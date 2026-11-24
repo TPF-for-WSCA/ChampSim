@@ -21,6 +21,25 @@ line tags whose resident bytes do not cover the fetch). `partial_miss` is a
 subset of `miss`; do not add it again. Demand MPKI includes merged demand misses
 and excludes prefetch requests. A demand served by the prefetch buffer is a hit.
 
+## Refill queue capacity
+
+Set `refill_queue_size` to a positive entry count in a cache, TLB, or PTW
+configuration. For example:
+
+```json
+{
+  "L1D": { "refill_queue_size": 8 },
+  "L2C": { "refill_queue_size": 16 },
+  "PTW": { "refill_queue_size": 4 }
+}
+```
+
+When a refill queue is full, responses wait at the receiving channel and cache
+writebacks that need to allocate a line retry from the tag pipeline. The PTW
+shares its capacity across intermediate and completed walks. Refill bandwidth
+and MSHR size are configured independently. Omit `refill_queue_size` to keep
+the default unbounded behavior.
+
 ## Instruction prefetch buffer
 
 All L1 instruction caches use a 32-entry, fully associative FIFO prefetch buffer

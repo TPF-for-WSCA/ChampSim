@@ -71,6 +71,9 @@ class PageTableWalker : public champsim::operable
   std::deque<mshr_type> MSHR;
   std::deque<mshr_type> finished;
   std::deque<mshr_type> completed;
+  // A response can match several walks. Remaining matches stay at the front
+  // of the MSHR queue until all of them enter refill staging.
+  std::size_t pending_return_matches = 0;
 
   std::vector<channel_type*> upper_levels;
   channel_type* lower_level;
@@ -79,7 +82,7 @@ class PageTableWalker : public champsim::operable
   std::optional<mshr_type> handle_fill(const mshr_type& fill_mshr);
   std::optional<mshr_type> step_translation(const mshr_type& source);
 
-  void finish_packet(const response_type& packet);
+  bool finish_packet(const response_type& packet);
 
 public:
   struct walk_cache_geometry {
@@ -91,6 +94,7 @@ public:
 
   const std::string NAME;
   const uint32_t MSHR_SIZE;
+  const std::optional<uint32_t> REFILL_QUEUE_SIZE;
   champsim::bandwidth::maximum_type MAX_READ, MAX_FILL;
   const champsim::chrono::clock::duration HIT_LATENCY;
 

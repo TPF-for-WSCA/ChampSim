@@ -442,6 +442,12 @@ class NormalizedConfiguration:
             ({ 'name': cpu['PTW'], 'frequency': cpu.get('frequency'), 'cpu': cpu.get('_index'), '_queue_factor': 32 } for cpu in cores)
         )
 
+        for storage in itertools.chain(caches.values(), ptws.values()):
+            if 'refill_queue_size' in storage:
+                size = storage['refill_queue_size']
+                if type(size) is not int or not 1 <= size <= 0xffffffff:
+                    raise ValueError(f'{storage["name"]}: refill_queue_size must be a positive 32-bit integer')
+
         cores = list(util.combine_named(cores,
             ({
                 'name': c['name'],

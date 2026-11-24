@@ -38,6 +38,7 @@ class ptw_builder
   uint32_t m_cpu{0};
   std::array<std::array<uint32_t, 3>, 16> m_pscl{}; // fixed size for now
   std::optional<uint32_t> m_mshr_size{};
+  std::optional<uint32_t> m_refill_queue_size{};
   double m_mshr_factor{1};
   std::optional<champsim::bandwidth::maximum_type> m_max_tag_check{};
   std::optional<champsim::bandwidth::maximum_type> m_max_fill{};
@@ -57,6 +58,8 @@ public:
   ptw_builder& cpu(uint32_t cpu_);
   ptw_builder& add_pscl(uint8_t lvl, uint32_t set, uint32_t way);
   ptw_builder& mshr_size(uint32_t mshr_size_);
+  // Limit the total entries in both refill stages. The default is unbounded.
+  ptw_builder& refill_queue_size(uint32_t entries);
   ptw_builder& mshr_factor(double mshr_factor_);
   ptw_builder& tag_bandwidth(champsim::bandwidth::maximum_type max_read_);
   ptw_builder& fill_bandwidth(champsim::bandwidth::maximum_type max_fill_);

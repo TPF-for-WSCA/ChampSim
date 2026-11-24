@@ -44,7 +44,7 @@ class harcom_memory_model final : public memory_energy_model
   std::vector<std::string> gaps{
       "cache and translation routing, wire loads and global bank wiring",
       "translation storage outside modeled TLBs and page-walk caches",
-      "cache refill and page-walk capacities beyond the configured MSHR-depth leakage proxies"};
+      "page-walk tracking beyond the configured MSHR-depth leakage proxy"};
 
   meter& add_meter(std::string instance, std::string_view model, std::string_view assumptions, chrono::picoseconds period)
   {
@@ -80,13 +80,14 @@ class harcom_memory_model final : public memory_energy_model
     }
   }
 
-  void add_mshr(const std::string& name, chrono::picoseconds period, const memory_activity& activity, std::size_t rows, std::size_t compare_bits)
+  void add_mshr(const std::string& name, chrono::picoseconds period, const memory_activity& activity, std::size_t rows,
+                std::size_t refill_slots, std::size_t compare_bits)
   {
     auto& model = add_meter(name + " miss tracking", "HARCOM MSHR and fill search",
                             "Parallel valid-entry address matching, SRAM rows for live MSHRs, and fill-queue address comparisons.", period);
     constexpr auto mshr_bits = 64 * 3 + 32 + 16 + 8;
     const auto word = sram_row(rows, mshr_bits);
-    model.leakage_watts = word.leakage_watts + register_leakage_watts(rows) + match_leakage_watts(compare_bits, 2 * rows);
+    model.leakage_watts = word.leakage_watts + register_leakage_watts(rows) + match_leakage_watts(compare_bits, rows + refill_slots);
     model.add(activity, memory_event::mshr_compare, match_energy(compare_bits));
     model.add(activity, memory_event::fill_compare, match_energy(compare_bits));
     model.add(activity, memory_event::mshr_read, word.read);
@@ -136,7 +137,7 @@ class harcom_memory_model final : public memory_energy_model
                    std::size_t refill_slots, std::size_t response_ports)
   {
     auto& stage = add_meter(name + " refill staging and response ports", "HARCOM refill and response registers",
-                            "Leakage uses a refill bank sized to the configured MSHR depth and one response register per upstream port.",
+                            "One refill bank and one response register per upstream port. Leakage uses the configured refill depth, with MSHR depth as the fallback.",
                             period);
     constexpr auto slice_bits = 32;
     constexpr auto word_write = hcm::flipflops<slice_bits>::write_energy_fJ;
@@ -239,8 +240,9 @@ class harcom_memory_model final : public memory_energy_model
     const auto resident_slots = cache.ideal ? 0 : static_cast<std::size_t>(cache.NUM_SET) * cache.NUM_WAY
         + (cache.ubs ? cache.NUM_SET : 0) + cache.PREFETCH_BUFFER_SIZE;
     const auto tag_slots = static_cast<std::size_t>(to_underlying(cache.MAX_TAG) * (cache.HIT_LATENCY / cache.clock_period));
-    // One MSHR-sized key bank each for translations, misses and staged fills.
-    auto pending_slots = cache.PQ_SIZE + tag_slots + 3 * static_cast<std::size_t>(cache.MSHR_SIZE);
+    // In addition to staged fills, translations and misses each have an MSHR-sized key bank.
+    const auto refill_slots = cache.REFILL_QUEUE_SIZE.value_or(cache.MSHR_SIZE);
+    auto pending_slots = cache.PQ_SIZE + tag_slots + 2 * static_cast<std::size_t>(cache.MSHR_SIZE) + refill_slots;
     for (const auto* input : cache.upper_levels) {
       for (const auto depth : {input->rq_size(), input->pq_size(), input->wq_size()})
         if (depth != std::numeric_limits<std::size_t>::max())
@@ -267,8 +269,11 @@ class harcom_memory_model final : public memory_energy_model
     }
     const auto payload = config.translation ? 64 - offset_bits : uint64_t{8} << offset_bits;
     add_queues(cache.NAME, cache.clock_period, cache.upper_levels, payload);
-    add_mshr(cache.NAME, cache.clock_period, activity, cache.MSHR_SIZE, 64 - offset_bits);
-    add_refills(cache.NAME, cache.clock_period, activity, payload, cache.MSHR_SIZE, cache.upper_levels.size());
+    const auto refill_slots = cache.REFILL_QUEUE_SIZE.value_or(cache.MSHR_SIZE);
+    if (!cache.REFILL_QUEUE_SIZE)
+      gaps.push_back(cache.NAME + " unbounded refill queue uses MSHR depth for leakage");
+    add_mshr(cache.NAME, cache.clock_period, activity, cache.MSHR_SIZE, refill_slots, 64 - offset_bits);
+    add_refills(cache.NAME, cache.clock_period, activity, payload, refill_slots, cache.upper_levels.size());
     if (cache.PQ_SIZE != 0) {
       auto& local = add_meter(cache.NAME + " local prefetch queue", "HARCOM prefetch FIFO",
                               "separate local request SRAM, charged on admission and consumption", cache.clock_period);
@@ -335,7 +340,9 @@ class harcom_memory_model final : public memory_energy_model
     auto& activity = walker.memory_activity.emplace();
     const auto& channels = walker.request_channels();
     add_queues(walker.NAME, walker.clock_period, channels, 64);
-    add_refills(walker.NAME, walker.clock_period, activity, 64, walker.MSHR_SIZE, channels.size());
+    if (!walker.REFILL_QUEUE_SIZE)
+      gaps.push_back(walker.NAME + " unbounded refill queue uses MSHR depth for leakage");
+    add_refills(walker.NAME, walker.clock_period, activity, 64, walker.REFILL_QUEUE_SIZE.value_or(walker.MSHR_SIZE), channels.size());
     auto& pending = add_meter(walker.NAME + " walk tracking", "HARCOM page-walk tracking",
                               "Parallel comparisons and per-entry registers. Leakage uses the configured MSHR depth as the physical walk-slot budget.",
                               walker.clock_period);

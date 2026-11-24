@@ -174,6 +174,9 @@ class CacheBuilderTests(unittest.TestCase):
     def test_mshr_size(self):
         self.get_element_diff(['.mshr_size(1)'], mshr_size=1)
 
+    def test_refill_queue_size(self):
+        self.get_element_diff(['.refill_queue_size(3)'], refill_queue_size=3)
+
     def test_latency(self):
         self.get_element_diff(['.latency(1)'], latency=1)
 
@@ -238,6 +241,9 @@ class PageTableWalkerBuilderTests(unittest.TestCase):
 
     def test_mshr_size(self):
         self.get_element_diff(['.mshr_size(1)'], mshr_size=1)
+
+    def test_refill_queue_size(self):
+        self.get_element_diff(['.refill_queue_size(3)'], refill_queue_size=3)
 
     def test_max_read(self):
         self.get_element_diff(['.tag_bandwidth(champsim::bandwidth::maximum_type{1})'], max_read=1)

@@ -54,13 +54,13 @@ unsupported structures remain coverage gaps.
 | Caches, TLBs and PTW | Tag and payload banks per physical way, replacement budgets, request queues, MSHRs, separate refill staging, PTW and PSCL state, prefetch buffer, UBS arrays, and FDIP target queues and directories when configured. |
 | DRAM controller | On-chip request and write-data SRAMs, arbitration and bank/refresh state, digital bus control and shared staging per channel. DRAMPower accounts for the external device and interface. |
 
-Some simulator queues have no enforced physical depth. The leakage model
-uses configured MSHR depth for refill banks, fill-search comparators, and
-walk slots, plus an upstream response register per port. FDIP directory
-keys follow configured queue and tag-pipeline capacities with that same
-refill proxy. Unbounded input queues are reported as coverage gaps. The
-inventories omit access counters, simulator timestamps and dependency
-vectors.
+Set `refill_queue_size` in a cache, TLB, or PTW JSON object to model a finite
+refill queue. HARCOM uses that depth for staging registers, cache fill-search
+comparators, and the refill portion of FDIP's pending directory. When the
+setting is omitted, the simulator keeps an unbounded queue and HARCOM uses
+configured MSHR depth for its leakage proxy. The independent PTW walk-tracking
+estimate also uses configured MSHR depth. The inventories omit access counters,
+simulator timestamps and dependency vectors.
 
 ## Basic BTB and frontend
 

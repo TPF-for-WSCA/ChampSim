@@ -39,7 +39,8 @@ CACHE::CACHE(CACHE&& other)
 
       upper_levels(std::move(other.upper_levels)), lower_level(std::move(other.lower_level)), lower_translate(std::move(other.lower_translate)),
 
-      cpu(other.cpu), NAME(std::move(other.NAME)), NUM_SET(other.NUM_SET), NUM_WAY(other.NUM_WAY), MSHR_SIZE(other.MSHR_SIZE), PQ_SIZE(other.PQ_SIZE),
+      cpu(other.cpu), NAME(std::move(other.NAME)), NUM_SET(other.NUM_SET), NUM_WAY(other.NUM_WAY), MSHR_SIZE(other.MSHR_SIZE),
+      REFILL_QUEUE_SIZE(other.REFILL_QUEUE_SIZE), PQ_SIZE(other.PQ_SIZE),
       PREFETCH_BUFFER_SIZE(other.PREFETCH_BUFFER_SIZE),
       HIT_LATENCY(other.HIT_LATENCY), FILL_LATENCY(other.FILL_LATENCY), OFFSET_BITS(other.OFFSET_BITS), ideal(other.ideal),
       ideal_translation_vmem(other.ideal_translation_vmem), ubs(other.ubs),
@@ -74,6 +75,7 @@ auto CACHE::operator=(CACHE&& other) -> CACHE&
   this->NUM_WAY = other.NUM_WAY;
   ;
   this->MSHR_SIZE = other.MSHR_SIZE;
+  this->REFILL_QUEUE_SIZE = other.REFILL_QUEUE_SIZE;
   ;
   this->PQ_SIZE = other.PQ_SIZE;
   this->PREFETCH_BUFFER_SIZE = other.PREFETCH_BUFFER_SIZE;
@@ -870,6 +872,9 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
 
 bool CACHE::handle_write(const tag_lookup_type& handle_pkt)
 {
+  if (REFILL_QUEUE_SIZE && inflight_fills.size() >= *REFILL_QUEUE_SIZE)
+    return false;
+
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} instr_id: {} address: {} v_address: {} type: {} local_prefetch: {} cycle: {}\n", NAME, __func__, handle_pkt.instr_id,
                handle_pkt.address, handle_pkt.v_address, access_type_names.at(champsim::to_underlying(handle_pkt.type)), handle_pkt.prefetch_from_this,
@@ -922,11 +927,15 @@ long CACHE::operate()
     return entry.is_translated;
   };
 
-  // Finish returns
-  std::for_each(std::cbegin(lower_level->returned), std::cend(lower_level->returned), [this](const auto& pkt) { this->finish_packet(pkt); });
-  progress += std::distance(std::cbegin(lower_level->returned), std::cend(lower_level->returned));
-  lower_level->record_responses(lower_level->returned.size());
-  lower_level->returned.clear();
+  // Responses that cannot enter the refill queue stay on the incoming channel.
+  auto& returned = lower_level->returned;
+  const auto available = REFILL_QUEUE_SIZE ? *REFILL_QUEUE_SIZE - inflight_fills.size() : returned.size();
+  const auto admitted = std::min(returned.size(), available);
+  const auto return_end = std::next(returned.cbegin(), static_cast<std::ptrdiff_t>(admitted));
+  std::for_each(returned.cbegin(), return_end, [this](const auto& pkt) { this->finish_packet(pkt); });
+  progress += static_cast<long>(admitted);
+  lower_level->record_responses(admitted);
+  returned.erase(returned.cbegin(), return_end);
 
   // Finish translations
   if (lower_translate != nullptr) {

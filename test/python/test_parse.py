@@ -758,3 +758,10 @@ class PathEndInTests(unittest.TestCase):
                 path = ({'name': x} for x in range(length))
                 result = config.parse.path_end_in(path, 'last')
                 self.assertEqual(result, {'name': length-1, 'lower_level': 'last'})
+
+class RefillQueueSizeTests(unittest.TestCase):
+    def test_invalid_refill_capacity(self):
+        for component, value in itertools.product(('L1D', 'PTW'), (0, -1, True, 1.5, '8', None, 2**32)):
+            with self.subTest(component=component, value=value):
+                with self.assertRaisesRegex(ValueError, 'refill_queue_size must be a positive 32-bit integer'):
+                    config.parse.parse_config({component: {'refill_queue_size': value}})

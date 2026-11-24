@@ -108,6 +108,7 @@ cache_builder_parts = {
     'pq_size': '.pq_size({pq_size})',
     'prefetch_buffer_size': '.prefetch_buffer_size({prefetch_buffer_size})',
     'mshr_size': '.mshr_size({mshr_size})',
+    'refill_queue_size': '.refill_queue_size({refill_queue_size})',
     'latency': '.latency({latency})',
     'hit_latency': '.hit_latency({hit_latency})',
     'fill_latency': '.fill_latency({fill_latency})',
@@ -131,6 +132,7 @@ ptw_builder_parts = {
     'cpu': '.cpu({cpu})',
     'lower_level': '.lower_level(&{^lower_level_queues})',
     'mshr_size': '.mshr_size({mshr_size})',
+    'refill_queue_size': '.refill_queue_size({refill_queue_size})',
     'max_read': '.tag_bandwidth(champsim::bandwidth::maximum_type{{{max_read}}})',
     'max_write': '.fill_bandwidth(champsim::bandwidth::maximum_type{{{max_write}}})',
     'frequency': '.clock_period(champsim::chrono::picoseconds{{{^clock_period}}})'

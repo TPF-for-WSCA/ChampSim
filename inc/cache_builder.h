@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <stdexcept>
 #include <vector>
 
 #include "champsim.h"
@@ -52,6 +53,7 @@ struct cache_builder_base {
   std::size_t m_prefetch_buffer_size{0};
   std::size_t m_pq_size{std::numeric_limits<std::size_t>::max()};
   std::optional<uint32_t> m_mshr_size{};
+  std::optional<uint32_t> m_refill_queue_size{};
   std::optional<uint64_t> m_hit_lat{};
   std::optional<uint64_t> m_fill_lat{};
   std::optional<uint64_t> m_latency{};
@@ -155,6 +157,11 @@ public:
    * If this is not specified, it will be derived from the number of sets, fill latency, and fill bandwidth.
    */
   self_type& mshr_size(uint32_t mshr_size_);
+
+  /**
+   * Limit the number of entries staged for fill. The default is unbounded.
+   */
+  self_type& refill_queue_size(uint32_t entries);
 
   /**
    * Specify the latency of the cache, in cycles.
@@ -430,6 +437,15 @@ template <typename P, typename R>
 auto champsim::cache_builder<P, R>::mshr_size(uint32_t mshr_size_) -> self_type&
 {
   m_mshr_size = mshr_size_;
+  return *this;
+}
+
+template <typename P, typename R>
+auto champsim::cache_builder<P, R>::refill_queue_size(uint32_t entries) -> self_type&
+{
+  if (entries == 0)
+    throw std::invalid_argument("refill_queue_size must be positive");
+  m_refill_queue_size = entries;
   return *this;
 }
 

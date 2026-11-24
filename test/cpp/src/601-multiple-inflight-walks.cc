@@ -113,14 +113,19 @@ SCENARIO("Concurrent page table walks can be merged")
     to_rq_MRP mock_ul{[](auto x, auto y) {
       return champsim::block_number{x.address} == champsim::block_number{y.address};
     }};
-    PageTableWalker uut{champsim::ptw_builder{champsim::defaults::default_ptw}
+    const auto refill_slots = GENERATE(0u, 1u);
+    auto builder = champsim::ptw_builder{champsim::defaults::default_ptw}
                             .name("601-uut")
                             .clock_period(champsim::chrono::picoseconds{3200})
                             .upper_levels({&mock_ul.queues})
                             .lower_level(&mock_ll.queues)
                             .virtual_memory(&vmem)
                             .tag_bandwidth(champsim::bandwidth::maximum_type{2})
-                            .fill_bandwidth(champsim::bandwidth::maximum_type{2})};
+                            .fill_bandwidth(champsim::bandwidth::maximum_type{2});
+    if (refill_slots != 0)
+      builder.refill_queue_size(refill_slots);
+    PageTableWalker uut{builder};
+    auto& activity = uut.memory_activity.emplace();
 
     std::array<champsim::operable*, 3> elements{{&mock_ul, &uut, &mock_ll}};
 
@@ -187,11 +192,20 @@ SCENARIO("Concurrent page table walks can be merged")
             champsim::address nearby_paddr{0x103ff8}; // Hard coded to get the test to work...
 
             mock_ll.release(nearby_paddr);
+            REQUIRE(mock_ll.queues.returned.size() == 1);
+            using champsim::memory_event;
+            const auto staged_before = activity[memory_event::fill_stage_write];
+            for (auto elem : elements)
+              elem->_operate();
+            CHECK(activity[memory_event::fill_stage_write] - staged_before == (refill_slots == 1 ? 1 : 2));
+            CHECK(mock_ll.queues.returned.size() == (refill_slots == 1 ? 1 : 0));
 
             for (auto j = 0; j < 3; ++j) {
               for (auto i = 0; i < 100; ++i) {
                 for (auto elem : elements)
                   elem->_operate();
+                if (refill_slots == 1)
+                  CHECK(activity[memory_event::fill_stage_write] - activity[memory_event::fill_stage_release] <= 1);
               }
               mock_ll.release_all();
             }

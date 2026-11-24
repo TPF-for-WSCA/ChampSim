@@ -103,3 +103,64 @@ TEST_CASE("DRRIP accounting distinguishes sampled fills, followers and writeback
   (void)policy.find_victim(0, 0, 3, nullptr, {}, {}, access_type::LOAD);
   CHECK(activity[memory_event::drrip_age_row] == 1);
 }
+
+TEST_CASE("A full refill queue defers lower-level responses and writebacks")
+{
+  using champsim::memory_event;
+  release_MRC memory;
+  champsim::channel input{4, 4, 1, champsim::data::bits{6}, false};
+  CACHE cache{champsim::cache_builder{champsim::defaults::default_l2c}
+                  .sets(4)
+                  .ways(1)
+                  .mshr_size(4)
+                  .refill_queue_size(1)
+                  .hit_latency(1)
+                  .fill_latency(4)
+                  .tag_bandwidth(champsim::bandwidth::maximum_type{2})
+                  .upper_levels({&input})
+                  .lower_level(&memory.queues)};
+  cache.warmup = false;
+  cache.initialize();
+  cache.memory_activity.emplace();
+  auto& link = memory.queues.link_activity.emplace();
+
+  const auto tick = [&] {
+    cache._operate();
+    memory._operate();
+  };
+  const auto& activity = *cache.memory_activity;
+  champsim::channel::request_type read{};
+  read.address = champsim::address{0x1000};
+  read.cpu = 0;
+  REQUIRE(input.add_rq(read));
+  read.address = champsim::address{0x1040};
+  REQUIRE(input.add_rq(read));
+  for (auto cycle = 0; cycle < 6; ++cycle)
+    tick();
+  REQUIRE(cache.get_mshr_occupancy() == 2);
+  memory.release_all();
+  REQUIRE(memory.queues.returned.size() == 2);
+
+  auto writeback = read;
+  writeback.address = champsim::address{0x1080};
+  writeback.type = access_type::WRITE;
+  writeback.response_requested = false;
+  REQUIRE(input.add_wq(writeback));
+  tick();
+  tick();
+  CHECK(memory.queues.returned.size() == 1);
+  CHECK(cache.get_mshr_occupancy() == 1);
+  CHECK(link.responses == 1);
+  CHECK(activity[memory_event::fill_stage_write] == 1);
+
+  for (auto cycle = 0; cycle < 20; ++cycle) {
+    tick();
+    CHECK(activity[memory_event::fill_stage_write] - activity[memory_event::fill_stage_release] <= 1);
+  }
+  CHECK(memory.queues.returned.empty());
+  CHECK(cache.get_mshr_occupancy() == 0);
+  CHECK(link.responses == 2);
+  CHECK(input.returned.size() == 2);
+  CHECK(activity[memory_event::fill_stage_write] == 3);
+  CHECK(activity[memory_event::fill_stage_release] == 3);
+}
