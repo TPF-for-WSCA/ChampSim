@@ -72,6 +72,10 @@ std::vector<component_energy_stats> sample_component_energy(environment& env)
     auto backend = env.backend_energy->energy_snapshots();
     components.insert(components.end(), std::make_move_iterator(backend.begin()), std::make_move_iterator(backend.end()));
   }
+  if (env.dram_energy) {
+    auto dram = env.dram_energy->energy_snapshots();
+    components.insert(components.end(), std::make_move_iterator(dram.begin()), std::make_move_iterator(dram.end()));
+  }
   return components;
 }
 } // namespace
@@ -111,6 +115,8 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   }
 
   const auto phase_begin = global_clock.now();
+  if (!is_warmup && env.dram_view().trace)
+    env.dram_view().trace->begin(phase_begin);
   const auto begin_energy = is_warmup ? std::vector<component_energy_stats>{} : sample_component_energy(env);
 
   const auto time_quantum = std::accumulate(std::cbegin(operables), std::cend(operables), champsim::chrono::clock::duration::max(),
@@ -213,7 +219,9 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.sim_cache_stats), [](const CACHE& cache) { return cache.sim_stats; });
   std::transform(std::begin(caches), std::end(caches), std::back_inserter(stats.roi_cache_stats), [](const CACHE& cache) { return cache.roi_stats; });
 
-  auto dram = env.dram_view();
+  auto& dram = env.dram_view();
+  if (!is_warmup && dram.trace)
+    dram.trace->end(global_clock.now());
   std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.sim_dram_stats),
                  [](const DRAM_CHANNEL& chan) { return chan.sim_stats; });
   std::transform(std::begin(dram.channels), std::end(dram.channels), std::back_inserter(stats.roi_dram_stats),
@@ -226,6 +234,9 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   if (!is_warmup && (!begin_energy.empty() || frontend_accounting || env.memory_energy)) {
     if (env.memory_energy)
       coverage_gaps = env.memory_energy->coverage_gaps();
+    if (!env.dram_energy)
+      coverage_gaps.emplace_back("DRAM controller");
+    coverage_gaps.emplace_back("DRAM device and off-chip interface at native ChampSim timing");
     if (env.backend_energy) {
       const auto gaps = env.backend_energy->coverage_gaps();
       coverage_gaps.insert(coverage_gaps.end(), gaps.begin(), gaps.end());

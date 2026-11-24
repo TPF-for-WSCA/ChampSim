@@ -299,7 +299,7 @@ class NormalizedConfiguration:
             print('P: vmem', list(self.vmem.keys()))
 
         self.root = util.subdict(config_file,
-            ('block_size', 'page_size', 'heartbeat_frequency', 'harcom_memory_energy', 'harcom_predictor_energy', 'harcom_backend_energy', 'harcom_link_length_um')
+            ('block_size', 'page_size', 'heartbeat_frequency', 'harcom_memory_energy', 'harcom_predictor_energy', 'harcom_backend_energy', 'harcom_link_length_um', 'harcom_dram_energy')
         )
 
     def merge(self, rhs):
@@ -506,6 +506,15 @@ class NormalizedConfiguration:
             model = modules.ModuleSearchContext(()).data_from_path(model_dir)
             module_info['backend_energy'] = {model['name']: model}
 
+        dram_energy_enabled = root_config.get('harcom_dram_energy', False)
+        if not isinstance(dram_energy_enabled, bool):
+            raise ValueError('harcom_dram_energy must be a boolean')
+        if dram_energy_enabled:
+            elements['dram_energy_enabled'] = True
+            model_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'harcom', 'dram')
+            model = modules.ModuleSearchContext(()).data_from_path(model_dir)
+            module_info['dram_energy'] = {model['name']: model}
+
         config_extern = {
             **util.subdict(root_config, ('block_size', 'page_size', 'heartbeat_frequency')),
             'num_cores': len(cores)
@@ -558,7 +567,7 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
             *(c['_branch_predictor_data'] for c in elements['cores']),
             *(c['_btb_data'] for c in elements['cores'])
         ))]
-        for name in ('memory_energy', 'predictor_energy', 'backend_energy'):
+        for name in ('memory_energy', 'predictor_energy', 'backend_energy', 'dram_energy'):
             modules_to_compile.extend(module_info.get(name, ()))
 
     return executable_name(*configs), elements, modules_to_compile, module_info, config_file

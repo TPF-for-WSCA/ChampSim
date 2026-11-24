@@ -24,13 +24,16 @@
 #include <deque>    // for deque
 #include <iterator> // for end
 #include <limits>
+#include <memory>
 #include <optional>
 #include <string>
 
 #include "address.h"
 #include "channel.h"
 #include "chrono.h"
+#include "dram_energy.h"
 #include "dram_stats.h"
+#include "dram_trace.h"
 #include "extent_set.h"
 #include "operable.h"
 
@@ -96,6 +99,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
   const DRAM_ADDRESS_MAPPING address_mapping;
 
   struct request_type {
+    bool is_write = false;
     bool scheduled = false;
     bool forward_checked = false;
 
@@ -166,6 +170,18 @@ struct DRAM_CHANNEL final : public champsim::operable {
                std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::size_t refreshes_per_period, champsim::data::bytes width,
                std::size_t rq_size, std::size_t wq_size, DRAM_ADDRESS_MAPPING addr_mapping);
 
+  std::optional<champsim::dram_activity> energy_activity;
+  champsim::dram_trace* trace = nullptr;
+  std::size_t trace_channel = 0;
+
+  void record_energy(champsim::dram_event event, std::size_t count = 1)
+  {
+    if (energy_activity)
+      energy_activity->record(event, count);
+  }
+  void trace_address(std::string_view event, champsim::chrono::clock::time_point time, champsim::address address);
+  void trace_bank(std::string_view event, std::size_t index);
+
   void check_write_collision();
   void check_read_collision();
   long finish_dbus_request();
@@ -205,6 +221,8 @@ class MEMORY_CONTROLLER : public champsim::operable
 
 public:
   std::vector<DRAM_CHANNEL> channels;
+  std::unique_ptr<champsim::dram_trace> trace;
+  void enable_trace(const std::string& path);
 
   MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd, std::size_t t_cas,
                     std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::vector<channel_type*>&& ul, std::size_t rq_size, std::size_t wq_size,

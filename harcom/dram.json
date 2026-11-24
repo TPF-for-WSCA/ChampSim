@@ -1,0 +1,18 @@
+{
+  "executable_name": "champsim-harcom-dram",
+  "harcom_dram_energy": true,
+  "physical_memory": {
+    "data_rate": 2400,
+    "channels": 1,
+    "ranks": 1,
+    "bankgroups": 4,
+    "banks": 4,
+    "bank_rows": 32768,
+    "bank_columns": 1024,
+    "channel_width": 8,
+    "tCAS": 16,
+    "tRCD": 16,
+    "tRP": 16,
+    "tRAS": 39
+  }
+}

@@ -185,3 +185,59 @@ circuit placement. Treat the execution, clock and wire estimates as reference
 assumptions. The full clock tree, physical multiport layout, network routing
 and arbitration, and off-chip PHY and DRAM remain open. Link length changes
 the wire estimate and leaves simulated timing unchanged.
+
+## DRAM controller and device replay
+
+Set `"harcom_dram_energy": true` to report three in-simulation components per
+channel. The request-queue meter covers admission, address and metadata SRAM,
+write-data SRAM, collision comparisons, merges, forwarding, and release. The
+scheduling meter covers arbitration, bank and row state, mode changes, and the
+refresh state machine. The interface-control meter covers digital burst and
+response staging and bus arbitration. The on-chip link from step 4 still owns
+wire energy. Analytics counters, host dependency vectors, and off-chip signal
+energy are excluded from the controller costs.
+
+Use `--dram-events` to export the measured phase's native events. The file
+contains geometry, phase boundaries, absolute timestamps in picoseconds, bank
+reservations with row hit or miss classification, cancellations, refresh due
+and per-bank start/end events, and actual data-bus starts. Forwarded reads
+produce no device burst. A reserved request can be canceled before it reaches
+the data bus.
+
+The example matches the geometry and clock of the
+[DRAMSys 5.4.0 Micron 4 Gb DDR4-2400 profile](https://github.com/tukl-msd/DRAMSys/blob/v5.4.0/configs/memspec/MICRON_4Gb_DDR4-2400_8bit_A.json).
+Save that profile locally as `micron-ddr4.json` and use an upstream
+[DRAMPower v6.0.0 CLI](https://github.com/tukl-msd/DRAMPower/tree/v6.0.0).
+This release calls `CLI::App::ensure_utf8`. Use CLI11 2.6.2 for its build
+if the default dependency fails. CMake accepts
+`-DFETCHCONTENT_SOURCE_DIR_CLI11=/path/to/CLI11-2.6.2`.
+
+```sh
+./config.sh --no-compile-all-modules harcom/dram.json
+make -j
+bin/champsim-harcom-dram -w 1000000 -i 10000000 --json results.json \
+    --dram-events dram-events.csv /path/to/trace.champsimtrace.xz
+python3 harcom/dram/replay.py --events dram-events.csv --memspec micron-ddr4.json \
+    --drampower /path/to/DRAMPower/build/bin/cli --output dram-replay
+```
+
+The replay accepts matching DDR4 and DDR5 profiles with 1× all-bank refresh.
+Each channel starts precharged. The script preserves the observed burst order
+and uses the observed data-bus start as a lower bound on replay data time. It
+serializes commands using the profile's timing limits, generates ACT/PRE from
+the replay row state, and issues periodic rank refreshes at the shorter of the
+native interval and the device interval, when present in the profile.
+ChampSim currently quantizes its refresh interval to whole microseconds.
+The example therefore replays refreshes at close to 3 µs. The measured interval remains in the
+replay, with additional time if needed to finish the observed bursts. DRAMPower
+estimates both device and off-chip interface energy with an explicit data
+toggle and duty-cycle assumption. Use `--toggle` to vary it and omit
+`--drampower` to generate command traces alone.
+
+Use `summary.json` for replay energy and average power over the **replay**
+duration, and the per-channel DRAMPower JSON for core, background and interface
+details. ChampSim changes bank state at reservation and schedules refreshes per
+bank, so device energy at native ChampSim timing remains incomplete. Replay
+energy stays outside the simulator subtotal. The profile must match each
+simulated channel's geometry and clocks. The default ChampSim configuration
+has eight bank groups and differs from the DDR4 example.

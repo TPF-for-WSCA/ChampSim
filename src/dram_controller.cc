@@ -28,6 +28,33 @@
 #include "util/span.h"
 #include "util/units.h"
 
+using champsim::dram_event;
+
+void MEMORY_CONTROLLER::enable_trace(const std::string& path)
+{
+  trace = std::make_unique<champsim::dram_trace>(path, *this);
+  for (std::size_t index = 0; index < channels.size(); ++index) {
+    channels[index].trace = trace.get();
+    channels[index].trace_channel = index;
+  }
+}
+
+void DRAM_CHANNEL::trace_address(std::string_view event, champsim::chrono::clock::time_point time, champsim::address address)
+{
+  if (trace && !warmup)
+    trace->event(event, time, trace_channel, address_mapping.get_rank(address), address_mapping.get_bankgroup(address),
+                 address_mapping.get_bank(address), address_mapping.get_row(address), address_mapping.get_column(address) * address_mapping.prefetch_size);
+}
+
+void DRAM_CHANNEL::trace_bank(std::string_view event, std::size_t index)
+{
+  if (trace && !warmup) {
+    const auto group_index = index / address_mapping.banks();
+    trace->event(event, current_time, trace_channel, group_index / address_mapping.bankgroups(),
+                 group_index % address_mapping.bankgroups(), index % address_mapping.banks(), bank_request[index].open_row.value_or(0));
+  }
+}
+
 MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd,
                                      std::size_t t_cas, std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::vector<channel_type*>&& ul,
                                      std::size_t rq_size, std::size_t wq_size, std::size_t chans, champsim::data::bytes chan_width, std::size_t rows,
@@ -152,6 +179,9 @@ long DRAM_CHANNEL::finish_dbus_request()
       ret->push_back(response);
     }
 
+    record_energy(dram_event::response, active_request->pkt->value().to_return.size());
+    record_energy(dram_event::release_bank);
+    record_energy(active_request->pkt->value().is_write ? dram_event::write_release : dram_event::read_release);
     active_request->valid = false;
 
     active_request->pkt->reset();
@@ -173,6 +203,10 @@ long DRAM_CHANNEL::schedule_refresh()
     last_refresh = current_time;
     refresh_row += DRAM_ROWS_PER_REFRESH;
     sim_stats.refresh_cycles++;
+    record_energy(dram_event::refresh_due);
+    if (trace && !warmup)
+      for (std::size_t rank = 0; rank < address_mapping.ranks(); ++rank)
+        trace->event("refresh_due", current_time, trace_channel, rank);
     if (refresh_row >= address_mapping.rows())
       refresh_row -= address_mapping.rows();
   }
@@ -185,12 +219,16 @@ long DRAM_CHANNEL::schedule_refresh()
     }
     // refresh is being scheduled for this bank
     if (b_req.need_refresh && !b_req.valid) {
+      record_energy(dram_event::refresh_start);
+      trace_bank("refresh_start", static_cast<std::size_t>(&b_req - bank_request.data()));
       b_req.ready_time = current_time + tRFC;
       b_req.need_refresh = false;
       b_req.under_refresh = true;
     }
     // refresh is done for this bank
     else if (b_req.under_refresh && b_req.ready_time <= current_time) {
+      record_energy(dram_event::refresh_end);
+      trace_bank("refresh_end", static_cast<std::size_t>(&b_req - bank_request.data()));
       b_req.under_refresh = false;
       b_req.open_row.reset();
       progress++;
@@ -216,10 +254,14 @@ void DRAM_CHANNEL::swap_write_mode()
   // Change modes if the queues are unbalanced
   if ((!write_mode && (wq_occu >= DRAM_WRITE_HIGH_WM || (rq_occu == 0 && wq_occu > 0)))
       || (write_mode && (wq_occu == 0 || (rq_occu > 0 && wq_occu < DRAM_WRITE_LOW_WM)))) {
+    record_energy(dram_event::turn);
     // Reset scheduled requests
     for (auto it = std::begin(bank_request); it != std::end(bank_request); ++it) {
       // Leave active request on the data bus
       if (it != active_request && it->valid) {
+        record_energy(dram_event::cancel_bank);
+        trace_address(it->ready_time < (current_time + tCAS) ? "cancel_close" : "cancel_keep",
+                      current_time, it->pkt->value().address);
         // Leave rows charged
         if (it->ready_time < (current_time + tCAS)) {
           it->open_row.reset();
@@ -249,6 +291,15 @@ long DRAM_CHANNEL::populate_dbus()
 {
   long progress{0};
 
+  if (energy_activity && active_request == std::end(bank_request) && dbus_cycle_available <= current_time) {
+    const auto ready = std::count_if(bank_request.begin(), bank_request.end(), [this](const auto& bank) {
+      return bank.valid && bank.ready_time <= current_time;
+    });
+    if (ready != 0) {
+      record_energy(dram_event::bus_arbitrate);
+      record_energy(dram_event::bus_candidate, static_cast<std::size_t>(ready));
+    }
+  }
   auto iter_next_process = std::min_element(std::begin(bank_request), std::end(bank_request),
                                             [](const auto& lhs, const auto& rhs) { return !rhs.valid || (lhs.valid && lhs.ready_time < rhs.ready_time); });
   if (iter_next_process->valid && iter_next_process->ready_time <= current_time) {
@@ -267,6 +318,10 @@ long DRAM_CHANNEL::populate_dbus()
         active_request->ready_time = bankgroup_ready_time + DRAM_DBUS_RETURN_TIME;
       else
         active_request->ready_time = current_time + DRAM_DBUS_RETURN_TIME;
+
+      const bool write = active_request->pkt->value().is_write;
+      record_energy(write ? dram_event::write_burst : dram_event::read_burst);
+      trace_address(write ? "write" : "read", active_request->ready_time - DRAM_DBUS_RETURN_TIME, active_request->pkt->value().address);
 
       // set when bankgroup dbus will be next ready
       bankgroup_readytime[op_bankgroup] = current_time + DRAM_DBUS_RETURN_TIME + DRAM_DBUS_BANKGROUP_STALL;
@@ -332,6 +387,14 @@ DRAM_CHANNEL::queue_type::iterator DRAM_CHANNEL::schedule_packet()
     auto lready = !this->bank_request[lop_idx].valid;
     return (rready == lready) ? lhs.value().ready_time <= rhs.value().ready_time : lready;
   };
+  if (energy_activity) {
+    const auto& queue = write_mode ? WQ : RQ;
+    const auto pending = std::count_if(queue.begin(), queue.end(), [](const auto& packet) { return packet && !packet->scheduled; });
+    if (pending != 0) {
+      record_energy(dram_event::arbitrate);
+      record_energy(dram_event::candidate, static_cast<std::size_t>(pending));
+    }
+  }
   queue_type::iterator iter_next_schedule;
   if (write_mode) {
     iter_next_schedule = std::min_element(std::begin(WQ), std::end(WQ), next_schedule);
@@ -350,6 +413,11 @@ long DRAM_CHANNEL::service_packet(DRAM_CHANNEL::queue_type::iterator pkt)
 
     if (!bank_request[op_idx].valid && !bank_request[op_idx].under_refresh) {
       bool row_buffer_hit = (bank_request[op_idx].open_row.has_value() && *(bank_request[op_idx].open_row) == op_row);
+
+      record_energy(dram_event::reserve_bank);
+      record_energy(dram_event::row_compare);
+      trace_address(row_buffer_hit ? "reserve_hit" : bank_request[op_idx].open_row ? "reserve_conflict" : "reserve_closed",
+                    current_time, pkt->value().address);
 
       // this bank is now busy
       auto row_charge_delay = champsim::chrono::clock::duration{bank_request[op_idx].open_row.has_value() ? tRP + tRCD : tRCD};
@@ -429,7 +497,9 @@ void DRAM_CHANNEL::check_write_collision()
 {
   for (auto wq_it = std::begin(WQ); wq_it != std::end(WQ); ++wq_it) {
     if (wq_it->has_value() && !wq_it->value().forward_checked) {
-      auto checker = [addr_map = address_mapping, check_val = wq_it->value().address](const auto& pkt) {
+      auto checker = [this, addr_map = address_mapping, check_val = wq_it->value().address](const auto& pkt) {
+        if (pkt)
+          record_energy(dram_event::collision_compare);
         return pkt.has_value() && addr_map.is_collision(pkt.value().address, check_val);
       };
 
@@ -439,8 +509,10 @@ void DRAM_CHANNEL::check_write_collision()
       }
 
       if (found != std::end(WQ)) {
+        record_energy(dram_event::write_release);
         wq_it->reset();
       } else {
+        record_energy(dram_event::checked);
         wq_it->value().forward_checked = true;
       }
     }
@@ -451,22 +523,28 @@ void DRAM_CHANNEL::check_read_collision()
 {
   for (auto rq_it = std::begin(RQ); rq_it != std::end(RQ); ++rq_it) {
     if (rq_it->has_value() && !rq_it->value().forward_checked) {
-      auto checker = [addr_map = address_mapping, check_val = rq_it->value().address](const auto& x) {
+      auto checker = [this, addr_map = address_mapping, check_val = rq_it->value().address](const auto& x) {
+        if (x)
+          record_energy(dram_event::collision_compare);
         return x.has_value() && addr_map.is_collision(x.value().address, check_val);
       };
       // write forward
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
+        record_energy(dram_event::forward);
+        record_energy(dram_event::response, rq_it->value().to_return.size());
         response_type response{rq_it->value().address, rq_it->value().v_address, wq_it->value().data, rq_it->value().pf_metadata,
                                rq_it->value().instr_depend_on_me};
         for (auto* ret : rq_it->value().to_return) {
           ret->push_back(response);
         }
 
+        record_energy(dram_event::read_release);
         rq_it->reset();
 
       }
       // backwards check
       else if (auto found = std::find_if(std::begin(RQ), rq_it, checker); found != rq_it) {
+        record_energy(dram_event::merge);
         auto instr_copy = std::move(found->value().instr_depend_on_me);
         auto ret_copy = std::move(found->value().to_return);
 
@@ -475,11 +553,13 @@ void DRAM_CHANNEL::check_read_collision()
         std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return),
                        std::back_inserter(found->value().to_return));
 
+        record_energy(dram_event::read_release);
         rq_it->reset();
 
       }
       // forwards check
       else if (found = std::find_if(std::next(rq_it), std::end(RQ), checker); found != std::end(RQ)) {
+        record_energy(dram_event::merge);
         auto instr_copy = std::move(found->value().instr_depend_on_me);
         auto ret_copy = std::move(found->value().to_return);
 
@@ -488,8 +568,10 @@ void DRAM_CHANNEL::check_read_collision()
         std::set_union(std::begin(ret_copy), std::end(ret_copy), std::begin(rq_it->value().to_return), std::end(rq_it->value().to_return),
                        std::back_inserter(found->value().to_return));
 
+        record_energy(dram_event::read_release);
         rq_it->reset();
       } else {
+        record_energy(dram_event::checked);
         rq_it->value().forward_checked = true;
       }
     }
@@ -521,11 +603,13 @@ DRAM_CHANNEL::request_type::request_type(const typename champsim::channel::reque
 bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul)
 {
   auto& channel = channels[address_mapping.get_channel(packet.address)];
+  channel.record_energy(dram_event::ingress);
 
   if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [this](const auto& pkt) { return pkt.has_value(); });
       rq_it != std::end(channel.RQ)) {
     if (!warmup)
       champsim::prefetch_bandwidth::read_enqueue_bytes += BLOCK_SIZE;
+    channel.record_energy(dram_event::read_enqueue);
     *rq_it = DRAM_CHANNEL::request_type{packet};
     rq_it->value().forward_checked = false;
     rq_it->value().scheduled = false;
@@ -542,11 +626,14 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
 bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 {
   auto& channel = channels[address_mapping.get_channel(packet.address)];
+  channel.record_energy(dram_event::ingress);
 
   // search for the empty index
   if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& pkt) { return pkt.has_value(); });
       wq_it != std::end(channel.WQ)) {
+    channel.record_energy(dram_event::write_enqueue);
     *wq_it = DRAM_CHANNEL::request_type{packet};
+    wq_it->value().is_write = true;
     wq_it->value().forward_checked = false;
     wq_it->value().scheduled = false;
     wq_it->value().ready_time = current_time;

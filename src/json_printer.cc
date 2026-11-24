@@ -153,7 +153,7 @@ void to_json(nlohmann::json& j, const champsim::phase_stats stats)
 
     const auto subtotal = energy->modeled_dynamic_energy_joules();
     std::vector<std::string> unmodeled{"branch predictors absent from components", "other frontend structures",
-                                      "cache and translation functions absent from components", "DRAM controller and DRAM", "leakage"};
+                                      "cache and translation functions absent from components", "leakage"};
     unmodeled.insert(unmodeled.end(), energy->coverage_gaps.begin(), energy->coverage_gaps.end());
     statsmap.emplace("energy", nlohmann::json{
         {"coverage", "partial"},
