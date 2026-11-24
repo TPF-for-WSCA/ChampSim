@@ -236,11 +236,15 @@ std::vector<std::string> champsim::plain_printer::format(champsim::phase_stats& 
     lines.push_back(fmt::format("Modeled dynamic energy subtotal: {:.6g} J, average dynamic power: {}", subtotal,
                                 power ? fmt::format("{:.6g} W", *power) : "-"));
     if (const auto& replay = energy->dram_replay) {
+      lines.push_back(replay->method);
       lines.push_back(fmt::format("DRAMPower replay: {:.6g} J device and interface, {:.6g} W average over replay", replay->energy_joules,
                                   replay->average_power_watts()));
       lines.push_back(fmt::format("DRAM timing: {:.3f} us ChampSim, {:.3f} us replay, difference {:+.3f} us ({:+.2f}%)",
                                   replay->native_duration_ps * 1e-6, replay->replay_duration_ps * 1e-6, replay->elapsed_delta_ps() * 1e-6,
                                   100 * replay->elapsed_delta_ps() / replay->native_duration_ps));
+      if (const auto& delay = replay->burst_delay)
+        lines.push_back(fmt::format("DRAM burst start delay: {:.3f} ns mean, {:.3f} ns max across {} bursts",
+                                    delay->mean_ps * 1e-3, delay->max_ps * 1e-3, delay->bursts));
       lines.push_back(fmt::format("Combined modeled system energy (HARCOM and DRAMPower replay): {:.6g} J",
                                   energy->combined_modeled_energy_joules()));
     }

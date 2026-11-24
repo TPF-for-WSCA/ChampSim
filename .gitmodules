@@ -1,3 +1,6 @@
 [submodule "vcpkg"]
 	path = vcpkg
 	url = https://github.com/Microsoft/vcpkg.git
+[submodule "third_party/DRAMPower"]
+	path = third_party/DRAMPower
+	url = https://github.com/tukl-msd/DRAMPower.git

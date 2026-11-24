@@ -197,29 +197,48 @@ response staging and bus arbitration. The on-chip link from step 4 still owns
 wire energy. Analytics counters, host dependency vectors, and off-chip signal
 energy are excluded from the controller costs.
 
-For one-run system accounting, build the system example and pass the DRAMPower
-executable and matching device specification directly to ChampSim. The example
-enables all four HARCOM options and selects modeled frontend and cache modules.
+The system example enables all four HARCOM options and links DRAMPower v6.0.0
+at the pinned Git submodule revision. The linked build uses GNU Make 4.3 and CMake 3.24 or newer
+and fetches DRAMUtils v1.12.1 if needed. Set `DRAMPOWER_CMAKE` if the default
+`cmake` on your path is older. Set `DRAMUTILS_SOURCE_DIR` to a local
+checkout of that release for a build without a dependency download. Other
+ChampSim configurations can opt in with `"link_drampower": true`.
 
 ```sh
+git submodule update --init third_party/DRAMPower
 ./config.sh --no-compile-all-modules harcom/system-energy.json
 make -j
 bin/champsim-harcom-system -w 1000000 -i 10000000 --json results.json \
-    --drampower /path/to/DRAMPower/build/bin/cli --drampower-memspec micron-ddr4.json \
-    /path/to/trace.champsimtrace.xz
+    --drampower-memspec micron-ddr4.json /path/to/trace.champsimtrace.xz
 ```
 
-Run from the repository root, or pass
-`--drampower-adapter /path/to/ChampSim/harcom/dram/replay.py`. ChampSim streams
-measured events to the adapter through a subprocess pipe. The adapter invokes
-DRAMPower once per channel with temporary command inputs that it deletes after
-the run. `--drampower-toggle` controls data activity and duty cycle. The final
-text and JSON include the combined modeled energy and the replay duration
-difference in absolute and percentage terms. The HARCOM and DRAMPower power
+The linked mode sends commands to the library in-process. The replay maintains
+one FIFO per bank and selects the earliest eligible command across banks,
+preferring a data command on ties. ACT and PRE can overlap traffic at other
+banks. The scheduler checks row and column timing, bank-group and rank spacing,
+the four-activate window, burst direction and data-bus occupancy, and periodic
+all-bank refresh. It uses the observed reservation as the earliest request
+time and the observed data start as a lower bound on replay data time. The
+scheduler starts with precharged banks and uses conservative channel-wide
+refresh windows and rank turnarounds. ChampSim continues to time memory
+completions with its native controller.
+
+`--drampower-toggle` controls data activity and duty cycle. The final text
+and JSON report the combined modeled energy and both elapsed times, with the
+difference in absolute and percentage terms. Linked mode also reports mean and
+maximum burst-start delay relative to the observed start rounded up to the
+device clock. This shows delays that fit inside the measured interval.
+The HARCOM and DRAMPower power
 values retain their own time denominators. The combined joule total includes
 DRAM background energy and uses the native interval for HARCOM and the replay
 interval for the device and its off-chip interface. It is a partial
 whole-system estimate.
+
+The earlier serialized replay remains available for comparison with
+`--drampower /path/to/DRAMPower/build/bin/cli` in addition to the memspec.
+It uses the Python adapter and temporary command inputs. Run that mode from
+the repository root or pass
+`--drampower-adapter /path/to/ChampSim/harcom/dram/replay.py`.
 
 Use `--dram-events` to export the measured phase's native events. The file
 contains geometry, phase boundaries, absolute timestamps in picoseconds, bank
@@ -245,8 +264,8 @@ python3 harcom/dram/replay.py --events dram-events.csv --memspec micron-ddr4.jso
     --drampower /path/to/DRAMPower/build/bin/cli --output dram-replay
 ```
 
-The replay accepts matching DDR4 and DDR5 profiles with 1× all-bank refresh.
-Each channel starts precharged. The script preserves the observed burst order
+Both replays accept matching DDR4 and DDR5 profiles with 1× all-bank refresh.
+In the standalone Python replay, each channel starts precharged. The script preserves the observed burst order
 and uses the observed data-bus start as a lower bound on replay data time. It
 serializes commands using the profile's timing limits, generates ACT/PRE from
 the replay row state, and issues periodic rank refreshes at the shorter of the

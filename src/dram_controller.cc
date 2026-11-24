@@ -38,16 +38,31 @@ void MEMORY_CONTROLLER::enable_trace(const std::string& path)
 void MEMORY_CONTROLLER::set_trace(std::unique_ptr<champsim::dram_trace> output)
 {
   trace = std::move(output);
-  for (std::size_t index = 0; index < channels.size(); ++index) {
-    channels[index].trace = trace.get();
-    channels[index].trace_channel = index;
-  }
+  for (auto& channel : channels)
+    channel.trace = trace.get();
+}
+
+champsim::dram_power_geometry MEMORY_CONTROLLER::power_geometry() const
+{
+  const auto& first = channels.at(0);
+  return {channels.size(), address_mapping.ranks(), address_mapping.bankgroups(), address_mapping.banks(),
+          address_mapping.rows(), address_mapping.columns(), 8 * static_cast<std::size_t>(channel_width.count()),
+          address_mapping.prefetch_size, first.clock_period, first.data_bus_period, first.tREF};
+}
+
+void MEMORY_CONTROLLER::enable_device_power(const std::string& memspec, double toggle)
+{
+  if (!device_power_factory)
+    throw std::invalid_argument("this configuration was built without linked DRAMPower");
+  device_power = device_power_factory(power_geometry(), memspec, toggle);
+  for (auto& channel : channels)
+    channel.device_power = device_power.get();
 }
 
 void DRAM_CHANNEL::trace_address(std::string_view event, champsim::chrono::clock::time_point time, champsim::address address)
 {
   if (trace && !warmup)
-    trace->event(event, time, trace_channel, address_mapping.get_rank(address), address_mapping.get_bankgroup(address),
+    trace->event(event, time, channel_index, address_mapping.get_rank(address), address_mapping.get_bankgroup(address),
                  address_mapping.get_bank(address), address_mapping.get_row(address), address_mapping.get_column(address) * address_mapping.prefetch_size);
 }
 
@@ -55,7 +70,7 @@ void DRAM_CHANNEL::trace_bank(std::string_view event, std::size_t index)
 {
   if (trace && !warmup) {
     const auto group_index = index / address_mapping.banks();
-    trace->event(event, current_time, trace_channel, group_index / address_mapping.bankgroups(),
+    trace->event(event, current_time, channel_index, group_index / address_mapping.bankgroups(),
                  group_index % address_mapping.bankgroups(), index % address_mapping.banks(), bank_request[index].open_row.value_or(0));
   }
 }
@@ -70,6 +85,7 @@ MEMORY_CONTROLLER::MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, 
   for (std::size_t i{0}; i < chans; ++i) {
     channels.emplace_back(dbus_period, mc_period, t_rp, t_rcd, t_cas, t_ras, refresh_period, refreshes_per_period, chan_width, rq_size, wq_size,
                           address_mapping);
+    channels.back().channel_index = i;
   }
 }
 
@@ -211,7 +227,7 @@ long DRAM_CHANNEL::schedule_refresh()
     record_energy(dram_event::refresh_due);
     if (trace && !warmup)
       for (std::size_t rank = 0; rank < address_mapping.ranks(); ++rank)
-        trace->event("refresh_due", current_time, trace_channel, rank);
+        trace->event("refresh_due", current_time, channel_index, rank);
     if (refresh_row >= address_mapping.rows())
       refresh_row -= address_mapping.rows();
   }
@@ -326,7 +342,13 @@ long DRAM_CHANNEL::populate_dbus()
 
       const bool write = active_request->pkt->value().is_write;
       record_energy(write ? dram_event::write_burst : dram_event::read_burst);
-      trace_address(write ? "write" : "read", active_request->ready_time - DRAM_DBUS_RETURN_TIME, active_request->pkt->value().address);
+      const auto start = active_request->ready_time - DRAM_DBUS_RETURN_TIME;
+      const auto address = active_request->pkt->value().address;
+      trace_address(write ? "write" : "read", start, address);
+      if (device_power && !warmup)
+        device_power->observe({active_request->reserved, start, channel_index, address_mapping.get_rank(address),
+                               address_mapping.get_bankgroup(address), address_mapping.get_bank(address), address_mapping.get_row(address),
+                               address_mapping.get_column(address) * address_mapping.prefetch_size, write});
 
       // set when bankgroup dbus will be next ready
       bankgroup_readytime[op_bankgroup] = current_time + DRAM_DBUS_RETURN_TIME + DRAM_DBUS_BANKGROUP_STALL;
@@ -428,7 +450,7 @@ long DRAM_CHANNEL::service_packet(DRAM_CHANNEL::queue_type::iterator pkt)
       auto row_charge_delay = champsim::chrono::clock::duration{bank_request[op_idx].open_row.has_value() ? tRP + tRCD : tRCD};
       bank_request[op_idx] = {true,  row_buffer_hit,        false,
                               false, std::optional{op_row}, current_time + tCAS + (row_buffer_hit ? champsim::chrono::clock::duration{} : row_charge_delay),
-                              pkt};
+                              pkt, current_time};
       pkt->value().scheduled = true;
       pkt->value().ready_time = champsim::chrono::clock::time_point::max();
 

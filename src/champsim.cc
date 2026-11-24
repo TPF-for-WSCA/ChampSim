@@ -117,6 +117,8 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   const auto phase_begin = global_clock.now();
   if (!is_warmup && env.dram_view().trace)
     env.dram_view().trace->begin(phase_begin);
+  if (!is_warmup && env.dram_view().device_power)
+    env.dram_view().device_power->begin(phase_begin);
   const auto begin_energy = is_warmup ? std::vector<component_energy_stats>{} : sample_component_energy(env);
 
   const auto time_quantum = std::accumulate(std::cbegin(operables), std::cend(operables), champsim::chrono::clock::duration::max(),
@@ -231,7 +233,7 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   const bool frontend_accounting = std::any_of(cpus.begin(), cpus.end(), [](const O3_CPU& cpu) {
     return cpu.frontend_energy != nullptr || cpu.make_direction_energy != nullptr;
   });
-  if (!is_warmup && (!begin_energy.empty() || frontend_accounting || env.memory_energy || (dram.trace && dram.trace->streaming()))) {
+  if (!is_warmup && (!begin_energy.empty() || frontend_accounting || env.memory_energy || dram.device_power || (dram.trace && dram.trace->streaming()))) {
     if (env.memory_energy)
       coverage_gaps = env.memory_energy->coverage_gaps();
     if (!env.dram_energy)
@@ -271,6 +273,8 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
     const auto instructions = std::accumulate(stats.sim_cpu_stats.begin(), stats.sim_cpu_stats.end(), 0LL,
                                               [](long long sum, const auto& core) { return sum + core.instrs(); });
     stats.energy = phase_energy_stats{phase_begin, global_clock.now(), instructions, std::move(components), std::move(coverage_gaps)};
+    if (dram.device_power)
+      stats.energy->dram_replay = dram.device_power->finish(global_clock.now());
   }
 
   return stats;

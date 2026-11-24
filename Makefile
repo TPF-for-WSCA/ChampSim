@@ -330,6 +330,25 @@ $(test_main_name): override LDLIBS += -lCatch2Main -lCatch2
 $(test_main_name): $(call get_base_objs,TEST) $(test_base_objs) $(base_module_objs) $(nonbase_module_objs) | $$(dir $$@)
 $(executable_name): $(call get_base_objs,$$(build_id)) $(base_module_objs) $(nonbase_module_objs) | $$(dir $$@)
 
+# The optional adapter uses the pinned upstream CMake library. Other builds
+# need neither its checkout nor CMake.
+ifeq ($(drampower_enabled),1)
+DRAMPOWER_BUILD_DIR := $(abspath $(OBJ_ROOT)/drampower)
+DRAMPOWER_CMAKE ?= cmake
+DRAMPOWER_JOBS ?= 2
+DRAMPOWER_CXX ?= $(if $(findstring /,$(firstword $(CXX))),$(abspath $(firstword $(CXX))),$(firstword $(CXX)))
+drampower_libraries := $(DRAMPOWER_BUILD_DIR)/lib/libchampsim_drampower.a $(DRAMPOWER_BUILD_DIR)/lib/libDRAMPower.a
+drampower_sources := $(foreach pattern,*.cpp *.h CMakeLists.txt,$(call rwildcard,third_party/DRAMPower,$(pattern)))
+$(drampower_libraries) &: harcom/drampower/CMakeLists.txt $(wildcard harcom/drampower/*.cc harcom/drampower/*.h) inc/dram_power_model.h inc/energy_stats.h inc/chrono.h $(drampower_sources)
+	@test -f third_party/DRAMPower/CMakeLists.txt || { echo "Run git submodule update --init third_party/DRAMPower" >&2; exit 1; }
+	$(DRAMPOWER_CMAKE) -S harcom/drampower -B "$(DRAMPOWER_BUILD_DIR)" -DCMAKE_BUILD_TYPE=Release \
+	    -DCMAKE_CXX_COMPILER="$(DRAMPOWER_CXX)" -DCMAKE_PREFIX_PATH="$(TRIPLET_DIR)" \
+	    $(if $(DRAMUTILS_SOURCE_DIR),-DFETCHCONTENT_SOURCE_DIR_DRAMUTILS="$(abspath $(DRAMUTILS_SOURCE_DIR))")
+	$(DRAMPOWER_CMAKE) --build "$(DRAMPOWER_BUILD_DIR)" --target champsim_drampower --parallel $(DRAMPOWER_JOBS)
+
+$(executable_name) $(test_main_name): $(drampower_libraries)
+endif
+
 # Link main executables
 $(executable_name) $(test_main_name):
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)

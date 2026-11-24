@@ -1,6 +1,7 @@
 {
   "executable_name": "champsim-harcom-system",
   "harcom_dram_energy": true,
+  "link_drampower": true,
   "physical_memory": {
     "data_rate": 2400,
     "channels": 1,

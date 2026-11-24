@@ -356,7 +356,7 @@ def decorate_queues(caches, ptws, pmem):
 def get_queue_info(ul_pairs, decoration):
     return [decoration.get(ll) for ll,_ in ul_pairs]
 
-def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id, memory_energy_tlbs=None, predictor_energy_enabled=False, backend_link_length_um=None, dram_energy_enabled=False):
+def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id, memory_energy_tlbs=None, predictor_energy_enabled=False, backend_link_length_um=None, dram_energy_enabled=False, link_drampower=False):
     '''
     Generate the lines for a C++ file that instantiates a configuration.
     '''
@@ -491,6 +491,8 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id, memory_en
         yield '  });'
     if dram_energy_enabled:
         yield '  champsim::configure_harcom_dram(*this);'
+    if link_drampower:
+        yield '  DRAM.device_power_factory = champsim::make_linked_drampower;'
     yield '}'
     yield ''
 

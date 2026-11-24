@@ -299,7 +299,7 @@ class NormalizedConfiguration:
             print('P: vmem', list(self.vmem.keys()))
 
         self.root = util.subdict(config_file,
-            ('block_size', 'page_size', 'heartbeat_frequency', 'harcom_memory_energy', 'harcom_predictor_energy', 'harcom_backend_energy', 'harcom_link_length_um', 'harcom_dram_energy')
+            ('block_size', 'page_size', 'heartbeat_frequency', 'harcom_memory_energy', 'harcom_predictor_energy', 'harcom_backend_energy', 'harcom_link_length_um', 'harcom_dram_energy', 'link_drampower')
         )
 
     def merge(self, rhs):
@@ -514,6 +514,12 @@ class NormalizedConfiguration:
             model_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'harcom', 'dram')
             model = modules.ModuleSearchContext(()).data_from_path(model_dir)
             module_info['dram_energy'] = {model['name']: model}
+
+        link_drampower = root_config.get('link_drampower', False)
+        if not isinstance(link_drampower, bool):
+            raise ValueError('link_drampower must be a boolean')
+        if link_drampower:
+            elements['link_drampower'] = True
 
         config_extern = {
             **util.subdict(root_config, ('block_size', 'page_size', 'heartbeat_frequency')),

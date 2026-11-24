@@ -170,7 +170,7 @@ void to_json(nlohmann::json& j, const champsim::phase_stats stats)
       auto& summary = statsmap.at("energy");
       summary["combined_modeled_energy_joules"] = energy->combined_modeled_energy_joules();
       summary["dram_replay"] = {
-          {"method", "DRAMPower 6.0 command replay"},
+          {"method", replay->method},
           {"includes_background_energy", true},
           {"native_duration_ps", replay->native_duration_ps},
           {"replay_duration_ps", replay->replay_duration_ps},
@@ -182,6 +182,15 @@ void to_json(nlohmann::json& j, const champsim::phase_stats stats)
           {"memspec_sha256", replay->memspec_sha256},
           {"drampower_cli_sha256", replay->cli_sha256},
           {"dq_toggle_rate_and_duty_cycle", replay->toggle_rate}};
+      if (const auto& delay = replay->burst_delay)
+        summary["dram_replay"]["burst_start_delay"] = {{"bursts", delay->bursts}, {"mean_ps", delay->mean_ps}, {"max_ps", delay->max_ps}};
+      if (!replay->library_revision.empty()) {
+        auto& dram = summary["dram_replay"];
+        dram.erase("drampower_cli_sha256");
+        dram.erase("memspec_sha256");
+        dram["drampower_library_revision"] = replay->library_revision;
+        dram["memspec_file"] = replay->memspec_file;
+      }
     }
   }
   j = statsmap;

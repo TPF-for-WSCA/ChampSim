@@ -64,7 +64,7 @@ def relroot(abspath):
     champsim_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return os.path.relpath(abspath, start=champsim_root)
 
-def get_makefile_lines(build_id, executable, module_info):
+def get_makefile_lines(build_id, executable, module_info, link_drampower=False):
     ''' Generate all of the lines to be written in a particular configuration's makefile '''
     yield from header({
         'Build ID': build_id,
@@ -84,6 +84,8 @@ def get_makefile_lines(build_id, executable, module_info):
     if legacy_paths:
         yield from append_variable('prereq_for_generated', *legacy_paths, targets=['$(generated_files)'])
 
+    if link_drampower:
+        yield from hard_assign_variable('drampower_enabled', '1')
     yield from append_variable('build_ids', build_id)
     yield from append_variable('executable_name', exe_basename)
 

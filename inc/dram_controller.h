@@ -32,6 +32,7 @@
 #include "channel.h"
 #include "chrono.h"
 #include "dram_energy.h"
+#include "dram_power_model.h"
 #include "dram_stats.h"
 #include "dram_trace.h"
 #include "extent_set.h"
@@ -135,6 +136,7 @@ struct DRAM_CHANNEL final : public champsim::operable {
     champsim::chrono::clock::time_point ready_time{};
 
     queue_type::iterator pkt;
+    champsim::chrono::clock::time_point reserved{};
   };
 
   const champsim::data::bytes channel_width;
@@ -172,7 +174,8 @@ struct DRAM_CHANNEL final : public champsim::operable {
 
   std::optional<champsim::dram_activity> energy_activity;
   champsim::dram_trace* trace = nullptr;
-  std::size_t trace_channel = 0;
+  champsim::dram_power_model* device_power = nullptr;
+  std::size_t channel_index = 0;
 
   void record_energy(champsim::dram_event event, std::size_t count = 1)
   {
@@ -222,6 +225,10 @@ class MEMORY_CONTROLLER : public champsim::operable
 public:
   std::vector<DRAM_CHANNEL> channels;
   std::unique_ptr<champsim::dram_trace> trace;
+  champsim::dram_power_factory device_power_factory = nullptr;
+  std::unique_ptr<champsim::dram_power_model> device_power;
+  [[nodiscard]] champsim::dram_power_geometry power_geometry() const;
+  void enable_device_power(const std::string& memspec, double toggle);
   void enable_trace(const std::string& path);
   void set_trace(std::unique_ptr<champsim::dram_trace> output);
 

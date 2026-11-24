@@ -2,6 +2,7 @@
 #define CHAMPSIM_ENERGY_STATS_H
 
 #include <chrono>
+#include <cstdint>
 #include <numeric>
 #include <optional>
 #include <string>
@@ -28,6 +29,12 @@ struct component_energy_stats {
   double dynamic_energy_joules;
 };
 
+struct dram_replay_burst_delay {
+  std::uint64_t bursts;
+  double mean_ps;
+  double max_ps;
+};
+
 struct dram_replay_energy_stats {
   double native_duration_ps;
   double replay_duration_ps;
@@ -36,6 +43,10 @@ struct dram_replay_energy_stats {
   std::string memspec_sha256;
   std::string cli_sha256;
   double toggle_rate;
+  std::string method = "DRAMPower 6.0 serialized command replay";
+  std::string library_revision;
+  std::string memspec_file;
+  std::optional<dram_replay_burst_delay> burst_delay{};
 
   [[nodiscard]] double elapsed_delta_ps() const { return replay_duration_ps - native_duration_ps; }
   [[nodiscard]] double average_power_watts() const { return energy_joules / (replay_duration_ps * 1e-12); }
