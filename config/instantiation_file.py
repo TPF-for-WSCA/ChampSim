@@ -356,7 +356,7 @@ def decorate_queues(caches, ptws, pmem):
 def get_queue_info(ul_pairs, decoration):
     return [decoration.get(ll) for ll,_ in ul_pairs]
 
-def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id, memory_energy_tlbs=None, predictor_energy_enabled=False):
+def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id, memory_energy_tlbs=None, predictor_energy_enabled=False, backend_link_length_um=None):
     '''
     Generate the lines for a C++ file that instantiates a configuration.
     '''
@@ -469,6 +469,25 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id, memory_en
             fdip = str(fdip_prefetcher in prefetchers).lower()
             has_unmodeled = str(bool(prefetchers - {no_prefetcher, fdip_prefetcher})).lower()
             yield f'    {{{translation}, champsim::replacement_energy_policy::{policy}, {fdip}, {has_unmodeled}}},'
+        yield '  });'
+    if backend_link_length_um is not None:
+        cache_by_name = {cache['name']: cache for cache in caches}
+        ptw_names = {ptw['name'] for ptw in ptws}
+        translation_names = ptw_names | {cache['lower_translate'] for cache in caches if cache.get('lower_translate')}
+        # Follow the TLB path independently of whether memory energy is enabled.
+        while True:
+            next_levels = {cache['lower_level'] for cache in caches if cache['name'] in translation_names and cache.get('lower_level')}
+            if next_levels <= translation_names:
+                break
+            translation_names |= next_levels
+        frequencies = {element['name']: element['frequency'] for element in itertools.chain(cores, caches, ptws)}
+        yield f'  champsim::configure_harcom_backend(*this, {backend_link_length_um}, {{'
+        for index, (lower, upper) in enumerate(ul_pairs):
+            payload = 'translation' if lower in translation_names else 'page_table_entry' if upper in ptw_names else 'cache_line'
+            period = int(1000000 / frequencies[upper])
+            byte_mask = str(bool(cache_by_name.get(lower, {}).get('ubs'))).lower()
+            name = json.dumps(f'{upper} to {lower} link {index}')
+            yield f'    {{&channels.at({index}), {name}, champsim::chrono::picoseconds{{{period}}}, champsim::link_payload::{payload}, {byte_mask}}},'
         yield '  });'
     yield '}'
     yield ''

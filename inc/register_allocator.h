@@ -7,6 +7,7 @@
 #ifndef REG_ALLOC_H
 #define REG_ALLOC_H
 
+#include "backend_energy.h"
 #include "instruction.h"
 
 struct physical_register {
@@ -24,6 +25,12 @@ public:
 
 private:
   using rename_table = std::array<PHYSICAL_REGISTER_ID, INFERRED_ALU_REGISTER + 1>;
+  champsim::backend_activity* energy_activity = nullptr;
+  void record(champsim::backend_event event) const
+  {
+    if (energy_activity)
+      energy_activity->record(event);
+  }
   rename_table frontend_RAT, backend_RAT;
   std::optional<rename_table> speculation_checkpoint;
   std::vector<PHYSICAL_REGISTER_ID> speculative_registers;
@@ -31,7 +38,9 @@ private:
   std::vector<physical_register> physical_register_file;
 
 public:
+  static constexpr auto logical_registers = std::tuple_size<rename_table>::value;
   RegisterAllocator(size_t num_physical_registers);
+  void set_energy_activity(champsim::backend_activity& activity) { energy_activity = &activity; }
   PHYSICAL_REGISTER_ID rename_dest_register(int16_t reg, champsim::program_ordered<ooo_model_instr>::id_type producer_id);
   PHYSICAL_REGISTER_ID rename_src_register(int16_t reg);
   void complete_dest_register(PHYSICAL_REGISTER_ID physreg);

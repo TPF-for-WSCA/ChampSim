@@ -156,3 +156,32 @@ request queues, refill staging, response ports, and each configured page-walk ca
 
 The vendored HARCOM header is from
 [CBP-NG commit `5ceea8358ddbab94e5621e2536530b860cc1e5b7`](https://github.com/AmpereComputing/cbp-ng/tree/5ceea8358ddbab94e5621e2536530b860cc1e5b7).
+
+
+## Core backend and on-chip links
+
+Set the top-level `"harcom_backend_energy": true` to enable backend and link
+energy. It can be used independently or with predictor and memory energy.
+The optional `"harcom_link_length_um"` sets the uniform point-to-point link
+length in micrometres. The default is 1,000. Rebuild with the same configuration
+and a different length to test link sensitivity.
+
+| Component | Activity and hardware assumption |
+| --- | --- |
+| Fetch, decode, DIB-hit and dispatch queues | Configured depths. One logical row transfer per admitted or consumed instruction, with pointer and valid state. Fetch readiness and wrong-path invalidations are charged separately. Rows reserve the supported source and destination operand slots. |
+| Reorder buffer | Dispatch, destination rename, issue, memory completion, execution completion, retirement and squash. Tags use the configured ROB depth. A branch recovery event charges redirect selection and recovery state. |
+| Rename and free list | Speculative and committed RAT reads and writes, physical-ID FIFO, destination logical-register metadata, and full speculative map copy and restore. The checkpoint is charged only when replay opens one. |
+| Scheduler and wakeup | A source-tag table and physical-ready scoreboard. Each eligible candidate observes its source readiness. A completed destination drives a tag broadcast sized to the execution width and source ports. Scheduling uses an analytical selection estimate. |
+| Physical register file | One 64-bit row read per issued source and one write per completed destination. Serialized equivalent SRAM activations approximate multiport access. |
+| Execution | A 64-bit add and result select for an aligned nonmemory, nonbranch instruction. Branches use a compare and target-add proxy. Each memory operand uses a 64-bit address add. Dependency-only trace records can drive queue and register events. The execution proxies apply to aligned instructions. |
+| Load and store queues | Configured address rows, readiness and release updates, issue or drain reads, load-response address comparisons, and store-address search for forwarding. A forward activates the selected 64-bit store-data path. Accepted cache transfers are charged separately from local queue attempts. |
+| Clock distribution | A per-cycle 1 mm reference core trunk and width-scaled gate input load. HARCOM register write costs already include local clock drive. |
+| On-chip links | Point-to-point wire and driver per packet bit, from core through caches and translation structures to the memory controller. Accepted requests and consumed responses count once. Headers account for physical and virtual addresses and prefetch metadata. Requests also carry a PC, ASID, type and flags, plus a byte mask on links into UBS. Cache lines, page numbers, and page-table-entry responses have different payload assumptions. Endpoint FIFO and response-register costs belong to memory accounting. |
+
+Wrong-path instructions contribute where they actually use modeled structures.
+The activity hooks omit host containers, trace-statistics counters, and full
+simulator instruction IDs. ChampSim traces omit opcodes, operand values, and
+circuit placement. Treat the execution, clock and wire estimates as reference
+assumptions. The full clock tree, physical multiport layout, network routing
+and arbitration, and off-chip PHY and DRAM remain open. Link length changes
+the wire estimate and leaves simulated timing unchanged.

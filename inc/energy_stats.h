@@ -23,7 +23,7 @@ struct component_energy_stats {
   std::string instance;
   std::string_view model;
   std::string_view revision;
-  std::string_view assumptions;
+  std::string assumptions;
   chrono::picoseconds clock_period;
   double dynamic_energy_joules;
 };

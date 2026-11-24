@@ -142,6 +142,7 @@ long PageTableWalker::operate()
   };
   std::for_each(std::cbegin(lower_level->returned), std::cend(lower_level->returned), [this](const auto& pkt) { this->finish_packet(pkt); });
   progress += std::distance(std::cbegin(lower_level->returned), std::cend(lower_level->returned));
+  lower_level->record_responses(lower_level->returned.size());
   lower_level->returned.clear();
 
   std::vector<mshr_type> next_steps{};

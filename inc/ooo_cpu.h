@@ -178,6 +178,13 @@ public:
   const std::vector<uint8_t> BTB_INDEX_TAG_HASH;
 
   RegisterAllocator reg_allocator{REGISTER_FILE_SIZE};
+  std::optional<champsim::backend_activity> backend_activity;
+
+  void record_backend(champsim::backend_event event, std::size_t count = 1)
+  {
+    if (backend_activity)
+      backend_activity->record(event, count);
+  }
 
   const bool IDEAL_CBP, IDEAL_IBP, IDEAL_BTB;
   // Valid only during correct-path prediction; never exposes future trace data to replay.

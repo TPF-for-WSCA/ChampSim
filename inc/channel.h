@@ -104,6 +104,16 @@ public:
   stats_type sim_stats{}, roi_stats{};
   std::optional<std::array<queue_activity, 3>> energy_activity;
 
+  struct link_events {
+    uint64_t requests = 0, writes = 0, responses = 0;
+  };
+  std::optional<link_events> link_activity;
+  void record_responses(std::size_t count = 1)
+  {
+    if (link_activity)
+      link_activity->responses += count;
+  }
+
   void record_reads(request_queue queue, std::size_t count)
   {
     if (energy_activity)

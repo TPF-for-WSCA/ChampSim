@@ -343,7 +343,7 @@ public:
       double energy = 0;
       for (const auto& term : meter.terms)
         energy += static_cast<double>(*term.count) * term.femtojoules;
-      result.push_back({meter.instance, meter.model, revision, meter.assumptions, meter.clock_period, energy * 1e-15});
+      result.push_back({meter.instance, meter.model, revision, std::string{meter.assumptions}, meter.clock_period, energy * 1e-15});
     }
     return result;
   }

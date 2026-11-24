@@ -925,12 +925,14 @@ long CACHE::operate()
   // Finish returns
   std::for_each(std::cbegin(lower_level->returned), std::cend(lower_level->returned), [this](const auto& pkt) { this->finish_packet(pkt); });
   progress += std::distance(std::cbegin(lower_level->returned), std::cend(lower_level->returned));
+  lower_level->record_responses(lower_level->returned.size());
   lower_level->returned.clear();
 
   // Finish translations
   if (lower_translate != nullptr) {
     std::for_each(std::cbegin(lower_translate->returned), std::cend(lower_translate->returned), [this](const auto& pkt) { this->finish_translation(pkt); });
     progress += std::distance(std::cbegin(lower_translate->returned), std::cend(lower_translate->returned));
+    lower_translate->record_responses(lower_translate->returned.size());
     lower_translate->returned.clear();
   }
 

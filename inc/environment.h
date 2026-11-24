@@ -21,6 +21,7 @@
 #include <memory>
 #include <vector>
 
+#include "backend_energy.h"
 #include "cache.h"
 #include "dram_controller.h"
 #include "memory_energy.h"
@@ -32,6 +33,7 @@ namespace champsim
 {
 struct environment {
   std::unique_ptr<memory_energy_model> memory_energy;
+  std::unique_ptr<backend_energy_model> backend_energy;
   virtual std::vector<std::reference_wrapper<O3_CPU>> cpu_view() = 0;
   virtual std::vector<std::reference_wrapper<CACHE>> cache_view() = 0;
   virtual std::vector<std::reference_wrapper<PageTableWalker>> ptw_view() = 0;

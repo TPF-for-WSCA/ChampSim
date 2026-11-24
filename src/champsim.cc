@@ -48,18 +48,18 @@ std::vector<component_energy_stats> sample_component_energy(environment& env)
     const auto predictors = cpu.branch_module_pimpl->energy_snapshots();
     for (std::size_t index = 0; index < predictors.size(); ++index) {
       const auto& predictor = predictors[index];
-      components.push_back({fmt::format("CPU {} branch predictor {}", cpu.cpu, index), predictor.model, predictor.revision, predictor.assumptions,
+      components.push_back({fmt::format("CPU {} branch predictor {}", cpu.cpu, index), predictor.model, predictor.revision, std::string{predictor.assumptions},
                             cpu.clock_period, predictor.dynamic_energy_fJ * 1e-15});
     }
     if (cpu.frontend_energy != nullptr) {
       for (const auto& component : cpu.frontend_energy->energy_snapshots()) {
-        components.push_back({fmt::format("CPU {} {}", cpu.cpu, component.model), component.model, component.revision, component.assumptions,
+        components.push_back({fmt::format("CPU {} {}", cpu.cpu, component.model), component.model, component.revision, std::string{component.assumptions},
                               cpu.clock_period, component.dynamic_energy_fJ * 1e-15});
       }
     }
     for (const auto& model : cpu.predictor_energy) {
       for (const auto& component : model->energy_snapshots()) {
-        components.push_back({fmt::format("CPU {} {}", cpu.cpu, component.model), component.model, component.revision, component.assumptions,
+        components.push_back({fmt::format("CPU {} {}", cpu.cpu, component.model), component.model, component.revision, std::string{component.assumptions},
                               cpu.clock_period, component.dynamic_energy_fJ * 1e-15});
       }
     }
@@ -67,6 +67,10 @@ std::vector<component_energy_stats> sample_component_energy(environment& env)
   if (env.memory_energy) {
     auto memory = env.memory_energy->energy_snapshots();
     components.insert(components.end(), std::make_move_iterator(memory.begin()), std::make_move_iterator(memory.end()));
+  }
+  if (env.backend_energy) {
+    auto backend = env.backend_energy->energy_snapshots();
+    components.insert(components.end(), std::make_move_iterator(backend.begin()), std::make_move_iterator(backend.end()));
   }
   return components;
 }
@@ -222,6 +226,13 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   if (!is_warmup && (!begin_energy.empty() || frontend_accounting || env.memory_energy)) {
     if (env.memory_energy)
       coverage_gaps = env.memory_energy->coverage_gaps();
+    if (env.backend_energy) {
+      const auto gaps = env.backend_energy->coverage_gaps();
+      coverage_gaps.insert(coverage_gaps.end(), gaps.begin(), gaps.end());
+    } else {
+      coverage_gaps.emplace_back("core backend");
+      coverage_gaps.emplace_back("on-chip interconnect");
+    }
     for (const O3_CPU& cpu : cpus) {
       if (cpu.frontend_energy != nullptr) {
         for (const auto& gap : cpu.frontend_energy->coverage_gaps())

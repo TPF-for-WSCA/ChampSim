@@ -2,6 +2,8 @@
 
 #include <cassert>
 
+using champsim::backend_event;
+
 RegisterAllocator::RegisterAllocator(size_t num_physical_registers)
 {
   assert(num_physical_registers <= std::numeric_limits<PHYSICAL_REGISTER_ID>::max());
@@ -19,6 +21,10 @@ PHYSICAL_REGISTER_ID RegisterAllocator::rename_dest_register(int16_t reg, champs
 
   PHYSICAL_REGISTER_ID phys_reg = free_registers.front();
   free_registers.pop();
+  record(backend_event::free_take);
+  record(backend_event::rat_write);
+  record(backend_event::rename_metadata_write);
+  record(backend_event::ready_write);
   frontend_RAT[reg] = phys_reg;
   physical_register_file.at(phys_reg) = {(uint16_t)reg, producer_id, false, true}; // arch_reg_index, valid, busy
   if (speculation_checkpoint)
@@ -29,6 +35,7 @@ PHYSICAL_REGISTER_ID RegisterAllocator::rename_dest_register(int16_t reg, champs
 
 PHYSICAL_REGISTER_ID RegisterAllocator::rename_src_register(int16_t reg)
 {
+  record(backend_event::rat_read);
   PHYSICAL_REGISTER_ID phys = frontend_RAT[reg];
 
   if (phys < 0) {
@@ -36,11 +43,17 @@ PHYSICAL_REGISTER_ID RegisterAllocator::rename_src_register(int16_t reg)
     // (common due to the traces being slices in the middle of a program)
     phys = free_registers.front();
     free_registers.pop();
+    record(backend_event::free_take);
+    record(backend_event::rat_write);
+    record(backend_event::rename_metadata_write);
+    record(backend_event::ready_write);
     frontend_RAT[reg] = phys;
     if (speculation_checkpoint)
       speculative_registers.push_back(phys);
-    else
+    else {
+      record(backend_event::committed_write);
       backend_RAT[reg] = phys; // An unseen correct-path source has a committed initial value.
+    }
     physical_register_file.at(phys) = {(uint16_t)reg, 0, true, true}; // arch_reg_index, producing_inst_id, valid, busy
   }
 
@@ -50,12 +63,16 @@ PHYSICAL_REGISTER_ID RegisterAllocator::rename_src_register(int16_t reg)
 void RegisterAllocator::complete_dest_register(PHYSICAL_REGISTER_ID physreg)
 {
   // mark the physical register as valid
+  record(backend_event::ready_write);
   physical_register_file.at(physreg).valid = true;
 }
 
 void RegisterAllocator::retire_dest_register(PHYSICAL_REGISTER_ID physreg)
 {
   // grab the arch reg index, find old phys reg in backend RAT
+  record(backend_event::rename_metadata_read);
+  record(backend_event::committed_read);
+  record(backend_event::committed_write);
   uint16_t arch_reg = physical_register_file.at(physreg).arch_reg_index;
   PHYSICAL_REGISTER_ID old_phys_reg = backend_RAT[arch_reg];
 
@@ -71,6 +88,8 @@ void RegisterAllocator::retire_dest_register(PHYSICAL_REGISTER_ID physreg)
 void RegisterAllocator::free_register(PHYSICAL_REGISTER_ID physreg)
 {
   physical_register_file.at(physreg) = {255, 0, false, false}; // arch_reg_index, producing_inst_id, valid, busy
+  record(backend_event::free_put);
+  record(backend_event::ready_write);
   free_registers.push(physreg);
 }
 
@@ -92,8 +111,10 @@ void RegisterAllocator::reset_frontend_RAT()
 
 void RegisterAllocator::begin_speculation()
 {
-  if (!speculation_checkpoint)
+  if (!speculation_checkpoint) {
+    record(backend_event::checkpoint);
     speculation_checkpoint = frontend_RAT;
+  }
 }
 
 void RegisterAllocator::squash_speculation()
@@ -102,6 +123,7 @@ void RegisterAllocator::squash_speculation()
     return;
   // Preserve older, still-unretired producers rather than resetting to the
   // committed RAT. Source-only allocations made by replay must be freed too.
+  record(backend_event::restore);
   frontend_RAT = *speculation_checkpoint;
   for (auto reg : speculative_registers)
     free_register(reg);

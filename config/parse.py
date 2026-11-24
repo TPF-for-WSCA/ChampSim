@@ -299,7 +299,7 @@ class NormalizedConfiguration:
             print('P: vmem', list(self.vmem.keys()))
 
         self.root = util.subdict(config_file,
-            ('block_size', 'page_size', 'heartbeat_frequency', 'harcom_memory_energy', 'harcom_predictor_energy')
+            ('block_size', 'page_size', 'heartbeat_frequency', 'harcom_memory_energy', 'harcom_predictor_energy', 'harcom_backend_energy', 'harcom_link_length_um')
         )
 
     def merge(self, rhs):
@@ -494,6 +494,18 @@ class NormalizedConfiguration:
             model = modules.ModuleSearchContext(()).data_from_path(model_dir)
             module_info['predictor_energy'] = {model['name']: model}
 
+        backend_energy_enabled = root_config.get('harcom_backend_energy', False)
+        if not isinstance(backend_energy_enabled, bool):
+            raise ValueError('harcom_backend_energy must be a boolean')
+        if backend_energy_enabled:
+            length = root_config.get('harcom_link_length_um', 1000)
+            if type(length) not in (int, float) or not 0 < length <= 100000:
+                raise ValueError('harcom_link_length_um must be positive and at most 100,000')
+            elements['backend_link_length_um'] = float(length)
+            model_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'harcom', 'backend')
+            model = modules.ModuleSearchContext(()).data_from_path(model_dir)
+            module_info['backend_energy'] = {model['name']: model}
+
         config_extern = {
             **util.subdict(root_config, ('block_size', 'page_size', 'heartbeat_frequency')),
             'num_cores': len(cores)
@@ -546,7 +558,7 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
             *(c['_branch_predictor_data'] for c in elements['cores']),
             *(c['_btb_data'] for c in elements['cores'])
         ))]
-        for name in ('memory_energy', 'predictor_energy'):
+        for name in ('memory_energy', 'predictor_energy', 'backend_energy'):
             modules_to_compile.extend(module_info.get(name, ()))
 
     return executable_name(*configs), elements, modules_to_compile, module_info, config_file

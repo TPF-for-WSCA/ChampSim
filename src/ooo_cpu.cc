@@ -31,8 +31,11 @@
 #include "instruction.h"
 #include "util/span.h"
 
+using champsim::backend_event;
+
 long O3_CPU::operate()
 {
+  record_backend(backend_event::cycle);
   if (!warmup) {
     sim_stats.fetch_recovery_cycles += current_time < fetch_resume_time;
     sim_stats.frontend_empty_cycles += IFETCH_BUFFER.empty() && DECODE_BUFFER.empty() && DIB_HIT_BUFFER.empty();
@@ -143,6 +146,7 @@ std::optional<O3_CPU::fetch_prediction> O3_CPU::consume_prediction(champsim::add
 
 void O3_CPU::finish_branch_recovery(const ooo_model_instr& instr)
 {
+  record_backend(backend_event::recover);
   fetch_resume_time = current_time + BRANCH_MISPREDICT_PENALTY;
   if (branch_recovery_start) {
     sim_stats.branch_redirect_cycles += (fetch_resume_time - *branch_recovery_start) / clock_period;
@@ -288,6 +292,7 @@ void O3_CPU::initialize_wrong_path(champsim::bandwidth& bandwidth)
       l1i->impl_prefetcher_branch_operate(instr.ip, instr.branch, taken ? target : champsim::address{});
     // Replay executes speculatively but does not train outcomes or retire.
     IFETCH_BUFFER.push_back(std::move(instr));
+    record_backend(backend_event::fetch_in);
     ++sim_stats.wrong_path_fetched;
     bandwidth.consume();
     if (taken)
@@ -308,12 +313,19 @@ void O3_CPU::recover_wrong_path()
     }), dependents.end());
   }
   for (auto& load : LQ)
-    if (load && load->wrong_path)
+    if (load && load->wrong_path) {
+      record_backend(backend_event::load_release);
       load.reset();
-  SQ.erase(std::remove_if(SQ.begin(), SQ.end(), [](const auto& store) { return store.wrong_path; }), SQ.end());
+    }
+  auto sq_end = std::remove_if(SQ.begin(), SQ.end(), [](const auto& store) { return store.wrong_path; });
+  record_backend(backend_event::store_release, static_cast<std::size_t>(std::distance(sq_end, SQ.end())));
+  SQ.erase(sq_end, SQ.end());
   reg_allocator.squash_speculation();
-  for (auto* buffer : {&IFETCH_BUFFER, &DECODE_BUFFER, &DIB_HIT_BUFFER, &DISPATCH_BUFFER, &ROB}) {
+  for (auto [buffer, release] : {std::pair{&IFETCH_BUFFER, backend_event::fetch_release},
+                                 {&DECODE_BUFFER, backend_event::decode_release}, {&DIB_HIT_BUFFER, backend_event::dib_release},
+                                 {&DISPATCH_BUFFER, backend_event::dispatch_release}, {&ROB, backend_event::rob_release}}) {
     auto end = std::remove_if(buffer->begin(), buffer->end(), [](const auto& instr) { return instr.wrong_path; });
+    record_backend(release, static_cast<std::size_t>(std::distance(end, buffer->end())));
     sim_stats.wrong_path_squashed += std::distance(end, buffer->end());
     buffer->erase(end, buffer->end());
   }
@@ -353,6 +365,7 @@ void O3_CPU::initialize_instruction()
 
     // Add to IFETCH_BUFFER
     IFETCH_BUFFER.push_back(input_queue.front());
+    record_backend(backend_event::fetch_in);
     input_queue.pop_front();
 
     IFETCH_BUFFER.back().ready_time = current_time;
@@ -511,6 +524,7 @@ void O3_CPU::do_check_dib(ooo_model_instr& instr)
     instr.ready_time = current_time;
   }
 
+  record_backend(backend_event::fetch_ready);
   instr.dib_checked = true;
 
   if constexpr (champsim::debug_print) {
@@ -638,6 +652,9 @@ long O3_CPU::promote_to_decode()
   std::move(decoded_window_end, window_end, std::back_inserter(DECODE_BUFFER));
 
   long progress{std::distance(window_begin, window_end)};
+  record_backend(backend_event::fetch_out, static_cast<std::size_t>(progress));
+  record_backend(backend_event::dib_in, static_cast<std::size_t>(std::distance(window_begin, decoded_window_end)));
+  record_backend(backend_event::decode_in, static_cast<std::size_t>(std::distance(decoded_window_end, window_end)));
   IFETCH_BUFFER.erase(window_begin, window_end);
   return progress;
 }
@@ -718,6 +735,9 @@ long O3_CPU::decode_instruction()
 
   long progress{std::distance(dib_hit_buffer_begin, dib_hit_buffer_end) + std::distance(decode_buffer_begin, decode_buffer_end)};
 
+  record_backend(backend_event::dispatch_in, static_cast<std::size_t>(progress));
+  record_backend(backend_event::dib_out, static_cast<std::size_t>(std::distance(dib_hit_buffer_begin, dib_hit_buffer_end)));
+  record_backend(backend_event::decode_out, static_cast<std::size_t>(std::distance(decode_buffer_begin, decode_buffer_end)));
   std::merge(dib_hit_buffer_begin, dib_hit_buffer_end, decode_buffer_begin, decode_buffer_end, std::back_inserter(DISPATCH_BUFFER),
              ooo_model_instr::program_order);
   DECODE_BUFFER.erase(decode_buffer_begin, decode_buffer_end);
@@ -744,6 +764,8 @@ long O3_CPU::dispatch_instruction()
          && (static_cast<std::size_t>(std::count_if(std::begin(LQ), std::end(LQ), [](const auto& entry) { return !entry.has_value(); }))
              >= DISPATCH_BUFFER.front().source_memory.size())
          && (DISPATCH_BUFFER.front().destination_memory.size() + SQ.size() <= SQ_SIZE)) {
+    record_backend(backend_event::dispatch_out);
+    record_backend(backend_event::rob_in);
     ROB.push_back(std::move(DISPATCH_BUFFER.front()));
     DISPATCH_BUFFER.pop_front();
     do_memory_scheduling(ROB.back());
@@ -797,6 +819,7 @@ void O3_CPU::do_scheduling(ooo_model_instr& instr)
     dreg = reg_allocator.rename_dest_register(dreg, instr.instr_id);
   }
 
+  record_backend(backend_event::rob_rename);
   instr.scheduled = true;
 }
 
@@ -805,6 +828,8 @@ long O3_CPU::execute_instruction()
   champsim::bandwidth exec_bw{EXEC_WIDTH};
   for (auto rob_it = std::begin(ROB); rob_it != std::end(ROB) && exec_bw.has_remaining(); ++rob_it) {
     if (rob_it->scheduled && !rob_it->executed && rob_it->ready_time <= current_time) {
+      record_backend(backend_event::select_entry);
+      record_backend(backend_event::ready_read, rob_it->source_registers.size());
       bool ready = std::all_of(std::begin(rob_it->source_registers), std::end(rob_it->source_registers),
                                [&alloc = std::as_const(reg_allocator)](auto srcreg) { return alloc.isValid(srcreg); });
       if (ready) {
@@ -819,6 +844,15 @@ long O3_CPU::execute_instruction()
 
 void O3_CPU::do_execution(ooo_model_instr& instr)
 {
+  record_backend(backend_event::rob_issue);
+  record_backend(backend_event::operand_read, instr.source_registers.size());
+  if (instr.ip.to<uint64_t>() % INSTRUCTION_BYTES == 0) {
+    if (instr.is_branch)
+      record_backend(backend_event::branch_execute);
+    else if (instr.num_mem_ops() == 0)
+      record_backend(backend_event::integer_execute);
+    record_backend(backend_event::address_execute, instr.num_mem_ops());
+  }
   instr.executed = true;
   sim_stats.wrong_path_executed += instr.wrong_path;
   instr.ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
@@ -826,6 +860,7 @@ void O3_CPU::do_execution(ooo_model_instr& instr)
   // Mark LQ entries as ready to translate
   for (auto& lq_entry : LQ) {
     if (lq_entry.has_value() && lq_entry->instr_id == instr.instr_id) {
+      record_backend(backend_event::load_ready);
       lq_entry->ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
     }
   }
@@ -833,6 +868,7 @@ void O3_CPU::do_execution(ooo_model_instr& instr)
   // Mark SQ entries as ready to translate
   for (auto& sq_entry : SQ) {
     if (sq_entry.instr_id == instr.instr_id) {
+      record_backend(backend_event::store_ready);
       sq_entry.ready_time = current_time + (warmup ? champsim::chrono::clock::duration{} : EXEC_LATENCY);
     }
   }
@@ -848,6 +884,8 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
   for (auto& smem : instr.source_memory) {
     auto q_entry = std::find_if_not(std::begin(LQ), std::end(LQ), [](const auto& lq_entry) { return lq_entry.has_value(); });
     assert(q_entry != std::end(LQ));
+    record_backend(backend_event::load_in);
+    record_backend(backend_event::store_match, SQ.size());
     q_entry->emplace(smem, instr.instr_id, instr.ip, instr.asid); // add it to the load queue
     (*q_entry)->wrong_path = instr.wrong_path;
 
@@ -857,10 +895,14 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
     });
     if (sq_it != std::end(SQ) && sq_it->virtual_address == smem) {
       if (sq_it->fetch_issued) { // Store already executed
+        record_backend(backend_event::forward_data);
+        record_backend(backend_event::rob_memory_done);
+        record_backend(backend_event::load_release);
         (*q_entry)->finish(instr);
         q_entry->reset();
       } else {
         assert(sq_it->instr_id < instr.instr_id);      // The found SQ entry is a prior store
+        record_backend(backend_event::forward_wait);
         sq_it->lq_depend_on_me.emplace_back(*q_entry); // Forward the load when the store finishes
         (*q_entry)->producer_id = sq_it->instr_id;     // The load waits on the store to finish
 
@@ -873,6 +915,7 @@ void O3_CPU::do_memory_scheduling(ooo_model_instr& instr)
 
   // store
   for (auto& dmem : instr.destination_memory) {
+    record_backend(backend_event::store_in);
     SQ.emplace_back(dmem, instr.instr_id, instr.ip, instr.asid); // add it to the store queue
     SQ.back().wrong_path = instr.wrong_path;
   }
@@ -904,6 +947,7 @@ long O3_CPU::operate_lsq()
 
   auto [complete_begin, complete_end] = champsim::get_span_p(std::cbegin(SQ), std::cend(SQ), store_bw, do_complete);
   store_bw.consume(std::distance(complete_begin, complete_end));
+  record_backend(backend_event::store_release, static_cast<std::size_t>(std::distance(complete_begin, complete_end)));
   SQ.erase(complete_begin, complete_end);
 
   champsim::bandwidth load_bw{LQ_WIDTH};
@@ -911,9 +955,11 @@ long O3_CPU::operate_lsq()
   for (auto& lq_entry : LQ) {
     if (load_bw.has_remaining() && lq_entry.has_value() && lq_entry->producer_id == std::numeric_limits<uint64_t>::max() && !lq_entry->fetch_issued
         && lq_entry->ready_time < current_time) {
+      record_backend(backend_event::load_issue);
       auto success = execute_load(*lq_entry);
       if (success) {
         load_bw.consume();
+        record_backend(backend_event::load_send);
         lq_entry->fetch_issued = true;
       }
     }
@@ -924,6 +970,8 @@ long O3_CPU::operate_lsq()
 
 void O3_CPU::do_finish_store(const LSQ_ENTRY& sq_entry)
 {
+  record_backend(backend_event::store_execute);
+  record_backend(backend_event::rob_memory_done);
   sim_stats.wrong_path_stores_executed += sq_entry.wrong_path;
   if constexpr (champsim::debug_print) {
     fmt::print("[SQ] {} instr_id: {} vaddr: {}\n", __func__, sq_entry.instr_id, sq_entry.virtual_address);
@@ -936,6 +984,9 @@ void O3_CPU::do_finish_store(const LSQ_ENTRY& sq_entry)
     assert(dependent.has_value()); // LQ entry is still allocated
     assert(dependent->producer_id == sq_entry.instr_id);
 
+    record_backend(backend_event::forward_data);
+    record_backend(backend_event::rob_memory_done);
+    record_backend(backend_event::load_release);
     dependent->finish(std::begin(ROB), std::end(ROB));
     dependent.reset();
   }
@@ -952,6 +1003,7 @@ bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
     fmt::print("[SQ] {} instr_id: {} vaddr: {}\n", __func__, data_packet.instr_id, data_packet.v_address);
   }
 
+  record_backend(backend_event::store_send);
   const auto success = L1D_bus.issue_write(data_packet);
   if (success)
     last_data_address = sq_entry.virtual_address;
@@ -979,6 +1031,9 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
 
 void O3_CPU::do_complete_execution(ooo_model_instr& instr)
 {
+  record_backend(backend_event::rob_complete);
+  record_backend(backend_event::wake, instr.destination_registers.size());
+  record_backend(backend_event::operand_write, instr.destination_registers.size());
   for (auto dreg : instr.destination_registers) {
     // mark physical register's data as valid
     reg_allocator.complete_dest_register(dreg);
@@ -1020,6 +1075,7 @@ long O3_CPU::handle_memory_return()
     while (fetch_bw.has_remaining() && !l1i_entry.instr_depend_on_me.empty()) {
       auto fetched = std::find_if(std::begin(IFETCH_BUFFER), std::end(IFETCH_BUFFER), ooo_model_instr::matches_id(l1i_entry.instr_depend_on_me.front()));
       if (fetched != std::end(IFETCH_BUFFER) && champsim::block_number{fetched->ip} == champsim::block_number{l1i_entry.v_address} && fetched->fetch_issued) {
+        record_backend(backend_event::fetch_ready);
         fetched->fetch_completed = true;
         fetch_bw.consume();
         ++progress;
@@ -1034,6 +1090,7 @@ long O3_CPU::handle_memory_return()
 
     // remove this entry if we have serviced all of its instructions
     if (l1i_entry.instr_depend_on_me.empty()) {
+      L1I_bus.lower_level->record_responses();
       L1I_bus.lower_level->returned.pop_front();
       ++progress;
     }
@@ -1041,8 +1098,13 @@ long O3_CPU::handle_memory_return()
 
   auto l1d_it = std::begin(L1D_bus.lower_level->returned);
   for (champsim::bandwidth l1d_bw{L1D_BANDWIDTH}; l1d_bw.has_remaining() && l1d_it != std::end(L1D_bus.lower_level->returned); l1d_bw.consume(), ++l1d_it) {
+    L1D_bus.lower_level->record_responses();
     for (auto& lq_entry : LQ) {
+      if (lq_entry && lq_entry->fetch_issued)
+        record_backend(backend_event::load_match);
       if (lq_entry.has_value() && lq_entry->fetch_issued && champsim::block_number{lq_entry->virtual_address} == champsim::block_number{l1d_it->v_address}) {
+        record_backend(backend_event::rob_memory_done);
+        record_backend(backend_event::load_release);
         lq_entry->finish(std::begin(ROB), std::end(ROB));
         lq_entry.reset();
         ++progress;
@@ -1079,6 +1141,7 @@ long O3_CPU::retire_rob()
   handle_event<Event::RETIRE>(cpu, retire_begin, retire_end, cycles);
 
   auto retire_count = std::distance(retire_begin, retire_end);
+  record_backend(backend_event::rob_retire, static_cast<std::size_t>(retire_count));
   num_retired += retire_count;
   ROB.erase(retire_begin, retire_end);
 
