@@ -496,8 +496,10 @@ public:
     if (!l1.ways.empty())
       result.push_back({names.l1, revision, "64 sets, eight ways, full tags and targets; prediction probes L2 only on an L1 miss", l1_energy, l1.leakage_watts});
     if (has_utb)
-      result.push_back({names.utb, revision, reference_count ? "Banked upper tags, generation tokens, reference counters and LRU tie-break"
-                                                           : "Banked upper tags and generation tokens, LRU with reference bookkeeping", utb_energy, utb.leakage_watts});
+      result.push_back({names.utb, revision,
+                        reference_count ? "Unique tag buffer with banked upper tags, generation tokens, reference counters and LRU tie-break"
+                                        : "Unique tag buffer with banked upper tags, generation tokens and LRU with reference bookkeeping",
+                        utb_energy, utb.leakage_watts});
     return result;
   }
 };

@@ -4,3 +4,9 @@
 [submodule "third_party/DRAMPower"]
 	path = third_party/DRAMPower
 	url = https://github.com/tukl-msd/DRAMPower.git
+[submodule "third_party/DRAMUtils"]
+	path = third_party/DRAMUtils
+	url = https://github.com/tukl-msd/DRAMUtils.git
+[submodule "third_party/DRAMSys"]
+	path = third_party/DRAMSys
+	url = https://github.com/tukl-msd/DRAMSys.git

@@ -82,7 +82,7 @@ continue to determine the simulated predictions, fetch requests and timing.
 | TAGE-SC-L | Parallel SRAMs cover bimodal, tagged, loop and statistical-corrector tables and local histories. Fresh predictions charge hash, comparison and selection logic. History updates use a 3,000-bit shift register and fixed taps for the folded histories. Useful bits live in separately resettable planes. |
 | DIB | 32 sets, eight ways and 16-byte windows. Each lookup reads and compares the eight tags. Promotions and fills update a per-set LRU row. |
 | FDIP FTQ and next-PC logic | A 24-block FTQ with eight prediction-slot banks and 131 bits per slot. The model charges populated slot writes, nonempty queue reads, pointer changes and redirects. Next-PC logic includes the sequential increment, branch selection and PC register. |
-| Basic BTB direct table | 512 or 1024 sets, eight ways and full tags. The model reads the ways in parallel and charges one data-row write per fill. The lookup for a training update can supply the same row-selection result to the fill. |
+| Basic BTB direct table | Eight ways with full tags at 512 or 1024 sets, or clipped tags at power-of-two set counts from 256 to 4096 with 15 bits or the corresponding LiteBTB sweep width. The model reads the ways in parallel and charges one data-row write per fill. The lookup for a training update can supply the same row-selection result to the fill. |
 | Basic BTB ITTAGE | Parallel base and tagged SRAM banks, provider and alternate selection, resettable useful bits, and a shift register with taps for folded history. |
 | Basic BTB return-address stack | A 64-entry stack per context and four-bit call-size trackers. FDIP checkpointing copies live stack entries and clears a shadow-valid bitmap. The first committed write to a call-size index after a checkpoint saves the older value in a shadow SRAM. The speculative read selects the shadow entry when marked valid. |
 
@@ -225,19 +225,19 @@ response staging and bus arbitration. The on-chip link from step 4 still owns
 wire energy. Analytics counters, host dependency vectors, and off-chip signal
 energy are excluded from the controller costs.
 
-The system example enables all four HARCOM options and links DRAMPower v6.0.0
-at the pinned Git submodule revision. The linked build uses GNU Make 4.3 and CMake 3.24 or newer
-and fetches DRAMUtils v1.12.1 if needed. Set `DRAMPOWER_CMAKE` if the default
-`cmake` on your path is older. Set `DRAMUTILS_SOURCE_DIR` to a local
-checkout of that release for a build without a dependency download. Other
+The system example enables all four HARCOM options and uses the Git submodules
+for DRAMPower v6.0.0 and DRAMUtils v1.12.1. The linked build requires GNU Make
+4.3 or newer, CMake 3.24 or newer, and the dependencies from the vcpkg manifest.
+Set `DRAMPOWER_CMAKE` if the default `cmake` on your path is older. Other
 ChampSim configurations can opt in with `"link_drampower": true`.
 
 ```sh
-git submodule update --init third_party/DRAMPower
+GIT_LFS_SKIP_SMUDGE=1 git submodule update --init third_party/DRAMPower third_party/DRAMUtils third_party/DRAMSys
 ./config.sh --no-compile-all-modules harcom/system-energy.json
 make -j
+memspec=third_party/DRAMSys/configs/memspec/MICRON_4Gb_DDR4-2400_8bit_A.json
 bin/champsim-harcom-system -w 1000000 -i 10000000 --json results.json \
-    --drampower-memspec micron-ddr4.json /path/to/trace.champsimtrace.xz
+    --drampower-memspec "$memspec" /path/to/trace.champsimtrace.xz
 ```
 
 The linked mode sends commands to the library in-process. The replay maintains
@@ -277,18 +277,20 @@ the data bus.
 
 The example matches the geometry and clock of the
 [DRAMSys 5.4.0 Micron 4 Gb DDR4-2400 profile](https://github.com/tukl-msd/DRAMSys/blob/v5.4.0/configs/memspec/MICRON_4Gb_DDR4-2400_8bit_A.json).
-Save that profile locally as `micron-ddr4.json` and use an upstream
+Use the profile from the pinned DRAMSys submodule and an upstream
 [DRAMPower v6.0.0 CLI](https://github.com/tukl-msd/DRAMPower/tree/v6.0.0).
 This release calls `CLI::App::ensure_utf8`. Use CLI11 2.6.2 for its build
 if the default dependency fails. CMake accepts
 `-DFETCHCONTENT_SOURCE_DIR_CLI11=/path/to/CLI11-2.6.2`.
 
 ```sh
+GIT_LFS_SKIP_SMUDGE=1 git submodule update --init third_party/DRAMSys
 ./config.sh --no-compile-all-modules harcom/dram.json
 make -j
 bin/champsim-harcom-dram -w 1000000 -i 10000000 --json results.json \
     --dram-events dram-events.csv /path/to/trace.champsimtrace.xz
-python3 harcom/dram/replay.py --events dram-events.csv --memspec micron-ddr4.json \
+memspec=third_party/DRAMSys/configs/memspec/MICRON_4Gb_DDR4-2400_8bit_A.json
+python3 harcom/dram/replay.py --events dram-events.csv --memspec "$memspec" \
     --drampower /path/to/DRAMPower/build/bin/cli --output dram-replay
 ```
 

@@ -1,0 +1,93 @@
+{
+  "executable_name": "harcom_btb_ipc1/baseline_b2k",
+  "block_size": 64,
+  "ooo_cpu": [
+    {
+      "rob_size": 576,
+      "register_file_size": 288,
+      "sq_size": 128,
+      "fetch_width": 8,
+      "decode_width": 8,
+      "dispatch_width": 8,
+      "execute_width": 6,
+      "lq_width": 4,
+      "sq_width": 2,
+      "retire_width": 8,
+      "branch_predictor": "tage_sc_l",
+      "wrong_path": true,
+      "btb": "harcom/btb/harcom_basic_btb",
+      "btb_sets": 256,
+      "btb_ways": 8,
+      "btb_clipped_tag": true,
+      "btb_tag_size": 13
+    }
+  ],
+  "L1I": {
+    "hit_latency": 4,
+    "fill_latency": 4,
+    "mshr_size": 8,
+    "max_tag_check": 2,
+    "max_fill": 2,
+    "sets": 64,
+    "ways": 8,
+    "ubs": false,
+    "prefetcher": "fdip",
+    "replacement": "srrip",
+    "prefetch_activate": "LOAD,PREFETCH",
+    "virtual_prefetch": true
+  },
+  "L1D": {
+    "prefetcher": "no",
+    "virtual_prefetch": true,
+    "prefetch_activate": "LOAD,RFO",
+    "sets": 64,
+    "ways": 12,
+    "hit_latency": 4,
+    "max_tag_check": 4
+  },
+  "L2C": {
+    "prefetcher": "no",
+    "prefetch_activate": "LOAD,RFO,PREFETCH",
+    "sets": 1024,
+    "ways": 16,
+    "max_fill": 1
+  },
+  "LLC": {
+    "replacement": "drrip",
+    "sets": 4096,
+    "ways": 16
+  },
+  "harcom_dram_energy": true,
+  "link_drampower": true,
+  "physical_memory": {
+    "data_rate": 2400,
+    "channels": 1,
+    "ranks": 1,
+    "bankgroups": 4,
+    "banks": 4,
+    "bank_rows": 32768,
+    "bank_columns": 1024,
+    "channel_width": 8,
+    "tCAS": 16,
+    "tRCD": 16,
+    "tRP": 16,
+    "tRAS": 39
+  },
+  "harcom_memory_energy": true,
+  "harcom_predictor_energy": true,
+  "harcom_backend_energy": true,
+  "DIB": {
+    "sets": 32,
+    "ways": 8,
+    "window_size": 16,
+    "inorder_width": 8
+  },
+  "ITLB": {
+    "sets": 16,
+    "ways": 4
+  },
+  "DTLB": {
+    "sets": 16,
+    "ways": 6
+  }
+}

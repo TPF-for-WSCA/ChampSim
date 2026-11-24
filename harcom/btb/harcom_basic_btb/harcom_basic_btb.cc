@@ -39,6 +39,16 @@ constexpr associative_cost eight_way_cost()
   return {lookup, promote, lookup + promote + way::EWRITE, leakage};
 }
 
+template <std::size_t Sets, std::size_t SweepTagBits>
+std::optional<associative_cost> clipped_direct_cost(uint8_t tag_bits)
+{
+  if (tag_bits == SweepTagBits)
+    return eight_way_cost<Sets, SweepTagBits, 67>();
+  if (tag_bits == 15)
+    return eight_way_cost<Sets, 15, 67>();
+  return std::nullopt;
+}
+
 constexpr auto dib_cost = eight_way_cost<32, 55, 0>();
 constexpr auto direct_1024_cost = eight_way_cost<1024, 52, 67>();
 constexpr auto direct_512_cost = eight_way_cost<512, 53, 67>();
@@ -133,6 +143,14 @@ public:
   {
     if (cpu.BTB_WAYS != 8 || ideal_targets)
       return;
+    switch (cpu.BTB_SETS) {
+    case 256: direct_cost = clipped_direct_cost<256, 13>(tag_bits); break;
+    case 512: direct_cost = clipped_direct_cost<512, 14>(tag_bits); break;
+    case 1024: direct_cost = clipped_direct_cost<1024, 13>(tag_bits); break;
+    case 2048: direct_cost = clipped_direct_cost<2048, 12>(tag_bits); break;
+    case 4096: direct_cost = clipped_direct_cost<4096, 13>(tag_bits); break;
+    default: break;
+    }
     if (cpu.BTB_SETS == 1024 && tag_bits == 52)
       direct_cost = direct_1024_cost;
     if (cpu.BTB_SETS == 512 && tag_bits == 53)
@@ -212,9 +230,9 @@ public:
                            register_leakage_watts(64) + logic_leakage_watts(hcm::INC<62> || hcm::NEQ<64> || hcm::AND<2>
                                                                            || pc_select[0] || pc_select[1])});
     if (direct_cost)
-      snapshots.push_back({"basic BTB direct table", harcom_revision, "eight parallel SRAM ways, full tags, 64-bit targets and LRU row array", direct_energy, direct_cost->leakage_watts});
+      snapshots.push_back({"basic BTB direct table", harcom_revision, "eight parallel SRAM ways, configured tags, 64-bit targets and LRU row array", direct_energy, direct_cost->leakage_watts});
     if (!ideal_targets)
-      snapshots.push_back({"basic BTB ITTAGE", harcom_revision, "parallel base and tagged SRAMs, resettable useful bits and shift-register history", indirect_energy, direct_cost->leakage_watts});
+      snapshots.push_back({"basic BTB ITTAGE", harcom_revision, "parallel base and tagged SRAMs, resettable useful bits and shift-register history", indirect_energy, champsim::harcom::ittage_leakage_watts()});
     if (!ideal_targets)
       snapshots.push_back({"basic BTB return-address stack", harcom_revision,
                            fdip_enabled ? "64-entry stacks, live stack entries copied on an FDIP checkpoint, call-size SRAM with copy-on-write shadow"
@@ -233,7 +251,7 @@ public:
     if (ideal_frontend)
       gaps.emplace_back("ideal frontend prediction oracle");
     if (!direct_cost && !ideal_targets)
-      gaps.emplace_back("basic BTB direct table geometry outside eight ways and 512 or 1024 sets with full tags");
+      gaps.emplace_back("basic BTB direct table geometry outside supported eight-way full-tag or clipped-tag sweep configurations");
     if (ideal_targets)
       gaps.emplace_back("basic BTB direct table, ITTAGE and return stack under ideal target prediction");
     return gaps;
