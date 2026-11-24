@@ -1,6 +1,8 @@
+from io import StringIO
 import unittest
+from unittest.mock import patch
 
-from harcom.dram.replay import Replay, Timing
+from harcom.dram.replay import Replay, Timing, read_events
 
 
 class DramReplayTests(unittest.TestCase):
@@ -33,6 +35,20 @@ class DramReplayTests(unittest.TestCase):
             self.assertEqual(len(refresh), 3)
             self.assertEqual([b - a for a, b in zip(refresh, refresh[1:])], [1000, 1000])
         self.assertEqual(replay.commands[-1][:2], (3000, "END"))
+
+    def test_native_event_stream_can_be_read_from_stdin(self):
+        source = StringIO(
+            '{"format":"champsim-dram-events-v1","channels":1}\n'
+            'event,time_ps,channel,rank,bankgroup,bank,row,column\n'
+            'begin,0,0,0,0,0,0,0\n'
+            'read,10,0,0,0,0,1,0\n'
+            'end,20,0,0,0,0,0,0\n'
+        )
+        with patch("sys.stdin", source):
+            _, begin, end, streams, native = read_events("-")
+        self.assertEqual((begin, end), (0, 20))
+        self.assertEqual(streams, [[(10, "read", (0, 0, 0, 1, 0))]])
+        self.assertEqual(native[0]["read"], 1)
 
     def test_impossible_refresh_window_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "refresh interval"):

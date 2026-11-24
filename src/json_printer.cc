@@ -166,6 +166,23 @@ void to_json(nlohmann::json& j, const champsim::phase_stats stats)
         {"modeled_dynamic_energy_per_instruction_joules",
          encode_optional(energy->instructions > 0 ? std::optional{subtotal / static_cast<double>(energy->instructions)} : std::nullopt)},
         {"components", std::move(components)}});
+    if (const auto& replay = energy->dram_replay) {
+      auto& summary = statsmap.at("energy");
+      summary["combined_modeled_energy_joules"] = energy->combined_modeled_energy_joules();
+      summary["dram_replay"] = {
+          {"method", "DRAMPower 6.0 command replay"},
+          {"includes_background_energy", true},
+          {"native_duration_ps", replay->native_duration_ps},
+          {"replay_duration_ps", replay->replay_duration_ps},
+          {"timing_delta_ps", replay->elapsed_delta_ps()},
+          {"timing_delta_percent", 100 * replay->elapsed_delta_ps() / replay->native_duration_ps},
+          {"energy_joules", replay->energy_joules},
+          {"average_power_watts", replay->average_power_watts()},
+          {"channel_energy_joules", replay->channel_energy_joules},
+          {"memspec_sha256", replay->memspec_sha256},
+          {"drampower_cli_sha256", replay->cli_sha256},
+          {"dq_toggle_rate_and_duty_cycle", replay->toggle_rate}};
+    }
   }
   j = statsmap;
 }

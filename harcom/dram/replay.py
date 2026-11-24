@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Replay measured ChampSim DRAM bursts through DRAMPower v6.0.0."""
 import argparse
+from contextlib import nullcontext
 from collections import Counter
 import csv
 from dataclasses import dataclass
@@ -9,6 +10,8 @@ import json
 import math
 from pathlib import Path
 import subprocess
+import sys
+from tempfile import TemporaryDirectory
 
 
 @dataclass(frozen=True)
@@ -141,7 +144,7 @@ class Replay:
 
 
 def read_events(path):
-    with path.open() as source:
+    with (nullcontext(sys.stdin) if path == "-" else Path(path).open()) as source:
         geometry = json.loads(source.readline())
         if geometry.get("format") != "champsim-dram-events-v1":
             raise ValueError("unsupported ChampSim DRAM event format")
@@ -176,7 +179,7 @@ def read_events(path):
     return geometry, begin, end, streams, native
 
 
-def run(args):
+def run(args, output):
     geometry, begin, end, streams, native = read_events(args.events)
     memspec = json.loads(args.memspec.read_text())["memspec"]
     timing = Timing.from_memspec(memspec, geometry)
@@ -203,8 +206,7 @@ def run(args):
     for replay in replays:
         replay.finish(horizon)
 
-    args.output.mkdir()
-    config = args.output / "toggles.json"
+    config = output / "toggles.json"
     config.write_text(json.dumps({"useToggleRate": True, "simconfig": {"toggleRateDefinition": {
         "togglingRateRead": args.toggle, "togglingRateWrite": args.toggle,
         "dutyCycleRead": args.toggle, "dutyCycleWrite": args.toggle,
@@ -213,15 +215,15 @@ def run(args):
     results = []
     energy_total = 0.0
     for channel, replay in enumerate(replays):
-        trace = args.output / f"channel-{channel}.csv"
+        trace = output / f"channel-{channel}.csv"
         replay.write_trace(trace)
         entry = {"channel": channel, "native_events": native[channel], "bursts_outside_phase": outside[channel],
                  "replay_commands": Counter(cmd[1] for cmd in replay.commands)}
         if args.drampower:
-            result = args.output / f"channel-{channel}.json"
+            result = output / f"channel-{channel}.json"
             result.touch()
             subprocess.run([str(args.drampower.resolve()), "-c", str(config), "-m", str(args.memspec),
-                            "-t", str(trace), "-j", str(result)], check=True)
+                            "-t", str(trace), "-j", str(result)], check=True, stdout=sys.stderr)
             energy = json.loads(result.read_text())["TotalEnergy"]
             if not math.isfinite(energy) or energy < 0:
                 raise ValueError("DRAMPower produced invalid energy")
@@ -243,21 +245,29 @@ def run(args):
     if args.drampower:
         summary.update(drampower_cli_sha256=hashlib.sha256(args.drampower.read_bytes()).hexdigest(),
                        replay_energy_joules=energy_total, replay_average_power_watts=energy_total / (duration * 1e-12))
-    (args.output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    return summary
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--events", required=True, type=Path)
+    parser.add_argument("--events", required=True, help="native event file or - for stdin")
     parser.add_argument("--memspec", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path, help="new output directory")
+    output = parser.add_mutually_exclusive_group(required=True)
+    output.add_argument("--output", type=Path, help="new output directory")
+    output.add_argument("--summary-stdout", action="store_true", help="use temporary command files and emit only the summary")
     parser.add_argument("--drampower", type=Path, help="path to upstream v6.0.0 CLI. Omit to generate traces only.")
     parser.add_argument("--toggle", type=float, default=0.5)
     args = parser.parse_args()
     if not 0 <= args.toggle <= 1:
         parser.error("--toggle must be between 0 and 1")
     try:
-        run(args)
+        if args.summary_stdout:
+            with TemporaryDirectory(prefix="champsim-drampower-") as temporary:
+                print(json.dumps(run(args, Path(temporary))))
+        else:
+            args.output.mkdir()
+            summary = run(args, args.output)
+            (args.output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     except (KeyError, ValueError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"{error}\n")
 

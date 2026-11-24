@@ -28,6 +28,7 @@
 #include "core_inst.inc"
 #endif
 #include "defaults.hpp"
+#include "dram_power_process.h"
 #include "environment.h"
 #include "event_listeners.h"
 #include "ooo_cpu.h" // for O3_CPU
@@ -88,7 +89,17 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
   app.add_option("--listeners", requested_listeners, "A list of the listeners to be attached to the run");
 
   std::string dram_events;
-  app.add_option("--dram-events", dram_events, "Write native measured-phase DRAM events to this file");
+  auto* dram_events_option = app.add_option("--dram-events", dram_events, "Write native measured-phase DRAM events to this file");
+  std::string drampower_cli, drampower_memspec;
+  std::string drampower_adapter = "harcom/dram/replay.py";
+  double drampower_toggle = 0.5;
+  auto* drampower_option = app.add_option("--drampower", drampower_cli, "Stream measured DRAM events to this DRAMPower v6 CLI")
+                               ->check(CLI::ExistingFile)->excludes(dram_events_option);
+  auto* memspec_option = app.add_option("--drampower-memspec", drampower_memspec, "DRAMPower device specification matching ChampSim")
+                             ->check(CLI::ExistingFile)->needs(drampower_option);
+  drampower_option->needs(memspec_option);
+  app.add_option("--drampower-adapter", drampower_adapter, "Path to the ChampSim DRAM replay adapter")->needs(drampower_option);
+  app.add_option("--drampower-toggle", drampower_toggle, "DRAM data toggle rate and duty cycle")->check(CLI::Range(0.0, 1.0))->needs(drampower_option);
 
   app.add_option("traces", trace_names, "The paths to the traces")->required()->expected(NUM_CPUS)->check(CLI::ExistingFile);
 
@@ -129,9 +140,29 @@ int main(int argc, char** argv) // NOLINT(bugprone-exception-escape)
   fmt::print("\n*** ChampSim Multicore Out-of-Order Simulator ***\nWarmup Instructions: {}\nSimulation Instructions: {}\nNumber of CPUs: {}\nPage size: {}\n\n",
              phases.at(0).length, phases.at(1).length, std::size(gen_environment.cpu_view()), PAGE_SIZE);
 
-  if (!dram_events.empty())
-    gen_environment.dram_view().enable_trace(dram_events);
-  auto phase_stats = champsim::main(gen_environment, phases, traces);
+  std::vector<champsim::phase_stats> phase_stats;
+  if (drampower_cli.empty()) {
+    if (!dram_events.empty())
+      gen_environment.dram_view().enable_trace(dram_events);
+    phase_stats = champsim::main(gen_environment, phases, traces);
+  } else {
+    try {
+      champsim::dram_power_process process{drampower_adapter, drampower_cli, drampower_memspec, drampower_toggle};
+      auto& dram = gen_environment.dram_view();
+      dram.set_trace(std::make_unique<champsim::dram_trace>([&process](std::string_view event) { process.send(event); }, dram));
+      phase_stats = champsim::main(gen_environment, phases, traces);
+      dram.set_trace(nullptr);
+      auto replay = process.finish();
+      auto& energy = phase_stats.at(0).energy.value();
+      if (replay.native_duration_ps != static_cast<double>((energy.end - energy.begin).count())
+          || replay.channel_energy_joules.size() != dram.channels.size())
+        throw std::runtime_error("DRAMPower summary does not match the measured phase or channel count");
+      energy.dram_replay = std::move(replay);
+    } catch (const std::exception& error) {
+      fmt::print(stderr, "DRAMPower integration failed: {}\n", error.what());
+      return 1;
+    }
+  }
 
   fmt::print("\nChampSim completed all CPUs\n\n");
 

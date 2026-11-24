@@ -32,7 +32,12 @@ using champsim::dram_event;
 
 void MEMORY_CONTROLLER::enable_trace(const std::string& path)
 {
-  trace = std::make_unique<champsim::dram_trace>(path, *this);
+  set_trace(std::make_unique<champsim::dram_trace>(path, *this));
+}
+
+void MEMORY_CONTROLLER::set_trace(std::unique_ptr<champsim::dram_trace> output)
+{
+  trace = std::move(output);
   for (std::size_t index = 0; index < channels.size(); ++index) {
     channels[index].trace = trace.get();
     channels[index].trace_channel = index;

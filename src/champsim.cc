@@ -231,7 +231,7 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
   const bool frontend_accounting = std::any_of(cpus.begin(), cpus.end(), [](const O3_CPU& cpu) {
     return cpu.frontend_energy != nullptr || cpu.make_direction_energy != nullptr;
   });
-  if (!is_warmup && (!begin_energy.empty() || frontend_accounting || env.memory_energy)) {
+  if (!is_warmup && (!begin_energy.empty() || frontend_accounting || env.memory_energy || (dram.trace && dram.trace->streaming()))) {
     if (env.memory_energy)
       coverage_gaps = env.memory_energy->coverage_gaps();
     if (!env.dram_energy)

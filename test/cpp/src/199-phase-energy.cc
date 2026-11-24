@@ -40,3 +40,29 @@ TEST_CASE("Average dynamic power is unavailable for an empty interval")
   const champsim::phase_energy_stats energy{};
   REQUIRE_FALSE(energy.average_dynamic_power_watts(0).has_value());
 }
+
+TEST_CASE("Phase energy reports a combined joule total and preserves the DRAM replay clock")
+{
+  using champsim::chrono::picoseconds;
+  using Catch::Matchers::WithinRel;
+  using time_point = champsim::chrono::clock::time_point;
+
+  champsim::phase_stats phase;
+  phase.energy = champsim::phase_energy_stats{
+      time_point{picoseconds{1000}}, time_point{picoseconds{3000}}, 4,
+      {{"CPU 0", "model", "revision", "assumptions", picoseconds{250}, 4e-12}}};
+  phase.energy->dram_replay = champsim::dram_replay_energy_stats{2000, 2500, 5e-12, {5e-12}, "memspec", "cli", 0.5};
+
+  std::ostringstream stream;
+  std::vector<champsim::phase_stats> phases{phase};
+  champsim::json_printer{stream}.print(phases);
+  const auto report = nlohmann::json::parse(stream.str());
+  const auto& energy = report.at(0).at("energy");
+  const auto& replay = energy.at("dram_replay");
+
+  CHECK_THAT(energy.at("combined_modeled_energy_joules").get<double>(), WithinRel(9e-12));
+  CHECK_THAT(energy.at("modeled_average_dynamic_power_watts").get<double>(), WithinRel(2e-3));
+  CHECK_THAT(replay.at("average_power_watts").get<double>(), WithinRel(2e-3));
+  CHECK(replay.at("timing_delta_ps") == 500);
+  CHECK(replay.at("timing_delta_percent") == 25);
+}

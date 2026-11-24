@@ -223,6 +223,7 @@ public:
   std::vector<DRAM_CHANNEL> channels;
   std::unique_ptr<champsim::dram_trace> trace;
   void enable_trace(const std::string& path);
+  void set_trace(std::unique_ptr<champsim::dram_trace> output);
 
   MEMORY_CONTROLLER(champsim::chrono::picoseconds dbus_period, champsim::chrono::picoseconds mc_period, std::size_t t_rp, std::size_t t_rcd, std::size_t t_cas,
                     std::size_t t_ras, champsim::chrono::microseconds refresh_period, std::vector<channel_type*>&& ul, std::size_t rq_size, std::size_t wq_size,

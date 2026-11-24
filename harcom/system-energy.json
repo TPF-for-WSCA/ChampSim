@@ -1,0 +1,40 @@
+{
+  "executable_name": "champsim-harcom-system",
+  "harcom_dram_energy": true,
+  "physical_memory": {
+    "data_rate": 2400,
+    "channels": 1,
+    "ranks": 1,
+    "bankgroups": 4,
+    "banks": 4,
+    "bank_rows": 32768,
+    "bank_columns": 1024,
+    "channel_width": 8,
+    "tCAS": 16,
+    "tRCD": 16,
+    "tRP": 16,
+    "tRAS": 39
+  },
+  "harcom_memory_energy": true,
+  "harcom_predictor_energy": true,
+  "harcom_backend_energy": true,
+  "ooo_cpu": [
+    {
+      "btb": "harcom/btb/harcom_basic_btb",
+      "branch_predictor": "tage_sc_l",
+      "wrong_path": true
+    }
+  ],
+  "L1I": {
+    "prefetcher": "fdip"
+  },
+  "L1D": {
+    "prefetcher": "no"
+  },
+  "L2C": {
+    "prefetcher": "no"
+  },
+  "LLC": {
+    "prefetcher": "no"
+  }
+}

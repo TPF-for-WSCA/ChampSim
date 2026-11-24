@@ -197,6 +197,30 @@ response staging and bus arbitration. The on-chip link from step 4 still owns
 wire energy. Analytics counters, host dependency vectors, and off-chip signal
 energy are excluded from the controller costs.
 
+For one-run system accounting, build the system example and pass the DRAMPower
+executable and matching device specification directly to ChampSim. The example
+enables all four HARCOM options and selects modeled frontend and cache modules.
+
+```sh
+./config.sh --no-compile-all-modules harcom/system-energy.json
+make -j
+bin/champsim-harcom-system -w 1000000 -i 10000000 --json results.json \
+    --drampower /path/to/DRAMPower/build/bin/cli --drampower-memspec micron-ddr4.json \
+    /path/to/trace.champsimtrace.xz
+```
+
+Run from the repository root, or pass
+`--drampower-adapter /path/to/ChampSim/harcom/dram/replay.py`. ChampSim streams
+measured events to the adapter through a subprocess pipe. The adapter invokes
+DRAMPower once per channel with temporary command inputs that it deletes after
+the run. `--drampower-toggle` controls data activity and duty cycle. The final
+text and JSON include the combined modeled energy and the replay duration
+difference in absolute and percentage terms. The HARCOM and DRAMPower power
+values retain their own time denominators. The combined joule total includes
+DRAM background energy and uses the native interval for HARCOM and the replay
+interval for the device and its off-chip interface. It is a partial
+whole-system estimate.
+
 Use `--dram-events` to export the measured phase's native events. The file
 contains geometry, phase boundaries, absolute timestamps in picoseconds, bank
 reservations with row hit or miss classification, cancellations, refresh due
@@ -237,7 +261,8 @@ toggle and duty-cycle assumption. Use `--toggle` to vary it and omit
 Use `summary.json` for replay energy and average power over the **replay**
 duration, and the per-channel DRAMPower JSON for core, background and interface
 details. ChampSim changes bank state at reservation and schedules refreshes per
-bank, so device energy at native ChampSim timing remains incomplete. Replay
-energy stays outside the simulator subtotal. The profile must match each
+bank, so device energy at native ChampSim timing remains incomplete. The native
+dynamic subtotal continues to report HARCOM activity, with the DRAMPower
+estimate included in the combined total for streaming runs. The profile must match each
 simulated channel's geometry and clocks. The default ChampSim configuration
 has eight bank groups and differs from the DDR4 example.

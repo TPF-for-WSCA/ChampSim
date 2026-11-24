@@ -28,17 +28,36 @@ struct component_energy_stats {
   double dynamic_energy_joules;
 };
 
+struct dram_replay_energy_stats {
+  double native_duration_ps;
+  double replay_duration_ps;
+  double energy_joules;
+  std::vector<double> channel_energy_joules;
+  std::string memspec_sha256;
+  std::string cli_sha256;
+  double toggle_rate;
+
+  [[nodiscard]] double elapsed_delta_ps() const { return replay_duration_ps - native_duration_ps; }
+  [[nodiscard]] double average_power_watts() const { return energy_joules / (replay_duration_ps * 1e-12); }
+};
+
 struct phase_energy_stats {
   chrono::clock::time_point begin;
   chrono::clock::time_point end;
   long long instructions{};
   std::vector<component_energy_stats> components;
   std::vector<std::string> coverage_gaps{};
+  std::optional<dram_replay_energy_stats> dram_replay{};
 
   [[nodiscard]] double modeled_dynamic_energy_joules() const
   {
     return std::accumulate(components.begin(), components.end(), 0.0,
                            [](double sum, const auto& component) { return sum + component.dynamic_energy_joules; });
+  }
+
+  [[nodiscard]] double combined_modeled_energy_joules() const
+  {
+    return modeled_dynamic_energy_joules() + (dram_replay ? dram_replay->energy_joules : 0);
   }
 
   [[nodiscard]] std::optional<double> average_dynamic_power_watts(double energy_joules) const
