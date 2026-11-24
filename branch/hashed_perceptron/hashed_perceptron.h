@@ -8,11 +8,13 @@
 
 #include "folded_shift_register.h"
 #include "modules.h"
+#include "predictor_energy.h"
 #include "msl/bits.h"
 #include "msl/fwcounter.h"
 
 class hashed_perceptron : champsim::modules::branch_predictor
 {
+public:
   using bits = champsim::data::bits;                 // saves some typing
   constexpr static std::size_t NTABLES = 16;         // this many tables
   constexpr static bits MAXHIST{232};                // maximum history length
@@ -25,8 +27,11 @@ class hashed_perceptron : champsim::modules::branch_predictor
       bits{},   MINHIST,  bits{4},  bits{6},  bits{8},  bits{10},  bits{14},  bits{19},
       bits{26}, bits{36}, bits{49}, bits{67}, bits{91}, bits{125}, bits{170}, MAXHIST}; // geometric global history lengths
 
+  static constexpr unsigned weight_bits = 8;
+
+private:
   // tables of 8-bit weights
-  std::array<std::array<champsim::msl::sfwcounter<8>, TABLE_SIZE>, NTABLES> tables{};
+  std::array<std::array<champsim::msl::sfwcounter<weight_bits>, TABLE_SIZE>, NTABLES> tables{};
 
   // words that store the global history
   using history_type = folded_shift_register<TABLE_INDEX_BITS>;
@@ -46,8 +51,11 @@ class hashed_perceptron : champsim::modules::branch_predictor
 
   perceptron_result last_result{};
 
+  champsim::predictor_energy_model* energy = nullptr;
+
 public:
   using branch_predictor::branch_predictor;
+  void initialize_branch_predictor();
   bool predict_branch(champsim::address pc);
   void last_branch_result(champsim::address pc, champsim::address branch_target, bool taken, uint8_t branch_type);
   void adjust_threshold(bool correct);

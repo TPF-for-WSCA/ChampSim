@@ -36,12 +36,22 @@
  * branch predictor.
  */
 
+#undef CHAMPSIM_MODULE
 #include "perceptron.h"
+#include "ooo_cpu.h"
 
 #include <cmath>
 
+void perceptron::initialize_branch_predictor()
+{
+  if (intern_ && !energy)
+    energy = intern_->attach_predictor_energy(intern_->make_direction_energy, champsim::predictor_kind::perceptron);
+}
+
 bool perceptron::predict_branch(champsim::address ip)
 {
+  if (energy)
+    energy->record(champsim::predictor_event::lookup, 0);
   // hash the address to get an index into the table of perceptrons
   const auto index = ip.to<uint64_t>() % NUM_PERCEPTRONS;
   return perceptrons[index].predict(global_history) >= 0;
@@ -49,6 +59,8 @@ bool perceptron::predict_branch(champsim::address ip)
 
 void perceptron::last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
+  if (energy)
+    energy->record(champsim::predictor_event::resolve, 0);
   // Recompute from the real history: intervening lookups have no outcomes and
   // must neither supply training context nor evict a real branch's update.
   const auto index = ip.to<uint64_t>() % NUM_PERCEPTRONS;
@@ -60,6 +72,8 @@ void perceptron::last_branch_result(champsim::address ip, champsim::address bran
   // adjust the weights
   const auto THETA = std::lround(1.93 * PERCEPTRON_HISTORY + 14); // threshold for training
   if ((output <= THETA && output >= -THETA) || (prediction != taken)) {
+    if (energy)
+      energy->record(champsim::predictor_event::train, 0);
     perceptrons[index].update(taken, global_history);
   }
 

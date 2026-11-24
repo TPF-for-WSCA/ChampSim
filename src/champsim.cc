@@ -57,6 +57,12 @@ std::vector<component_energy_stats> sample_component_energy(environment& env)
                               cpu.clock_period, component.dynamic_energy_fJ * 1e-15});
       }
     }
+    for (const auto& model : cpu.predictor_energy) {
+      for (const auto& component : model->energy_snapshots()) {
+        components.push_back({fmt::format("CPU {} {}", cpu.cpu, component.model), component.model, component.revision, component.assumptions,
+                              cpu.clock_period, component.dynamic_energy_fJ * 1e-15});
+      }
+    }
   }
   if (env.memory_energy) {
     auto memory = env.memory_energy->energy_snapshots();
@@ -210,8 +216,10 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
                  [](const DRAM_CHANNEL& chan) { return chan.roi_stats; });
 
   std::vector<std::string> coverage_gaps;
-  const bool has_frontend_model = std::any_of(cpus.begin(), cpus.end(), [](const O3_CPU& cpu) { return cpu.frontend_energy != nullptr; });
-  if (!is_warmup && (!begin_energy.empty() || has_frontend_model || env.memory_energy)) {
+  const bool frontend_accounting = std::any_of(cpus.begin(), cpus.end(), [](const O3_CPU& cpu) {
+    return cpu.frontend_energy != nullptr || cpu.make_direction_energy != nullptr;
+  });
+  if (!is_warmup && (!begin_energy.empty() || frontend_accounting || env.memory_energy)) {
     if (env.memory_energy)
       coverage_gaps = env.memory_energy->coverage_gaps();
     for (const O3_CPU& cpu : cpus) {
@@ -223,6 +231,11 @@ phase_stats do_phase(const phase_info& phase, environment& env, std::vector<trac
         if (cpu.IDEAL_CBP || cpu.IDEAL_IBP || cpu.IDEAL_BTB)
           coverage_gaps.push_back(fmt::format("CPU {} ideal frontend prediction oracle", cpu.cpu));
       }
+      for (const auto& model : cpu.predictor_energy)
+        for (const auto& gap : model->coverage_gaps())
+          coverage_gaps.push_back(fmt::format("CPU {} {}", cpu.cpu, gap));
+      if (!cpu.unmodeled_branch_names.empty())
+        coverage_gaps.push_back(fmt::format("CPU {} branch modules without HARCOM estimates ({})", cpu.cpu, cpu.unmodeled_branch_names));
       if (!cpu.unmodeled_btb_names.empty())
         coverage_gaps.push_back(fmt::format("CPU {} BTB modules without HARCOM estimates ({})", cpu.cpu, cpu.unmodeled_btb_names));
     }

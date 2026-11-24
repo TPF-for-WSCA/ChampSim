@@ -1,6 +1,7 @@
 #define CATCH_CONFIG_ENABLE_PAIR_STRINGMAKER
 #include <catch.hpp>
 
+#include "../../../btb/rabin_xbtbx/rabin_xbtbx.h"
 #include "../../../btb/xbtbx/xbtbx.h"
 #include "instruction.h"
 #include "ooo_cpu.h"
@@ -49,6 +50,16 @@ TEST_CASE("LiteBTB narrow ways retain their tag width when the full-target way u
   const champsim::address updated{0xabcd567800004000ULL};
   uut.update_btb(full_alias, updated, true, BRANCH_CONDITIONAL);
   CHECK(uut.btb_prediction(ip) == std::pair{updated, false});
+}
+
+TEST_CASE("Rabin LiteBTB supplies upper target bits from the lookup PC on inline tag aliases")
+{
+  auto core = O3_CPU{champsim::core_builder{}.btb_sets(4).btb_ways(1).btb_target_sizes({8}).btb_tag_size(8).btb_clipped_tag(true)};
+  rabin_xbtbx predictor{&core};
+  const champsim::address ip{0x1000}, target{0x1110}, alias{0x3000}, alias_target{0x3110};
+  predictor.update_btb(ip, target, true, BRANCH_DIRECT_JUMP);
+  CHECK(predictor.btb_prediction(ip) == std::pair{target, true});
+  CHECK(predictor.btb_prediction(alias) == std::pair{alias_target, true});
 }
 
 TEST_CASE("LiteBTB rejects invalid full-target tag widths")

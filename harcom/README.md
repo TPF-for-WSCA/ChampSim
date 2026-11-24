@@ -15,8 +15,7 @@ bin/champsim-harcom-gshare -w 1000000 -i 10000000 --json harcom-results.json /pa
 ```
 
 For another configuration, set the core's `branch_predictor` to
-`harcom/branch/harcom_gshare`. Other predictor configurations continue to use
-the existing ChampSim models.
+`harcom/branch/harcom_gshare` or use the predictor accounting option below.
 
 The text report and the top-level `energy` object in each measured phase give
 per-instance dynamic energy and a modeled subtotal in joules. Average power
@@ -65,6 +64,55 @@ Cached same-PC predictions charge the reuse check and skip the table and
 prediction datapath costs. The report lists unsupported geometries and idealized
 target configurations. Global wiring, clock distribution and leakage sit
 outside these estimates. The frontend model can also run with HARCOM gshare.
+
+## Alternate BTBs and direction predictors
+
+Set the top-level `"harcom_predictor_energy": true` and keep the BTB and
+direction predictor names in the core configuration. For example:
+
+```json
+{
+  "executable_name": "champsim-litebtb-energy",
+  "harcom_predictor_energy": true,
+  "ooo_cpu": [
+    {
+      "btb": "two_level_full_hashed_xbtbx",
+      "branch_predictor": "hashed_perceptron",
+      "btb_sets": 512,
+      "btb_ways": 8,
+      "btb_target_sizes": [8, 8, 12, 12, 16, 20, 32, 64],
+      "btb_utb_entries": 128,
+      "btb_utb_ways": 4
+    }
+  ]
+}
+```
+
+Save the configuration and run `./config.sh --no-compile-all-modules <config>`
+and `make -j` with the C++20-capable toolchain. The simulator reports component
+energy and average dynamic power in the usual text and JSON outputs.
+
+- All 12 LiteBTB variants use their configured per-way target and tag widths.
+  A two-level prediction reads L2 only on an L1 miss. L1, the main target
+  table, UTB, ITTAGE, and the return stack have separate energy entries where
+  present. UTB costs include generation checks, reference updates, and LRU or
+  reference-count replacement. The model assumes parallel tags, a gated
+  target payload read, and SRAM banks with local wiring and decode costs.
+- The hash logic follows the selected variant. Plain and Rabin tags truncate
+  by wiring. Rabin reconstructs the upper target bits from the lookup PC,
+  including on inline-tag alias hits. Other inline compressed ways retain
+  upper bits from the inserted PC. UTB-pointer ways use the lookup PC. The
+  Pearson model treats its permutation ROM as SRAM for read energy. SHA3
+  uses a full round datapath estimate and Zobrist uses average XOR fan-in.
+- Bimodal charges counter reads and saturating updates. Perceptron and hashed
+  perceptron charge score computation, history updates, and conditional
+  training. The option selects the existing HARCOM implementations for
+  built-in gshare and TAGE-SC-L. Explicit HARCOM module paths remain supported.
+
+The estimates use the reference HARCOM technology. Global wiring, clock
+distribution, and leakage are outside the model. With LiteBTB, DIB and FDIP
+core queue and next-PC logic remain outside predictor accounting. The cache
+hierarchy option below can be enabled in the same configuration.
 
 ## Cache hierarchy and translation
 

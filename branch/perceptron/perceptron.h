@@ -5,6 +5,7 @@
 #include <bitset>
 
 #include "modules.h"
+#include "predictor_energy.h"
 #include "msl/fwcounter.h"
 
 struct perceptron : champsim::modules::branch_predictor {
@@ -31,8 +32,13 @@ struct perceptron : champsim::modules::branch_predictor {
   // wrong-path replay) must not advance history or retain pending updates.
   std::bitset<PERCEPTRON_HISTORY> global_history;
 
+private:
+  champsim::predictor_energy_model* energy = nullptr;
+
+public:
   using branch_predictor::branch_predictor;
 
+  void initialize_branch_predictor();
   bool predict_branch(champsim::address ip);
   void last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type);
 };

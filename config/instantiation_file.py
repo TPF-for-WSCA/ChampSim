@@ -356,7 +356,7 @@ def decorate_queues(caches, ptws, pmem):
 def get_queue_info(ul_pairs, decoration):
     return [decoration.get(ll) for ll,_ in ul_pairs]
 
-def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id, memory_energy_tlbs=None):
+def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id, memory_energy_tlbs=None, predictor_energy_enabled=False):
     '''
     Generate the lines for a C++ file that instantiates a configuration.
     '''
@@ -435,10 +435,24 @@ def get_instantiation_lines(cores, caches, ptws, pmem, vmem, build_id, memory_en
     yield from cache_instantiation_body
     yield from core_instantiation_body
     yield '{'
-    harcom_btb_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'harcom', 'btb', 'harcom_basic_btb')
-    harcom_btb_name = modules.get_module_name(harcom_btb_path)
+    root = os.path.dirname(os.path.dirname(__file__))
+    harcom_btb_name = modules.get_module_name(os.path.join(root, 'harcom', 'btb', 'harcom_basic_btb'))
+    modeled_btbs = {harcom_btb_name}
+    if predictor_energy_enabled:
+        litebtbs = ('xbtbx', 'hash_xbtbx', 'fullxor_hash_xbtbx', 'geometric_xbtbx', 'pearson_xbtbx', 'rabin_xbtbx', 'sha3_xbtbx', 'zobrist_xbtbx',
+                    'two_level_xbtbx', 'two_level_hashed_xbtbx', 'two_level_full_hashed_xbtbx', 'two_level_geometric_hashed_xbtbx')
+        modeled_btbs.update(modules.get_module_name(os.path.join(root, 'btb', name)) for name in litebtbs)
+        modeled_branches = {modules.get_module_name(os.path.join(root, 'branch', name))
+                            for name in ('bimodal', 'perceptron', 'hashed_perceptron')}
+        modeled_branches.update(modules.get_module_name(os.path.join(root, 'harcom', 'branch', name))
+                                for name in ('harcom_gshare', 'harcom_tage_sc_l'))
     for index, core in enumerate(cores):
-        unmodeled_btbs = ', '.join(data['class'] for data in core.get('_btb_data', ()) if data['name'] != harcom_btb_name)
+        if predictor_energy_enabled:
+            yield f'  champsim::configure_harcom_predictors(cores.at({index}));'
+            unmodeled_branches = ', '.join(data['class'] for data in core['_branch_predictor_data'] if data['name'] not in modeled_branches)
+            if unmodeled_branches:
+                yield f'  cores.at({index}).unmodeled_branch_names = {json.dumps(unmodeled_branches)};'
+        unmodeled_btbs = ', '.join(data['class'] for data in core.get('_btb_data', ()) if data['name'] not in modeled_btbs)
         if unmodeled_btbs:
             yield f'  cores.at({index}).unmodeled_btb_names = {json.dumps(unmodeled_btbs)};'
     if memory_energy_tlbs is not None:

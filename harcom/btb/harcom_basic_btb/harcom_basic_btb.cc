@@ -3,7 +3,7 @@
 
 // The adapter uses core internals in addition to the module interface.
 #undef CHAMPSIM_MODULE
-#include "../../bridge.h"
+#include "../../ittage_cost.h"
 #include "harcom_basic_btb.h"
 #include "ooo_cpu.h"
 
@@ -44,20 +44,6 @@ constexpr auto ftq_block_pointer = hcm::flipflops<5>::write_energy_fJ + hcm::INC
 constexpr auto pc_select = hcm::MUX<2, 64>;
 constexpr auto next_pc = hcm::INC<62>.e + hcm::NEQ<64>.e + hcm::AND<2>.e + pc_select[0].e + pc_select[1].e;
 
-constexpr auto ittage_banks = ittage::history_lengths.size();
-constexpr auto index_bits = champsim::lg2(ittage::tagged_entries);
-using indirect_base = hcm::sram<ittage::base_entries, 65>;
-using indirect_tagged = hcm::sram<ittage::tagged_entries, 64 + ittage::tag_bits + 2 + 1>;
-constexpr auto indirect_mux = hcm::MUX<ittage_banks + 1, 64>;
-constexpr auto useful_mux = hcm::MUX<ittage::tagged_entries, 1>;
-constexpr auto indirect_fold_bits = ittage_banks * (index_bits * 2 + ittage::tag_bits);
-constexpr auto indirect_lookup = indirect_base::EREAD
-    + ittage_banks * (indirect_tagged::EREAD + hcm::EQUAL<ittage::tag_bits>.e + hcm::AND<2>.e + 2 * (index_bits + ittage::tag_bits) * hcm::XOR<2>.e)
-    + 18 * hcm::XOR<2>.e + 2 * hcm::priority_encoder<ittage_banks>.e + 2 * (indirect_mux[0].e + indirect_mux[1].e)
-    + hcm::NEQ<64>.e + pc_select[0].e + pc_select[1].e;
-constexpr auto indirect_history_write = hcm::flipflops<ittage::history_lengths.back()>::write_energy_fJ
-    + hcm::flipflops<indirect_fold_bits>::write_energy_fJ + ittage_banks * 6 * hcm::XOR<2>.e;
-
 using ras_entries = hcm::sram<return_stack::max_size, 64>;
 using call_sizes = hcm::sram<return_stack::num_call_size_trackers, 4>;
 constexpr auto ras_pointer = hcm::flipflops<13>::write_energy_fJ + hcm::INC<6>.e;
@@ -81,50 +67,6 @@ class harcom_basic_btb::frontend_model final : public champsim::frontend_energy_
   double indirect_energy = 0;
   double ras_energy = 0;
   std::bitset<return_stack::num_call_size_trackers> saved_call_sizes;
-
-  void record_indirect(champsim::frontend_event event, std::size_t count)
-  {
-    if (ideal_targets)
-      return;
-    using champsim::frontend_event;
-    switch (event) {
-    case frontend_event::ittage_lookup:
-      indirect_energy += indirect_lookup;
-      break;
-    case frontend_event::ittage_train:
-      indirect_energy += 3 * hcm::EQUAL<64>.e;
-      break;
-    case frontend_event::ittage_tagged_write:
-      indirect_energy += indirect_tagged::EWRITE;
-      break;
-    case frontend_event::ittage_base_write:
-      indirect_energy += indirect_base::EWRITE;
-      break;
-    case frontend_event::ittage_useful_read:
-      indirect_energy += useful_mux[0].e + useful_mux[1].e;
-      break;
-    case frontend_event::ittage_useful_write:
-      indirect_energy += hcm::decoder<ittage::tagged_entries>.e + hcm::flipflops<1>::write_energy_fJ;
-      break;
-    case frontend_event::ittage_useful_reset:
-      indirect_energy += ittage_banks * hcm::flipflops<ittage::tagged_entries>::write_energy_fJ;
-      break;
-    case frontend_event::ittage_chooser_write:
-      indirect_energy += hcm::INC<4>.e + hcm::flipflops<4>::write_energy_fJ;
-      break;
-    case frontend_event::ittage_pressure_write:
-      indirect_energy += hcm::INC<8>.e + hcm::flipflops<8>::write_energy_fJ;
-      break;
-    case frontend_event::ittage_history_mix:
-      indirect_energy += 40 * hcm::XOR<2>.e;
-      break;
-    case frontend_event::ittage_history_bit:
-      indirect_energy += static_cast<double>(count) * indirect_history_write;
-      break;
-    default:
-      break;
-    }
-  }
 
   void record_ras(champsim::frontend_event event, std::size_t argument)
   {
@@ -236,7 +178,7 @@ public:
       record_ras(event, count);
       break;
     default:
-      record_indirect(event, count);
+      if (!ideal_targets) indirect_energy += champsim::harcom::ittage_energy(event, count);
       break;
     }
   }

@@ -19,16 +19,16 @@
 #include "btb_prediction_token.h"
 #include "ittage.h"
 #include "modules.h"
-
-enum class litebtb_hash { identity, half_xor, full_xor, geometric, pearson, rabin, sha3, zobrist };
+#include "predictor_energy.h"
 
 class litebtb_predictor : public champsim::modules::btb
 {
   enum class branch_info : uint8_t { indirect, return_branch, always_taken, conditional };
 
   struct entry {
-    uint64_t ip{};
+    uint64_t tag{};
     uint64_t target{};
+    uint64_t saved_pc{};
     uint64_t last_used{};
     uint8_t target_size{64};
     uint8_t precise_type{};
@@ -63,18 +63,26 @@ class litebtb_predictor : public champsim::modules::btb
   std::deque<uint64_t> ras;
   ittage indirect{};
   uint64_t access_count{};
+  champsim::predictor_energy_model* energy = nullptr;
+
+  void record(champsim::predictor_event event, std::size_t argument = 0) const
+  {
+    if (energy)
+      energy->record(event, argument);
+  }
 
   [[nodiscard]] uint64_t permute(uint64_t value) const;
   [[nodiscard]] std::size_t index(uint64_t ip, std::size_t table_sets) const;
   [[nodiscard]] uint8_t tag_bits(uint8_t capacity) const;
+  [[nodiscard]] bool hashes_tag(uint8_t capacity) const;
   [[nodiscard]] uint64_t tag(uint64_t ip, uint8_t capacity) const;
-  [[nodiscard]] uint64_t decompress(const entry& value) const;
+  [[nodiscard]] bool uses_lookup_pc(uint8_t capacity) const;
   [[nodiscard]] bool uses_utb(uint8_t capacity) const;
   [[nodiscard]] std::optional<std::size_t> find_utb(uint64_t ip, uint8_t capacity) const;
   std::size_t allocate_utb(uint64_t ip, uint8_t capacity);
   [[nodiscard]] bool matches(const entry& value, uint64_t ip, bool compressed, std::optional<std::size_t> pointer) const;
-  void invalidate(entry& value);
-  entry* find(std::vector<entry>& table, std::size_t table_sets, std::size_t table_ways, uint64_t ip, bool compressed);
+  void invalidate(entry& value, bool compressed, bool write_valid = true);
+  entry* find(std::vector<entry>& table, std::size_t table_sets, std::size_t table_ways, uint64_t ip, bool compressed, std::optional<std::size_t> pointer = std::nullopt);
   void fill(std::vector<entry>& table, std::size_t table_sets, std::size_t table_ways, uint64_t ip, uint64_t target, uint8_t type,
             uint8_t required_bits, bool compressed);
 

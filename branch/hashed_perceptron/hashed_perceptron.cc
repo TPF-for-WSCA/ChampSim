@@ -45,12 +45,22 @@ sources for you to plagiarize.
 
 */
 
+#undef CHAMPSIM_MODULE
 #include "hashed_perceptron.h"
+#include "ooo_cpu.h"
 
 #include <numeric>
 
+void hashed_perceptron::initialize_branch_predictor()
+{
+  if (intern_ && !energy)
+    energy = intern_->attach_predictor_energy(intern_->make_direction_energy, champsim::predictor_kind::hashed_perceptron);
+}
+
 bool hashed_perceptron::predict_branch(champsim::address pc)
 {
+  if (energy)
+    energy->record(champsim::predictor_event::lookup, 0);
   auto get_index = [pc_slice = pc.slice_lower<TABLE_INDEX_BITS>().to<uint64_t>()](const auto& hist) {
     return hist.value() ^ pc_slice; // seed in the PC to spread accesses around (like gshare) XOR in the last word
   };
@@ -66,6 +76,8 @@ bool hashed_perceptron::predict_branch(champsim::address pc)
 
 void hashed_perceptron::last_branch_result(champsim::address pc, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
+  if (energy)
+    energy->record(champsim::predictor_event::resolve, 0);
   // FDIP or wrong-path lookups may have replaced last_result. Rebuild the
   // indices and sum using this branch and the history preceding its outcome.
   (void)predict_branch(pc);
@@ -77,6 +89,8 @@ void hashed_perceptron::last_branch_result(champsim::address pc, champsim::addre
   bool prediction_correct = (taken == (last_result.yout >= THRESHOLD));
   bool prediction_weak = (std::abs(last_result.yout) < theta);
   if (!prediction_correct || prediction_weak) {
+    if (energy)
+      energy->record(champsim::predictor_event::train, 0);
     for (std::size_t i = 0; i < std::size(tables); i++)
       tables[i][last_result.indices[i]] += taken ? 1 : -1; // update weights
     adjust_threshold(prediction_correct);
@@ -91,6 +105,8 @@ void hashed_perceptron::adjust_threshold(bool correct)
     // increase theta after enough mispredictions
     tc++;
     if (tc >= SPEED) {
+      if (energy)
+        energy->record(champsim::predictor_event::threshold_step, 0);
       theta++;
       tc = 0;
     }
@@ -98,6 +114,8 @@ void hashed_perceptron::adjust_threshold(bool correct)
     // decrease theta after enough weak but correct predictions
     tc--;
     if (tc <= -SPEED) {
+      if (energy)
+        energy->record(champsim::predictor_event::threshold_step, 0);
       theta--;
       tc = 0;
     }

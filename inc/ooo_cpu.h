@@ -41,6 +41,7 @@
 #include "core_stats.h"
 #include "instruction.h"
 #include "frontend_energy.h"
+#include "predictor_energy.h"
 #include "modules.h"
 #include "operable.h"
 #include "register_allocator.h"
@@ -115,6 +116,21 @@ public:
   dib_type DIB;
   champsim::frontend_energy_model* frontend_energy = nullptr;
   std::string_view unmodeled_btb_names{};
+
+  using direction_energy_factory = std::unique_ptr<champsim::predictor_energy_model> (*)(champsim::predictor_kind);
+  using litebtb_energy_factory = std::unique_ptr<champsim::predictor_energy_model> (*)(const champsim::litebtb_energy_geometry&);
+  direction_energy_factory make_direction_energy = nullptr;
+  litebtb_energy_factory make_litebtb_energy = nullptr;
+  std::vector<std::unique_ptr<champsim::predictor_energy_model>> predictor_energy;
+  std::string_view unmodeled_branch_names{};
+
+  template <typename Factory, typename Geometry>
+  champsim::predictor_energy_model* attach_predictor_energy(Factory factory, const Geometry& geometry)
+  {
+    if (factory == nullptr)
+      return nullptr;
+    return predictor_energy.emplace_back(factory(geometry)).get();
+  }
 
   void record_frontend(champsim::frontend_event event, std::size_t count = 1) const
   {

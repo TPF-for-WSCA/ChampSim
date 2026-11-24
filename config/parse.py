@@ -299,7 +299,7 @@ class NormalizedConfiguration:
             print('P: vmem', list(self.vmem.keys()))
 
         self.root = util.subdict(config_file,
-            ('block_size', 'page_size', 'heartbeat_frequency', 'harcom_memory_energy')
+            ('block_size', 'page_size', 'heartbeat_frequency', 'harcom_memory_energy', 'harcom_predictor_energy')
         )
 
     def merge(self, rhs):
@@ -453,6 +453,18 @@ class NormalizedConfiguration:
             ).values()
         )
 
+        predictor_energy_enabled = root_config.get('harcom_predictor_energy', False)
+        if not isinstance(predictor_energy_enabled, bool):
+            raise ValueError('harcom_predictor_energy must be a boolean')
+        if predictor_energy_enabled:
+            # Reuse the existing equivalent HARCOM direction modules.
+            root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            direction_models = {modules.get_module_name(os.path.join(root, 'branch', name)):
+                                branch_context.data_from_path(os.path.relpath(os.path.join(root, 'harcom', 'branch', 'harcom_' + name)))
+                                for name in ('gshare', 'tage_sc_l')}
+            cores = [dict(core, _branch_predictor_data=[direction_models.get(b['name'], b) for b in core['_branch_predictor_data']])
+                     for core in cores]
+
         elements = {
             'cores': cores,
             'caches': tuple(caches.values()),
@@ -475,6 +487,12 @@ class NormalizedConfiguration:
             model_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'harcom', 'memory')
             model = modules.ModuleSearchContext(()).data_from_path(model_dir)
             module_info['memory_energy'] = {model['name']: model}
+
+        if predictor_energy_enabled:
+            elements['predictor_energy_enabled'] = True
+            model_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'harcom', 'predictors')
+            model = modules.ModuleSearchContext(()).data_from_path(model_dir)
+            module_info['predictor_energy'] = {model['name']: model}
 
         config_extern = {
             **util.subdict(root_config, ('block_size', 'page_size', 'heartbeat_frequency')),
@@ -528,6 +546,7 @@ def parse_config(*configs, module_dir=None, branch_dir=None, btb_dir=None, pref_
             *(c['_branch_predictor_data'] for c in elements['cores']),
             *(c['_btb_data'] for c in elements['cores'])
         ))]
-        modules_to_compile.extend(module_info.get('memory_energy', ()))
+        for name in ('memory_energy', 'predictor_energy'):
+            modules_to_compile.extend(module_info.get(name, ()))
 
     return executable_name(*configs), elements, modules_to_compile, module_info, config_file
