@@ -2,11 +2,21 @@
 
 #include <algorithm>
 
-#include "../../bridge.h"
+#include "../../leakage.h"
 
 struct harcom_gshare::circuit {
   static constexpr auto index_bits = 14;
   static constexpr auto counter_bits = 2;
+
+  static constexpr double leakage_watts()
+  {
+    using counters = hcm::sram<1 << index_bits, counter_bits>;
+    constexpr auto select = hcm::MUX<2, counter_bits>;
+    constexpr auto logic = hcm::XOR<2> * (3 * index_bits) || hcm::OR<2> * 3 || hcm::AND<2> * 2
+        || hcm::INV || select[0] || select[1];
+    return counters::leakage_mW() * 1e-3 + champsim::harcom::register_leakage_watts(index_bits)
+        + champsim::harcom::logic_leakage_watts(logic);
+  }
 
   hcm::region region;
   hcm::ram<hcm::val<counter_bits>, 1 << index_bits> table{"gshare counters"};
@@ -71,5 +81,5 @@ void harcom_gshare::last_branch_result(champsim::address ip, champsim::address, 
 champsim::energy_model_snapshot harcom_gshare::energy_snapshot() const
 {
   return {"HARCOM gshare", "5ceea8358ddbab94e5621e2536530b860cc1e5b7", "0.75 V nominal, 16,384 two-bit SRAM counters, serialized model accesses",
-          hcm::panel.energy_fJ(hardware->region)};
+          hcm::panel.energy_fJ(hardware->region), circuit::leakage_watts()};
 }

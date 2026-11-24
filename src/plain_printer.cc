@@ -226,15 +226,22 @@ std::vector<std::string> champsim::plain_printer::format(champsim::phase_stats& 
   if (const auto& energy = stats.energy) {
     lines.emplace_back("Modeled energy for the simulation phase");
     lines.push_back(fmt::format("Simulated interval [{}, {}) ps", energy->begin.time_since_epoch().count(), energy->end.time_since_epoch().count()));
+    lines.emplace_back(leakage_assumptions);
     for (const auto& component : energy->components) {
-      lines.push_back(fmt::format("{} ({}): {:.6g} J dynamic", component.instance, component.model, component.dynamic_energy_joules));
+      const auto leakage = energy->leakage_energy_joules(component);
+      lines.push_back(fmt::format("{} ({}): {:.6g} J dynamic, {} leakage", component.instance, component.model, component.dynamic_energy_joules,
+                                  leakage ? fmt::format("{:.6g} J ({:.6g} W)", *leakage, *component.leakage_power_watts) : "unmodeled"));
     }
     for (const auto& gap : energy->coverage_gaps)
       lines.push_back(fmt::format("Unmodeled: {}", gap));
     const auto subtotal = energy->modeled_dynamic_energy_joules();
-    const auto power = energy->average_dynamic_power_watts(subtotal);
+    const auto power = energy->average_power_watts(subtotal);
     lines.push_back(fmt::format("Modeled dynamic energy subtotal: {:.6g} J, average dynamic power: {}", subtotal,
                                 power ? fmt::format("{:.6g} W", *power) : "-"));
+    const auto on_chip = energy->modeled_on_chip_energy_joules();
+    const auto on_chip_power = energy->average_power_watts(on_chip);
+    lines.push_back(fmt::format("Modeled on-chip energy subtotal: {:.6g} J including {:.6g} J leakage, average power: {}", on_chip,
+                                energy->modeled_leakage_energy_joules(), on_chip_power ? fmt::format("{:.6g} W", *on_chip_power) : "-"));
     if (const auto& replay = energy->dram_replay) {
       lines.push_back(replay->method);
       lines.push_back(fmt::format("DRAMPower replay: {:.6g} J device and interface, {:.6g} W average over replay", replay->energy_joules,

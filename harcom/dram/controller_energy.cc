@@ -12,20 +12,24 @@ constexpr auto flop = hcm::flipflops<1>::write_energy_fJ;
 constexpr auto gate = hcm::AND<2>.e;
 using event = dram_event;
 using harcom::sram_row;
+using harcom::logic_leakage_watts;
 using harcom::match_energy;
+using harcom::match_leakage_watts;
+using harcom::register_leakage_watts;
 
 struct meter {
   const DRAM_CHANNEL& channel;
   std::string name;
   std::string_view assumptions;
   std::vector<std::pair<event, double>> terms;
+  double leakage_watts;
 
   component_energy_stats sample() const
   {
     double femtojoules = 0;
     for (const auto& [op, cost] : terms)
       femtojoules += static_cast<double>((*channel.energy_activity)[op]) * cost;
-    return {name, "HARCOM DRAM controller", revision, std::string{assumptions}, channel.clock_period, femtojoules * 1e-15};
+    return {name, "HARCOM DRAM controller", revision, std::string{assumptions}, channel.clock_period, femtojoules * 1e-15, leakage_watts};
   }
 };
 
@@ -61,7 +65,10 @@ public:
                          {event::read_release, select_slot + flop}, {event::write_release, select_slot + flop},
                          {event::collision_compare, match_energy(block_bits) + gate}, {event::checked, flop},
                          {event::merge, read.read + read.write}, {event::forward, read.read + data.read},
-                         {event::read_burst, read.read}, {event::write_burst, write.read + data.read}}});
+                         {event::read_burst, read.read}, {event::write_burst, write.read + data.read}},
+                        read.leakage_watts + write.leakage_watts + data.leakage_watts
+                            + register_leakage_watts(2 * (read_depth + write_depth))
+                            + match_leakage_watts(block_bits, read_depth + write_depth)});
 
       const auto bank_bits = storage_bits(bank_count);
       const auto bank_state = sram_row(bank_count, row_bits + queue_bits + 5);
@@ -72,16 +79,20 @@ public:
                          {event::reserve_bank, bank_state.write}, {event::row_compare, bank_state.read + match_energy(row_bits)},
                          {event::release_bank, bank_select + flop}, {event::cancel_bank, bank_select + 2 * flop},
                          {event::turn, gate + flop}, {event::refresh_due, static_cast<double>(bank_count + row_bits) * flop},
-                         {event::refresh_start, bank_select + 3 * flop}, {event::refresh_end, bank_select + 2 * flop}}});
+                         {event::refresh_start, bank_select + 3 * flop}, {event::refresh_end, bank_select + 2 * flop}},
+                        bank_state.leakage_watts + register_leakage_watts(bank_count + row_bits + 1)
+                            + match_leakage_watts(row_bits, bank_count) + match_leakage_watts(queue_bits, read_depth + write_depth)});
 
       const auto response_bits = static_cast<double>(payload + 2 * 64 + 32);
       const auto group = sram_row(channel.bankgroup_readytime.size(), bank_bits + 1);
       meters.push_back({channel, prefix + "interface control",
-                        "Digital bus arbiter and turnaround state, burst command staging and response registers at the controller endpoint",
+                        "Digital bus arbiter and turnaround state, one burst-command and one response staging register per channel",
                         {{event::bus_arbitrate, bank_select + gate}, {event::bus_candidate, 2 * gate + match_energy(bank_bits)},
                          {event::turn, bank_select + flop}, {event::read_burst, group.read + group.write + (block_bits + 1) * flop},
                          {event::write_burst, group.read + group.write + (block_bits + 1) * flop},
-                         {event::response, response_bits * flop}}});
+                         {event::response, response_bits * flop}},
+                        group.leakage_watts + register_leakage_watts(payload + 128 + 32 + block_bits + 2)
+                            + match_leakage_watts(bank_bits, bank_count) + logic_leakage_watts(hcm::AND<2>, bank_count)});
     }
   }
 

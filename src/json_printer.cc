@@ -142,18 +142,23 @@ void to_json(nlohmann::json& j, const champsim::phase_stats stats)
 
     auto components = nlohmann::json::array();
     for (const auto& component : energy->components) {
+      const auto leakage = energy->leakage_energy_joules(component);
       components.push_back({{"instance", component.instance},
                             {"model", component.model},
                             {"model_revision", component.revision},
                             {"assumptions", component.assumptions},
                             {"clock_period_ps", component.clock_period.count()},
                             {"dynamic_energy_joules", component.dynamic_energy_joules},
-                            {"average_dynamic_power_watts", encode_optional(energy->average_dynamic_power_watts(component.dynamic_energy_joules))}});
+                            {"leakage_power_watts", encode_optional(component.leakage_power_watts)},
+                            {"leakage_energy_joules", encode_optional(leakage)},
+                            {"modeled_total_energy_joules", component.dynamic_energy_joules + leakage.value_or(0)},
+                            {"average_dynamic_power_watts", encode_optional(energy->average_power_watts(component.dynamic_energy_joules))}});
     }
 
     const auto subtotal = energy->modeled_dynamic_energy_joules();
     std::vector<std::string> unmodeled{"branch predictors absent from components", "other frontend structures",
-                                      "cache and translation functions absent from components", "leakage"};
+                                      "cache and translation functions absent from components",
+                                      "leakage outside modeled on-chip circuit inventories"};
     unmodeled.insert(unmodeled.end(), energy->coverage_gaps.begin(), energy->coverage_gaps.end());
     statsmap.emplace("energy", nlohmann::json{
         {"coverage", "partial"},
@@ -162,7 +167,11 @@ void to_json(nlohmann::json& j, const champsim::phase_stats stats)
         {"end_ps", energy->end.time_since_epoch().count()},
         {"retired_instructions", energy->instructions},
         {"modeled_dynamic_energy_joules", subtotal},
-        {"modeled_average_dynamic_power_watts", encode_optional(energy->average_dynamic_power_watts(subtotal))},
+        {"leakage_assumptions", leakage_assumptions},
+        {"modeled_leakage_energy_joules", energy->modeled_leakage_energy_joules()},
+        {"modeled_on_chip_energy_joules", energy->modeled_on_chip_energy_joules()},
+        {"modeled_average_on_chip_power_watts", encode_optional(energy->average_power_watts(energy->modeled_on_chip_energy_joules()))},
+        {"modeled_average_dynamic_power_watts", encode_optional(energy->average_power_watts(subtotal))},
         {"modeled_dynamic_energy_per_instruction_joules",
          encode_optional(energy->instructions > 0 ? std::optional{subtotal / static_cast<double>(energy->instructions)} : std::nullopt)},
         {"components", std::move(components)}});

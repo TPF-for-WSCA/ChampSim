@@ -1,9 +1,12 @@
 #include "harcom_tage_sc_l.h"
 
-#include "../../bridge.h"
+#include "../../leakage.h"
 
 namespace
 {
+using champsim::harcom::logic_leakage_watts;
+using champsim::harcom::register_leakage_watts;
+
 struct access_cost {
   double read;
   double write;
@@ -22,6 +25,34 @@ constexpr double mod_five = hcm::ADDN<4, 16>.e + hcm::ADD<5>.e + 6 * hcm::GTE<5>
 constexpr double tag_selection = 2 * mod_five + 21 * (hcm::ADD<5>.e + hcm::GTE<5>.e + hcm::SUB<5>.e)
     + 6 * hcm::EQUAL<8>.e + 15 * hcm::EQUAL<12>.e + 2 * hcm::priority_encoder<21>.e
     + 2 * mux_cost<21, 3> + 4 * hcm::EQUAL<3>.e + mux_cost<2, 1>;
+// Physical banks are shared across history lengths. GEHL's shortest tables
+// use only half their allocated C++ rows. The useful planes reset in parallel.
+constexpr double leakage_watts()
+{
+  constexpr auto short_banks = 10;
+  constexpr auto long_banks = 20;
+  constexpr auto tagged_banks = short_banks + long_banks;
+  constexpr auto sc_256_banks = 3 + 2 + 2 + 2; // Bias, path, second local and IMLI history.
+  constexpr auto sc_512_banks = 2 + 1 + 2 + 1 + 2; // Global, path and all three local groups.
+  constexpr auto sram_mW = hcm::sram<8192, 1>::leakage_mW() + hcm::sram<2048, 1>::leakage_mW()
+      + short_banks * hcm::sram<1024, 11>::leakage_mW() + long_banks * hcm::sram<1024, 15>::leakage_mW()
+      + 4 * hcm::sram<8, 39>::leakage_mW()
+      + hcm::sram<128, 6>::leakage_mW() + sc_256_banks * hcm::sram<256, 6>::leakage_mW()
+      + sc_512_banks * hcm::sram<512, 6>::leakage_mW() + 2 * hcm::sram<1024, 6>::leakage_mW()
+      + 8 * hcm::sram<8, 6>::leakage_mW() + hcm::sram<64, 8>::leakage_mW()
+      + hcm::sram<256, 11>::leakage_mW() + hcm::sram<16, 16>::leakage_mW()
+      + hcm::sram<16, 9>::leakage_mW() + hcm::sram<256, 10>::leakage_mW() + hcm::sram<16, 5>::leakage_mW();
+  constexpr auto useful_mux = hcm::MUX<1024, 1>;
+  constexpr auto bank_logic = useful_mux[0] || useful_mux[1] || hcm::decoder<1024>;
+  constexpr auto selection = hcm::EQUAL<8> * 6 || hcm::EQUAL<12> * 15 || hcm::priority_encoder<21> * 2;
+  constexpr auto sc_logic = hcm::ADDN<7, 3> || hcm::ADDN<10, 8> || hcm::ADD<12> || hcm::ADDN<1, 7> || hcm::GTE<12> * 4;
+  constexpr auto history = 3000 + 1092 + 27 + 40 + 8;
+  constexpr auto update_and_reuse = 12 + 11 + 32 + 66;
+  return sram_mW * 1e-3 + register_leakage_watts(tagged_banks * 1024 + history + update_and_reuse)
+      + logic_leakage_watts(bank_logic, tagged_banks) + logic_leakage_watts(selection || sc_logic || hcm::EQUAL<64>)
+      + logic_leakage_watts(hcm::XOR<2>, 36 * 3 * 3 + 7 + 16);
+}
+
 } // namespace
 
 harcom_tage_sc_l::harcom_tage_sc_l(O3_CPU* cpu) : tage_sc_l(cpu) { track_activity(); }
@@ -85,5 +116,5 @@ champsim::energy_model_snapshot harcom_tage_sc_l::energy_snapshot() const
   return {"HARCOM TAGE-SC-L", "5ceea8358ddbab94e5621e2536530b860cc1e5b7",
           "Parallel SRAM banks, modeled hash/selection and training logic, shift-register global and folded histories, "
           "and resettable useful-bit planes. Datapath energy is analytical. Global wiring and clock distribution are unmodeled.",
-          energy};
+          energy, leakage_watts()};
 }

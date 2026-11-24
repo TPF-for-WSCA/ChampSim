@@ -17,21 +17,50 @@ bin/champsim-harcom-gshare -w 1000000 -i 10000000 --json harcom-results.json /pa
 For another configuration, set the core's `branch_predictor` to
 `harcom/branch/harcom_gshare` or use the predictor accounting option below.
 
-The text report and the top-level `energy` object in each measured phase give
-per-instance dynamic energy and a modeled subtotal in joules. Average power
-uses the common scheduler interval from the end of warmup to the end of the
-measured phase. A component's clock period is available in the JSON, and
-power is reported in watts. Energy per instruction uses the sum of retired
-instructions across all cores over that same interval. Zero-duration
-intervals have no power value.
-
 The estimate covers gshare operations requested by ChampSim, including
 speculative lookups when enabled. The model uses the reference HARCOM
 technology at nominal 0.75 V and serializes SRAM accesses for energy
 accounting. ChampSim controls pipeline timing. Coverage is partial and
-includes dynamic energy for each selected HARCOM gshare instance. Run each
+includes dynamic and leakage energy for each selected HARCOM gshare instance. Run each
 simulation in its own process because HARCOM's floorplan and storage share
 a process-wide lifetime.
+
+## Energy reporting and leakage
+
+The text report and the top-level `energy` object in each measured phase give
+dynamic energy, leakage power and leakage energy by component. On-chip
+leakage energy is the component's modeled leakage power multiplied by the
+phase's elapsed simulated seconds. Modeled components stay powered for that
+interval, including idle cycles. Energy per instruction uses the phase's
+retired instruction count across all cores. The JSON preserves the dynamic
+subtotal, adds on-chip leakage and on-chip total energy, and leaves average
+power unset for a zero-duration phase. With DRAMPower enabled, the combined
+joule total adds replay energy once, including its device background.
+
+HARCOM separates SRAM cell and logic fin off-current at nominal 0.75 V with
+25 °C reference off-currents. The estimate uses configured array capacities,
+bank and way replication, register bits and representative logic circuits.
+An array contributes while idle, including banks that a particular access
+leaves inactive. HARCOM SRAM estimates include local peripheral fins. The
+reference model omits temperature scaling, transistor stacking and power
+gating. Physical multiport layouts, full clock trees, global wiring and
+unsupported structures remain coverage gaps.
+
+| Component group | Powered inventory |
+| --- | --- |
+| Branch predictors and BTBs | Counter, weight, tag and target SRAM banks, rank rows, history and useful registers, hashes and selection logic. LiteBTB decode and owner accesses reuse metadata in the corresponding way. Rabin uses the lookup PC and omits saved upper-PC bits in inline ways. |
+| DIB, FDIP core frontend and RAS | DIB tag and rank arrays, banked FTQ and cursors, next-PC datapath, stack and call-size arrays, and the FDIP checkpoint stack plus copy-on-write call-size storage. |
+| Core backend | Pipeline queues, full ROB rows, rename maps, free list, wrong-path checkpoint when enabled, scheduler and scoreboard, physical registers, representative execution and address-generation lanes, LSQ entries and comparators, and reference clock trunk and link drivers. ROB destination accesses and queue flag activity reuse the corresponding physical storage. |
+| Caches, TLBs and PTW | Tag and payload banks per physical way, replacement budgets, request queues, MSHRs, separate refill staging, PTW and PSCL state, prefetch buffer, UBS arrays, and FDIP target queues and directories when configured. |
+| DRAM controller | On-chip request and write-data SRAMs, arbitration and bank/refresh state, digital bus control and shared staging per channel. DRAMPower accounts for the external device and interface. |
+
+Some simulator queues have no enforced physical depth. The leakage model
+uses configured MSHR depth for refill banks, fill-search comparators, and
+walk slots, plus an upstream response register per port. FDIP directory
+keys follow configured queue and tag-pipeline capacities with that same
+refill proxy. Unbounded input queues are reported as coverage gaps. The
+inventories omit access counters, simulator timestamps and dependency
+vectors.
 
 ## Basic BTB and frontend
 
@@ -62,8 +91,7 @@ arbitration, training, and history updates. It assumes one history-register
 write per branch update and parallel tag lookups for fresh predictions.
 Cached same-PC predictions charge the reuse check and skip the table and
 prediction datapath costs. The report lists unsupported geometries and idealized
-target configurations. Global wiring, clock distribution and leakage sit
-outside these estimates. The frontend model can also run with HARCOM gshare.
+target configurations. Global wiring and the frontend clock tree remain outside these estimates. The frontend model can also run with HARCOM gshare.
 
 ## Alternate BTBs and direction predictors
 
@@ -109,8 +137,8 @@ energy and average dynamic power in the usual text and JSON outputs.
   training. The option selects the existing HARCOM implementations for
   built-in gshare and TAGE-SC-L. Explicit HARCOM module paths remain supported.
 
-The estimates use the reference HARCOM technology. Global wiring, clock
-distribution, and leakage are outside the model. With LiteBTB, DIB and FDIP
+The estimates use the reference HARCOM technology. Global wiring and the
+frontend clock tree remain outside the model. With LiteBTB, DIB and FDIP
 core queue and next-PC logic remain outside predictor accounting. The cache
 hierarchy option below can be enabled in the same configuration.
 

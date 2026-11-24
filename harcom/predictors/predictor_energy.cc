@@ -24,7 +24,10 @@ constexpr auto xor_bit = hcm::XOR<2>.e;
 constexpr auto flop_bit = hcm::flipflops<1>::write_energy_fJ;
 constexpr auto generation_bits = std::numeric_limits<uint64_t>::digits;
 using harcom::access_cost;
+using harcom::logic_leakage_watts;
 using harcom::match_energy;
+using harcom::match_leakage_watts;
+using harcom::register_leakage_watts;
 using harcom::sram_row;
 
 double mux_energy(std::size_t inputs, std::size_t width)
@@ -33,6 +36,14 @@ double mux_energy(std::size_t inputs, std::size_t width)
     return 0;
   const auto mux = hcm::mux(inputs, width, hcm::OUTCAP);
   return mux[0].e + mux[1].e;
+}
+
+hcm::circuit mux_circuit(std::size_t inputs, std::size_t bits)
+{
+  if (inputs <= 1 || bits == 0)
+    return {};
+  const auto mux = hcm::mux(inputs, bits, hcm::OUTCAP);
+  return mux[0] || mux[1];
 }
 
 double select_way(std::size_t ways)
@@ -69,6 +80,19 @@ double saturating_update()
   return hcm::INC<Width>.e + hcm::SUB<Width>.e + 2 * hcm::EQUAL<Width>.e + mux_energy(2, Width);
 }
 
+template <std::size_t Modulus>
+double remainder_leakage_watts()
+{
+  constexpr auto width = champsim::lg2(Modulus) + 2;
+  return logic_leakage_watts(hcm::GTE<width> || hcm::SUB<width> || mux_circuit(2, width - 1), 66 - width);
+}
+
+template <std::size_t Width>
+hcm::circuit saturating_update_circuit()
+{
+  return hcm::INC<Width> || hcm::SUB<Width> || hcm::EQUAL<Width> * 2 || mux_circuit(2, Width);
+}
+
 struct direction_cost {
   std::string_view name;
   std::string_view assumptions;
@@ -76,6 +100,7 @@ struct direction_cost {
   double resolve{};
   double train{};
   double threshold_step{};
+  double leakage_watts{};
 };
 
 direction_cost bimodal_cost()
@@ -84,7 +109,9 @@ direction_cost bimodal_cost()
   static_assert(table::ok);
   const auto read = constant_remainder<bimodal::PRIME>() + table::EREAD;
   return {"bimodal", "16,384 two-bit SRAM counters, constant modulo-16,381 index and saturating read-modify-write",
-          read, read + table::EWRITE + saturating_update<bimodal::BITS>()};
+          read, read + table::EWRITE + saturating_update<bimodal::BITS>(), 0, 0,
+          table::leakage_mW() * 1e-3 + remainder_leakage_watts<bimodal::PRIME>()
+              + logic_leakage_watts(saturating_update_circuit<bimodal::BITS>())};
 }
 
 direction_cost perceptron_cost()
@@ -98,7 +125,10 @@ direction_cost perceptron_cost()
       + history * (hcm::ADD<sum>.e + hcm::SUB<sum>.e + mux_energy(2, sum));
   return {"perceptron", "163 SRAM rows of 25 signed weights, 24-bit history and signed dot product; training recomputes the score",
           lookup, lookup + 2 * hcm::GTE<sum>.e + hcm::AND<2>.e + history * flop_bit,
-          table::EWRITE + (history + 1) * saturating_update<weight>() + history * xor_bit};
+          table::EWRITE + (history + 1) * saturating_update<weight>() + history * xor_bit, 0,
+          table::leakage_mW() * 1e-3 + remainder_leakage_watts<perceptron::NUM_PERCEPTRONS>() + register_leakage_watts(history)
+              + logic_leakage_watts(hcm::ADD<sum> || hcm::SUB<sum> || mux_circuit(2, sum) || hcm::XOR<2>, history)
+              + logic_leakage_watts(hcm::GTE<sum> * 2 || hcm::AND<2> || saturating_update_circuit<weight>() * (history + 1))};
 }
 
 direction_cost hashed_perceptron_cost()
@@ -118,7 +148,12 @@ direction_cost hashed_perceptron_cost()
           banks * table::EREAD + fold_xors * xor_bit + hcm::ADDN<weight, banks>.e + hcm::GTE<sum>.e,
           history * flop_bit + hcm::SUB<sum + 1>.e + mux_energy(2, sum + 1) + hcm::GTE<32>.e + hcm::AND<2>.e,
           banks * (table::EWRITE + saturating_update<weight>()) + hcm::INC<6>.e + hcm::EQUAL<6>.e + 6 * flop_bit,
-          hcm::INC<32>.e + 32 * flop_bit};
+          hcm::INC<32>.e + 32 * flop_bit,
+          banks * table::leakage_mW() * 1e-3 + register_leakage_watts(history + 6 + 32)
+              + logic_leakage_watts(hcm::XOR<2>, fold_xors)
+              + logic_leakage_watts(hcm::ADDN<weight, banks> || hcm::GTE<sum> || hcm::SUB<sum + 1>
+                                    || mux_circuit(2, sum + 1) || hcm::GTE<32> || hcm::AND<2> || hcm::INC<6>
+                                    || hcm::EQUAL<6> || hcm::INC<32> || saturating_update_circuit<weight>() * banks)};
 }
 
 class direction_model final : public predictor_energy_model
@@ -142,66 +177,83 @@ public:
 
   std::vector<energy_model_snapshot> energy_snapshots() const override
   {
-    return {{cost.name, revision, cost.assumptions, dynamic_energy}};
+    return {{cost.name, revision, cost.assumptions, dynamic_energy, cost.leakage_watts}};
   }
 };
 
-double xor_fold(unsigned input_bits, unsigned output_bits)
+hcm::circuit xor_fold(unsigned input_bits, unsigned output_bits)
 {
-  double energy = 0;
+  hcm::circuit logic;
   for (unsigned bit = 0; bit < output_bits && bit < input_bits; ++bit) {
     const auto terms = 1 + (input_bits - bit - 1) / output_bits;
     if (terms > 1)
-      energy += hcm::reduction(terms, [](double load) { return hcm::xor2(load); }, hcm::OUTCAP).e;
+      logic = logic || hcm::reduction(terms, [](double load) { return hcm::xor2(load); }, hcm::OUTCAP);
   }
-  return energy;
+  return logic;
 }
 
-double tag_hash_energy(litebtb_hash algorithm, bool two_level, unsigned width, unsigned input_bits)
+struct hash_cost {
+  double dynamic_fJ{};
+  double leakage_watts{};
+};
+
+hash_cost tag_hash_cost(litebtb_hash algorithm, bool two_level, unsigned width, unsigned input_bits)
 {
   if (width == 0)
-    return 0;
+    return {};
+  hcm::circuit logic;
+  double rom_read = 0;
+  double rom_leakage = 0;
   switch (algorithm) {
   case litebtb_hash::identity:
   case litebtb_hash::rabin:
-    return 0;
+    break;
   case litebtb_hash::half_xor: {
     const auto unchanged = std::min(input_bits, width / 2);
-    return xor_fold(input_bits - unchanged, width - width / 2);
+    logic = xor_fold(input_bits - unchanged, width - width / 2);
+    break;
   }
   case litebtb_hash::full_xor:
-    return xor_fold(input_bits, width);
+    logic = xor_fold(input_bits, width);
+    break;
   case litebtb_hash::geometric: {
     if (width >= input_bits || width == 1)
-      return 0;
+      break;
     const auto upper_bits = input_bits - width;
     const auto shift_stages = storage_bits(upper_bits + 1);
-    // reverse_bits() depends on the position of the highest set bit.
-    // Model a fixed reversal, leading-zero detection and a barrel shifter.
-    const auto reverse = select_way(upper_bits) + static_cast<double>(shift_stages) * mux_energy(2, upper_bits);
+    // A fixed reversal, leading-zero detection and a barrel shifter.
+    const auto reverse = hcm::oring(upper_bits, hcm::OUTCAP) || hcm::AND<2> * (upper_bits - 1) || mux_circuit(2, upper_bits) * shift_stages;
     unsigned used = 0;
     for (unsigned bit = 1; bit < width && used < upper_bits; ++bit) {
       const double power = std::pow(1.1, bit);
       const auto group = static_cast<unsigned>(two_level ? std::round(power) : std::round((power - 1) / 0.1) - 1);
       used += std::min(group, upper_bits - used);
     }
-    return reverse + used * xor_bit;
+    logic = reverse || hcm::XOR<2> * used;
+    break;
   }
-  case litebtb_hash::pearson:
-    // Constant permutations modeled as 256 x 8 ROM tables with SRAM read cost.
-    return ((width + 7) / 8) * 8 * (8 * xor_bit + hcm::sram<256, 8>::EREAD);
+  case litebtb_hash::pearson: {
+    // One fixed permutation per output byte, reused across eight lookups.
+    const auto bytes = (width + 7) / 8;
+    using permutation = hcm::sram<256, 8>;
+    logic = hcm::XOR<2> * (64 * bytes);
+    rom_read = bytes * 8 * permutation::EREAD;
+    rom_leakage = bytes * permutation::leakage_mW() * 1e-3;
+    break;
+  }
   case litebtb_hash::sha3: {
-    // One Keccak-f[1600] permutation. Rotation and lane permutation are wires.
-    // A constant iota XOR is represented by inverters in the high-level model.
+    // A reference unrolled Keccak-f[1600]. Rotations and permutations are wires.
     constexpr auto iota_inverted_bits = 86;
-    return 24 * 64 * (75 * xor_bit + 25 * (hcm::AND<2>.e + hcm::INV.e)) + iota_inverted_bits * hcm::INV.e;
+    logic = (hcm::XOR<2> * 75 || (hcm::AND<2> || hcm::INV) * 25) * (24 * 64) || hcm::INV * iota_inverted_bits;
+    break;
   }
-  case litebtb_hash::zobrist:
-    // Immutable SplitMix outputs are constants. Half their selected bits
-    // participate on average in the XOR network for each retained output bit.
-    return width * std::max(0.0, static_cast<double>(input_bits) / 2 - 1) * xor_bit;
+  case litebtb_hash::zobrist: {
+    // Immutable SplitMix outputs are hardwired. Estimate average XOR fan-in.
+    const auto xors = width * std::max(0.0, static_cast<double>(input_bits) / 2 - 1);
+    return {xors * xor_bit, logic_leakage_watts(hcm::XOR<2>, static_cast<std::size_t>(std::ceil(xors)))};
   }
-  return 0;
+  }
+  return {logic.e + rom_read, logic_leakage_watts(logic) + rom_leakage};
 }
 
 struct way_cost {
@@ -219,6 +271,7 @@ struct table_cost {
   double payload_select{};
   double invalidate{};
   double hash{};
+  double leakage_watts{};
 };
 
 table_cost characterize_table(std::size_t sets, const std::vector<litebtb_energy_geometry::way>& ways,
@@ -232,6 +285,12 @@ table_cost characterize_table(std::size_t sets, const std::vector<litebtb_energy
   table.choose = static_cast<double>(ways.size() - 1) * (compare_rank + mux_energy(2, rank_width) + hcm::AND<2>.e);
   table.invalidate = sram_row(sets, 1).write;
   table.read = select_way(ways.size());
+  table.leakage_watts = ranks.leakage_watts + logic_leakage_watts(hcm::oring(ways.size(), hcm::OUTCAP));
+  if (rank_width != 0) {
+    const auto compare = hcm::unsigned_greater_than(rank_width, hcm::OUTCAP);
+    table.leakage_watts += logic_leakage_watts(compare || mux_circuit(2, rank_width), 2 * ways.size() - 1)
+        + logic_leakage_watts(hcm::adder_ks<true, true>(rank_width, hcm::OUTCAP), ways.size());
+  }
   const bool tokens = geometry.utb_entries != 0;
   std::set<unsigned> hash_widths;
   for (const auto& way : ways) {
@@ -248,19 +307,28 @@ table_cost characterize_table(std::size_t sets, const std::vector<litebtb_energy
                         sram_row(sets, way.utb_pointer ? generation_bits : 0)};
     table.ways.push_back(cost);
     table.read += cost.tag.read + compare;
+    // Decode and owner lookups address fields already stored in the way.
+    table.leakage_watts += cost.tag.leakage_watts + cost.payload.leakage_watts
+        + match_leakage_watts(key_width) + logic_leakage_watts(hcm::AND<2>);
+    if (way.utb_pointer)
+      table.leakage_watts += match_leakage_watts(key_width) + logic_leakage_watts(hcm::AND<2>);
     if (way.hashed && !way.utb_pointer)
       hash_widths.insert(way.tag);
   }
   // Join the low target bits to the upper saved-PC or lookup-PC bits
   // before the mux. Generation metadata stays in the decode path.
   table.payload_select = mux_energy(ways.size(), 64 + (tokens ? 3 : 2)) + hcm::AND<2>.e;
-  for (const auto width : hash_widths)
-    table.hash += tag_hash_energy(geometry.hash, geometry.two_level, width, 62 - static_cast<unsigned>(storage_bits(sets)));
+  table.leakage_watts += logic_leakage_watts(mux_circuit(ways.size(), 64 + (tokens ? 3 : 2)) || hcm::AND<2>);
+  for (const auto width : hash_widths) {
+    const auto hash = tag_hash_cost(geometry.hash, geometry.two_level, width, 62 - static_cast<unsigned>(storage_bits(sets)));
+    table.hash += hash.dynamic_fJ;
+    table.leakage_watts += hash.leakage_watts;
+  }
   return table;
 }
 
 struct utb_cost {
-  double lookup{}, promote{}, replace{}, owner{}, reference{}, pointer_compare{};
+  double lookup{}, promote{}, replace{}, owner{}, reference{}, pointer_compare{}, leakage_watts{};
 };
 
 utb_cost characterize_utb(const litebtb_energy_geometry& geometry)
@@ -276,19 +344,29 @@ utb_cost characterize_utb(const litebtb_energy_geometry& geometry)
   const auto generation = sram_row(sets, generation_bits);
   const auto refs = sram_row(sets, ref_bits);
   const auto key_width = geometry.utb_tag_bits + storage_bits(sets);
-  const auto hash = tag_hash_energy(geometry.hash, geometry.two_level, static_cast<unsigned>(key_width),
+  const auto hash = tag_hash_cost(geometry.hash, geometry.two_level, static_cast<unsigned>(key_width),
                                     62 - static_cast<unsigned>(storage_bits(geometry.sets)));
   const auto double_ways = static_cast<double>(ways);
   const auto read = double_ways * (tags.read + match_energy(geometry.utb_tag_bits) + hcm::AND<2>.e)
-      + select_way(ways) + mux_energy(ways, rank_bits) + hash;
+      + select_way(ways) + mux_energy(ways, rank_bits) + hash.dynamic_fJ;
   const auto promote = ranks.read + ranks.write + rank_update(ways);
   const auto eviction = (geometry.utb_reference_count ? double_ways * refs.read + (double_ways - 1)
       * (match_energy(ref_bits) + hcm::unsigned_greater_than(ref_bits, hcm::OUTCAP).e + mux_energy(2, ref_bits)) : 0)
       + (rank_bits == 0 ? 0 : (double_ways - 1) * hcm::unsigned_greater_than(rank_bits, hcm::OUTCAP).e);
+  auto leakage = double_ways * (tags.leakage_watts + generation.leakage_watts + refs.leakage_watts) + ranks.leakage_watts
+      + hash.leakage_watts + match_leakage_watts(geometry.utb_tag_bits, ways)
+      + logic_leakage_watts(mux_circuit(ways, rank_bits) || hcm::oring(ways, hcm::OUTCAP)
+                            || hcm::EQUAL<generation_bits> || hcm::INC<generation_bits>)
+      + register_leakage_watts(generation_bits);
+  if (rank_bits != 0)
+    leakage += logic_leakage_watts(hcm::unsigned_greater_than(rank_bits, hcm::OUTCAP), ways - 1);
+  if (geometry.utb_reference_count)
+    leakage += match_leakage_watts(ref_bits, ways - 1)
+        + logic_leakage_watts(hcm::unsigned_greater_than(ref_bits, hcm::OUTCAP) || mux_circuit(2, ref_bits), ways - 1);
   return {read, promote, eviction + promote + tags.write + generation.write + refs.write,
           generation.read + hcm::EQUAL<generation_bits>.e,
           refs.read + refs.write + increment_energy(ref_bits),
-          match_energy(storage_bits(geometry.utb_entries)) + hcm::AND<2>.e};
+          match_energy(storage_bits(geometry.utb_entries)) + hcm::AND<2>.e, leakage};
 }
 
 struct litebtb_names {
@@ -312,6 +390,7 @@ class litebtb_model final : public predictor_energy_model
   const utb_cost utb;
   const access_cost ras;
   const double ras_pointer;
+  const double ras_leakage_watts;
   const double pointer_recheck;
   const bool has_utb;
   const bool reference_count;
@@ -360,6 +439,9 @@ public:
                               {62 - static_cast<unsigned>(storage_bits(geometry.l1_sets)), 64, false, false, false}), geometry) : table_cost{}),
         utb(characterize_utb(geometry)), ras(sram_row(geometry.ras_entries, 64)),
         ras_pointer(increment_energy(storage_bits(geometry.ras_entries)) + static_cast<double>(storage_bits(geometry.ras_entries + 1)) * flop_bit),
+        ras_leakage_watts(ras.leakage_watts + register_leakage_watts(storage_bits(geometry.ras_entries + 1))
+                          + logic_leakage_watts(hcm::INC<62> || hcm::AND<2>
+                                                || hcm::adder_ks<true, true>(storage_bits(geometry.ras_entries), hcm::OUTCAP))),
         pointer_recheck(utb.pointer_compare * static_cast<double>(std::count_if(geometry.ways.begin(), geometry.ways.end(),
                                                                               [](const auto& way) { return way.utb_pointer; }))),
         has_utb(geometry.utb_entries != 0), reference_count(geometry.utb_reference_count)
@@ -408,14 +490,14 @@ public:
         {names.l2, revision, names.l2 == single_level[static_cast<unsigned>(litebtb_hash::rabin)].l2
              ? "Parallel tag ways, gated target payload and LRU logic; Rabin truncates tags and reconstructs targets from the lookup PC"
              : "Parallel tag ways, gated target payload, hash and LRU logic; inline compressed targets retain upper PC bits",
-         l2_energy},
-        {names.indirect, revision, "Parallel base and tagged SRAMs, resettable useful bits and shift-register history", ittage_energy},
-        {names.ras, revision, "64 entries, depth and stack pointer, constant four-byte return displacement", ras_energy}};
+         l2_energy, l2.leakage_watts + logic_leakage_watts(hcm::XOR<2> * 62 || hcm::priority_encoder<62>)},
+        {names.indirect, revision, "Parallel base and tagged SRAMs, resettable useful bits and shift-register history", ittage_energy, harcom::ittage_leakage_watts()},
+        {names.ras, revision, "64 entries, depth and stack pointer, constant four-byte return displacement", ras_energy, ras_leakage_watts}};
     if (!l1.ways.empty())
-      result.push_back({names.l1, revision, "64 sets, eight ways, full tags and targets; prediction probes L2 only on an L1 miss", l1_energy});
+      result.push_back({names.l1, revision, "64 sets, eight ways, full tags and targets; prediction probes L2 only on an L1 miss", l1_energy, l1.leakage_watts});
     if (has_utb)
       result.push_back({names.utb, revision, reference_count ? "Banked upper tags, generation tokens, reference counters and LRU tie-break"
-                                                           : "Banked upper tags and generation tokens, LRU with reference bookkeeping", utb_energy});
+                                                           : "Banked upper tags and generation tokens, LRU with reference bookkeeping", utb_energy, utb.leakage_watts});
     return result;
   }
 };

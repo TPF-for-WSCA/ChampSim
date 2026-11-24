@@ -11,10 +11,14 @@ namespace
 {
 constexpr std::string_view harcom_revision = "5ceea8358ddbab94e5621e2536530b860cc1e5b7";
 
+using champsim::harcom::logic_leakage_watts;
+using champsim::harcom::register_leakage_watts;
+
 struct associative_cost {
   double lookup;
   double promote;
   double fill;
+  double leakage_watts;
 };
 
 template <std::size_t Sets, std::size_t TagBits, std::size_t PayloadBits>
@@ -26,11 +30,13 @@ constexpr associative_cost eight_way_cost()
   constexpr auto compare = hcm::EQUAL<TagBits>.e + hcm::AND<2>.e;
   constexpr auto lookup = 8 * (way::EREAD + compare) + hcm::OR<8>.e;
   constexpr auto promote = ranks::EREAD + ranks::EWRITE;
+  constexpr auto leakage = (8 * way::leakage_mW() + ranks::leakage_mW()) * 1e-3
+      + logic_leakage_watts((hcm::EQUAL<TagBits> || hcm::AND<2>) * 8 || hcm::OR<8>);
   if constexpr (PayloadBits > 0) {
     constexpr auto mux = hcm::MUX<8, PayloadBits>;
-    return {lookup + mux[0].e + mux[1].e, promote, promote + way::EWRITE};
+    return {lookup + mux[0].e + mux[1].e, promote, promote + way::EWRITE, leakage + logic_leakage_watts(mux[0] || mux[1])};
   }
-  return {lookup, promote, lookup + promote + way::EWRITE};
+  return {lookup, promote, lookup + promote + way::EWRITE, leakage};
 }
 
 constexpr auto dib_cost = eight_way_cost<32, 55, 0>();
@@ -50,6 +56,15 @@ constexpr auto ras_pointer = hcm::flipflops<13>::write_energy_fJ + hcm::INC<6>.e
 constexpr auto call_size_valid = hcm::MUX<return_stack::num_call_size_trackers, 1>;
 constexpr auto call_size_valid_read = call_size_valid[0].e + call_size_valid[1].e;
 constexpr auto call_size_valid_write = hcm::decoder<return_stack::num_call_size_trackers>.e + hcm::flipflops<1>::write_energy_fJ;
+constexpr double ras_leakage_watts(bool checkpoint)
+{
+  const auto arrays = (ras_entries::leakage_mW() + call_sizes::leakage_mW()) * 1e-3;
+  const auto logic = hcm::INC<6> || hcm::SUB<64> || hcm::GTE<64> || hcm::ADD<64>;
+  const auto shadow_logic = call_size_valid[0] || call_size_valid[1] || hcm::decoder<return_stack::num_call_size_trackers>;
+  return arrays + register_leakage_watts(13) + logic_leakage_watts(logic)
+      + (checkpoint ? arrays + register_leakage_watts(13 + return_stack::num_call_size_trackers)
+                       + logic_leakage_watts(shadow_logic) : 0);
+}
 } // namespace
 
 class harcom_basic_btb::frontend_model final : public champsim::frontend_energy_model
@@ -187,20 +202,24 @@ public:
   {
     std::vector<champsim::energy_model_snapshot> snapshots;
     if (dib_supported)
-      snapshots.push_back({"DIB", harcom_revision, "32 sets, 8 ways, 16-byte window, tag and LRU row arrays", dib_energy});
+      snapshots.push_back({"DIB", harcom_revision, "32 sets, 8 ways, 16-byte window, tag and LRU row arrays", dib_energy, dib_cost.leakage_watts});
     if (ftq_supported)
-      snapshots.push_back({"FDIP FTQ", harcom_revision, "24 blocks, eight slot banks, 131 bits per prediction", ftq_energy});
+      snapshots.push_back({"FDIP FTQ", harcom_revision, "24 blocks, eight slot banks, 131 bits per prediction", ftq_energy,
+                           8 * ftq_slot::leakage_mW() * 1e-3 + register_leakage_watts(3 + 2 * 5)
+                               + logic_leakage_watts(hcm::INC<3> || hcm::INC<5> * 2)});
     if (fdip_enabled)
-      snapshots.push_back({"FDIP next-PC logic", harcom_revision, "sequential PC, target selection and PC register", fdip_energy});
+      snapshots.push_back({"FDIP next-PC logic", harcom_revision, "sequential PC, target selection and PC register", fdip_energy,
+                           register_leakage_watts(64) + logic_leakage_watts(hcm::INC<62> || hcm::NEQ<64> || hcm::AND<2>
+                                                                           || pc_select[0] || pc_select[1])});
     if (direct_cost)
-      snapshots.push_back({"basic BTB direct table", harcom_revision, "eight parallel SRAM ways, full tags, 64-bit targets and LRU row array", direct_energy});
+      snapshots.push_back({"basic BTB direct table", harcom_revision, "eight parallel SRAM ways, full tags, 64-bit targets and LRU row array", direct_energy, direct_cost->leakage_watts});
     if (!ideal_targets)
-      snapshots.push_back({"basic BTB ITTAGE", harcom_revision, "parallel base and tagged SRAMs, resettable useful bits and shift-register history", indirect_energy});
+      snapshots.push_back({"basic BTB ITTAGE", harcom_revision, "parallel base and tagged SRAMs, resettable useful bits and shift-register history", indirect_energy, direct_cost->leakage_watts});
     if (!ideal_targets)
       snapshots.push_back({"basic BTB return-address stack", harcom_revision,
                            fdip_enabled ? "64-entry stacks, live stack entries copied on an FDIP checkpoint, call-size SRAM with copy-on-write shadow"
                                         : "64-entry return stack and four-bit call-size SRAM",
-                           ras_energy});
+                           ras_energy, ras_leakage_watts(fdip_enabled)});
     return snapshots;
   }
 

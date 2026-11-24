@@ -16,7 +16,10 @@ constexpr auto flop = hcm::flipflops<1>::write_energy_fJ;
 constexpr auto gate = hcm::AND<2>.e;
 constexpr auto add = hcm::ADD<value_bits>.e;
 using event = backend_event;
+using harcom::logic_leakage_watts;
 using harcom::match_energy;
+using harcom::match_leakage_watts;
+using harcom::register_leakage_watts;
 using harcom::sram_row;
 
 struct term {
@@ -29,6 +32,7 @@ struct meter {
   std::string_view model;
   std::string_view assumptions;
   std::vector<term> terms;
+  double leakage_watts;
 };
 
 double mux_energy(std::size_t inputs, std::size_t bits)
@@ -37,6 +41,14 @@ double mux_energy(std::size_t inputs, std::size_t bits)
     return 0;
   const auto mux = hcm::mux(inputs, bits, hcm::OUTCAP);
   return mux[0].e + mux[1].e;
+}
+
+double mux_leakage(std::size_t inputs, std::size_t bits)
+{
+  if (inputs < 2 || bits == 0)
+    return 0;
+  const auto mux = hcm::mux(inputs, bits, hcm::OUTCAP);
+  return logic_leakage_watts(mux[0] || mux[1]);
 }
 
 double address_select(std::size_t rows)
@@ -55,7 +67,8 @@ meter queue_meter(std::string name, std::size_t depth, std::size_t bits, event i
   const auto pointer = static_cast<double>(storage_bits(depth + 1)) * (flop + hcm::XOR<2>.e);
   const auto valid = flag_update(depth);
   return {std::move(name), "HARCOM pipeline queue", "One logical SRAM row access per transfer, with local valid bits and pointers",
-          {{in, row.write + pointer + valid}, {out, row.read + pointer + valid}, {squash, valid}}};
+          {{in, row.write + pointer + valid}, {out, row.read + pointer + valid}, {squash, valid}},
+          row.leakage_watts + register_leakage_watts(depth + 2 * storage_bits(depth + 1))};
 }
 
 class core_model
@@ -86,6 +99,7 @@ public:
     const auto decoded_bits = 64 + operand_slots * (logical_bits + 1) + 12;
     auto fetch = queue_meter("instruction fetch queue", cpu.IFETCH_BUFFER_SIZE, decoded_bits, event::fetch_in, event::fetch_out, event::fetch_release);
     fetch.terms.push_back({event::fetch_ready, flag_update(cpu.IFETCH_BUFFER_SIZE, 2)});
+    fetch.leakage_watts += register_leakage_watts(2 * cpu.IFETCH_BUFFER_SIZE);
     meters.push_back(std::move(fetch));
     meters.push_back(queue_meter("decode queue", cpu.DECODE_BUFFER_SIZE, decoded_bits, event::decode_in, event::decode_out, event::decode_release));
     meters.push_back(queue_meter("DIB-hit queue", cpu.DIB_HIT_BUFFER_SIZE, decoded_bits, event::dib_in, event::dib_out, event::dib_release));
@@ -100,7 +114,8 @@ public:
                        {event::rob_issue, flag_update(rob)}, {event::rob_complete, flag_update(rob)},
                        {event::rob_retire, rob_destinations.read + flag_update(rob)},
                        {event::rob_release, flag_update(rob)}, {event::rob_memory_done, flag_update(rob, 4) + hcm::INC<4>.e},
-                       {event::recover, static_cast<double>(rob_bits) * flop + hcm::MUX<2, 64>[0].e + hcm::MUX<2, 64>[1].e}}});
+                       {event::recover, static_cast<double>(rob_bits) * flop + hcm::MUX<2, 64>[0].e + hcm::MUX<2, 64>[1].e}},
+                      rob_state.leakage_watts + register_leakage_watts(rob + 2 * rob_bits) + mux_leakage(2, 64)});
 
     const auto rat = sram_row(logical, phys_bits + 1);
     const auto freelist = sram_row(physical, phys_bits);
@@ -113,7 +128,9 @@ public:
                        {event::committed_read, rat.read}, {event::committed_write, rat.write},
                        {event::free_take, freelist.read + cursor}, {event::free_put, freelist.write + cursor},
                        {event::rename_metadata_read, rename_metadata.read}, {event::rename_metadata_write, rename_metadata.write},
-                       {event::checkpoint, parallel_checkpoint}, {event::restore, parallel_checkpoint}}});
+                       {event::checkpoint, parallel_checkpoint}, {event::restore, parallel_checkpoint}},
+                      2 * rat.leakage_watts + freelist.leakage_watts + rename_metadata.leakage_watts
+                          + register_leakage_watts(2 * phys_bits + (cpu.WRONG_PATH ? logical * (phys_bits + 1) : 0))});
 
     const auto tags = sram_row(rob, source_slots * (phys_bits + 1));
     const auto ready = mux_energy(physical, 1);
@@ -121,16 +138,22 @@ public:
     meters.push_back({"scheduler and wakeup", "HARCOM scoreboard and issue selection",
                       "Source tags indexed by ROB slot, physical-ready scoreboard, eligible-entry arbitration and a completion-tag broadcast",
                       {{event::rob_rename, tags.write}, {event::select_entry, tags.read + gate * static_cast<double>(issue_width)},
-                       {event::ready_read, ready}, {event::ready_write, flag_update(physical)}, {event::wake, wake}}});
+                       {event::ready_read, ready}, {event::ready_write, flag_update(physical)}, {event::wake, wake}},
+                      tags.leakage_watts + register_leakage_watts(physical) + mux_leakage(physical, 1)
+                          + logic_leakage_watts(hcm::broadcast_tree(issue_width * source_slots), phys_bits)
+                          + logic_leakage_watts(hcm::AND<2>, rob * issue_width)});
     const auto prf = sram_row(physical, value_bits);
     meters.push_back({"physical register file", "HARCOM operand storage",
                       "One 64-bit activation per issued source and completed destination, with serialized equivalent SRAM ports",
-                      {{event::operand_read, prf.read}, {event::operand_write, prf.write}}});
+                      {{event::operand_read, prf.read}, {event::operand_write, prf.write}}, prf.leakage_watts});
+    const auto agu_width = static_cast<std::size_t>(to_underlying(cpu.LQ_WIDTH) + to_underlying(cpu.SQ_WIDTH));
     meters.push_back({"execution and address generation", "HARCOM representative 64-bit datapaths",
-                      "Scalar add and output select, branch compare and target add, one effective-address add per memory operand",
+                      "Scalar add, branch compare and output select per issue lane. One effective-address adder per load/store lane.",
                       {{event::integer_execute, add + mux_energy(2, value_bits)},
                        {event::branch_execute, add + match_energy(value_bits) + mux_energy(2, value_bits)},
-                       {event::address_execute, add}}});
+                       {event::address_execute, add}},
+                      logic_leakage_watts(hcm::ADD<value_bits>, issue_width + agu_width)
+                          + static_cast<double>(issue_width) * mux_leakage(2, value_bits) + match_leakage_watts(value_bits, issue_width)});
 
     const auto load = sram_row(lq, 64 + rob_bits + storage_bits(sq + 1) + 16 + 4);
     const auto store = sram_row(sq, 64 + rob_bits + 16 + 4);
@@ -141,13 +164,16 @@ public:
                       {{event::load_in, load.write + flag_update(lq)}, {event::load_ready, flag_update(lq)},
                        {event::load_issue, load.read}, {event::load_send, flag_update(lq)},
                        {event::load_release, flag_update(lq)}, {event::load_match, match_energy(load_match_bits) + gate},
-                       {event::forward_wait, flag_update(lq, storage_bits(sq + 1))}}});
+                       {event::forward_wait, flag_update(lq, storage_bits(sq + 1))}},
+                      load.leakage_watts + register_leakage_watts(lq) + match_leakage_watts(load_match_bits, lq)});
     meters.push_back({"store queue and forwarding", "HARCOM store address and data state",
                       "Address CAM on load allocation, store execution and drain, selected data read and bypass on a forward",
                       {{event::store_in, store.write + flag_update(sq)}, {event::store_ready, flag_update(sq)},
                        {event::store_match, match_energy(value_bits) + gate}, {event::store_execute, store_data.write + flag_update(sq)},
                        {event::store_send, store.read + store_data.read}, {event::store_release, flag_update(sq)},
-                       {event::forward_data, store_data.read + mux_energy(2, value_bits)}}});
+                       {event::forward_data, store_data.read + mux_energy(2, value_bits)}},
+                      store.leakage_watts + store_data.leakage_watts + register_leakage_watts(sq + 2 * storage_bits(sq + 1))
+                          + match_leakage_watts(value_bits, sq) + mux_leakage(2, value_bits)});
 
     // HARCOM flip-flop writes already include local clock drive. Only the
     // reference trunk and the input load of each modeled gate are added here.
@@ -157,7 +183,7 @@ public:
     const auto trunk = hcm::wire<4., hcm::DSMAX, 0>(1000, false, hcm::INVCAP * static_cast<double>(gate_groups), false);
     meters.push_back({"clock distribution", "HARCOM reference clock trunk",
                       "One 1 mm trunk with width-scaled gate loads per core, local sequential clock energy included in flip-flop writes",
-                      {{event::cycle, 4 * trunk.e}}});
+                      {{event::cycle, 4 * trunk.e}}, logic_leakage_watts(trunk) + logic_leakage_watts(hcm::INV, gate_groups)});
   }
 
   void sample(std::vector<component_energy_stats>& output) const
@@ -167,7 +193,7 @@ public:
       for (const auto& term : component.terms)
         femtojoules += static_cast<double>((*cpu.backend_activity)[term.operation]) * term.femtojoules;
       output.push_back({fmt::format("CPU {} {}", cpu.cpu, component.instance), component.model, revision,
-                        std::string{component.assumptions}, cpu.clock_period, femtojoules * 1e-15});
+                        std::string{component.assumptions}, cpu.clock_period, femtojoules * 1e-15, component.leakage_watts});
     }
   }
 };
@@ -188,7 +214,7 @@ struct link_model {
         response_bits(64 * 2 + 32 + (shape.payload == link_payload::cache_line ? 8 * BLOCK_SIZE
                                        : shape.payload == link_payload::translation ? 64 - LOG2_PAGE_SIZE : 64)),
         activity(shape.connection->link_activity.emplace()),
-        assumptions(fmt::format("{:g} um wire, {}/{}/{} bits per request/write/response, reference switching, endpoint FIFOs separate",
+        assumptions(fmt::format("{:g} um wire, {}/{}/{} bits per request/write/response, reference switching, endpoint FIFOs separate; leakage uses shared request/write lanes and separate response lanes",
                                 length_um, request_bits, write_bits, response_bits))
   {}
 
@@ -204,11 +230,11 @@ class backend_model final : public backend_energy_model
 {
   std::vector<core_model> cores;
   std::vector<link_model> links;
-  const double wire_energy;
+  const hcm::circuit wire;
 
 public:
   backend_model(environment& env, double length_um, std::initializer_list<backend_link_configuration> connections)
-      : wire_energy(hcm::wire<4., hcm::DSMAX, 0>(length_um, false, hcm::INVCAP, false).e)
+      : wire(hcm::wire<4., hcm::DSMAX, 0>(length_um, false, hcm::INVCAP, false))
   {
     for (O3_CPU& cpu : env.cpu_view())
       cores.emplace_back(cpu);
@@ -223,7 +249,8 @@ public:
       core.sample(output);
     for (const auto& link : links)
       output.push_back({std::string(link.config.name), "HARCOM on-chip point-to-point link", revision,
-                        link.assumptions, link.config.clock_period, link.transferred_bits() * wire_energy * 1e-15});
+                        link.assumptions, link.config.clock_period, link.transferred_bits() * wire.e * 1e-15,
+                        harcom::logic_leakage_watts(wire || hcm::INV, link.write_bits + link.response_bits)});
     return output;
   }
 

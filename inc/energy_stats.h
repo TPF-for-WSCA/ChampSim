@@ -18,6 +18,7 @@ struct energy_model_snapshot {
   std::string_view revision;
   std::string_view assumptions;
   double dynamic_energy_fJ;
+  std::optional<double> leakage_power_watts{};
 };
 
 struct component_energy_stats {
@@ -27,6 +28,7 @@ struct component_energy_stats {
   std::string assumptions;
   chrono::picoseconds clock_period;
   double dynamic_energy_joules;
+  std::optional<double> leakage_power_watts{};
 };
 
 struct dram_replay_burst_delay {
@@ -52,6 +54,9 @@ struct dram_replay_energy_stats {
   [[nodiscard]] double average_power_watts() const { return energy_joules / (replay_duration_ps * 1e-12); }
 };
 
+inline constexpr std::string_view leakage_assumptions =
+    "HARCOM nominal 0.75 V fin model with 25 C reference off-currents, modeled structures powered throughout the simulated interval";
+
 struct phase_energy_stats {
   chrono::clock::time_point begin;
   chrono::clock::time_point end;
@@ -66,18 +71,40 @@ struct phase_energy_stats {
                            [](double sum, const auto& component) { return sum + component.dynamic_energy_joules; });
   }
 
-  [[nodiscard]] double combined_modeled_energy_joules() const
+  [[nodiscard]] double elapsed_seconds() const { return std::chrono::duration<double>(end - begin).count(); }
+
+  [[nodiscard]] std::optional<double> leakage_energy_joules(const component_energy_stats& component) const
   {
-    return modeled_dynamic_energy_joules() + (dram_replay ? dram_replay->energy_joules : 0);
+    if (!component.leakage_power_watts)
+      return std::nullopt;
+    return *component.leakage_power_watts * elapsed_seconds();
   }
 
-  [[nodiscard]] std::optional<double> average_dynamic_power_watts(double energy_joules) const
+  [[nodiscard]] double modeled_leakage_energy_joules() const
   {
-    const auto elapsed = std::chrono::duration<double>(end - begin).count();
+    return std::accumulate(components.begin(), components.end(), 0.0,
+                           [this](double sum, const auto& component) { return sum + leakage_energy_joules(component).value_or(0); });
+  }
+
+  [[nodiscard]] double modeled_on_chip_energy_joules() const
+  {
+    return modeled_dynamic_energy_joules() + modeled_leakage_energy_joules();
+  }
+
+  [[nodiscard]] double combined_modeled_energy_joules() const
+  {
+    return modeled_on_chip_energy_joules() + (dram_replay ? dram_replay->energy_joules : 0);
+  }
+
+  [[nodiscard]] std::optional<double> average_power_watts(double energy_joules) const
+  {
+    const auto elapsed = elapsed_seconds();
     if (elapsed <= 0)
       return std::nullopt;
     return energy_joules / elapsed;
   }
+
+  [[nodiscard]] std::optional<double> average_dynamic_power_watts(double energy_joules) const { return average_power_watts(energy_joules); }
 };
 } // namespace champsim
 

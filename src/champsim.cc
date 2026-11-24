@@ -49,18 +49,18 @@ std::vector<component_energy_stats> sample_component_energy(environment& env)
     for (std::size_t index = 0; index < predictors.size(); ++index) {
       const auto& predictor = predictors[index];
       components.push_back({fmt::format("CPU {} branch predictor {}", cpu.cpu, index), predictor.model, predictor.revision, std::string{predictor.assumptions},
-                            cpu.clock_period, predictor.dynamic_energy_fJ * 1e-15});
+                            cpu.clock_period, predictor.dynamic_energy_fJ * 1e-15, predictor.leakage_power_watts});
     }
     if (cpu.frontend_energy != nullptr) {
       for (const auto& component : cpu.frontend_energy->energy_snapshots()) {
         components.push_back({fmt::format("CPU {} {}", cpu.cpu, component.model), component.model, component.revision, std::string{component.assumptions},
-                              cpu.clock_period, component.dynamic_energy_fJ * 1e-15});
+                              cpu.clock_period, component.dynamic_energy_fJ * 1e-15, component.leakage_power_watts});
       }
     }
     for (const auto& model : cpu.predictor_energy) {
       for (const auto& component : model->energy_snapshots()) {
         components.push_back({fmt::format("CPU {} {}", cpu.cpu, component.model), component.model, component.revision, std::string{component.assumptions},
-                              cpu.clock_period, component.dynamic_energy_fJ * 1e-15});
+                              cpu.clock_period, component.dynamic_energy_fJ * 1e-15, component.leakage_power_watts});
       }
     }
   }

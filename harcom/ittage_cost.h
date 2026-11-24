@@ -1,7 +1,7 @@
 #ifndef CHAMPSIM_HARCOM_ITTAGE_COST_H
 #define CHAMPSIM_HARCOM_ITTAGE_COST_H
 
-#include "bridge.h"
+#include "leakage.h"
 #include "ittage.h"
 
 namespace champsim::harcom
@@ -20,6 +20,19 @@ constexpr auto indirect_lookup = indirect_base::EREAD
     + hcm::NEQ<64>.e + target_select[0].e + target_select[1].e;
 constexpr auto indirect_history_write = hcm::flipflops<ittage::history_lengths.back()>::write_energy_fJ
     + hcm::flipflops<indirect_fold_bits>::write_energy_fJ + ittage_banks * 6 * hcm::XOR<2>.e;
+
+constexpr double ittage_leakage_watts()
+{
+  const auto tagged_logic = hcm::EQUAL<ittage::tag_bits> || hcm::AND<2>
+      || hcm::XOR<2> * (2 * (index_bits + ittage::tag_bits) + 6)
+      || useful_mux[0] || useful_mux[1] || hcm::decoder<ittage::tagged_entries>;
+  const auto common_logic = hcm::XOR<2> * 58 || hcm::priority_encoder<ittage_banks> * 2
+      || (indirect_mux[0] || indirect_mux[1]) * 2 || hcm::NEQ<64> || target_select[0] || target_select[1]
+      || hcm::EQUAL<64> * 3 || hcm::INC<4> || hcm::INC<8>;
+  return (indirect_base::leakage_mW() + ittage_banks * indirect_tagged::leakage_mW()) * 1e-3
+      + register_leakage_watts(ittage_banks * ittage::tagged_entries + ittage::history_lengths.back() + indirect_fold_bits + 4 + 8)
+      + logic_leakage_watts(tagged_logic, ittage_banks) + logic_leakage_watts(common_logic);
+}
 
 inline double ittage_energy(frontend_event event, std::size_t count)
 {
